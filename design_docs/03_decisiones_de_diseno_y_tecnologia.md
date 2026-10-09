@@ -265,7 +265,3 @@ CREATE TABLE social.discussion_posts (
 ### 6.3. Desacoplamiento Event-Driven via Redis Streams
 * **Notificaciones Pasadas (Events):** La API de Fastify se limita a registrar las transacciones en PostgreSQL y emitir un evento pasado a Redis Streams (`NODE_CREATED`, `EDIT_PROPOSED`).
 * **Trabajadores en Segundo Plano:** Los servicios pesados (generación de embeddings vectoriales con Ollama y agentes de IA en Python) consumen la cola de Redis de forma asíncrona, evitando bloquear la latencia de respuesta al usuario final ($\approx 5\text{ ms}$).
-
-```
-
----

@@ -12,23 +12,23 @@ VozLab se compone de un sistema desacoplado pero cohesivo de tres capas: la PWA 
 │                           CAPA DE CLIENTE (PWA)                             │
 │                  SvelteKit 5 (Svelte Runes) + Tailwind CSS                  │
 └──────────────────────────────────────┬──────────────────────────────────────┘
-│ HTTP / WebSockets / SSE
-▼
+                                       │ HTTP / WebSockets / SSE
+                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           API BACKEND PRINCIPAL                             │
 │       Fastify (Node.js/TypeScript) + Zod + Drizzle ORM + postgres.js        │
 │  (Arquitectura Hexagonal: Puertos, Adaptadores, Dominio y Casos de Uso)     │
 └──────────────┬───────────────────────┬───────────────────────┬──────────────┘
-│                       │                       │
-│ Lectura/Escritura     │ Eventos Pub/Sub       │ Búsqueda/Cypher
-▼                       ▼                       ▼
+               │                       │                       │
+               │ Lectura/Escritura     │ Eventos Pub/Sub       │ Búsqueda/Cypher
+               ▼                       ▼                       ▼
 ┌───────────────────────────┐ ┌───────────────────┐ ┌────────────────────────┐
 │ PostgreSQL 16+            │ │ Redis Streams     │ │ Apache AGE + pgvector  │
 │ (Relacional / Documental) │ │ (Event Broker)    │ │ (Grafo LPG & Embeddings│
 └───────────────────────────┘ └────────┬──────────┘ └────────────────────────┘
-│
-│ Consumo de Eventos
-▼
+                                       │
+                                       │ Consumo de Eventos
+                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                       WORKERS ASÍNCRONOS DE IA                              │
 │             Python 3.12+ (Pydantic v2 + Ollama + LangChain)                 │
