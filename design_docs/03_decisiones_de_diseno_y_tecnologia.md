@@ -246,3 +246,26 @@ CREATE TABLE social.discussion_posts (
 );
 
 ```
+
+
+
+---
+
+## 6. Decisiones de Arquitectura de Aplicación y Stack Tecnológico
+
+### 6.1. Selección del Backend: TypeScript + Fastify + Drizzle ORM
+* **Justificación frente a Python/Rust:** TypeScript permite compartir tipos e interfaces de datos directamente con la PWA SvelteKit. Fastify provee un tiempo de respuesta de escasos milisegundos para operaciones E/S asíncronas.
+* **Justificación de Drizzle ORM + postgres.js:**
+  * Drizzle provee una capa de abstracción *zero-overhead* con tipado estricto en compilación y control de migraciones versionadas.
+  * Combina la seguridad contra Inyección SQL mediante parametrización nativa en `postgres.js` con el escape directo a sentencias SQL/Cypher para **Apache AGE**.
+
+### 6.2. Selección del Frontend: SvelteKit 5 (Svelte Runes)
+* **Justificación frente a React/Vue:** SvelteKit 5 compila el código a JavaScript vanila ultra optimizado sin sobrecarga de Virtual DOM. Las primitivas de reactividad de Svelte 5 (`$state()`) permiten que mutaciones granulares (como upvotes en hilos de discusión) actualicen de forma atómica el DOM sin re-renderizar componentes padres, maximizando la fluidez y la vida de batería en la PWA móvil.
+
+### 6.3. Desacoplamiento Event-Driven via Redis Streams
+* **Notificaciones Pasadas (Events):** La API de Fastify se limita a registrar las transacciones en PostgreSQL y emitir un evento pasado a Redis Streams (`NODE_CREATED`, `EDIT_PROPOSED`).
+* **Trabajadores en Segundo Plano:** Los servicios pesados (generación de embeddings vectoriales con Ollama y agentes de IA en Python) consumen la cola de Redis de forma asíncrona, evitando bloquear la latencia de respuesta al usuario final ($\approx 5\text{ ms}$).
+
+```
+
+---
