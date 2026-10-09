@@ -1,7 +1,6 @@
-
 # ESPECIFICACIÓN TÉCNICA: MODELO DE DATOS Y METAMODELO (VOZLAB)
 
-## 1. Arquitectura de Grafo y Metamodelo
+## 1. Arquitectura de Grafo, Metamodelo y Gobernanza de Autor
 
 VozLab se basa en un **Grafo de Propiedades Etiquetado (Labeled Property Graph - LPG)** implementado en **PostgreSQL 16+**. 
 
@@ -9,6 +8,7 @@ VozLab se basa en un **Grafo de Propiedades Etiquetado (Labeled Property Graph -
 * **Aristas / Bordes (`public.edges`):** Relaciones de primer orden con contadores comunitarios independientes.
 * **Metamodelo (`meta.*`):** Gobernanza de la ontología y reglas del sistema.
 * **Discusiones (`social.*`):** Hilos colaborativos vinculados a propuestas o contenidos.
+* **Propuestas de Edición (`public.edit_proposals`):** Sistema unificado estilo "Pull Request" donde la comunidad propone cambios sobre nodos, aristas o elementos ontológicos, y el **autor/creador original** aprueba o rechaza la fusión.
 
 ---
 
@@ -27,7 +27,7 @@ CREATE TABLE meta.ontology_classes (
     
     status VARCHAR(20) DEFAULT 'PROPOSED',   -- 'PROPOSED', 'ACTIVE', 'DEPRECATED'
     approval_score INT DEFAULT 0,
-    proposed_by VARCHAR(64) NOT NULL,
+    proposed_by VARCHAR(64) NOT NULL,        -- Autor de la propuesta ontológica (Maintainer)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -44,7 +44,7 @@ CREATE TABLE meta.datatype_properties (
     
     status VARCHAR(20) DEFAULT 'PROPOSED',
     approval_score INT DEFAULT 0,
-    proposed_by VARCHAR(64) NOT NULL,
+    proposed_by VARCHAR(64) NOT NULL,        -- Autor de la propuesta ontológica (Maintainer)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -59,7 +59,7 @@ CREATE TABLE meta.object_properties (
     
     status VARCHAR(20) DEFAULT 'PROPOSED',
     approval_score INT DEFAULT 0,
-    proposed_by VARCHAR(64) NOT NULL,
+    proposed_by VARCHAR(64) NOT NULL,        -- Autor de la propuesta ontológica (Maintainer)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -78,7 +78,7 @@ CREATE TABLE meta.ontology_restrictions (
     validation_rules JSONB DEFAULT '{}'::jsonb,
     status VARCHAR(20) DEFAULT 'PROPOSED',
     approval_score INT DEFAULT 0,
-    proposed_by VARCHAR(64) NOT NULL,
+    proposed_by VARCHAR(64) NOT NULL,        -- Autor de la propuesta ontológica (Maintainer)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,7 +93,7 @@ CREATE TABLE meta.ontology_restrictions (
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
--- 3.1. Nodos (Anteriormente Cards)
+-- 3.1. Nodos
 CREATE TABLE public.nodes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     type_key VARCHAR(100) NOT NULL REFERENCES meta.ontology_classes(system_key),
@@ -103,7 +103,7 @@ CREATE TABLE public.nodes (
     attributes JSONB DEFAULT '{}'::jsonb,
     embedding vector(768),
     
-    author_hash VARCHAR(64) NOT NULL,
+    author_hash VARCHAR(64) NOT NULL,        -- Autor / Maintainer del Nodo
     evidence_count INT DEFAULT 1,
     status VARCHAR(20) DEFAULT 'ACTIVE',    -- 'ACTIVE', 'MERGED_INTO', 'ARCHIVED'
     merged_into_node_id UUID REFERENCES public.nodes(id),
@@ -116,7 +116,7 @@ CREATE INDEX idx_nodes_type ON public.nodes(type_key);
 CREATE INDEX idx_nodes_jsonb ON public.nodes USING gin (attributes);
 CREATE INDEX idx_nodes_embedding ON public.nodes USING hnsw (embedding vector_cosine_ops);
 
--- 3.2. Aristas / Bordes (Anteriormente Card Relationships)
+-- 3.2. Aristas / Bordes (Relaciones)
 CREATE TABLE public.edges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source_node_id UUID NOT NULL REFERENCES public.nodes(id) ON DELETE CASCADE,
@@ -129,8 +129,8 @@ CREATE TABLE public.edges (
     downvotes INT DEFAULT 0,
     community_score INT GENERATED ALWAYS AS (upvotes - downvotes) STORED,
     
-    created_by VARCHAR(64) NOT NULL,
-    status VARCHAR(20) DEFAULT 'PROPOSED',
+    created_by VARCHAR(64) NOT NULL,        -- Autor / Maintainer de la Arista
+    status VARCHAR(20) DEFAULT 'PROPOSED',  -- 'PROPOSED', 'APPROVED', 'REJECTED'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     CONSTRAINT unique_edge UNIQUE (source_node_id, target_node_id, relation_key)
@@ -139,13 +139,39 @@ CREATE TABLE public.edges (
 CREATE INDEX idx_edges_source ON public.edges(source_node_id);
 CREATE INDEX idx_edges_target ON public.edges(target_node_id);
 
--- 3.3. Log de Auditoría e Interacciones
+-- 3.3. Propuestas Polimórficas de Edición (Gobernanza del Autor / PRs)
+CREATE TABLE public.edit_proposals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    target_id UUID NOT NULL,                -- ID del elemento a editar (node, edge o meta)
+    target_type VARCHAR(30) NOT NULL,       -- 'NODE', 'EDGE', 'ONTOLOGY_CLASS', 'DATATYPE_PROPERTY', 'OBJECT_PROPERTY'
+    thread_id UUID,                         -- ID del hilo de discusión asociado en social.discussion_threads
+    
+    proposer_hash VARCHAR(64) NOT NULL,     -- Usuario B (Quien propone la edición)
+    proposed_changes JSONB NOT NULL,        -- Diff de cambios {"title": "Nuevo título", "display_names": {...}}
+    justification TEXT,                     -- Motivo / Explicación del cambio
+    
+    -- Votación de la comunidad (Señal informativa de respaldo para el autor)
+    upvotes INT DEFAULT 0,
+    downvotes INT DEFAULT 0,
+    community_score INT GENERATED ALWAYS AS (upvotes - downvotes) STORED,
+    
+    -- Estado de Aprobación por el Autor / Maintainer
+    status VARCHAR(30) DEFAULT 'PENDING',   -- 'PENDING', 'APPROVED_BY_AUTHOR', 'REJECTED_BY_AUTHOR', 'AUTO_APPLIED'
+    resolved_by VARCHAR(64),                -- Hash del autor que tomó la decisión
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_edit_proposals_target ON public.edit_proposals(target_id, target_type);
+
+-- 3.4. Log de Auditoría e Interacciones
 CREATE TABLE public.interactions_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_hash VARCHAR(64) NOT NULL,
-    target_id UUID NOT NULL,               -- Puede ser node_id, edge_id, proposal_id
-    target_type VARCHAR(30) NOT NULL,      -- 'NODE', 'EDGE', 'ONTOLOGY_PROPOSAL'
-    action_type VARCHAR(30) NOT NULL,      -- 'UPVOTE', 'DOWNVOTE', 'PROPOSE_EDIT'
+    target_id UUID NOT NULL,                -- Puede ser node_id, edge_id, proposal_id, post_id
+    target_type VARCHAR(30) NOT NULL,       -- 'NODE', 'EDGE', 'EDIT_PROPOSAL', 'DISCUSSION_POST'
+    action_type VARCHAR(30) NOT NULL,       -- 'UPVOTE', 'DOWNVOTE'
     vote_value INT NOT NULL CHECK (vote_value IN (-1, 1)),
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -156,18 +182,18 @@ CREATE TABLE public.interactions_log (
 
 ---
 
-## 4. Esquema Futuro para Hilos de Discusión Social (`schema: social`)
+## 4. Esquema para Hilos de Discusión Social (`schema: social`)
 
-Soporta el debate comunitario sobre cualquier elemento sin acoplarse al núcleo de procesamiento:
+Soporta el debate comunitario sobre cualquier elemento o propuesta de edición:
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS social;
 
--- 4.1. Hilos de Discusión (Vinculados a un Nodo, Arista o Propuesta de Ontología)
+-- 4.1. Hilos de Discusión (Vinculados a Nodos, Aristas, Metaontología o Propuestas de Edición)
 CREATE TABLE social.discussion_threads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    target_id UUID NOT NULL,             -- ID del elemento discutido (node, edge, meta_proposal)
-    target_type VARCHAR(30) NOT NULL,    -- 'NODE', 'EDGE', 'ONTOLOGY_CLASS', 'DEPRECATION_REQUEST'
+    target_id UUID NOT NULL,             -- ID del objetivo (node, edge, meta_proposal, edit_proposal)
+    target_type VARCHAR(30) NOT NULL,    -- 'NODE', 'EDGE', 'ONTOLOGY_CLASS', 'EDIT_PROPOSAL'
     title VARCHAR(255) NOT NULL,
     
     status VARCHAR(20) DEFAULT 'OPEN',   -- 'OPEN', 'RESOLVED', 'CLOSED'
@@ -186,10 +212,9 @@ CREATE TABLE social.discussion_posts (
     
     upvotes INT DEFAULT 0,
     downvotes INT DEFAULT 0,
+    community_score INT GENERATED ALWAYS AS (upvotes - downvotes) STORED,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ```
-
-
