@@ -35,13 +35,34 @@ CREATE SCHEMA IF NOT EXISTS social;
 -- 1. CAPA DE IDENTIDAD Y ESPACIOS DE TRABAJO (schema: auth)
 -- =============================================================================
 
+-- =============================================================================
+-- ESQUEMA REFINADO: APROVISIONAMIENTO DE TENANTS Y WORKSPACES (schema: auth)
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS auth;
+
+-- Registro de Tenants Aprovisionados Manualmente por SuperAdmin
+CREATE TABLE auth.tenants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug VARCHAR(100) UNIQUE NOT NULL,         -- Ej: 'sabana'
+    name VARCHAR(255) NOT NULL,
+    oidc_tenant_id VARCHAR(255) UNIQUE NOT NULL, -- 'tid' de Azure AD o 'iss' de Google Workspace
+    database_connection_key VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tenants_oidc ON auth.tenants(oidc_tenant_id);
+
+-- Espacios de Trabajo dentro del Tenant
 CREATE TABLE auth.workspaces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    slug VARCHAR(100) UNIQUE NOT NULL,      -- Ej: 'ingenieria', 'sandbox-demo'
+    slug VARCHAR(100) NOT NULL,                 -- Ej: 'ingenieria', 'sandbox-demo'
     name VARCHAR(255) NOT NULL,
     description TEXT,
     is_public BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_workspace_slug UNIQUE (slug)
 );
 
 CREATE TABLE auth.users (
