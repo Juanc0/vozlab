@@ -265,3 +265,18 @@ CREATE TABLE social.discussion_posts (
 ### 6.3. Desacoplamiento Event-Driven via Redis Streams
 * **Notificaciones Pasadas (Events):** La API de Fastify se limita a registrar las transacciones en PostgreSQL y emitir un evento pasado a Redis Streams (`NODE_CREATED`, `EDIT_PROPOSED`).
 * **Trabajadores en Segundo Plano:** Los servicios pesados (generación de embeddings vectoriales con Ollama y agentes de IA en Python) consumen la cola de Redis de forma asíncrona, evitando bloquear la latencia de respuesta al usuario final ($\approx 5\text{ ms}$).
+
+---
+
+## 7. Autenticación, Identidad y Multi-Tenancy
+
+### 7.1. Autenticación Delegada (Zero-Password Local)
+* **Justificación:** Se elimina el almacenamiento local de contraseñas delegando en **OIDC/SAML** (para usuarios institucionales) y **Google OAuth2** (para externos). Esto reduce a cero el riesgo de seguridad por custodia de contraseñas y simplifica el cumplimiento normativo.
+
+### 7.2. Multi-Tenancy B2B y Workspaces
+* **Multi-Tenant por Base de Datos Separada:** Cada institución cuenta con su propia instancia de PostgreSQL (`Database-per-Tenant`), permitiendo un crecimiento comercial B2B independiente.
+* **Segmentación por Workspace (`workspace_id`):** Los contenidos y la ontología conviven en la base de datos del Tenant segmentados por Workspaces. Admite sincronización de ontologías unilateral (suscripción) y bidireccional (Pull Requests entre espacios).
+
+### 7.3. Sesiones Anónimas de Eventos
+* **Reconexión Persistente:** Los usuarios de eventos (QR) se autentican temporalmente generando un token de dispositivo (`device_fingerprint_token`) en su navegador. La expiración del código del evento solo impide la creación de nuevas cuentas anónimas, permitiendo que los usuarios registrados previamente continúen accediendo a sus contenidos indefinidamente.
+
