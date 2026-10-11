@@ -280,3 +280,12 @@ CREATE TABLE social.discussion_posts (
 ### 7.3. Sesiones Anónimas de Eventos
 * **Reconexión Persistente:** Los usuarios de eventos (QR) se autentican temporalmente generando un token de dispositivo (`device_fingerprint_token`) en su navegador. La expiración del código del evento solo impide la creación de nuevas cuentas anónimas, permitiendo que los usuarios registrados previamente continúen accediendo a sus contenidos indefinidamente.
 
+---
+
+## 7. Decisiones de Identidad, Multi-Tenancy y UX
+
+### 7.1. Mapeo Manual y Seguro por OIDC Tenant ID (`tid`)
+* **Justificación:** Se descarta el auto-descubrimiento por dominio de correo para prevenir vulnerabilidades de toma de control no autorizada. La asociación entre el `tid` del proveedor OIDC y la instancia de VozLab debe ser aprovisionada explícitamente por un `SUPER_ADMIN`.
+
+### 7.2. UX de URL Limpia y Gestión de Contexto
+* **Justificación:** Se adopta un esquema de URL limpia unificada (`app.vozlab.io/`). El contexto de Workspace se gestiona mediante Cookies HTTP-Only y un Selector de Espacios en la PWA (estilo Obsidian/Slack), garantizando una interfaz elegante y facilitando la instalación de una única PWA global.
