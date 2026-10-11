@@ -6,18 +6,23 @@ target_component: Identity & Access Control
 owner: Security & Architecture Team (VozLab)
 ---
 
-# 04. AUTENTICACIÓN, IDENTIDAD Y MULTI-TENANCY
+# 04. AUTENTICACIÓN, IDENTIDAD Y MULTI-TENANCY (BD FÍSICA AISLADA)
 
 ## 1. Estrategia de Autenticación Delegada (Zero-Local Password) y Aislamiento Multi-Tenant (BD Física Independiente)
 
-VozLab elimina por completo el almacenamiento local de contraseñas, hashes de claves o factores de autenticación (MFA) dentro de sus bases de datos. Todo el flujo de identidad se delega en **Proveedores de Identidad (IdPs) externos** autorizados por la institución.
+VozLab elimina por completo el almacenamiento local de contraseñas, hashes de claves o factores de autenticación (MFA) dentro de sus bases de datos institucionales. Todo el flujo de identidad se delega en **Proveedores de Identidad (IdPs) externos** autorizados por cada organización.
 
-VozLab delega la autenticación en Proveedores de Identidad externos (Azure AD / OIDC) y garantiza soberanía de datos mediante **bases de datos físicas independientes por institución**, administradas a través de un sistema de enrutamiento dinámico.
+La plataforma garantiza soberanía absoluta de datos mediante **bases de datos PostgreSQL físicas e independientes por institución**, administradas a través de un sistema central de enrutamiento dinámico basado en la base de datos gestora global (`vozlab_router`).
 
-### 1.1. Mapeo por Claim `tid` y Base de Datos Gestora (Router)
-1. **Extracción del Tenant ID (`tid`):** Al recibir el *ID Token* firmado por el IdP, la API extrae el identificador del directorio activo institucional (`tid`).
-2. **Consulta al Router Global (`vozlab_router`):** La API consulta la base de datos gestora central (o su caché en Redis) buscando el registro asociado a ese `tid`.
-3. **Resolución de Conexión Dinámica:** El router retorna los parámetros de conexión física exclusivos de esa institución (`host`, `port`, `dbname`, credenciales encriptadas). La API abre o reutiliza el pool de conexiones dedicado hacia la base de datos del Tenant.
+### 1.1. Mapeo Estricto por Claim `tid` / `iss` y Router Global
+
+1. **Extracción Criptográfica de Claims:** Durante la recepción y validación del *ID Token* firmado por el IdP institucional, la API extrae las *claims* de pertenencia:
+* `tid`: Tenant ID exclusivo de Azure AD (Microsoft Entra ID).
+* `iss`: Issuer URL de Google Workspace o IdP SAML 2.0 alternativo.
+
+
+2. **Consulta a la Base de Datos Gestora (`vozlab_router`):** La API consulta la tabla central `auth.tenants` (con caché en memoria Redis para evitar latencias) buscando el registro asociado a ese `tid` o `iss`.
+3. **Resolución de Conexión Dinámica y Pool Dedicado:** El router retorna los parámetros de conexión física exclusivos de esa institución (`host`, `port`, `dbname`, credenciales encriptadas). La API abre o reutiliza un pool de conexiones dedicado de Drizzle ORM dirigido únicamente hacia la base de datos física del Tenant.
 
 ```mermaid
 sequenceDiagram
@@ -26,7 +31,8 @@ sequenceDiagram
     participant PWA as PWA Client (SvelteKit 5)
     participant Fastify as Fastify API (/auth/login)
     participant IdP as Provider OIDC (Azure AD / Google)
-    participant DB as PostgreSQL (auth.users)
+    participant RouterDB as Router DB (vozlab_router)
+    participant TenantDB as DB Física del Tenant
 
     Usuario->>PWA: Clic en "Iniciar Sesión Institucional"
     PWA->>Fastify: GET /api/v1/auth/login?provider=oidc
@@ -36,24 +42,17 @@ sequenceDiagram
     PWA->>Fastify: POST /api/v1/auth/callback { code }
     Fastify->>IdP: Intercambio de Code por ID Token + Access Token
     IdP-->>Fastify: Tokens firmados con Claims (email, tid/iss, sub)
-    Fastify->>DB: Registra/Actualiza auth.users + genera author_hash
-    Fastify-->>PWA: Establece Cookie HTTP-Only `vozlab_session` (JWT)
+    Fastify->>RouterDB: Consulta parámetros de conexión por `tid`
+    RouterDB-->>Fastify: Retorna credenciales y host de la DB física
+    Fastify->>TenantDB: Registra/Actualiza auth.users + genera author_hash
+    Fastify-->>PWA: Establece Cookie HTTP-Only `vozlab_session` (JWT firmado)
 
 ```
 
-### 1.1. Mapeo Estricto por Claim `tid` / `iss`
+### 1.2. Control de Acceso y Rechazo de Provisión No Supervisada
 
-1. **Extracción Criptográfica:** Durante la recepción del *ID Token* firmado por el IdP, la API extrae las *claims* institucionales:
-* `tid`: Tenant ID exclusivo de Azure AD (Microsoft Entra ID).
-* `iss`: Issuer URL de Google Workspace o IdP SAML 2.0.
-
-
-2. **Validación contra Tabla de Tenants:** La API consulta `auth.tenants` buscando una coincidencia activa sobre `oidc_tenant_id`.
-3. **Control de Acceso:**
-* **Tenant Válido:** Se genera la sesión JWT interna de VozLab.
-* **Tenant No Provisionado:** La petición se rechaza con HTTP `403 Forbidden` (`ERR_TENANT_NOT_PROVISIONED`). No existe auto-aprovisionamiento público no supervisado.
-
-
+* **Tenant Válido:** Si el `tid` existe en `vozlab_router`, la sesión JWT interna de VozLab se emite con los privilegios correspondientes.
+* **Tenant No Provisionado:** La petición se rechaza de inmediato con código HTTP `403 Forbidden` (`ERR_TENANT_NOT_PROVISIONED`). No existe auto-aprovisionamiento público no supervisado para salvaguardar el perímetro institucional.
 
 ---
 
@@ -61,7 +60,7 @@ sequenceDiagram
 
 ### 2.1. Navegación en la PWA (`app.vozlab.io`)
 
-La aplicación no expone identificadores de Tenant o Workspace en la barra de direcciones del navegador. Esto garantiza URLs institucionales limpias (`https://app.vozlab.io/`, `https://app.vozlab.io/discussions`).
+La interfaz de usuario no expone identificadores de Tenant o Workspace en la barra de direcciones del navegador, garantizando URLs limpias y profesionales (`[https://app.vozlab.io/](https://app.vozlab.io/)`, `[https://app.vozlab.io/discussions](https://app.vozlab.io/discussions)`).
 
 ```mermaid
 flowchart TD
@@ -74,10 +73,11 @@ flowchart TD
         MW[Middleware: TenantWorkspaceGuard]
         MW -->|1. Valida JWT Cookie| AuthCheck{¿Sesión Válida?}
         AuthCheck -->|No| R1[401 Unauthorized]
-        AuthCheck -->|Sí| WSCheck{¿Pertenece al Workspace?}
+        AuthCheck -->|Sí| TenantResolve[Resuelve DB Física vía Router & tid]
+        TenantResolve --> WSCheck{¿Pertenece al Workspace?}
         MW -->|2. Lee Header X-Workspace-ID| WSCheck
         WSCheck -->|No| R2[403 Forbidden]
-        WSCheck -->|Sí| Exec[Ejecuta Caso de Uso con filtro atómico]
+        WSCheck -->|Sí| Exec[Ejecuta Caso de Uso en Base de Datos del Tenant]
     end
 
     P1 -->|HTTP Request + Header X-Workspace-ID: WS-INGENIERIA| MW
@@ -85,17 +85,17 @@ flowchart TD
 
 ```
 
-### 2.2. Aislamiento por Pestaña
+### 2.2. Aislamiento por Pestaña (`sessionStorage`)
 
-* **`sessionStorage` Exclusivo:** El `workspace_id` seleccionado se guarda en el `sessionStorage` de cada pestaña.
-* **Header `X-Workspace-ID`:** Toda petición HTTP REST/SSE enviada por el cliente adjunta este header.
-* **Validación Stateless:** Fastify verifica en cada petición que el `user_id` de la sesión JWT tenga una membresía activa en `auth.workspace_memberships` para dicho `workspace_id`.
+* **`sessionStorage` Exclusivo:** El `workspace_id` activo se almacena en el `sessionStorage` de cada pestaña de manera independiente, permitiendo que un usuario mantenga múltiples workspaces abiertos simultáneamente en distintas pestañas sin colisiones de estado.
+* **Header `X-Workspace-ID`:** Toda petición HTTP REST o SSE enviada por el cliente adjunta este header de forma obligatoria.
+* **Validación de Membresía:** El middleware de Fastify verifica en cada llamada que el usuario autenticado posea una membresía activa en `auth.workspace_memberships` dentro de la base de datos física del tenant para el `workspace_id` suministrado.
 
 ---
 
 ## 3. Acceso Anónimo y Eventos Presenciales (QR Code)
 
-Para talleres de cocreación y eventos presenciales donde los asistentes no deben crear cuentas institucionales previas:
+Para talleres de cocreación, hackathons o eventos presenciales masivos donde los asistentes externos no poseen cuentas institucionales previas:
 
 ```mermaid
 sequenceDiagram
@@ -103,55 +103,45 @@ sequenceDiagram
     actor Asistente as Asistente Evento
     participant PWA as PWA Client
     participant Fastify as Fastify API (/auth/event-join)
-    participant DB as PostgreSQL (auth.users & event_sessions)
+    participant TenantDB as PostgreSQL (Tenant Database)
 
-    Asistente->>PWA: Escanea QR ([https://app.vozlab.io/join?code=SABANA2026](https://app.vozlab.io/join?code=SABANA2026))
+    Asistente->>PWA: Escanea QR (https://app.vozlab.io/join?code=SABANA2026)
     PWA->>Fastify: POST /api/v1/auth/event-join { event_code: 'SABANA2026', fingerprint }
     
     alt Código Vigente
-        Fastify->>DB: Valida expiración de event_code
-        Fastify->>DB: Crea usuario ANONYMOUS_EVENT (Alias: 'Nave-Explorer-84')
+        Fastify->>TenantDB: Valida expiración y cupos de event_code
+        Fastify->>TenantDB: Crea usuario ANONYMOUS_EVENT (Alias aleatorio ej. 'Nave-Explorer-84')
         Fastify-->>PWA: Cookie de Sesión + Token de Reconexión en LocalStorage
     else Código Expirado
         Fastify-->>PWA: 400 Bad Request (ERR_EVENT_EXPIRED)
-        Note over PWA, Fastify: Si el usuario ya tenía un Token de Reconexión, conserva acceso
+        Note over PWA, Fastify: Si el usuario ya poseía Token de Reconexión, recupera acceso previo
     end
 
 ```
 
-### 3.1. Seudónimos Persistentes
+### 3.1. Seudónimos Persistentes y Control de Huella
 
-* **Generación de Alias:** El backend asigna un seudónimo aleatorio (ej. `Nave-Explorer-84`) y calcula el `author_hash` público.
-* **Token de Reconexión (Device Fingerprint):** Se guarda un token firmado en el `LocalStorage` del navegador.
-* **Expiración:** Vencida la ventana del evento (`expires_at`), el código impide la creación de **nuevas** cuentas anónimas, pero los usuarios anónimos ya registrados pueden reconectarse indefinidamente para seguir el impacto de sus aportes.
+* **Generación de Alias:** El sistema asigna un seudónimo aleatorio inofensivo (ej. `Nave-Explorer-84`) y calcula un `author_hash` criptográfico seguro.
+* **Token de Reconexión (Device Fingerprint):** Se almacena un token firmado en el `LocalStorage` del navegador del asistente.
+* **Expiración Controlada:** Vencida la ventana temporal del evento (`expires_at`), el código impide la creación de **nuevas** cuentas anónimas, pero permite a los usuarios anónimos registrados reconectarse de forma persistente para seguir la evolución e impacto de sus aportes en el grafo.
 
 ---
 
-## 4. Estrategia de Aislamiento de Datos en PostgreSQL
+## 4. Estrategia de Mitigación de Concurrencia de Conexiones (Thundering Herd)
 
-Para garantizar el aislamiento de datos multi-tenant en una infraestructura compartida:
+Dado que la arquitectura implementa bases de datos físicas independientes por tenant, se implementa una estrategia defensiva en el backend para evitar la saturación por apertura desmedida de sockets:
 
-```sql
--- Ejemplo de consulta inmutable en Drizzle / postgres.js con aislamiento doble
-SELECT 
-    n.id, n.title, n.type_key, n.attributes
-FROM public.nodes n
-WHERE n.tenant_id = $1         -- Extraído directamente de la Cookie JWT
-  AND n.workspace_id = $2      -- Extraído del Header X-Workspace-ID
-  AND n.status = 'ACTIVE';
-
-```
-
-> [!CAUTION]
-> **Prohibición de Consultas Globales:** Todo repositorio Drizzle o consulta Cypher en Apache AGE debe incluir en su cláusula `WHERE` los parámetros `tenant_id` y `workspace_id`. Queda estrictamente prohibida cualquier consulta de lectura o escritura que no especifique ambos filtros.
+1. **Connection Pool Cache Manager:** En el proceso de Node.js / Fastify se mantiene una caché en memoria de pools activos de Drizzle ORM agrupados por `tenant_id`.
+2. **Reutilización de Conexiones:** Las conexiones permanecen abiertas en un pool optimizado y se reutilizan de manera eficiente ante peticiones subsecuentes del mismo tenant.
+3. **Cierre por Inactividad (TTL):** Los pools inactivos durante más de 30 minutos liberan sus recursos de red de forma automática para evitar fugas de memoria o saturación de descriptores de archivos en el sistema operativo.
 
 ---
 
 ## 5. Invalidación y Revocación de Sesiones (Token Blacklist en Redis)
 
-Cuando un administrador suspende a un usuario o este cierra sesión explicitamente (*Logout*):
+Ante eventos de suspensión de cuentas o cierre explícito de sesión (*Logout*):
 
-1. **Emisión de Logout:** La API invalida la Cookie HTTP-Only.
-2. **Blacklist en Redis:** La API registra el ID del token JWT (`jti`) en una lista negra en memoria Redis con un tiempo de vida (TTL) equivalente a la expiración máxima del JWT (24 horas).
-3. **Middleware Check:** El middleware `AuthGuard` de Fastify consulta la existencia del `jti` en Redis mediante una operación `EXISTS` en $\mathcal{O}(1)$ antes de autorizar cualquier mutación en el sistema.
+1. **Invalidez de Cookie:** La API borra inmediatamente la cookie HTTP-Only del cliente.
+2. **Blacklist en Redis Central:** Se registra el identificador único del token JWT (`jti`) en una lista negra alojada en Redis con un tiempo de vida (TTL) equivalente a la vigencia restante del token.
+3. **Verificación Instantánea:** El middleware `AuthGuard` de Fastify evalúa la existencia del `jti` en Redis mediante una operación atómica `EXISTS` en $\mathcal{O}(1)$ antes de autorizar cualquier mutación en el sistema.
 
