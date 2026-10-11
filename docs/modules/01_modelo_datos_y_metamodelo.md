@@ -18,7 +18,21 @@ VozLab utiliza **PostgreSQL 16+** como motor de persistencia unificado, integran
 
 ---
 
+
+## 2. Gobernanza Universal: Nodos, Aristas y Propuestas
+
+Todo objeto creado en el sistema —ya sea un nodo, una arista propuesta por el Agente Relacionador o un aporte de un usuario común— nace bajo un estado transitorio de gobernanza con su propio hilo de discusión y votación comunitaria.
+
+- **Estados Válidos:** `DRAFT` | `PENDING` | `ACTIVE` | `REJECTED`.
+- **Tabla de Aristas (`public.edges`):** Al igual que los nodos, las relaciones guardan su estado de aprobación, autor, hash y vinculación al hilo de debate en `social.discussion_threads`. Ninguna arista impacta el grafo oficial de manera directa sin pasar por el filtro de aprobación o el umbral comunitario.
+
+
+---
+
+
 ## 2. Definición de Esquemas en Drizzle ORM (`packages/database/src/schema/`)
+
+
 
 ### 2.1. Esquema de Identidad y Workspaces (`auth.ts`)
 

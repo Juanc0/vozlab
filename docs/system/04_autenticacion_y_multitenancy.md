@@ -8,9 +8,16 @@ owner: Security & Architecture Team (VozLab)
 
 # 04. AUTENTICACIÓN, IDENTIDAD Y MULTI-TENANCY
 
-## 1. Estrategia de Autenticación Delegada (Zero-Local Password)
+## 1. Estrategia de Autenticación Delegada (Zero-Local Password) y Aislamiento Multi-Tenant (BD Física Independiente)
 
 VozLab elimina por completo el almacenamiento local de contraseñas, hashes de claves o factores de autenticación (MFA) dentro de sus bases de datos. Todo el flujo de identidad se delega en **Proveedores de Identidad (IdPs) externos** autorizados por la institución.
+
+VozLab delega la autenticación en Proveedores de Identidad externos (Azure AD / OIDC) y garantiza soberanía de datos mediante **bases de datos físicas independientes por institución**, administradas a través de un sistema de enrutamiento dinámico.
+
+### 1.1. Mapeo por Claim `tid` y Base de Datos Gestora (Router)
+1. **Extracción del Tenant ID (`tid`):** Al recibir el *ID Token* firmado por el IdP, la API extrae el identificador del directorio activo institucional (`tid`).
+2. **Consulta al Router Global (`vozlab_router`):** La API consulta la base de datos gestora central (o su caché en Redis) buscando el registro asociado a ese `tid`.
+3. **Resolución de Conexión Dinámica:** El router retorna los parámetros de conexión física exclusivos de esa institución (`host`, `port`, `dbname`, credenciales encriptadas). La API abre o reutiliza el pool de conexiones dedicado hacia la base de datos del Tenant.
 
 ```mermaid
 sequenceDiagram

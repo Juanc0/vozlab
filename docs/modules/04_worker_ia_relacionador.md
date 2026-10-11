@@ -8,6 +8,15 @@ owner: AI & Backend Team (VozLab)
 
 # 04. AGENTE RELACIONADOR: EVALUACIÓN SEMÁNTICA Y CLUSTERING (PYTHON 3.12)
 
+
+## 1. Alcance de Evaluación Semántica (Nodos y Aristas)
+
+El `worker-relacionador` (Python 3.12) procesa los eventos atómicos desde Redis Streams y ejecuta un análisis híbrido (pgvector + LLM). 
+
+- **Evaluación de Relaciones:** Cuando el agente detecta afinidad semántica relevante entre nodos, **no crea aristas directas**, sino que emite una **Propuesta de Arista (`EDGE_PROPOSAL`)** en estado `PENDING`, la cual es asociada a un hilo de discusión para que la comunidad y los mantenedores validen si el tipo de relación propuesto es correcto.
+
+---
+
 ## 1. Arquitectura y Ciclo de Vida del Worker
 
 El `worker-relacionador` es un microservicio asíncrono desarrollado en **Python 3.12** que opera desacoplado de la API Fastify. Su responsabilidad central es evaluar cualitativamente cada nuevo nodo creado en el sistema utilizando un enfoque híbrido: **Cómputo Vectorial determinista en Base de Datos + Razonamiento Semántico no-determinista con LLM local (Ollama)**.

@@ -8,6 +8,20 @@ owner: AI & Ingestion Team (VozLab)
 
 # 05. AGENTE EXTRACTOR: INGESTA MULTI-FUENTE Y HOMOGENIZACIÓN (PYTHON 3.12)
 
+
+## 1. Pasarela de Ingesta Externa (Webhooks Serverless) y Estrategia de Fuentes
+
+Para proteger la API principal de picos de tráfico o saturación externa, la recepción de webhooks institucionales se desacopla mediante arquitectura Serverless:
+
+1. **AWS API Gateway + AWS Lambda:** Recibe los payloads externos, valida firmas criptográficas o llaves API, y deposita de inmediato los datos brutos en una cola (**Redis Streams / SQS**) respondiendo un `202 Accepted` en milisegundos.
+2. **Estrategia de Procesamiento por Tipo de Fuente:**
+   - **Actas institucionales:** Se procesan acta por acta de forma independiente en la cola.
+   - **Encuestas masivas:** Se procesan por lotes lógicos de comentarios abiertos o de manera atómica por respuesta de texto libre.
+3. **Caché de Entidades Raíz en Redis:** Antes de procesar y crear nodos, el Agente Extractor contrasta contra una caché en memoria (Redis) que almacena las entidades clave de la universidad (facultades, dependencias, actores principales) para reutilizar sus UUIDs y evitar duplicados innecesarios.
+
+
+---
+
 ## 1. Misión y Patrón de Arquitectura del Agente 1
 
 El `worker-extractor` es un microservicio asíncrono en **Python 3.12** diseñado para articular la capa de escucha institucional de VozLab. Su propósito fundamental es procesar la información heterogénea y dispersa proveniente de diferentes unidades de la Universidad (encuestas de percepción, buzones de PQRS, actas de participación y comentarios abiertos) de manera **atómica y no confidencial**.
