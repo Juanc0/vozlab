@@ -1,61 +1,68 @@
 import os
 from crewai import Agent, Task, Crew, LLM
+from crewai.tools import tool
+from crewai_tools import FileWriterTool, FileReadTool
 
-# Configurar el LLM local con Ollama (compatible con OpenAI API)
+# Inicializar herramientas
+file_writer = FileWriterTool()
+file_reader = FileReadTool()
+
+@tool("Ejecutar Comando Shell")
+def shell_command_tool(command: str) -> str:
+    """Ejecuta estrictamente un comando de terminal (ej. pnpm install) y devuelve el resultado."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            command, 
+            shell=True, 
+            check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True
+        )
+        return result.stdout or "Comando ejecutado exitosamente."
+    except subprocess.CalledProcessError as e:
+        return f"Error en comando: {e.stderr}"
+
 local_llm = LLM(
     model="ollama/qwen2.5-coder:7b",
     base_url="http://localhost:11434"
 )
 
-# 1. Definir los Agentes
-architect = Agent(
-    role="Arquitecto de Software Principal",
-    goal="Diseñar la estructura limpia del monorepo para VozLab usando pnpm workspaces y Turborepo.",
-    backstory=(
-        "Eres un experto en arquitecturas de monorepos modernos con TypeScript, Node.js, "
-        "pnpm y Turborepo. Validas que los archivos de configuración cumplan con estándares estrictos."
-    ),
-    verbose=True,
-    llm=local_llm,
-    allow_delegation=False
-)
-
+# Definir el agente con instrucciones de comportamiento más directas
 developer = Agent(
-    role="Ingeniero Full-Stack Senior",
-    goal="Escribir físicamente en el disco los archivos de configuración del HITO-0.1 con precisión sintáctica absoluta.",
+    role="Ingeniero DevOps Senior",
+    goal="Crear físicamente los archivos de configuración del monorepo usando obligatoriamente las herramientas provistas.",
     backstory=(
-        "Eres un programador metódico experto en herramientas de empaquetado y configuración de monorepos. "
-        "Escribes archivos limpios, sin explicaciones innecesarias, directamente listos para producción."
+        "Eres un agente de ejecución automatizada. NUNCA respondas con texto explicativo ni simules código en JSON. "
+        "Utiliza siempre las herramientas asignadas para escribir los archivos en el disco y ejecutar los comandos."
     ),
+    tools=[file_writer, file_reader, shell_command_tool],
     verbose=True,
     llm=local_llm,
     allow_delegation=False
 )
 
-# 2. Definir la Tarea basada en el HITO-0.1
 hito_01_task = Task(
     description=(
-        "Ejecuta el HITO-0.1 del Plan Maestro de VozLab. (/home/juan/repos/vozlab/.dev-state/EXECUTION_PLAN.md)\n"
-        "Crea físicamente en la raíz del proyecto los siguientes archivos con su contenido completo:\n"
-        "1. pnpm-workspace.yaml (incluyendo apps/* y packages/*)\n"
-        "2. turbo.json\n"
-        "3. package.json raíz\n"
-        "4. packages/ts-config/base.json y package.json\n\n"
-        "Asegúrate de que los archivos queden creados físicamente en el disco en sus rutas correctas."
+        "Ejecuta las acciones mecánicas del HITO-0.1:\n"
+        "1. Escribe el archivo 'pnpm-workspace.yaml' con el contenido: 'packages/*'\n"
+        "2. Escribe el archivo 'package.json' con un objeto JSON básico de workspace privado.\n"
+        "3. Escribe el archivo 'turbo.json' con la configuración básica.\n"
+        "No des explicaciones teóricas; ejecuta las herramientas de escritura inmediatamente."
     ),
-    expected_output="Los archivos de configuración del HITO-0.1 creados físicamente en la estructura del monorepo.",
+    expected_output="Confirmación de que los archivos han sido físicamente escritos en el disco.",
     agent=developer
 )
 
-# 3. Ensamblar la Tripulación (Crew)
 vozlab_crew = Crew(
-    agents=[architect, developer],
+    agents=[developer],
     tasks=[hito_01_task],
     verbose=True
 )
 
 if __name__ == "__main__":
-    print("🚀 Iniciando tripulación CrewAI con Qwen2.5-Coder para HITO-0.1...")
+    print("🚀 Ejecutando tripulación con enfoque estricto de herramientas...")
     result = vozlab_crew.kickoff()
-    print("\n✅ ¡Ejecución finalizada!")
+    print("\n✅ ¡Proceso finalizado!")
     print(result)
