@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vozlab-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vozlab
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./packages/database/scripts:/docker-entrypoint-initdb.d
+    networks:
+      - vozlab-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: vozlab-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vozlab-net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vozlab-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - vozlab-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+networks:
+  vozlab-net:
+    driver: bridge
