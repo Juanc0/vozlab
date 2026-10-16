@@ -1,42 +1,42 @@
 ---
-title: "Especificación de Módulo: Frontend PWA, SvelteKit 5 Runes y Cytoscape.js"
+title: "Module Specification: Frontend PWA, SvelteKit 5 Runes and Cytoscape.js"
 version: 1.0.0
 status: APPROVED
 target_component: Frontend PWA (SvelteKit 5)
 owner: Frontend & UX Team (VozLab)
 ---
 
-# 03. FRONTEND PWA, SVELTEKIT 5 RUNES Y VISUALIZACIÓN DE GRAFOS
+# 03. FRONTEND PWA, SVELTEKIT 5 RUNES AND GRAPH VISUALIZATION
 
-## 1. Arquitectura de UI y Enrutamiento (Group Layouts)
+## 1. UI Architecture and Routing (Group Layouts)
 
-La PWA de VozLab se organiza utilizando **Group Layouts** de SvelteKit 5 para separar el acceso público y de autenticación de las vistas protegidas del grafo y la cocreación, manteniendo URLs limpias e institucionales (`app.vozlab.io/`).
+The VozLab PWA is organized using SvelteKit 5 **Group Layouts** to separate public and authentication access from the protected graph and co-creation views, keeping clean, institutional URLs (`app.vozlab.io/`).
 
 
 ```
 
 apps/web/src/routes/
-├── (app)/                           <-- GRUPO PROTEGIDO (Requiere sesión y Workspace activo)
-│   ├── +layout.svelte               <-- Layout con barra lateral, selector de Workspace y notificaciones SSE
-│   ├── +page.svelte                 <-- VISTA PRINCIPAL: Visualizador interactivo del Grafo (Cytoscape.js)
+├── (app)/                           <-- PROTECTED GROUP (Requires an active session and Workspace)
+│   ├── +layout.svelte               <-- Layout with sidebar, Workspace selector and SSE notifications
+│   ├── +page.svelte                 <-- MAIN VIEW: Interactive Graph visualizer (Cytoscape.js)
 │   ├── discussions/
-│   │   └── +page.svelte             <-- Hilos de debate y comentarios granulares
+│   │   └── +page.svelte             <-- Debate threads and granular comments
 │   └── proposals/
-│       └── +page.svelte             <-- Panel de Pull Requests y Propuestas Ontológicas
+│       └── +page.svelte             <-- Panel of Pull Requests and Ontological Proposals
 │
-└── (auth)/                          <-- GRUPO PÚBLICO
+└── (auth)/                          <-- PUBLIC GROUP
 ├── login/
-│   └── +page.svelte             <-- Pasarela OIDC SSO Institucional
+│   └── +page.svelte             <-- Institutional SSO OIDC Gateway
 └── join/
-└── +page.svelte             <-- Acceso por Código QR / Sesión efímera de evento
+└── +page.svelte             <-- Entry via QR Code / ephemeral event session
 
 ```
 
 ---
 
-## 2. Gestión de Estado Global con Runes de Svelte 5 (`$state`)
+## 2. Global State Management with Svelte 5 Runes (`$state`)
 
-Se elimina el uso de stores globales tradicionales en favor de clases de estado tipadas con primitivas de reactividad de Svelte 5 (`$state`, `$derived`, `$effect`):
+The use of traditional global stores is eliminated in favor of typed state classes with Svelte 5 reactivity primitives (`$state`, `$derived`, `$effect`):
 
 ```typescript
 // apps/web/src/lib/state/workspace.svelte.ts
@@ -45,7 +45,7 @@ class WorkspaceState {
   workspaces = $state<Array<{ id: name: slug: string string; }>>([]);
   
   constructor() {
-    // Inicialización segura desde sessionStorage por pestaña
+    // Safe initialization from sessionStorage per tab
     if (typeof window !== 'undefined') {
       this.currentWorkspaceId = sessionStorage.getItem('vozlab_active_workspace') || '';
     }
@@ -59,7 +59,7 @@ class WorkspaceState {
   }
 
   canEdit = $derived(() => {
-    // Lógica derivada reactiva para permisos de usuario en el workspace activo
+    // Reactive derived logic for user permissions in the active workspace
     return true; 
   });
 }
@@ -70,9 +70,9 @@ export const workspaceState = new WorkspaceState();
 
 ---
 
-## 3. Integración del Motor de Grafo (Cytoscape.js)
+## 3. Graph Engine Integration (Cytoscape.js)
 
-El visor de grafos se encapsula en un componente reutilizable acoplado al ciclo de vida de Svelte 5 (`$effect`), optimizado para renderizar subgrafos de hasta 200 nodos con diseño determinista (`dagre` / concéntrico) sin sobrecarga de física continua.
+The graph viewer is encapsulated in a reusable component coupled to the Svelte 5 lifecycle (`$effect`), optimized to render subgraphs of up to 200 nodes with a deterministic layout (`dagre` / concentric) without continuous physics overhead.
 
 ```ts svelte
 <!-- apps/web/src/lib/components/GraphCanvas.svelte -->
@@ -116,7 +116,7 @@ El visor de grafos se encapsula en un componente reutilizable acoplado al ciclo 
 
     cy.on('tap', 'node', (evt) => {
       const nodeData = evt.target.data();
-      // Dispara evento de selección para abrir panel lateral de detalles
+      // Fires a selection event to open the side details panel
     });
 
     return () => {
@@ -131,8 +131,8 @@ El visor de grafos se encapsula en un componente reutilizable acoplado al ciclo 
 
 ---
 
-## 4. Estrategia PWA, Service Workers y Online-First
+## 4. PWA, Service Workers and Online-First Strategy
 
-* **Instalación en Dispositivo:** Configurado con `vite-plugin-pwa` para permitir su instalación como PWA independiente (`display: standalone`) en dispositivos móviles y de escritorio.
-* **App Shell Caching:** Los recursos estáticos (assets, CSS, fuentes) se almacenan en caché mediante Workbox.
-* **Comportamiento Offline:** Ante pérdida de conexión, la PWA bloquea las operaciones de escritura mostrando un banner de advertencia elegante, garantizando que el usuario mantenga claridad sobre el estado de la red sin comprometer la consistencia del grafo.
+* **Device Installation:** Configured with `vite-plugin-pwa` to allow installation as a standalone PWA (`display: standalone`) on mobile and desktop devices.
+* **App Shell Caching:** Static resources (assets, CSS, fonts) are cached through Workbox.
+* **Offline Behavior:** Upon connection loss, the PWA blocks write operations by showing an elegant warning banner, guaranteeing that the user retains clarity about the network state without compromising the consistency of the graph.

@@ -3,13 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@12.11.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "type-check": "turbo run build",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },

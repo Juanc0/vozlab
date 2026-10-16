@@ -1,0 +1,35 @@
+{
+  "name": "@vozlab/api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vozlab/database": "workspace:*",
+    "@vozlab/shared-types": "workspace:*",
+    "fastify": "^4.27.0",
+    "drizzle-orm": "^0.45.4",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "redis": "^4.7.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@vozlab/ts-config": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}

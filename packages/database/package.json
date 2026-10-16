@@ -1,0 +1,38 @@
+{
+  "name": "@vozlab/database",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "db:generate": "pnpm db:generate:router && pnpm db:generate:tenant",
+    "db:generate:router": "drizzle-kit generate --config=drizzle.router.config.ts",
+    "db:generate:tenant": "drizzle-kit generate --config=drizzle.tenant.config.ts",
+    "db:push": "pnpm db:push:router && pnpm db:push:tenant",
+    "db:push:router": "drizzle-kit push --config=drizzle.router.config.ts",
+    "db:push:tenant": "drizzle-kit push --config=drizzle.tenant.config.ts",
+    "db:migrate": "pnpm db:migrate:router && pnpm db:migrate:tenant",
+    "db:migrate:router": "drizzle-kit migrate --config=drizzle.router.config.ts",
+    "db:migrate:tenant": "drizzle-kit migrate --config=drizzle.tenant.config.ts",
+    "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.11.0",
+    "@vozlab/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@vozlab/ts-config": "workspace:*",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^5.0.0"
+  }
+}

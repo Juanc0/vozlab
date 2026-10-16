@@ -1,20 +1,20 @@
 ---
-title: Plan Maestro de Ejecución e Implementación Atómica (VozLab)
+title: Atomic Execution and Implementation Master Plan (VozLab)
 version: 1.0.0
 status: APPROVED
 owner: Chief Software Architect, Principal Full-Stack Engineer, Staff QA Engineer
 ---
 
-Este documento define el roadmap exhaustivo y atómico para la construcción del monorepo de VozLab. Cada hito representa una unidad lógica de trabajo (PR/Commit) diseñada bajo restricciones estrictas de aislamiento multi-tenant físico, transaccionalidad mediante `UnitOfWork` y arquitecturas hexagonales.
+This document defines the exhaustive and atomic roadmap for building the VozLab monorepo. Each milestone represents a logical unit of work (PR/Commit) designed under strict constraints of physical multi-tenant isolation, transactionality via `UnitOfWork` and hexagonal architectures.
 
 ---
 
-## FASE 0: BOILERPLATE E INFRAESTRUCTURA BASE DEL MONOREPO
+## PHASE 0: BOILERPLATE AND BASE MONOREPO INFRASTRUCTURE
 
-### HITO-0.1: Inicialización del Monorepo y Herramientas Base
-- **Módulo / Componente:** Raíz del Proyecto
-- **Descripción de la Tarea:** Configurar el workspace de `pnpm`, Turborepo y las dependencias de desarrollo globales (TypeScript, ESLint, Prettier).
-- **Archivos Afectados:**
+### MILESTONE-0.1: Monorepo Initialization and Base Tooling
+- **Module / Component:** Project Root
+- **Task Description:** Configure the `pnpm` workspace, Turborepo and the global development dependencies (TypeScript, ESLint, Prettier).
+- **Affected Files:**
   - `pnpm-workspace.yaml`
   - `turbo.json`
   - `package.json`
@@ -22,292 +22,353 @@ Este documento define el roadmap exhaustivo y atómico para la construcción del
   - `.prettierrc`
   - `packages/ts-config/base.json`
   - `packages/ts-config/package.json`
-- **Criterios de Aceptación:**
-  - [ ] `pnpm install` finaliza sin errores en la raíz.
-  - [ ] `pnpm turbo run build` ejecuta exitosamente simulando los paquetes vacíos.
-  - [ ] `pnpm-workspace.yaml` incluye `apps/*` y `packages/*`.
+- **Acceptance Criteria:**
+  - [ ] `pnpm install` finishes without errors at the root.
+  - [ ] `pnpm turbo run build` runs successfully simulating the empty packages.
+  - [ ] `pnpm-workspace.yaml` includes `apps/*` and `packages/*`.
 
-### HITO-0.2: Orquestación de Contenedores Locales (DB, Redis, LLM)
-- **Módulo / Componente:** Infraestructura Local (`docker-compose.yml`)
-- **Descripción de la Tarea:** Levantar los servicios base requeridos para desarrollo y pruebas de integración (PostgreSQL con Apache AGE y pgvector, Redis Streams, Ollama).
-- **Archivos Afectados:**
+### MILESTONE-0.2: Local Container Orchestration (DB, Redis, LLM)
+- **Module / Component:** Local Infrastructure (`docker-compose.yml`)
+- **Task Description:** Bring up the base services required for development and integration tests (PostgreSQL with Apache AGE and pgvector, Redis Streams, Ollama).
+- **Affected Files:**
   - `docker-compose.yml`
   - `packages/database/scripts/init-age.sql`
-- **Criterios de Aceptación:**
-  - [ ] `docker compose up -d` levanta Postgres, Redis y Ollama correctamente.
-  - [ ] El script de inicialización SQL ejecuta `CREATE EXTENSION IF NOT EXISTS "age";` y `CREATE EXTENSION IF NOT EXISTS "vector";`.
-  - [ ] Ollama expone el puerto 11434 y Postgres el 5432.
+- **Acceptance Criteria:**
+  - [ ] `docker compose up -d` brings up Postgres, Redis and Ollama correctly.
+  - [ ] The SQL initialization script runs `CREATE EXTENSION IF NOT EXISTS "age";` and `CREATE EXTENSION IF NOT EXISTS "vector";`.
+  - [ ] Ollama exposes port 11434 and Postgres port 5432.
 
-### HITO-0.3: Definición de Shared Types, Zod Schemas y Errores Estructurados
-- **Módulo / Componente:** `packages/shared-types`
-- **Descripción de la Tarea:** Crear la librería centralizada de tipos TypeScript, validaciones Zod para DTOs (creación de nodos, votación, propuestas) y el diccionario estricto de códigos de error HTTP.
-- **Archivos Afectados:**
+### MILESTONE-0.3: Definition of Shared Types, Zod Schemas and Structured Errors
+- **Module / Component:** `packages/shared-types`
+- **Task Description:** Create the centralized library of TypeScript types, Zod validations for DTOs (node creation, voting, proposals) and the strict dictionary of HTTP error codes.
+- **Affected Files:**
   - `packages/shared-types/package.json`
   - `packages/shared-types/src/index.ts`
   - `packages/shared-types/src/schemas/node.schema.ts`
   - `packages/shared-types/src/schemas/proposal.schema.ts`
-  - `packages/shared-types/src/errors/http-errors.ts` (ej. `ERR_MISSING_WORKSPACE_HEADER`, `ERR_TENANT_NOT_PROVISIONED`)
-- **Criterios de Aceptación:**
-  - [ ] Se exportan esquemas Zod con validación estricta de UUIDs y strings.
-  - [ ] Los códigos de error están definidos en un `enum` o `const` unificado para evitar magic strings.
+  - `packages/shared-types/src/errors/http-errors.ts` (e.g. `ERR_MISSING_WORKSPACE_HEADER`, `ERR_TENANT_NOT_PROVISIONED`)
+- **Acceptance Criteria:**
+  - [ ] Zod schemas are exported with strict validation of UUIDs and strings.
+  - [ ] The error codes are defined in a unified `enum` or `const` to avoid magic strings.
 
-### HITO-0.4: Persistencia Drizzle ORM - Esquemas Router y Tenant
-- **Módulo / Componente:** `packages/database`
-- **Descripción de la Tarea:** Construir el mapeo ORM separando estrictamente la BD Gestora Global (`vozlab_router` para `auth.tenants`) de la BD Física del Tenant (`auth.workspaces`, `meta.*`, `public.*`). Configuración de `deleted_at` para soft-deletes.
-- **Archivos Afectados:**
+### MILESTONE-0.4: Drizzle ORM Persistence - Router and Tenant Schemas
+- **Module / Component:** `packages/database`
+- **Task Description:** Build the ORM mapping strictly separating the Global Manager DB (`vozlab_router` for `auth.tenants`) from the Tenant's Physical DB (`auth.workspaces`, `meta.*`, `public.*`). Configuration of `deleted_at` for soft-deletes.
+- **Affected Files:**
   - `packages/database/package.json`
   - `packages/database/drizzle.config.ts`
-  - `packages/database/src/schema/router.schema.ts` (Tabla `tenants` global)
+  - `packages/database/src/schema/router.schema.ts` (Global `tenants` Table)
   - `packages/database/src/schema/tenant.auth.schema.ts`
   - `packages/database/src/schema/tenant.meta.schema.ts`
-  - `packages/database/src/schema/tenant.public.schema.ts` (Nodos, Edges con `deleted_at`, Proposals, Interactions)
+  - `packages/database/src/schema/tenant.public.schema.ts` (Nodes, Edges with `deleted_at`, Proposals, Interactions)
   - `packages/database/src/index.ts`
-- **Criterios de Aceptación:**
-  - [ ] El esquema de Nodos incluye el tipo personalizado `vector(768)` para pgvector.
-  - [ ] No existen dependencias cruzadas entre el esquema Router y el esquema Tenant.
-  - [ ] La generación de migraciones con `drizzle-kit` corre exitosamente.
+- **Acceptance Criteria:**
+  - [ ] The Nodes schema includes the custom type `vector(768)` for pgvector.
+  - [ ] There are no cross dependencies between the Router schema and the Tenant schema.
+  - [ ] Migration generation with `drizzle-kit` runs successfully.
 
 ---
 
-## FASE 1: CORE BACKEND FASTIFY API (`apps/api`)
+## PHASE 1: FASTIFY API CORE BACKEND (`apps/api`)
 
-### HITO-1.1: Scaffolding API y Logger Estructurado con `reqId`
-- **Módulo / Componente:** `apps/api/src/shared` e `infrastructure/http`
-- **Descripción de la Tarea:** Inicializar servidor Fastify configurando `pino` para logging JSON e implementando `AsyncLocalStorage` para inyectar automáticamente el Correlation ID (`reqId`).
-- **Archivos Afectados:**
+### MILESTONE-1.1: API Scaffolding and Structured Logger with `reqId`
+- **Module / Component:** `apps/api/src/shared` and `infrastructure/http`
+- **Task Description:** Initialize the Fastify server configuring `pino` for JSON logging and implementing `AsyncLocalStorage` to automatically inject the Correlation ID (`reqId`).
+- **Affected Files:**
   - `apps/api/package.json`
   - `apps/api/src/shared/logger/index.ts`
   - `apps/api/src/shared/config/env.ts` (Zod ENV validation)
   - `apps/api/src/infrastructure/http/server.ts`
   - `apps/api/src/infrastructure/http/middlewares/CorrelationGuard.ts`
-- **Criterios de Aceptación:**
-  - [ ] Todo log disparado mediante el logger incluye `{ "reqId": "..." }` dinámicamente.
-  - [ ] El servidor lee variables de entorno fuertemente tipadas y falla al inicio si falta alguna.
+- **Acceptance Criteria:**
+  - [ ] Every log fired through the logger includes `{ "reqId": "..." }` dynamically.
+  - [ ] The server reads strongly typed environment variables and fails at startup if any is missing.
 
-### HITO-1.2: Capa de Dominio (Hexagonal Core)
-- **Módulo / Componente:** `apps/api/src/domain`
-- **Descripción de la Tarea:** Definición de interfaces puras sin dependencias externas (Puertos), Value Objects y Entidades ricas.
-- **Archivos Afectados:**
+### MILESTONE-1.2: Domain Layer (Hexagonal Core)
+- **Module / Component:** `apps/api/src/domain`
+- **Task Description:** Definition of pure interfaces without external dependencies (Ports), Value Objects and rich Entities.
+- **Affected Files:**
   - `apps/api/src/domain/entities/Node.ts`
   - `apps/api/src/domain/entities/EditProposal.ts`
   - `apps/api/src/domain/value_objects/AuthorHash.ts`
   - `apps/api/src/domain/ports/INodeRepository.ts`
   - `apps/api/src/domain/ports/IUnitOfWork.ts`
   - `apps/api/src/domain/ports/IRouterDatabase.ts`
-- **Criterios de Aceptación:**
-  - [ ] Ningún archivo dentro de `domain/` importa librerías como Fastify, Drizzle o Postgres.
-  - [ ] Las reglas de transición de estados (`DRAFT` -> `PENDING` -> `ACTIVE`) están en métodos de la entidad.
+- **Acceptance Criteria:**
+  - [ ] No file inside `domain/` imports libraries such as Fastify, Drizzle or Postgres.
+  - [ ] The state transition rules (`DRAFT` -> `PENDING` -> `ACTIVE`) are in methods of the entity.
 
-### HITO-1.3: Adaptadores de Persistencia y Multi-Tenant Pool Manager
-- **Módulo / Componente:** `apps/api/src/infrastructure/persistence`
-- **Descripción de la Tarea:** Implementar un gestor de caché de conexiones Drizzle que resuelva credenciales físicas consultando al `vozlab_router` según `tid`. Implementar patrón `UnitOfWork`.
-- **Archivos Afectados:**
+### MILESTONE-1.3: Persistence Adapters and Multi-Tenant Pool Manager
+- **Module / Component:** `apps/api/src/infrastructure/persistence`
+- **Task Description:** Implement a Drizzle connection cache manager that resolves physical credentials by querying the `vozlab_router` according to `tid`. Implement the `UnitOfWork` pattern.
+- **Affected Files:**
   - `apps/api/src/infrastructure/persistence/ConnectionPoolManager.ts`
   - `apps/api/src/infrastructure/persistence/RouterDatabaseClient.ts`
   - `apps/api/src/infrastructure/persistence/UnitOfWork.ts`
   - `apps/api/src/infrastructure/persistence/repositories/DrizzleNodeRepository.ts`
-- **Criterios de Aceptación:**
-  - [ ] `ConnectionPoolManager` reutiliza pools activos por `tid` y los cierra tras inactividad.
-  - [ ] `UnitOfWork` provee un objeto de transacción (`tx`) que los repositorios pueden consumir para ejecutar queries atómicas.
+- **Acceptance Criteria:**
+  - [ ] `ConnectionPoolManager` reuses active pools per `tid` and closes them after inactivity.
+  - [ ] `UnitOfWork` provides a transaction object (`tx`) that repositories can consume to run atomic queries.
 
-### HITO-1.4: Middlewares de Identidad y Aislamiento (Zero-Trust)
-- **Módulo / Componente:** `apps/api/src/infrastructure/http/middlewares`
-- **Descripción de la Tarea:** Validar JWT firmado, extraer `tid`, inyectar el Pool de BD correspondiente y verificar la pertenencia al Workspace (`X-Workspace-ID`). Blacklist de Redis.
-- **Archivos Afectados:**
+### MILESTONE-1.4: Identity and Isolation Middlewares (Zero-Trust)
+- **Module / Component:** `apps/api/src/infrastructure/http/middlewares`
+- **Task Description:** Validate the signed JWT, extract `tid`, inject the corresponding DB Pool and verify Workspace membership (`X-Workspace-ID`). Redis blacklist.
+- **Affected Files:**
   - `apps/api/src/infrastructure/http/middlewares/AuthGuard.ts`
   - `apps/api/src/infrastructure/http/middlewares/TenantWorkspaceGuard.ts`
   - `apps/api/src/infrastructure/events/RedisTokenBlacklist.ts`
-- **Criterios de Aceptación:**
-  - [ ] Petición sin `X-Workspace-ID` devuelve HTTP 400 estandarizado.
-  - [ ] Si `tid` no existe en la BD Router, devuelve HTTP 403 `ERR_TENANT_NOT_PROVISIONED`.
-  - [ ] Token en Blacklist de Redis provoca HTTP 401 inmediato ($\mathcal{O}(1)$).
+- **Acceptance Criteria:**
+  - [ ] A request without `X-Workspace-ID` returns a standardized HTTP 400.
+  - [ ] If `tid` does not exist in the Router DB, it returns HTTP 403 `ERR_TENANT_NOT_PROVISIONED`.
+  - [ ] A token in the Redis Blacklist causes an immediate HTTP 401 ($\mathcal{O}(1)$).
 
-### HITO-1.5: Casos de Uso y Controladores REST (Gobernanza)
-- **Módulo / Componente:** `apps/api/src/application/use_cases` y `infrastructure/http/controllers`
-- **Descripción de la Tarea:** Implementar flujo de creación de nodos, propuestas y endpoints de healthcheck utilizando patrón Composition Root. Publicación en Redis Streams post-commit.
-- **Archivos Afectados:**
+### MILESTONE-1.5: Use Cases and REST Controllers (Governance)
+- **Module / Component:** `apps/api/src/application/use_cases` and `infrastructure/http/controllers`
+- **Task Description:** Implement the node creation flow, proposals and healthcheck endpoints using the Composition Root pattern. Publication to Redis Streams post-commit.
+- **Affected Files:**
   - `apps/api/src/application/use_cases/CreateNodeUseCase.ts`
   - `apps/api/src/application/use_cases/ApproveProposalUseCase.ts`
   - `apps/api/src/infrastructure/http/controllers/NodeController.ts`
   - `apps/api/src/infrastructure/http/controllers/HealthController.ts`
   - `apps/api/src/infrastructure/http/routes.ts`
   - `apps/api/src/infrastructure/events/RedisEventPublisher.ts`
-- **Criterios de Aceptación:**
-  - [ ] `CreateNodeUseCase` guarda el nodo y emite el evento asíncrono `stream:node_created` a Redis (incluyendo `reqId`).
-  - [ ] `ApproveProposalUseCase` envuelve actualización de nodo y cambio de estado de la propuesta dentro del `UnitOfWork`.
-  - [ ] `/health/ready` verifica conectividad a DB Router y Redis.
+- **Acceptance Criteria:**
+  - [ ] `CreateNodeUseCase` saves the node and emits the asynchronous event `stream:node_created` to Redis (including `reqId`).
+  - [ ] `ApproveProposalUseCase` wraps the node update and the proposal status change inside the `UnitOfWork`.
+  - [ ] `/health/ready` verifies connectivity to the Router DB and Redis.
 
 ---
 
-## FASE 2: WORKERS DE IA EN PYTHON
+## PHASE 1R: REMEDIATION & VERTICAL PROPAGATION (Edge / Ontology / Discussion / Vote)
 
-### HITO-2.1: Inicialización de Entorno Python y Base Común
-- **Módulo / Componente:** `apps/worker-extractor` y `apps/worker-relacionador`
-- **Descripción de la Tarea:** Crear los proyectos Python 3.12 con Poetry, instalar dependencias base (httpx, psycopg3, redis-py, pydantic) y estructurar logs con `structlog`.
-- **Archivos Afectados:**
+> Added by the architecture re-audit (2026-10-16). This phase fixes verified defects in the
+> already-`[x]` Phase 0/1 milestones and completes the domain verticals that already exist as
+> code (entities, ports, Drizzle adapters, use cases, controllers) but are **not wired** into
+> the HTTP layer. Each milestone maps to one atomic, self-contained task prompt under
+> `.claude/tasks/`. Decision: auth transport is **Bearer JWT** (docs are updated to match);
+> migrations are **reset and regenerated** from the Drizzle schema.
+
+### MILESTONE-1R.1: Correctness & Hygiene of Completed Work
+- **Module / Component:** repo root, `apps/api/src/shared`, `apps/api/src/infrastructure/http`, `packages/database`
+- **Tasks:** TASK-01 … TASK-07
+- **Task Description:** Fix the defects found in completed milestones:
+  - Repository hygiene (`.gitignore`, stale duplicate command files, Turbo pipeline tasks).
+  - Reset and regenerate Drizzle migrations so the schema and migrations agree (`edges.attributes` drift).
+  - Propagate `reqId` through `AsyncLocalStorage` (`enterWith`) so it reaches use cases and repositories.
+  - Implement real `/health/ready` dependency probes (Router DB + Redis).
+  - Enforce workspace membership (`auth.workspace_memberships`) in `TenantWorkspaceGuard`.
+  - Replace string-matched domain errors with typed `DomainError` and centralized HTTP mapping.
+  - Fix the rate limiter window semantics (NFR-08).
+- **Acceptance Criteria:**
+  - [ ] `pnpm turbo run build` passes after every task.
+  - [ ] A fresh migration set contains `edges.attributes` and all NFR-01/02 indexes.
+  - [ ] `/health/ready` returns 503 when Postgres or Redis is down.
+  - [ ] A user without membership in the header workspace receives 403.
+
+### MILESTONE-1R.2: Governance Correctness (Proposals)
+- **Module / Component:** `apps/api/src/application/use_cases`, `apps/api/src/domain/ports`
+- **Tasks:** TASK-08, TASK-09
+- **Task Description:** Enforce FR-12/FR-13 authorization (only the target's maintainer — or a moderator for `AUTO_APPLIED` — may resolve a proposal) and make proposal application polymorphic (apply deltas to `NODE`, `EDGE` and `ONTOLOGY` targets).
+- **Acceptance Criteria:**
+  - [ ] A non-author, non-moderator cannot approve/reject (403).
+  - [ ] Approving an EDGE proposal mutates the edge; approving an ONTOLOGY proposal activates the class.
+
+### MILESTONE-1R.3: Domain Vertical Propagation
+- **Module / Component:** `apps/api/src/{domain,application,infrastructure}`, `packages/shared-types`
+- **Tasks:** TASK-10 … TASK-17
+- **Task Description:** Wire and complete the Edge, Ontology, Discussion, Interaction/Vote and Node verticals: real read endpoints, cursor-based pagination (NFR-04), the subgraph endpoint (NFR-01), ontology validation on node creation (FR-06), and a dev seed for tenant provisioning + base ontology.
+- **Acceptance Criteria:**
+  - [ ] `routes.ts` registers `/edges`, `/ontology`, `/discussions`, `/interactions` and real (non-stub) node/proposal reads.
+  - [ ] `GET /api/v1/nodes/subgraph` returns a workspace-scoped subgraph.
+  - [ ] No controller returns hard-coded empty payloads for implemented resources.
+
+---
+
+## PHASE 2: PYTHON AI WORKERS
+
+### MILESTONE-2.1: Python Environment Initialization and Common Base
+- **Module / Component:** `apps/worker-extractor` and `apps/worker-relacionador`
+- **Task Description:** Create the Python 3.12 projects with Poetry, install base dependencies (httpx, psycopg3, redis-py, pydantic) and structure logs with `structlog`.
+- **Affected Files:**
   - `apps/worker-extractor/pyproject.toml`
   - `apps/worker-relacionador/pyproject.toml`
   - `apps/worker-extractor/src/logger.py`
   - `apps/worker-relacionador/src/logger.py`
-- **Criterios de Aceptación:**
-  - [ ] Ambientes virtuales de Poetry instalan sin errores.
-  - [ ] `structlog` está configurado para leer y escupir JSON con el campo `reqId`.
+- **Acceptance Criteria:**
+  - [ ] Poetry virtual environments install without errors.
+  - [ ] `structlog` is configured to read and spit out JSON with the `reqId` field.
 
-### HITO-2.2: Worker Extractor - Consumo, Deduping y Caché
-- **Módulo / Componente:** `apps/worker-extractor/src`
-- **Descripción de la Tarea:** Consumidor de webhooks (simulados vía cola Redis `stream:source_raw`). Implementar deduplicación semántica inicial contra entidades raíz oxidadas en caché Redis.
-- **Archivos Afectados:**
+### MILESTONE-2.2: Extractor Worker - Consumption, Deduping and Cache
+- **Module / Component:** `apps/worker-extractor/src`
+- **Task Description:** Webhook consumer (simulated via the Redis queue `stream:source_raw`). Implement initial semantic deduplication against root entities cached in Redis.
+- **Affected Files:**
   - `apps/worker-extractor/src/redis_client.py`
   - `apps/worker-extractor/src/main.py`
   - `apps/worker-extractor/src/cache_manager.py`
-- **Criterios de Aceptación:**
-  - [ ] El worker lee mensajes de la cola usando `XREADGROUP` y hace `XACK` solo al finalizar el proceso exitosamente.
-  - [ ] Consulta caché local antes de proceder con el parseo.
+- **Acceptance Criteria:**
+  - [ ] The worker reads messages from the queue using `XREADGROUP` and does `XACK` only upon successfully finishing the process.
+  - [ ] It queries the local cache before proceeding with parsing.
 
-### HITO-2.3: Worker Extractor - Sanitización PII y LLM
-- **Módulo / Componente:** `apps/worker-extractor/src`
-- **Descripción de la Tarea:** Filtro de PII y módulo de prompting con Ollama para estructurar JSON atómico a partir del texto crudo.
-- **Archivos Afectados:**
+### MILESTONE-2.3: Extractor Worker - PII Sanitization and LLM
+- **Module / Component:** `apps/worker-extractor/src`
+- **Task Description:** PII filter and prompting module with Ollama to structure atomic JSON from the raw text.
+- **Affected Files:**
   - `apps/worker-extractor/src/sanitizer.py`
   - `apps/worker-extractor/src/extractor_llm.py`
-- **Criterios de Aceptación:**
-  - [ ] Nombres, emails y cédulas son reemplazados por `[MASKED]` ANTES de enviarse a Ollama.
-  - [ ] El parser devuelve estrictamente el modelo Pydantic `ExtractedNodePayload`.
+- **Acceptance Criteria:**
+  - [ ] Names, emails and national ID numbers are replaced by `[MASKED]` BEFORE being sent to Ollama.
+  - [ ] The parser strictly returns the Pydantic model `ExtractedNodePayload`.
 
-### HITO-2.4: Worker Extractor - Cliente API Batch
-- **Módulo / Componente:** `apps/worker-extractor/src`
-- **Descripción de la Tarea:** Cliente HTTP para enviar los nodos homogeneizados a Fastify inyectando JWT de bot y headers requeridos.
-- **Archivos Afectados:**
+### MILESTONE-2.4: Extractor Worker - Batch API Client
+- **Module / Component:** `apps/worker-extractor/src`
+- **Task Description:** HTTP client to send the homogenized nodes to Fastify injecting the bot JWT and required headers.
+- **Affected Files:**
   - `apps/worker-extractor/src/api_client.py`
-- **Criterios de Aceptación:**
-  - [ ] Incluye `X-Workspace-ID` y Correlation ID `x-correlation-id` en los headers de la petición REST hacia Fastify.
+- **Acceptance Criteria:**
+  - [ ] It includes `X-Workspace-ID` and Correlation ID `x-correlation-id` in the headers of the REST request towards Fastify.
 
-### HITO-2.5: Worker Relacionador - Consumo y Búsqueda HNSW
-- **Módulo / Componente:** `apps/worker-relacionador/src`
-- **Descripción de la Tarea:** Consumidor de `stream:node_created`. Conexión a la DB física del Tenant (psycopg3) para ejecutar búsqueda vectorial en pgvector limitada a los top 5 vecinos.
-- **Archivos Afectados:**
+### MILESTONE-2.5: Relator Worker - Consumption and HNSW Search
+- **Module / Component:** `apps/worker-relacionador/src`
+- **Task Description:** Consumer of `stream:node_created`. Connection to the Tenant's physical DB (psycopg3) to run a vector search in pgvector limited to the top 5 neighbors.
+- **Affected Files:**
   - `apps/worker-relacionador/src/main.py`
   - `apps/worker-relacionador/src/db_client.py`
-- **Criterios de Aceptación:**
-  - [ ] Ejecuta consulta SQL usando el operador `<=>` (similitud coseno) filtrada estrictamente por `workspace_id`.
-  - [ ] Maneja fallas de conexión a PostgreSQL re-encolando el mensaje en la Pending Entries List (PEL) de Redis.
+- **Acceptance Criteria:**
+  - [ ] It runs an SQL query using the `<=>` operator (cosine similarity) strictly filtered by `workspace_id`.
+  - [ ] It handles PostgreSQL connection failures by re-queuing the message in the Redis Pending Entries List (PEL).
 
-### HITO-2.6: Worker Relacionador - Evaluación LLM y Acción
-- **Módulo / Componente:** `apps/worker-relacionador/src`
-- **Descripción de la Tarea:** Evaluar la relación semántica de los vecinos vía Ollama. Si hay similitud fuerte, enviar una `EDGE_PROPOSAL` (o `MERGED_INTO`) hacia la API Fastify.
-- **Archivos Afectados:**
+### MILESTONE-2.6: Relator Worker - LLM Evaluation and Action
+- **Module / Component:** `apps/worker-relacionador/src`
+- **Task Description:** Evaluate the semantic relationship of the neighbors via Ollama. If there is a strong similarity, send an `EDGE_PROPOSAL` (or `MERGED_INTO`) to the Fastify API.
+- **Affected Files:**
   - `apps/worker-relacionador/src/evaluator.py`
   - `apps/worker-relacionador/src/api_client.py`
-- **Criterios de Aceptación:**
-  - [ ] Si la respuesta del LLM es `EDGE`, hace POST a `/api/v1/proposals` para sugerir la relación en estado `PENDING`. No crea aristas activas directamente.
+- **Acceptance Criteria:**
+  - [ ] If the LLM response is `EDGE`, it does a POST to `/api/v1/proposals` to suggest the relationship in `PENDING` state. It does not create active edges directly.
+
+### MILESTONE-2.7: Consolidator Worker — Cluster Synthesis and Opportunities
+- **Module / Component:** `apps/worker-consolidador`
+- **Task Description:** The third agent required by `docs/00_ARCHITECTURE_OVERVIEW.md` §2 and US-09 was missing from the original plan. Implement the scheduled Worker that queries dense subgraphs/high-interaction clusters (SQL/AGE), synthesizes the "Consolidated Improvement Opportunity" with Ollama, and publishes it to the PWA.
+- **Affected Files:** `apps/worker-consolidador/pyproject.toml`, `apps/worker-consolidador/src/{config,db_client,llm_client,consolidator,main}.py`
+- **Acceptance Criteria:**
+  - [ ] Runs on a cron schedule and is idempotent.
+  - [ ] Publishes the synthesized opportunity through the Fastify API (never writes to the DB directly).
+
+### Deferred (tracked, out of the current batch scope)
+The re-audit also identified work that is **not** part of Phase 1R and has no milestone yet. It is recorded here so it is not lost:
+- **Auth flow endpoints** (FR-01/FR-03/§5): `/api/v1/auth/login`, `/auth/callback`, `/auth/event-join`, `/auth/logout` (invokes `RedisTokenBlacklist.revoke`), plus an `event_codes` table.
+- **Apache AGE integration** (docs/00, modules_01 §4): an `AgeGraphRepository` with Cypher mirroring of nodes/edges into `vozlab_graph`.
+- **SSE notifications** to the PWA (system_03 §4).
+- **Type-safety debt:** replace `tx?: any` across the ports with a real transaction type (M3).
+- **Consolidator/Extractor/Relator Dockerfiles** and per-service CI (devops_01).
 
 ---
 
-## FASE 3: FRONTEND PWA SVELTEKIT 5 (`apps/web`)
+## PHASE 3: SVELTEKIT 5 PWA FRONTEND (`apps/web`)
 
-### HITO-3.1: Configuración SvelteKit 5, Tailwind y PWA Plugin
-- **Módulo / Componente:** `apps/web`
-- **Descripción de la Tarea:** Andamiaje inicial del frontend con SvelteKit 5, integración de TailwindCSS y configuración del service worker de Vite PWA.
-- **Archivos Afectados:**
+### MILESTONE-3.1: SvelteKit 5, Tailwind and PWA Plugin Configuration
+- **Module / Component:** `apps/web`
+- **Task Description:** Initial frontend scaffolding with SvelteKit 5, TailwindCSS integration and configuration of the Vite PWA service worker.
+- **Affected Files:**
   - `apps/web/package.json`
   - `apps/web/svelte.config.js`
   - `apps/web/vite.config.ts`
   - `apps/web/tailwind.config.js`
   - `apps/web/src/app.html`
-- **Criterios de Aceptación:**
-  - [ ] El servidor compila y arranca en modo SSR.
-  - [ ] El manifest PWA se genera y el Service Worker intercepta peticiones.
+- **Acceptance Criteria:**
+  - [ ] The server compiles and starts in SSR mode.
+  - [ ] The PWA manifest is generated and the Service Worker intercepts requests.
 
-### HITO-3.2: Estado Global Reactivo (Svelte Runes) y Aislamiento por Pestaña
-- **Módulo / Componente:** `apps/web/src/lib/state`
-- **Descripción de la Tarea:** Implementar clases de estado con runes (`$state`, `$derived`) y acoplar el `workspaceId` al `sessionStorage`. Interceptor de fetch genérico.
-- **Archivos Afectados:**
+### MILESTONE-3.2: Reactive Global State (Svelte Runes) and Per-Tab Isolation
+- **Module / Component:** `apps/web/src/lib/state`
+- **Task Description:** Implement state classes with runes (`$state`, `$derived`) and couple the `workspaceId` to the `sessionStorage`. Generic fetch interceptor.
+- **Affected Files:**
   - `apps/web/src/lib/state/workspace.svelte.ts`
   - `apps/web/src/lib/api/httpClient.ts`
-- **Criterios de Aceptación:**
-  - [ ] Al cambiar de Workspace en una pestaña, no afecta el estado de otra pestaña abierta.
-  - [ ] `httpClient` inyecta automáticamente el header `X-Workspace-ID` y lee del `sessionStorage`.
+- **Acceptance Criteria:**
+  - [ ] Changing Workspace in one tab does not affect the state of another open tab.
+  - [ ] `httpClient` automatically injects the `X-Workspace-ID` header and reads from `sessionStorage`.
 
-### HITO-3.3: Enrutamiento mediante Group Layouts
-- **Módulo / Componente:** `apps/web/src/routes`
-- **Descripción de la Tarea:** Separación de rutas públicas (SSO Login, Event QR) y privadas (Grafo, Propuestas).
-- **Archivos Afectados:**
+### MILESTONE-3.3: Routing via Group Layouts
+- **Module / Component:** `apps/web/src/routes`
+- **Task Description:** Separation of public routes (SSO Login, Event QR) and private routes (Graph, Proposals).
+- **Affected Files:**
   - `apps/web/src/routes/(auth)/login/+page.svelte`
   - `apps/web/src/routes/(auth)/join/+page.svelte`
   - `apps/web/src/routes/(app)/+layout.svelte`
   - `apps/web/src/routes/(app)/+page.svelte` (Canvas View)
-- **Criterios de Aceptación:**
-  - [ ] `(app)/+layout.svelte` redirige a `/login` si no hay sesión activa detectada.
+- **Acceptance Criteria:**
+  - [ ] `(app)/+layout.svelte` redirects to `/login` if no active session is detected.
 
-### HITO-3.4: Motor de Renderizado de Grafo (Cytoscape.js)
-- **Módulo / Componente:** `apps/web/src/lib/components`
-- **Descripción de la Tarea:** Componente reactivo (`$effect`) que inicializa el lienzo del grafo usando el motor `dagre` de Cytoscape.js.
-- **Archivos Afectados:**
+### MILESTONE-3.4: Graph Rendering Engine (Cytoscape.js)
+- **Module / Component:** `apps/web/src/lib/components`
+- **Task Description:** Reactive component (`$effect`) that initializes the graph canvas using the Cytoscape.js `dagre` engine.
+- **Affected Files:**
   - `apps/web/src/lib/components/GraphCanvas.svelte`
-- **Criterios de Aceptación:**
-  - [ ] Renderiza un array de Nodos y Edges pasados por `$props` aplicando estilos de Tailwind/Colores institucionales.
-  - [ ] Clic en un nodo emite un evento custom o actualiza el estado para abrir el panel lateral de detalles.
+- **Acceptance Criteria:**
+  - [ ] It renders an array of Nodes and Edges passed via `$props` applying Tailwind/institutional color styles.
+  - [ ] Clicking a node emits a custom event or updates the state to open the side details panel.
 
-### HITO-3.5: Paneles de Gobernanza y Hilos de Discusión
-- **Módulo / Componente:** `apps/web/src/routes/(app)/proposals` y `discussions`
-- **Descripción de la Tarea:** Interfaz de usuario para visualizar Pull Requests de conocimiento, votar (upvote/downvote) y aprobar o rechazar (si el usuario es el autor original).
-- **Archivos Afectados:**
+### MILESTONE-3.5: Governance Panels and Discussion Threads
+- **Module / Component:** `apps/web/src/routes/(app)/proposals` and `discussions`
+- **Task Description:** User interface to visualize knowledge Pull Requests, vote (upvote/downvote) and approve or reject (if the user is the original author).
+- **Affected Files:**
   - `apps/web/src/routes/(app)/proposals/+page.svelte`
   - `apps/web/src/lib/components/DiscussionThread.svelte`
   - `apps/web/src/lib/components/VoteControls.svelte`
-- **Criterios de Aceptación:**
-  - [ ] El botón de "Aprobar Fusión" solo se habilita si el `author_hash` local coincide con el del nodo destino.
-  - [ ] La votación desencadena una mutación optimista en el frontend antes de confirmar la petición HTTP 200.
+- **Acceptance Criteria:**
+  - [ ] The "Approve Merge" button is only enabled if the local `author_hash` matches that of the target node.
+  - [ ] Voting triggers an optimistic mutation in the frontend before confirming the HTTP 200 request.
 
 ---
 
-## FASE 4: CI/CD, OBSERVABILIDAD Y QA AUTOMATIZADO
+## PHASE 4: CI/CD, OBSERVABILITY AND AUTOMATED QA
 
-### HITO-4.1: Pruebas Unitarias Estrictas (Dominio y Tipos)
-- **Módulo / Componente:** `apps/api` y `packages/shared-types`
-- **Descripción de la Tarea:** Setup de Vitest para validar comportamientos de negocio y reglas de validación sin tocar base de datos.
-- **Archivos Afectados:**
+### MILESTONE-4.1: Strict Unit Tests (Domain and Types)
+- **Module / Component:** `apps/api` and `packages/shared-types`
+- **Task Description:** Vitest setup to validate business behaviors and validation rules without touching the database.
+- **Affected Files:**
   - `apps/api/vitest.config.ts`
   - `apps/api/tests/domain/Node.spec.ts`
-  - `apps/api/tests/application/ApproveProposalUseCase.spec.ts` (Usando mocks In-Memory)
-- **Criterios de Aceptación:**
-  - [ ] Cobertura de tests > 85% en las carpetas `domain` y `application`.
-  - [ ] Fallos intencionales (ej. transiciones inválidas de estado) lanzan el error de dominio correspondiente.
+  - `apps/api/tests/application/ApproveProposalUseCase.spec.ts` (Using In-Memory mocks)
+- **Acceptance Criteria:**
+  - [ ] Test coverage > 85% in the `domain` and `application` folders.
+  - [ ] Intentional failures (e.g. invalid state transitions) throw the corresponding domain error.
 
-### HITO-4.2: Pruebas de Integración (Base de Datos Efímera)
-- **Módulo / Componente:** `apps/api/tests/integration`
-- **Descripción de la Tarea:** Pruebas contra un contenedor Docker levantado programáticamente (Testcontainers o setup de script) evaluando Drizzle, UnitOfWork y Redis.
-- **Archivos Afectados:**
+### MILESTONE-4.2: Integration Tests (Ephemeral Database)
+- **Module / Component:** `apps/api/tests/integration`
+- **Task Description:** Tests against a Docker container brought up programmatically (Testcontainers or script setup) evaluating Drizzle, UnitOfWork and Redis.
+- **Affected Files:**
   - `apps/api/tests/setup-integration.ts`
   - `apps/api/tests/integration/DrizzleNodeRepository.spec.ts`
-- **Criterios de Aceptación:**
-  - [ ] Se verifica que `UnitOfWork` realmente ejecuta `ROLLBACK` en la base de datos si ocurre un throw dentro del callback.
+- **Acceptance Criteria:**
+  - [ ] It is verified that `UnitOfWork` actually runs `ROLLBACK` in the database if a throw occurs inside the callback.
 
-### HITO-4.3: Pruebas End-to-End Críticas (Playwright)
-- **Módulo / Componente:** `apps/web/tests`
-- **Descripción de la Tarea:** Automatizar el flujo de usuario crítico: Login -> Crear Nodo -> Sugerir Arista -> Aprobar.
-- **Archivos Afectados:**
+### MILESTONE-4.3: Critical End-to-End Tests (Playwright)
+- **Module / Component:** `apps/web/tests`
+- **Task Description:** Automate the critical user flow: Login -> Create Node -> Suggest Edge -> Approve.
+- **Affected Files:**
   - `apps/web/playwright.config.ts`
   - `apps/web/tests/e2e/governance-flow.spec.ts`
-- **Criterios de Aceptación:**
-  - [ ] El bot de Playwright logra completar el ciclo de vida sin errores de JS en la consola del navegador.
+- **Acceptance Criteria:**
+  - [ ] The Playwright bot manages to complete the lifecycle without JS errors in the browser console.
 
-### HITO-4.4: Seeding de Estrés y Benchmarking de Grafos (k6)
-- **Módulo / Componente:** `packages/database/scripts` y `tests/load`
-- **Descripción de la Tarea:** Script Drizzle para inyectar 10,000 Nodos y 50,000 Aristas. Script k6 para probar concurrencia de consultas de subgrafos.
-- **Archivos Afectados:**
+### MILESTONE-4.4: Stress Seeding and Graph Benchmarking (k6)
+- **Module / Component:** `packages/database/scripts` and `tests/load`
+- **Task Description:** Drizzle script to inject 10,000 Nodes and 50,000 Edges. k6 script to test concurrency of subgraph queries.
+- **Affected Files:**
   - `packages/database/scripts/seed-stress.ts`
   - `tests/load/k6-graph-query.js`
-- **Criterios de Aceptación:**
-  - [ ] El script `seed-stress.ts` corre en lotes transaccionales insertando en menos de 1 minuto en local.
-  - [ ] El reporte k6 verifica que el endpoint GET `/api/v1/nodes/subgraph` con filtro responde en $p_{95} < 30\text{ms}$.
+- **Acceptance Criteria:**
+  - [ ] The `seed-stress.ts` script runs in transactional batches inserting in under 1 minute locally.
+  - [ ] The k6 report verifies that the GET endpoint `/api/v1/nodes/subgraph` with filter responds in $p_{95} < 30\text{ms}$.
 
-### HITO-4.5: Pipeline GitHub Actions CI/CD
-- **Módulo / Componente:** `.github/workflows`
-- **Descripción de la Tarea:** Consolidar el pipeline de verificación que ejecuta linting, tipado estricto, pruebas y reporte de cobertura al crear Pull Requests.
-- **Archivos Afectados:**
+### MILESTONE-4.5: GitHub Actions CI/CD Pipeline
+- **Module / Component:** `.github/workflows`
+- **Task Description:** Consolidate the verification pipeline that runs linting, strict typing, tests and coverage reporting when Pull Requests are created.
+- **Affected Files:**
   - `.github/workflows/ci.yml`
-- **Criterios de Aceptación:**
-  - [ ] El pipeline hace uso de `actions/cache` para acelerar `pnpm install`.
-  - [ ] Usa Turborepo (`turbo run test:ci lint`) para correr procesos en paralelo.
-  - [ ] Bloquea el merge si cualquier test falla o el typecheck estalla.
+- **Acceptance Criteria:**
+  - [ ] The pipeline makes use of `actions/cache` to speed up `pnpm install`.
+  - [ ] It uses Turborepo (`turbo run test:ci lint`) to run processes in parallel.
+  - [ ] It blocks the merge if any test fails or the typecheck explodes.

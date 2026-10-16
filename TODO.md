@@ -1,23 +1,75 @@
-# Panel de Tareas Activas (VozLab)
+# Active Task Board (VozLab)
 
-## FASE 0: BOILERPLATE E INFRAESTRUCTURA BASE DEL MONOREPO
-- [x] HITO-0.1: Inicialización del Monorepo y Herramientas Base (pnpm, turbo, ts-config)
-- [ ] HITO-0.2: Orquestación de Contenedores Locales (Docker Compose con Postgres+AGE+pgvector, Redis, Ollama)
-- [ ] HITO-0.3: Definición de Shared Types, Zod Schemas y Errores Estructurados (`packages/shared-types`)
-- [ ] HITO-0.4: Persistencia Drizzle ORM - Esquemas Router y Tenant (`packages/database`)
+> **Atomic task prompts:** `.claude/tasks/TASK-NN_*.md` — one self-contained prompt per
+> vertical slice. The current batch is **Phase 1R** (remediation + vertical propagation),
+> defined in `EXECUTION_PLAN.md`.
+>
+> **Executor contract (per task):** read ONLY the assigned task file (it is self-contained),
+> implement it, run `pnpm turbo run build`, then mark the task `[x]` below with a one-line
+> result note. If the task file is genuinely ambiguous, STOP and ask with structured
+> options + pros/cons (Clarification Protocol) instead of guessing.
 
-## FASE 1: CORE BACKEND FASTIFY API (`apps/api`)
-- [ ] HITO-1.1: Scaffolding API y Logger Estructurado con `reqId`
-- [ ] HITO-1.2: Capa de Dominio (Hexagonal Core)
-- [ ] HITO-1.3: Adaptadores de Persistencia y Multi-Tenant Pool Manager
-- [ ] HITO-1.4: Middlewares de Identidad y Aislamiento (Zero-Trust)
-- [ ] HITO-1.5: Casos de Uso y Controladores REST (Gobernanza)
+## PHASE 0: BOILERPLATE AND BASE MONOREPO INFRASTRUCTURE
+- [x] MILESTONE-0.1: Monorepo Initialization and Base Tooling (pnpm, turbo, ts-config)
+- [x] MILESTONE-0.2: Local Container Orchestration (Docker Compose with Postgres+AGE+pgvector, Redis, Ollama)
+  - Custom image `docker/postgres/Dockerfile` = **PG 18.6 + Apache AGE 1.8 + pgvector**
+  - `docker compose` **builds** the image (`vozlab/postgres:18-age-pgvector`) + healthcheck
+  - Script `packages/database/scripts/02-extensions-and-graph.sql`: extensions per database + `create_graph('vozlab_graph')` + labels
+- [x] MILESTONE-0.3: Definition of Shared Types, Zod Schemas and Structured Errors (`packages/shared-types`)
+- [x] MILESTONE-0.4: Drizzle ORM Persistence - Router and Tenant Schemas (`packages/database`)
+  - Two drizzle-kit configs (router + tenant), migrations generated per database
+  - Actual installed pins: drizzle-orm 0.45.4, drizzle-kit 0.31.11 (trust `package.json`, not the older doc notes)
+  - ⚠️ Migration drift detected (see TASK-02): `edges.attributes` is in the schema but not in the migrations
 
-## FASE 2: WORKERS DE IA EN PYTHON
-- [ ] HITO-2.1 a HITO-2.6 (Extractor y Relacionador)
+## PHASE 1: FASTIFY API CORE BACKEND (`apps/api`)
+- [x] MILESTONE-1.1: API Scaffolding and Structured Logger with `reqId` (see TASK-03 — correlation is currently broken)
+- [x] MILESTONE-1.2: Domain Layer (Hexagonal Core)
+- [x] MILESTONE-1.3: Persistence Adapters and Multi-Tenant Pool Manager
+- [x] MILESTONE-1.4: Identity and Isolation Middlewares (Zero-Trust) ✅ COMPLETE
+  - `AuthGuard`: JWT verification + Redis O(1) blacklist + system agent detection
+  - `TenantWorkspaceGuard`: `X-Workspace-ID` header (UUID) + tenant provisioned in router DB (see TASK-05 — membership not yet verified)
+  - `RateLimitingMiddleware`: per tenant/workspace limits (NFR-08) (see TASK-07 — window bug)
+  - `ConnectionPoolManager`: physical pools per tenant (`tid`) with TTL and eviction
+  - `FastifyRequest` type augmentation (identity/tenant) without `any` casts
+- [x] MILESTONE-1.5: Use Cases and REST Controllers (Governance) ✅ COMPLETE
+  - `CreateNodeUseCase` + `stream:node_created`; `Create/Approve/RejectProposalUseCase`
+  - Real Drizzle repos scoped by `tid`; real `RedisEventPublisher`; `/health/ready` (see TASK-04 — probe is decorative)
 
-## FASE 3: FRONTEND PWA SVELTEKIT 5 (`apps/web`)
-- [ ] HITO-3.1 a HITO-3.5
-ds
-## FASE 4: CI/CD, OBSERVABILIDAD Y QA AUTOMATIZADO
-- [ ] HITO-4.1 a HITO-4.5
+## PHASE 1R: REMEDIATION & VERTICAL PROPAGATION (current batch)
+> Fixes defects in the already-`[x]` milestones above and completes the Edge / Ontology /
+> Discussion / Vote verticals (domain + ports + adapters already exist but are unwired).
+> Full milestone definitions live in `EXECUTION_PLAN.md`.
+
+### 1R.1 — Correctness & hygiene of completed work
+- [x] TASK-01 — Repository hygiene & governance sync (`.gitignore`, stale command files, turbo tasks)
+  - Result: `.gitignore` rewritten (`.env`/`.env.*` + `!.env.example`, `.turbo/`, `dist/`, `build/`, `coverage/`, `.venv/`, `__pycache__/`, logs, test artifacts, editor/OS); root `next-task.md`/`review-arch.md` removed (`.claude/commands/*` kept); `turbo.json` now declares `build`/`lint`/`type-check`/`test`/`test:ci` with `outputs: []` (removed the `.next/**` block); removed invalid `allowBuilds` from `pnpm-workspace.yaml` and redundant `workspaces` from root `package.json` (added `type-check` script). `pnpm turbo run build` = 3/3 packages ✓
+- [ ] TASK-02 — Reset & regenerate Drizzle migrations (fix `edges.attributes` drift)
+- [ ] TASK-03 — Correlation ID (`reqId`) propagation via AsyncLocalStorage
+- [ ] TASK-04 — Real `/health/ready` dependency probes
+- [ ] TASK-05 — Enforce workspace membership in `TenantWorkspaceGuard` (FR-05)
+- [ ] TASK-06 — Typed domain errors + centralized HTTP mapping
+- [ ] TASK-07 — Rate limiter fixed-window correctness (NFR-08)
+
+### 1R.2 — Governance correctness (proposals)
+- [ ] TASK-08 — Proposal resolution authorization (maintainer / moderator, FR-12/FR-13)
+- [ ] TASK-09 — Polymorphic proposal application (EDGE + ONTOLOGY deltas, FR-10/FR-12)
+
+### 1R.3 — Domain vertical propagation (Edges / Ontology / Discussions / Votes / Nodes)
+- [ ] TASK-10 — Nodes vertical: controller consistency, read endpoints, cursor pagination, ontology validation (FR-06, NFR-04)
+- [ ] TASK-11 — Subgraph endpoint `GET /api/v1/nodes/subgraph` (NFR-01)
+- [ ] TASK-12 — Edges vertical: complete repository, use cases, controller, routes (FR-08)
+- [ ] TASK-13 — Ontology vertical: datatype/object properties, activation, routes (FR-06/08/09)
+- [ ] TASK-14 — Discussions vertical: wire threads/posts + read endpoints (FR-11/FR-16)
+- [ ] TASK-15 — Interactions/Votes vertical: wire votes, unify score updates (FR-14/FR-15)
+- [ ] TASK-16 — shared-types alignment (error codes, batch-node schema, vote semantics)
+- [ ] TASK-17 — Dev seed: provision tenant + base ontology in the router/tenant DBs
+
+## PHASE 2: PYTHON AI WORKERS
+- [ ] MILESTONE-2.1 to MILESTONE-2.6 (Extractor and Relator)
+- [ ] MILESTONE-2.7 Consolidator (planned — missing from the original plan; see EXECUTION_PLAN.md)
+
+## PHASE 3: SVELTEKIT 5 PWA FRONTEND (`apps/web`)
+- [ ] MILESTONE-3.1 to MILESTONE-3.5
+
+## PHASE 4: CI/CD, OBSERVABILITY AND AUTOMATED QA
+- [ ] MILESTONE-4.1 to MILESTONE-4.5

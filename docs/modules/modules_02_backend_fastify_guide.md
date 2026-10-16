@@ -1,54 +1,54 @@
 ---
-title: "Especificación de Módulo: Backend Fastify, Arquitectura Hexagonal y Guía de Boilerplate"
+title: "Module Specification: Fastify Backend, Hexagonal Architecture and Boilerplate Guide"
 version: 1.0.0
 status: APPROVED
 target_component: Backend API (Node.js / TypeScript)
 owner: Backend & Architecture Team (VozLab)
 ---
 
-# 02. BACKEND FASTIFY, ARQUITECTURA HEXAGONAL Y GUÍA DE BOILERPLATE
+# 02. FASTIFY BACKEND, HEXAGONAL ARCHITECTURE AND BOILERPLATE GUIDE
 
-## 1. Organización del Código por Capas (Layer-First / Hexagonal)
+## 1. Code Organization by Layers (Layer-First / Hexagonal)
 
-El backend de VozLab (`apps/api/`) se organiza en capas concéntricas aisladas. La capa de **Dominio** no tiene conocimiento de HTTP, Fastify, Drizzle ORM ni bases de datos.
+The VozLab backend (`apps/api/`) is organized into isolated concentric layers. The **Domain** layer has no knowledge of HTTP, Fastify, Drizzle ORM or databases.
 
 
 ```
 
 apps/api/src/
-├── domain/                         <-- Entidades puras, Value Objects y Errores
+├── domain/                         <-- Pure Entities, Value Objects and Errors
 │   ├── entities/                   <-- Node.ts, EditProposal.ts, OntologyClass.ts
 │   ├── value_objects/              <-- AuthorHash.ts, SystemKey.ts, VoteValue.ts
-│   └── ports/                      <-- Interfaces TypeScript puras (Repositorios y Servicios)
+│   └── ports/                      <-- Pure TypeScript Interfaces (Repositories and Services)
 │       ├── INodeRepository.ts
 │       ├── IProposalRepository.ts
 │       └── IEventPublisher.ts
 │
-├── application/                    <-- Casos de Uso (Lógica de Negocio agnóstica)
+├── application/                    <-- Use Cases (Agnostic Business Logic)
 │   ├── use_cases/                  <-- CreateNodeUseCase.ts, ApproveProposalUseCase.ts
-│   └── dtos/                       <-- Objetos de transferencia de datos de entrada/salida
+│   └── dtos/                       <-- Input/output data transfer objects
 │
-├── infrastructure/                 <-- Adaptadores concretos de infraestructura
-│   ├── http/                       <-- Servidor Fastify, Plugins, Rutas y Controladores
-│   │   ├── controllers/            <-- Manejadores HTTP (NodeController.ts)
+├── infrastructure/                 <-- Concrete infrastructure adapters
+│   ├── http/                       <-- Fastify Server, Plugins, Routes and Controllers
+│   │   ├── controllers/            <-- HTTP Handlers (NodeController.ts)
 │   │   ├── middlewares/            <-- AuthGuard.ts, TenantWorkspaceGuard.ts
-│   │   └── routes/                 <-- Enrutadores Fastify por dominio (/nodes, /proposals)
-│   ├── persistence/                <-- Drizzle ORM (PostgreSQL) y Apache AGE (Cypher)
+│   │   └── routes/                 <-- Fastify routers by domain (/nodes, /proposals)
+│   ├── persistence/                <-- Drizzle ORM (PostgreSQL) and Apache AGE (Cypher)
 │   │   ├── repositories/           <-- DrizzleNodeRepository.ts, AgeGraphRepository.ts
-│   │   └── unit_of_work.ts         <-- Implementación de transacciones atómicas
-│   └── events/                     <-- Adaptador de Redis Streams (RedisEventPublisher.ts)
+│   │   └── unit_of_work.ts         <-- Atomic transaction implementation
+│   └── events/                     <-- Redis Streams adapter (RedisEventPublisher.ts)
 │
-└── shared/                         <-- Utilidades transversales
-├── config/                     <-- Validación estricta de entorno con Zod (env.ts)
-└── logger/                     <-- Pino Logger estructurado con Correlation ID
+└── shared/                         <-- Cross-cutting utilities
+├── config/                     <-- Strict environment validation with Zod (env.ts)
+└── logger/                     <-- Pino structured Logger with Correlation ID
 
 ```
 
 ---
 
-## 2. Inicialización del Servidor y Composición Manual (Composition Root)
+## 2. Server Initialization and Manual Composition (Composition Root)
 
-Para evitar la complejidad y la sobrecarga de contenedores IoC pesados, las dependencias se inyectan de forma explícita mediante el patrón **Composition Root** al arrancar Fastify:
+To avoid the complexity and overhead of heavy IoC containers, dependencies are injected explicitly using the **Composition Root** pattern when Fastify starts:
 
 ```typescript
 // apps/api/src/infrastructure/http/server.ts
@@ -67,14 +67,14 @@ export async function buildServer() {
     requestIdLogLabel: 'reqId',
   });
 
-  // 1. Instanciación de Adaptadores (Infraestructura)
+  // 1. Adapter Instantiation (Infrastructure)
   const nodeRepo = new DrizzleNodeRepository();
   const eventPublisher = new RedisEventPublisher();
 
-  // 2. Inyección de Dependencias en Casos de Uso (Aplicación)
+  // 2. Dependency Injection into Use Cases (Application)
   const createNodeUseCase = new CreateNodeUseCase(nodeRepo, eventPublisher);
 
-  // 3. Registro de Rutas Inyectadas
+  // 3. Registration of Injected Routes
   await registerRoutes(app, { createNodeUseCase });
 
   return app;
@@ -84,18 +84,18 @@ export async function buildServer() {
 
 ---
 
-## 3. Middlewares de Seguridad y Control Multi-Tenant
+## 3. Security Middlewares and Multi-Tenant Control
 
 ### 3.1. TenantWorkspaceGuard (`TenantWorkspaceGuard.ts`)
 
-Valida de forma *stateless* que el usuario autenticado posea una membresía activa sobre el Workspace indicado en el header `X-Workspace-ID`:
+Validates in a *stateless* way that the authenticated user has an active membership on the Workspace indicated in the `X-Workspace-ID` header:
 
 ```typescript
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 export async function tenantWorkspaceGuard(req: FastifyRequest, reply: FastifyReply) {
   const workspaceId = req.headers['x-workspace-id'] as string;
-  const user = req.user; // Inyectado por AuthGuard (JWT Cookie)
+  const user = req.user; // Injected by AuthGuard (JWT Cookie)
 
   if (!workspaceId) {
     return reply.status(400).send({
@@ -105,7 +105,7 @@ export async function tenantWorkspaceGuard(req: FastifyRequest, reply: FastifyRe
     });
   }
 
-  // Validación de membresía en Base de Datos (con caché Redis opcional)
+  // Membership validation in the Database (with optional Redis cache)
   const hasAccess = await verifyUserWorkspaceMembership(user.id, workspaceId);
   if (!hasAccess) {
     return reply.status(403).send({
@@ -122,9 +122,9 @@ export async function tenantWorkspaceGuard(req: FastifyRequest, reply: FastifyRe
 
 ---
 
-## 4. Implementación de Casos de Uso y Transacciones (`UnitOfWork`)
+## 4. Use Case and Transaction Implementation (`UnitOfWork`)
 
-Ejemplo de un Caso de Uso protegido que ejecuta mutaciones atómicas en múltiples tablas y emite un evento asíncrono:
+Example of a protected Use Case that executes atomic mutations across multiple tables and emits an asynchronous event:
 
 ```typescript
 // apps/api/src/application/use_cases/ApproveProposalUseCase.ts
@@ -145,16 +145,16 @@ export class ApproveProposalUseCase {
     const proposal = await this.proposalRepo.findById(proposalId);
     if (!proposal) throw new Error('ERR_PROPOSAL_NOT_FOUND');
 
-    // Transacción atómica multitabla
+    // Atomic multi-table transaction
     await this.uow.runInTransaction(async (tx) => {
-      // 1. Aplica el delta al nodo principal
+      // 1. Applies the delta to the main node
       await this.nodeRepo.applyDelta(proposal.targetId, proposal.proposedChanges, workspaceId, tx);
       
-      // 2. Actualiza el estado de la propuesta
+      // 2. Updates the proposal status
       await this.proposalRepo.updateStatus(proposalId, 'APPROVED_BY_AUTHOR', authorHash, tx);
     });
 
-    // 3. Emite evento asíncrono a Redis Streams (fuera de la transacción DB)
+    // 3. Emits asynchronous event to Redis Streams (outside the DB transaction)
     await this.eventPublisher.publish('proposal:approved', {
       proposalId,
       targetId: proposal.targetId,
@@ -167,9 +167,9 @@ export class ApproveProposalUseCase {
 
 ---
 
-## 5. Validación Estricta de Bordes con Zod
+## 5. Strict Edge Validation with Zod
 
-Todos los parámetros de entrada HTTP (Body, Query Params, Headers) se validan mediante esquemas Zod integrados directamente en Fastify:
+All HTTP input parameters (Body, Query Params, Headers) are validated using Zod schemas integrated directly into Fastify:
 
 ```typescript
 import { z } from 'zod';
@@ -185,3 +185,106 @@ export type CreateNodeInput = z.infer<typeof CreateNodeSchema>;
 
 ```
 
+---
+
+## 6. Implementation Status — MILESTONE-1.4 (Zero-Trust) ✅
+
+> Date: 2026-10-14 · Validated with `pnpm turbo run build` (3/3 packages)
+
+### 6.1. Middleware Chain (execution order)
+
+`onRequest` → `preHandler` → handler:
+
+```
+CorrelationGuard (onRequest)        -> injects reqId (x-correlation-id)
+AuthGuard (preHandler)              -> JWT + O(1) Redis blacklist + system agents
+TenantWorkspaceGuard (preHandler)   -> X-Workspace-ID + provisioned tenant (router DB)
+RateLimitingMiddleware (preHandler) -> Redis bucket per tid+workspace+method
+```
+
+### 6.2. Concrete files
+
+| File | Role |
+| --- | --- |
+| `src/infrastructure/http/middlewares/AuthGuard.ts` | Verifies Bearer JWT (HS256), checks the `jti` blacklist and attaches `req.user` / `req.oidcTenantId`. Detects agents (`AGENT_EXTRACTOR`…). |
+| `src/infrastructure/http/middlewares/TenantWorkspaceGuard.ts` | Requires `X-Workspace-ID` (UUID), validates the tenant in `vozlab_router` and attaches `req.tid` / `req.workspaceId` / `req.tenantSlug`. |
+| `src/infrastructure/http/middlewares/RateLimitingMiddleware.ts` | NFR-08: reads 300/min, writes 30/min per tenant+workspace. Fail-open on Redis error. |
+| `src/infrastructure/events/RedisTokenBlacklist.ts` | Token revocation with TTL = remaining lifetime of the JWT (O(1)). |
+| `src/infrastructure/persistence/ConnectionPoolManager.ts` | Physical pool per `tid` with TTL (30 min) and periodic eviction; consumed by `UnitOfWork`. |
+| `src/infrastructure/http/controllers/{Node,Health}Controller.ts` | HTTP adapters (node creation, `live`/`ready` probes). |
+| `src/infrastructure/http/routes.ts` | Routes Composition Root; applies the guard chain to protected routes. |
+| `src/types/fastify.d.ts` | Augmentation of `FastifyRequest` (identity/tenant) without `any` casts. |
+
+### 6.3. Layer contracts (Domain → Infrastructure)
+
+The ports expose `tid` because each institution has its own physical database:
+
+```typescript
+export interface INodeRepository {
+  findById(id: string, tid: string): Promise<Node | null>;
+  save(node: Node, tid: string, tx?: any): Promise<void>;
+  update(node: Node, tid: string, tx?: any): Promise<void>;
+  applyDelta(targetId: string, proposedChanges: Record<string, any>, workspaceId: string, tid: string, tx?: any): Promise<void>;
+}
+
+export interface IUnitOfWork {
+  runInTransaction<T>(tid: string, work: (tx: any) => Promise<T>): Promise<T>;
+}
+```
+
+### 6.4. Verified acceptance criteria
+
+- [x] Request without `X-Workspace-ID` → **400** `ERR_MISSING_WORKSPACE_HEADER`.
+- [x] `tid` absent in `vozlab_router` → **403** `ERR_TENANT_NOT_PROVISIONED`.
+- [x] Token in Redis blacklist → **401** `ERR_TOKEN_BLACKLISTED` in O(1).
+- [x] Rate limiting per tenant/workspace backed by Redis.
+
+### 6.5. Deviation note regarding the initial draft
+
+The pool manager was consolidated into **`ConnectionPoolManager`** (already consumed by `UnitOfWork`),
+instead of creating a second manager. This keeps a single source of truth for the
+multi-tenant physical isolation.
+
+---
+
+## 7. Implementation Status — MILESTONE-1.5 (Governance) ✅
+
+> Date: 2026-10-15 · Validated with `pnpm turbo run build` (3/3 packages)
+
+### 7.1. Two databases (no architecture changes)
+
+| Level | Database | Schemas/Tables | Role |
+| --- | --- | --- | --- |
+| Global | `vozlab_router` | `tenants`, `tenant_connections` | Routes and validates the tenant |
+| Per tenant | Exclusive physical DB | `auth.*`, `meta.*`, `public.*` (nodes/edges/edit_proposals) | Graph and governance data |
+
+The router client (`createRouterDrizzle`) now imports **only** `router.schema`,
+guaranteeing that the routing layer does not know the tenant schemas.
+
+### 7.2. Use cases and endpoints
+
+| Endpoint | Use case | Effect |
+| --- | --- | --- |
+| `POST /api/v1/nodes` | `CreateNodeUseCase` | Inserts into `public.nodes` + publishes `stream:node_created` (with `reqId`) |
+| `POST /api/v1/proposals` | `CreateProposalUseCase` | Inserts `PENDING` proposal |
+| `PUT /api/v1/proposals/:id/approve` | `ApproveProposalUseCase` | Applies delta to the node + changes status, **in a `UnitOfWork`** |
+| `PUT /api/v1/proposals/:id/reject` | `RejectProposalUseCase` | Only changes the proposal status |
+| `GET /health/ready` | `HealthController` | Verifies Router DB + Redis |
+
+### 7.3. Persistence and event adapters
+
+- `DrizzleNodeRepository` and `DrizzleProposalRepository`: real Drizzle queries,
+  **scoped by `tid`**; they reuse the `tx` handle of the `UnitOfWork` when it exists.
+- `RedisEventPublisher`: `XADD` to `stream:<event_in_lowercase>`
+  (`NODE_CREATED` → `stream:node_created`). Publication is post-commit and *best-effort*,
+  so a broker failure never reverts already persisted data.
+
+### 7.4. State machine (domain, without external dependencies)
+
+The transition `PENDING → APPROVED_BY_AUTHOR | REJECTED_BY_AUTHOR | AUTO_APPLIED` lives in
+the `EditProposal` entity; the use cases do not reimplement the rule.
+
+### 7.5. Detected pending items (outside the scope of MILESTONE-1.5)
+
+- `packages/database/drizzle.config.ts` does not exist → `drizzle-kit generate` (MILESTONE-0.4) is not yet executable.
+- Columns added to `public.edit_proposals`: `resolved_by`, `resolved_at` (required by FR-12).

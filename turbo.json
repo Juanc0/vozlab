@@ -4,8 +4,27 @@
     "build": {
       "dependsOn": ["^build"],
       "cache": true,
-      "inputs": ["**/*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": []
+    },
+    "type-check": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": ["coverage/**"]
+    },
+    "test:ci": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": []
     }
   }
 }

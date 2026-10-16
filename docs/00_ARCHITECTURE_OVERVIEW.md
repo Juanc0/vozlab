@@ -1,152 +1,152 @@
 
 ---
-title: Visión General de la Arquitectura y Estructura del Monorepo
+title: Architecture Overview and Monorepo Structure
 version: 1.3.0
 status: APPROVED
 target_component: System Core
 owner: Architecture Team (VozLab)
 ---
 
-# 00. VISIÓN GENERAL DE LA ARQUITECTURA (VOZLAB)
+# 00. ARCHITECTURE OVERVIEW (VOZLAB)
 
-## 1. Misión de la Plataforma y Topología Global
+## 1. Platform Mission and Global Topology
 
-**VozLab** es una infraestructura B2B/Institucional diseñada para articular los diversos mecanismos de escucha, participación y atención que hoy operan de forma independiente en la Universidad[cite: 10]. 
+**VozLab** is a B2B/Institutional infrastructure designed to articulate the various listening, participation, and support mechanisms that today operate independently at the University[cite: 10]. 
 
-La plataforma combina **Cómputo Determinista en Base de Datos (PostgreSQL + Apache AGE + pgvector)** con un **Trío de Agentes de IA Especializados** que aportan razonamiento semántico no-determinista[cite: 10], transformando la información dispersa en **Oportunidades de Mejora Consolidadas** para la cocreación comunitaria[cite: 10].
+The platform combines **Deterministic Computing at the Database Level (PostgreSQL + Apache AGE + pgvector)** with a **Trio of Specialized AI Agents** that provide non-deterministic semantic reasoning[cite: 10], transforming scattered information into **Consolidated Improvement Opportunities** for community co-creation[cite: 10].
 
 ```mermaid
 C4Context
-    title Diagrama de Contexto del Sistema (C4 Level 1) - VozLab
+    title System Context Diagram (C4 Level 1) - VozLab
 
-    Person(user, "Comunidad / Aliados", "Estudiantes, Docentes, Admin y Aliados Externos")
-    Person(admin, "Admin / Champions", "Líderes de proceso y Champions Institucionales")
+    Person(user, "Community / Allies", "Students, Faculty, Admin, and External Allies")
+    Person(admin, "Admin / Champions", "Process Leaders and Institutional Champions")
 
-    System(vozlab, "Plataforma VozLab", "Capa articuladora de escucha, grafos de conocimiento y cocreación")
+    System(vozlab, "VozLab Platform", "Articulating layer for listening, knowledge graphs, and co-creation")
 
-    System_Ext(fuentes, "Fuentes de Escucha Univalle", "Encuestas, buzones, actas, canales de atención")
-    System_Ext(oidc, "IdP Institucional", "Azure AD / Google Workspace (OIDC)")
-    System_Ext(ollama, "Motor LLM / Embeddings", "Modelos vectoriales y LLMs de razonamiento")
+    System_Ext(fuentes, "Univalle Listening Sources", "Surveys, suggestion boxes, meeting minutes, support channels")
+    System_Ext(oidc, "Institutional IdP", "Azure AD / Google Workspace (OIDC)")
+    System_Ext(ollama, "LLM / Embeddings Engine", "Vector models and reasoning LLMs")
 
-    Rel(fuentes, vozlab, "Ingesta de datos no confidenciales (Stream/Batch)", "API/Connectors")
-    Rel(user, vozlab, "Enriquece, apoya, comenta y propone en la PWA", "HTTPS / PWA")
-    Rel(admin, vozlab, "Gestiona talleres de cocreación y validación", "HTTPS")
-    Rel(vozlab, oidc, "Autentica usuarios vía SSO", "HTTPS")
-    Rel(vozlab, ollama, "Genera embeddings y evalúa relaciones semánticas", "HTTP/REST")
+    Rel(fuentes, vozlab, "Ingestion of non-confidential data (Stream/Batch)", "API/Connectors")
+    Rel(user, vozlab, "Enriches, supports, comments, and proposes in the PWA", "HTTPS / PWA")
+    Rel(admin, vozlab, "Manages co-creation and validation workshops", "HTTPS")
+    Rel(vozlab, oidc, "Authenticates users via SSO", "HTTPS")
+    Rel(vozlab, ollama, "Generates embeddings and evaluates semantic relationships", "HTTP/REST")
 
 ```
 
 ---
 
-## 2. Estructura del Monorepo (`pnpm` + Turborepo)
+## 2. Monorepo Structure (`pnpm` + Turborepo)
 
 ```
 vozlab/
-├── .dev-state/                      <-- Estado de desarrollo para Agentes Locales
+├── .dev-state/                      <-- Development state for Local Agents
 │   ├── roadmap.json
 │   ├── current_task.json
 │   └── changelog_dev.md
 ├── apps/
 │   ├── web/                         <-- PWA Frontend (SvelteKit 5 + Cytoscape.js)
-│   ├── api/                         <-- Backend Principal (Fastify + TypeScript + Drizzle)
-│   ├── worker-extractor/            <-- AGENTE 1: Ingesta y Estructuración (Python 3.12)
-│   ├── worker-relacionador/         <-- AGENTE 2: Evaluador de Relaciones y Clusters (Python 3.12)
-│   └── worker-consolidador/         <-- AGENTE 3: Consolidador de Oportunidades (Python 3.12)
+│   ├── api/                         <-- Main Backend (Fastify + TypeScript + Drizzle)
+│   ├── worker-extractor/            <-- AGENT 1: Ingestion and Structuring (Python 3.12)
+│   ├── worker-relacionador/         <-- AGENT 2: Relationship and Cluster Evaluator (Python 3.12)
+│   └── worker-consolidador/         <-- AGENT 3: Opportunity Consolidator (Python 3.12)
 ├── packages/
-│   ├── shared-types/                <-- Esquemas Zod y Contratos DTO compartidos (Web/API)
-│   ├── database/                    <-- Esquemas Drizzle, Apache AGE (Cypher) y Migraciones
-│   └── ts-config/                   <-- Configuraciones base de TypeScript
-├── docker-compose.yml               <-- Entorno local (PostgreSQL+AGE+pgvector, Redis)
-├── pnpm-workspace.yaml              <-- Definición de Workspaces pnpm
-└── turbo.json                       <-- Pipeline de compilación Turborepo
+│   ├── shared-types/                <-- Shared Zod Schemas and DTO Contracts (Web/API)
+│   ├── database/                    <-- Drizzle Schemas, Apache AGE (Cypher), and Migrations
+│   └── ts-config/                   <-- Base TypeScript Configurations
+├── docker-compose.yml               <-- Local environment (PostgreSQL+AGE+pgvector, Redis)
+├── pnpm-workspace.yaml              <-- pnpm Workspaces definition
+└── turbo.json                       <-- Turborepo build pipeline
 
 ```
 
 ---
 
-## 3. Diagrama de Contenedores (C4 Level 2)
+## 3. Container Diagram (C4 Level 2)
 
 ```mermaid
 C4Container
-    title Diagrama de Contenedores (C4 Level 2) - VozLab
+    title Container Diagram (C4 Level 2) - VozLab
 
-    Container_Ext(sources, "Fuentes Universitarias", "Canales de escucha", "Encuestas, buzones, actas, comentarios")
+    Container_Ext(sources, "University Sources", "Listening channels", "Surveys, suggestion boxes, meeting minutes, comments")
     
-    Container(worker_ext, "Agente 1: Extractor", "Python 3.12 + Parsers", "Ingesta atómica, homogeneiza y clasifica metadatos iniciales")
-    Container(pwa, "PWA Client", "SvelteKit 5 + Cytoscape.js", "App de cocreación gamificada (Web & UniSabana App)")
-    Container(api, "Fastify API", "Node.js 20 + Fastify", "API de negocio, valida JWT, aplica reglas y gestiona el Grafo")
-    Container(redis, "Redis Broker & Cache", "Redis Streams", "Cola de eventos atómicos (NODE_CREATED) y caché de ontología")
-    ContainerDb(db, "PostgreSQL 16+", "Postgres + Apache AGE + pgvector", "Persistencia unificada: SQL, Grafo LPG, HNSW Vectors y Centroides")
+    Container(worker_ext, "Agent 1: Extractor", "Python 3.12 + Parsers", "Atomic ingestion, homogenizes and classifies initial metadata")
+    Container(pwa, "PWA Client", "SvelteKit 5 + Cytoscape.js", "Gamified co-creation app (Web & UniSabana App)")
+    Container(api, "Fastify API", "Node.js 20 + Fastify", "Business API, validates JWT, applies rules, and manages the Graph")
+    Container(redis, "Redis Broker & Cache", "Redis Streams", "Atomic event queue (NODE_CREATED) and ontology cache")
+    ContainerDb(db, "PostgreSQL 16+", "Postgres + Apache AGE + pgvector", "Unified persistence: SQL, LPG Graph, HNSW Vectors, and Centroids")
     
-    Container(worker_rel, "Agente 2: Relacionador", "Python 3.12 + LLM", "Evalúa similitud semántica contra nodos y centroides de clusters activos")
-    Container(worker_con, "Agente 3: Consolidador", "Python 3.12 + Scheduled LLM", "Sintetiza clusters densos en Oportunidades de Mejora con evidencia")
+    Container(worker_rel, "Agent 2: Relator", "Python 3.12 + LLM", "Evaluates semantic similarity against nodes and centroids of active clusters")
+    Container(worker_con, "Agent 3: Consolidator", "Python 3.12 + Scheduled LLM", "Synthesizes dense clusters into Improvement Opportunities with evidence")
 
-    Rel(sources, worker_ext, "Lee registros de canales", "JSON / Text / Streams")
-    Rel(worker_ext, api, "Crea Nodos y Aristas preliminares", "HTTP POST /api/v1/nodes")
-    Rel(pwa, api, "Interacciones de cocreación comunitarias", "HTTPS / SSE")
-    Rel(api, db, "Consultas y Transacciones", "Drizzle / postgres.js")
-    Rel(api, redis, "Emite eventos de nuevos nodos", "Stream: NODE_CREATED")
+    Rel(sources, worker_ext, "Reads records from channels", "JSON / Text / Streams")
+    Rel(worker_ext, api, "Creates preliminary Nodes and Edges", "HTTP POST /api/v1/nodes")
+    Rel(pwa, api, "Community co-creation interactions", "HTTPS / SSE")
+    Rel(api, db, "Queries and Transactions", "Drizzle / postgres.js")
+    Rel(api, redis, "Emits new node events", "Stream: NODE_CREATED")
     
-    Rel(worker_rel, redis, "Consume NODE_CREATED", "Redis Streams")
-    Rel(worker_rel, db, "Pide top N Nodos/Centroides cercanos", "SQL / pgvector")
-    Rel(worker_rel, api, "Propone Fusión o nueva Arista", "HTTP POST /api/v1/proposals")
+    Rel(worker_rel, redis, "Consumes NODE_CREATED", "Redis Streams")
+    Rel(worker_rel, db, "Requests top N nearby Nodes/Centroids", "SQL / pgvector")
+    Rel(worker_rel, api, "Proposes Merge or new Edge", "HTTP POST /api/v1/proposals")
     
-    Rel(worker_con, db, "Consulta clusters/interacciones densas en BD", "SQL / Cypher")
-    Rel(worker_con, api, "Publica Oportunidades Consolidadas sintetizadas", "HTTP POST /api/v1/opportunities")
+    Rel(worker_con, db, "Queries dense clusters/interactions in the DB", "SQL / Cypher")
+    Rel(worker_con, api, "Publishes synthesized Consolidated Opportunities", "HTTP POST /api/v1/opportunities")
 
 ```
 
 ---
 
-## 4. Flujo Detallado de los 3 Agentes de IA
+## 4. Detailed Flow of the 3 AI Agents
 
 ```mermaid
 flowchart TD
-    subgraph "AGENTE 1: Extractor (Ingesta Multi-Fuente)"
-        A[Fuente Institucional: Encuesta/Acta] -->|Registro Atómico| B(Agente Extractor)
-        B -->|Parsea y homogeneiza| C[POST /api/v1/nodes - Fastify]
-        C -->|Guarda Nodo en DB| D[(PostgreSQL / Apache AGE)]
-        C -->|Emite Evento| E[Redis Stream: NODE_CREATED]
+    subgraph "AGENT 1: Extractor (Multi-Source Ingestion)"
+        A[Institutional Source: Survey/Minutes] -->|Atomic Record| B(Extractor Agent)
+        B -->|Parses and homogenizes| C[POST /api/v1/nodes - Fastify]
+        C -->|Saves Node in DB| D[(PostgreSQL / Apache AGE)]
+        C -->|Emits Event| E[Redis Stream: NODE_CREATED]
     end
 
-    subgraph "AGENTE 2: Relacionador No-Determinista (Análisis Cualitativo)"
-        E --> F(Agente Relacionador)
-        F -->|1. Pide Vectores/Centroides Cercanos| D
-        D -->|2. Retorna Nodos + Resúmenes de Clusters| F
-        F -->|3. Razonamiento Cualitativo LLM| G{¿Es Duplicado, Arista o Independiente?}
-        G -->|Opción A: Duplicado| H[Propone MERGED_INTO]
-        G -->|Opción B: Complementario| I[Propone Arista / Relación]
-        G -->|Opción C: Nuevo Matiz| J[Mantiene Nodo Independiente]
-        H & I & J -->|Notifica API| C
+    subgraph "AGENT 2: Non-Deterministic Relator (Qualitative Analysis)"
+        E --> F(Relator Agent)
+        F -->|1. Requests Nearby Vectors/Centroids| D
+        D -->|2. Returns Nodes + Cluster Summaries| F
+        F -->|3. Qualitative LLM Reasoning| G{Is it a Duplicate, Edge, or Independent?}
+        G -->|Option A: Duplicate| H[Proposes MERGED_INTO]
+        G -->|Option B: Complementary| I[Proposes Edge / Relationship]
+        G -->|Option C: New Nuance| J[Keeps Node Independent]
+        H & I & J -->|Notifies API| C
     end
 
-    subgraph "AGENTE 3: Consolidador (Síntesis Macroscópica)"
-        K[Job Programado / Cron] -->|1. Consulta Densidad de Grafo y Votos| D
-        D -->|2. Devuelve Clusters Candidatos| K
-        K -->|3. Redacta Oportunidad de Mejora| L{LLM Sintetizador}
-        L -->|4. Publica Oportunidad| M[App PWA para Cocreación]
+    subgraph "AGENT 3: Consolidator (Macroscopic Synthesis)"
+        K[Scheduled Job / Cron] -->|1. Queries Graph Density and Votes| D
+        D -->|2. Returns Candidate Clusters| K
+        K -->|3. Drafts Improvement Opportunity| L{LLM Synthesizer}
+        L -->|4. Publishes Opportunity| M[PWA App for Co-creation]
     end
 
 ```
 
 ---
 
-## 5. Responsabilidades y Cargas de los Agentes
+## 5. Agent Responsibilities and Loads
 
-| Agente | Trigger / Frecuencia | Input Entregado por la BD | Tarea No-Determinista del LLM | Salida |
+| Agent | Trigger / Frequency | Input Delivered by the DB | Non-Deterministic LLM Task | Output |
 | --- | --- | --- | --- | --- |
-| **Agente 1: Extractor** | En vivo por canal | Texto crudo de la fuente | Homogeneizar formato y extraer la idea central con metadatos ontológicos. | Nodo borrador vía API. |
-| **Agente 2: Relacionador** | Evento `NODE_CREATED` | Nodo nuevo + Top 5 Nodos cercanos + Centroides de Clusters Activos | Determinar si el nodo trae un matiz suficiente para ser independiente o si debe fusionarse/relacionarse. | Propuesta de edición/arista. |
-| **Agente 3: Consolidador** | Programado (Cron / Batch) | Grupos de nodos y conversaciones con alta interacción comunitaria | Redactar la **Oportunidad de Mejora Consolidada** sintetizando toda la evidencia agregada. | Oportunidad en PWA. |
+| **Agent 1: Extractor** | Live per channel | Raw text from the source | Homogenize the format and extract the central idea with ontological metadata. | Draft node via API. |
+| **Agent 2: Relator** | `NODE_CREATED` event | New node + Top 5 nearby Nodes + Centroids of Active Clusters | Determine whether the node brings enough nuance to be independent or whether it must be merged/related. | Edit/edge proposal. |
+| **Agent 3: Consolidator** | Scheduled (Cron / Batch) | Groups of nodes and conversations with high community interaction | Draft the **Consolidated Improvement Opportunity** synthesizing all the aggregated evidence. | Opportunity in PWA. |
 
 ---
 
-## 6. Casos de Borde Globales y Aprendizaje Continuo
+## 6. Global Edge Cases and Continuous Learning
 
 > [!NOTE]
-> **Aprendizaje Semi-Supervisado:** Cuando la comunidad vota, comenta o el autor aprueba/rechaza una sugerencia del Agente 2, esta interacción se retroalimenta al sistema para ajustar los umbrales del Agente Relacionador.
+> **Semi-Supervised Learning:** When the community votes, comments, or the author approves/rejects a suggestion from Agent 2, this interaction is fed back into the system to adjust the Relator Agent's thresholds.
 > 
 > 
 
-1. **Aislación del Grafo por Workspace:** Las sugerencias de relación del Agente 2 ocurren estrictamente dentro del mismo `workspace_id`.
-2. **Fallos de Conectividad con el LLM:** Si Ollama/LLM no responde durante la evaluación del Agente 2, la tarea no se pierde; queda retenida en Redis Streams para re-evaluación automática.
+1. **Graph Isolation per Workspace:** Agent 2's relationship suggestions occur strictly within the same `workspace_id`.
+2. **LLM Connectivity Failures:** If Ollama/LLM does not respond during Agent 2's evaluation, the task is not lost; it remains retained in Redis Streams for automatic re-evaluation.

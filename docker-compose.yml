@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:16-alpine
+    build:
+      context: ./docker/postgres
+    image: vozlab/postgres:18-age-pgvector
     container_name: vozlab-postgres
     environment:
       POSTGRES_USER: postgres
@@ -11,8 +13,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18 base images declare VOLUME /var/lib/postgresql
+      # (PGDATA lives at /var/lib/postgresql/18/docker).
+      - postgres_data:/var/lib/postgresql
       - ./packages/database/scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vozlab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - vozlab-net
 

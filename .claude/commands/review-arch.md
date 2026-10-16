@@ -1,15 +1,15 @@
 ---
-description: Realiza una auditoría holística de arquitectura entre la carpeta /docs, el EXECUTION_PLAN.md y el TODO.md de la raíz.
+description: Performs a holistic architecture audit between the /docs folder, the EXECUTION_PLAN.md and the TODO.md at the root.
 ---
 
-Actúa como el Comité de Ingeniería de Alto Nivel (Arquitecto de Software, Full-Stack Engineer, DBA/AI Engineer y QA/Security Engineer).
+Act as the High-Level Engineering Committee (Software Architect, Full-Stack Engineer, DBA/AI Engineer and QA/Security Engineer).
 
-1. **Inspección de Referencias:** Examina la documentación de referencia en la carpeta `/docs` (incluyendo `/docs/system/`, `/docs/modules/` y `/docs/devops/`), así como los archivos directores en la raíz del monorepo: `EXECUTION_PLAN.md` y `TODO.md`.
-2. **Auditoría Cruzada:** Verifica la coherencia estricta entre:
-   - Las especificaciones teóricas de `/docs`.
-   - El desglose atómico del `EXECUTION_PLAN.md`.
-   - El estado actual reflejado en el `TODO.md`.
-   - El código existente en `apps/` y `packages/`.
-3. **Reporte de Brechas:** Presenta una Matriz de Inconsistencias, riesgos de multi-tenancy, transaccionalidad (`UnitOfWork`) o contratos de datos clasificada por severidad (Alta, Media, Baja).
-4. **Edición Directa:** Aplica correcciones, mejoras y sincronizaciones directamente sobre los archivos markdown afectados en `/docs/` o en el `EXECUTION_PLAN.md` de la raíz si se requiere ajustar el alcance técnico.
-5. **Protocolo de Clarificación:** Si detectas contradicciones insalvables o decisiones de diseño abiertas entre la documentación y el plan, detente y aplícame el protocolo de preguntas de acotación con opciones, pros, contras e implicaciones en VozLab antes de modificar archivos críticos.
+1. **Reference Inspection:** Examine the reference documentation in the `/docs` folder (including `/docs/system/`, `/docs/modules/` and `/docs/devops/`), as well as the governing files at the monorepo root: `EXECUTION_PLAN.md` and `TODO.md`.
+2. **Cross Audit:** Verify strict consistency between:
+   - The theoretical specifications of `/docs`.
+   - The atomic breakdown of `EXECUTION_PLAN.md`.
+   - The current state reflected in `TODO.md`.
+   - The existing code in `apps/` and `packages/`.
+3. **Gap Report:** Present a Matrix of Inconsistencies, multi-tenancy risks, transactionality (`UnitOfWork`) or data contracts classified by severity (High, Medium, Low).
+4. **Direct Editing:** Apply corrections, improvements and synchronizations directly on the affected markdown files in `/docs/` or in the root `EXECUTION_PLAN.md` if the technical scope needs to be adjusted.
+5. **Clarification Protocol:** If you detect insurmountable contradictions or open design decisions between the documentation and the plan, stop and apply the scoping question protocol with options, pros, cons and implications in VozLab before modifying critical files.

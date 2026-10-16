@@ -1,80 +1,80 @@
-# MASTER PROMPT: GENERACIÓN DEL PLAN MAESTRO DE CONSTRUCCIÓN (EXECUTION PLAN) FOR VOZLAB MONOREPO
+# MASTER PROMPT: GENERATION OF THE MASTER CONSTRUCTION PLAN (EXECUTION PLAN) FOR THE VOZLAB MONOREPO
 
-**ROL DEL MODELO:**
-Actúa como un equipo tripartito de élite compuesto por un **Chief Software Architect**, un **Principal Full-Stack Engineer (TypeScript/Python)** y un **Staff QA Engineer**. Tu objetivo es analizar de forma exhaustiva la totalidad de los documentos de especificación técnica del proyecto "VozLab" adjuntos en la conversación (`docs/00_ARCHITECTURE_OVERVIEW.md`, `docs/system/*`, `docs/modules/*` y `docs/devops/*`) y sintetizar un **Plan Maestro de Ejecución e Implementación Atómica** empaquetado en un único archivo estructurado en Markdown llamado `.dev-state/EXECUTION_PLAN.md`.
-
----
-
-## 1. PRINCIPIOS DE DISEÑO E INVARIANTES DE ARQUITECTURA (NO NEGOCIABLES)
-
-Cualquier tarea del plan debe estar alineada de manera estricta con las siguientes reglas del sistema:
-1. **ESTRUCTURA MONOREPO:** `pnpm` workspaces + Turborepo (`apps/api`, `apps/web`, `apps/worker-relacionador`, `apps/worker-extractor`, `packages/database`, `packages/shared-types`).
-2. **ARQUITECTURA HEXAGONAL (BACKEND API):** La capa `domain/` no conoce nada de Fastify, Drizzle o Redis. Inyección de dependencias explícita mediante el patrón *Composition Root*.
-3. **MULTI-TENANCY CON AISAILAMIENTO FÍSICO:** Base de Datos Gestora Global (`vozlab_router`) que resuelve dinámicamente las credenciales y el pool de conexión hacia las bases de datos físicamente independientes por institución según la claim `tid` del ID Token OIDC (Azure AD).
-4. **GOBERNANZA UNIVERSAL:** Absolutamente toda creación o modificación de contenido (Nodos, Aristas, Propuestas Ontológicas), ya sea producida por un Agente de IA o por un usuario final, nace en estado transitorio (`DRAFT` / `PENDING`) vinculada a un hilo de discusión (`social.discussion_threads`) y sujeta a votación/aprobación.
-5. **INGESTA MULTI-FUENTE Y CACHÉ:** 
-   - Webhooks entrantes se procesan de forma Serverless / aislada (`API Gateway + AWS Lambda` o endpoint de ingesta rápida `202 Accepted` a cola).
-   - Ingesta de fuentes por colas en Redis Streams (`stream:source_raw`).
-   - Caché en Redis de la ontología activa (`meta.*`) y de las Entidades Raíz clave de la universidad para deduping semántico local en el Agente 1 antes de tocar la DB.
-6. **COMMITS ATÓMICOS Y REGLA DE QA:** Cada tarea del plan debe ser de granularidad pequeña (completale en un solo ciclo de código), autónoma, testeable e incluir explícitamente sus **Criterios de Aceptación (Acceptance Criteria)**.
+**MODEL ROLE:**
+Act as an elite tripartite team composed of a **Chief Software Architect**, a **Principal Full-Stack Engineer (TypeScript/Python)**, and a **Staff QA Engineer**. Your objective is to exhaustively analyze the entirety of the technical specification documents of the "VozLab" project attached in the conversation (`docs/00_ARCHITECTURE_OVERVIEW.md`, `docs/system/*`, `docs/modules/*`, and `docs/devops/*`) and synthesize a **Master Execution and Atomic Implementation Plan** packaged into a single file structured in Markdown called `.dev-state/EXECUTION_PLAN.md`.
 
 ---
 
-## 2. PUNTOS CRÍTICOS Y EDGE CASES QUE DEBES INCLUIR EN EL PLAN (COBERTURA TOTAL)
+## 1. DESIGN PRINCIPLES AND ARCHITECTURE INVARIANTS (NON-NEGOTIABLE)
 
-Asegúrate de que la lista de tareas contemple explícitamente los siguientes detalles que suelen omitirse en ejecuciones apresuradas:
-- **Gestión de Errores y Transacciones:** Implementación del patrón `UnitOfWork` para mutaciones atómicas multitabla (creación de nodo + registro de auditoría + creación de hilo de discusión en una sola transacción DB).
-- **Trazabilidad y Observabilidad:** Propagación obligatoria del Correlation ID (`reqId`) desde la PWA/API hasta los Workers de Python usando `AsyncLocalStorage` y `structlog`.
-- **Sanitización de PII:** Módulo de enmascaramiento y anonimización de datos personales en el Agente Extractor antes de enviar payloads a la API Fastify.
-- **Seeding de Estrés:** Scripts de poblamiento de prueba con 10,000 nodos y 50,000 aristas para validar índices B-Tree, GIN y HNSW (`pgvector`) bajo k6.
-- **Manejo de Errores HTTP Estructurados:** Esquema unificado de respuestas de error con códigos (`ERR_MISSING_WORKSPACE_HEADER`, `ERR_UNAUTHORIZED_WORKSPACE_ACCESS`, etc.).
+Any task in the plan must be strictly aligned with the following system rules:
+1. **MONOREPO STRUCTURE:** `pnpm` workspaces + Turborepo (`apps/api`, `apps/web`, `apps/worker-relacionador`, `apps/worker-extractor`, `packages/database`, `packages/shared-types`).
+2. **HEXAGONAL ARCHITECTURE (BACKEND API):** The `domain/` layer knows nothing about Fastify, Drizzle, or Redis. Explicit dependency injection through the *Composition Root* pattern.
+3. **MULTI-TENANCY WITH PHYSICAL ISOLATION:** Global Manager Database (`vozlab_router`) that dynamically resolves the credentials and the connection pool toward the physically independent databases per institution according to the `tid` claim of the OIDC ID Token (Azure AD).
+4. **UNIVERSAL GOVERNANCE:** Absolutely every creation or modification of content (Nodes, Edges, Ontological Proposals), whether produced by an AI Agent or by an end user, is born in a transitory state (`DRAFT` / `PENDING`) linked to a discussion thread (`social.discussion_threads`) and subject to voting/approval.
+5. **MULTI-SOURCE INGESTION AND CACHE:** 
+   - Incoming webhooks are processed in a Serverless / isolated manner (`API Gateway + AWS Lambda` or a fast ingestion endpoint `202 Accepted` to a queue).
+   - Source ingestion via queues in Redis Streams (`stream:source_raw`).
+   - Redis cache of the active ontology (`meta.*`) and of the key Root Entities of the university for local semantic deduping in Agent 1 before touching the DB.
+6. **ATOMIC COMMITS AND QA RULE:** Each task in the plan must be of small granularity (completable in a single code cycle), autonomous, testable, and explicitly include its **Acceptance Criteria**.
 
 ---
 
-## 3. FORMATO DE SALIDA REQUERIDO (`.dev-state/EXECUTION_PLAN.md`)
+## 2. CRITICAL POINTS AND EDGE CASES YOU MUST INCLUDE IN THE PLAN (TOTAL COVERAGE)
 
-Genera el plan de trabajo organizado estrictamente en los siguientes **FASES e HITOS**. Cada Hito debe detallar:
-- **ID:** Identificador único (ej. `HITO-1.1`).
-- **Módulo / Componente:** Ubicación exacta de los archivos en el Monorepo.
-- **Descripción de la Tarea:** Qué código o configuración se debe construir.
-- **Archivos Afectados:** Lista explícita de rutas de archivo a crear/modificar.
-- **Criterios de Aceptación (Acceptance Criteria):** Checkbox con la condición exacta que el Agente Reviewer o la prueba automática deben validar para dar por aprobado y hacer el `git commit`.
+Make sure the task list explicitly contemplates the following details that are usually omitted in rushed executions:
+- **Error and Transaction Management:** Implementation of the `UnitOfWork` pattern for atomic multi-table mutations (node creation + audit log + discussion thread creation in a single DB transaction).
+- **Traceability and Observability:** Mandatory propagation of the Correlation ID (`reqId`) from the PWA/API to the Python Workers using `AsyncLocalStorage` and `structlog`.
+- **PII Sanitization:** Module for masking and anonymizing personal data in the Extractor Agent before sending payloads to the Fastify API.
+- **Stress Seeding:** Test population scripts with 10,000 nodes and 50,000 edges to validate B-Tree, GIN, and HNSW (`pgvector`) indexes under k6.
+- **Structured HTTP Error Handling:** Unified schema of error responses with codes (`ERR_MISSING_WORKSPACE_HEADER`, `ERR_UNAUTHORIZED_WORKSPACE_ACCESS`, etc.).
 
-### ESTRUCTURA DE FASES A DESGLOSAR EN EL PLAN:
+---
 
-1. **FASE 0: BOILERPLATE Y INFRAESTRUCTURA BASE DEL MONOREPO**
-   - Configuración de `pnpm-workspace.yaml`, `turbo.json`, `package.json` raíz.
-   - Configuración del contenedor Docker Compose (`PostgreSQL 16` con `pgvector`, `Redis 7`, `Ollama`).
-   - Creación del paquete `packages/database` con Drizzle ORM, cliente de la BD Gestora (`vozlab_router`) y cliente de BD Multi-tenant dinámico.
-   - Creación del paquete `packages/shared-types` con esquemas Zod compartidos y tipos TypeScript.
+## 3. REQUIRED OUTPUT FORMAT (`.dev-state/EXECUTION_PLAN.md`)
 
-2. **FASE 1: CORE BACKEND FASTIFY API (`apps/api`)**
-   - Implementación de la Arquitectura Hexagonal (Dominio, Casos de Uso, Puertos, Adaptadores).
-   - Middlewares: `AuthGuard` (OIDC/JWT), `TenantWorkspaceGuard` (resolución dinámica de BD por `tid` y validación de membership).
-   - Transacciones con `UnitOfWork` y publicación asíncrona a Redis Streams.
-   - Endpoints REST de la API (Nodos, Aristas, Propuestas, Hilos de Discusión, Ingesta Batch).
-   - Endpoints de Healthcheck (`/health/live`, `/health/ready`).
+Generate the work plan organized strictly into the following **PHASES and MILESTONES**. Each Milestone must detail:
+- **ID:** Unique identifier (e.g., `MILESTONE-1.1`).
+- **Module / Component:** Exact location of the files in the Monorepo.
+- **Task Description:** What code or configuration must be built.
+- **Affected Files:** Explicit list of file paths to create/modify.
+- **Acceptance Criteria:** Checkbox with the exact condition that the Reviewer Agent or the automated test must validate in order to consider it approved and make the `git commit`.
 
-3. **FASE 2: WORKERS DE IA EN PYTHON (`apps/worker-extractor` y `apps/worker-relacionador`)**
-   - Estructura de proyectos en Python 3.12 con Poetry/pip.
-   - `worker-extractor`: Conectores, Sanitizador PII, Extracción atómica con LLM/Ollama, Ingesta Batch a Fastify, y Caché Redis de Entidades Raíz.
-   - `worker-relacionador`: Consumidor Redis Streams (`XREADGROUP`), Búsqueda HNSW en `pgvector`, Evaluación Cualitativa Semántica con Ollama y Emisión de `EDGE_PROPOSAL` en estado `PENDING`.
+### PHASE STRUCTURE TO BREAK DOWN IN THE PLAN:
 
-4. **FASE 3: FRONTEND PWA SVELTEKIT 5 (`apps/web`)**
-   - Configuración de SvelteKit 5 con Runes (`$state`, `$derived`, `$effect`).
-   - Group Layouts (`(app)` protegido, `(auth)` público).
-   - Estado de Workspace en `sessionStorage` aislado por pestaña.
-   - Componente Canvas para renderizado de Grafos con Cytoscape.js (`dagre` layout).
-   - Panel de Hilos de Discusión, Propuestas de Edición y Votación Granular.
+1. **PHASE 0: BOILERPLATE AND BASE MONOREPO INFRASTRUCTURE**
+   - Configuration of `pnpm-workspace.yaml`, `turbo.json`, root `package.json`.
+   - Configuration of the Docker Compose container (`PostgreSQL 16` with `pgvector`, `Redis 7`, `Ollama`).
+   - Creation of the `packages/database` package with Drizzle ORM, Manager DB client (`vozlab_router`), and dynamic Multi-tenant DB client.
+   - Creation of the `packages/shared-types` package with shared Zod schemas and TypeScript types.
+
+2. **PHASE 1: CORE BACKEND FASTIFY API (`apps/api`)**
+   - Implementation of the Hexagonal Architecture (Domain, Use Cases, Ports, Adapters).
+   - Middlewares: `AuthGuard` (OIDC/JWT), `TenantWorkspaceGuard` (dynamic DB resolution by `tid` and membership validation).
+   - Transactions with `UnitOfWork` and asynchronous publishing to Redis Streams.
+   - REST API Endpoints (Nodes, Edges, Proposals, Discussion Threads, Batch Ingestion).
+   - Healthcheck Endpoints (`/health/live`, `/health/ready`).
+
+3. **PHASE 2: AI WORKERS IN PYTHON (`apps/worker-extractor` and `apps/worker-relacionador`)**
+   - Project structure in Python 3.12 with Poetry/pip.
+   - `worker-extractor`: Connectors, PII Sanitizer, atomic extraction with LLM/Ollama, Batch Ingestion to Fastify, and Redis Cache of Root Entities.
+   - `worker-relacionador`: Redis Streams Consumer (`XREADGROUP`), HNSW Search in `pgvector`, Semantic Qualitative Evaluation with Ollama, and Emission of `EDGE_PROPOSAL` in `PENDING` state.
+
+4. **PHASE 3: SVELTEKIT 5 PWA FRONTEND (`apps/web`)**
+   - SvelteKit 5 configuration with Runes (`$state`, `$derived`, `$effect`).
+   - Group Layouts (`(app)` protected, `(auth)` public).
+   - Workspace state in `sessionStorage` isolated per tab.
+   - Canvas component for Graph rendering with Cytoscape.js (`dagre` layout).
+   - Panel for Discussion Threads, Edit Proposals, and Granular Voting.
    - PWA Service Worker offline/online-first status.
 
-5. **FASE 4: CI/CD, OBSERVABILIDAD Y QA AUTOMATIZADO**
-   - Workflows de GitHub Actions (`ci.yml`).
-   - Logger Pino estructurado JSON con `reqId`.
-   - Pruebas Unitarias/Integración con Vitest + Docker efímero.
-   - Pruebas E2E con Playwright.
-   - Scripts de Seeding de Estrés y Benchmarking de Grafos con k6.
+5. **PHASE 4: CI/CD, OBSERVABILITY, AND AUTOMATED QA**
+   - GitHub Actions Workflows (`ci.yml`).
+   - Structured JSON Pino Logger with `reqId`.
+   - Unit/Integration Tests with Vitest + ephemeral Docker.
+   - E2E Tests with Playwright.
+   - Stress Seeding and Graph Benchmarking Scripts with k6.
 
 ---
 
-**POR FAVOR, GENERA AHORA EL ARCHIVO `.dev-state/EXECUTION_PLAN.md` COMPLETO, DETALLADO, EXTENSO Y EXTRACTO, SIN ABREVIAR NINGÚN PASO NI USAR PLACEHOLDERS COMO "..." O "REPETIR PARA OTROS".**
+**PLEASE, NOW GENERATE THE COMPLETE, DETAILED, EXTENSIVE, AND EXTRACTED FILE `.dev-state/EXECUTION_PLAN.md`, WITHOUT ABBREVIATING ANY STEP OR USING PLACEHOLDERS SUCH AS "..." OR "REPEAT FOR OTHERS".**
