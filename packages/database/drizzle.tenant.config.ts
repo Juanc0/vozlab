@@ -28,5 +28,8 @@ export default defineConfig({
     user: process.env.TENANT_DB_USER ?? 'postgres',
     password: process.env.TENANT_DB_PASSWORD ?? 'postgres',
     database: process.env.TENANT_DB_NAME ?? 'vozlab_tenant_dev',
+    // drizzle-kit 0.31 defaults `ssl` to `{}` (TLS forced) when the key is
+    // absent, which breaks the local non-TLS Postgres. Explicitly disable it.
+    ssl: false,
   },
 });

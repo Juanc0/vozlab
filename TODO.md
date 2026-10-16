@@ -43,7 +43,8 @@
 ### 1R.1 — Correctness & hygiene of completed work
 - [x] TASK-01 — Repository hygiene & governance sync (`.gitignore`, stale command files, turbo tasks)
   - Result: `.gitignore` rewritten (`.env`/`.env.*` + `!.env.example`, `.turbo/`, `dist/`, `build/`, `coverage/`, `.venv/`, `__pycache__/`, logs, test artifacts, editor/OS); root `next-task.md`/`review-arch.md` removed (`.claude/commands/*` kept); `turbo.json` now declares `build`/`lint`/`type-check`/`test`/`test:ci` with `outputs: []` (removed the `.next/**` block); removed invalid `allowBuilds` from `pnpm-workspace.yaml` and redundant `workspaces` from root `package.json` (added `type-check` script). `pnpm turbo run build` = 3/3 packages ✓
-- [ ] TASK-02 — Reset & regenerate Drizzle migrations (fix `edges.attributes` drift)
+- [x] TASK-02 — Reset & regenerate Drizzle migrations (fix `edges.attributes` drift)
+  - Result: reset `migrations/router/**` + `migrations/tenant/**` to a single fresh `0000_*` per DB (router `0000_jazzy_stone_men.sql`, tenant `0000_illegal_fallen_one.sql`); tenant SQL now has `edges."attributes" jsonb`, `vector(768)`, HNSW/GIN/partial indexes, `unique_user_target_vote`, all `meta.*`/`social.*` tables; router SQL = only `tenants` + `tenant_connections`. Removed `scripts/init-age.sql`. Verified on a fresh DB (`\d edges` → `attributes jsonb`; `\dx` → `age` + `vector`) and `db:migrate` is idempotent. Extra fix: added `ssl: false` to both drizzle-kit configs (v0.31 forces TLS when `ssl` is absent, breaking local `db:migrate`). `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-03 — Correlation ID (`reqId`) propagation via AsyncLocalStorage
 - [ ] TASK-04 — Real `/health/ready` dependency probes
 - [ ] TASK-05 — Enforce workspace membership in `TenantWorkspaceGuard` (FR-05)
