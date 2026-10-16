@@ -54,6 +54,19 @@ export function withReqId<T>(fn: () => T, id?: string): T {
 }
 
 /**
+ * Bind the correlation id to the current async context (whole request).
+ *
+ * Uses `AsyncLocalStorage.enterWith` rather than `run` because a Fastify
+ * `onRequest` hook must return before the handler runs: `run` would scope the
+ * store to the (synchronous) callback only, while `enterWith` keeps it bound
+ * for the current execution context and every async descendant — i.e. the
+ * entire request lifecycle.
+ */
+export function bindReqId(id: string): void {
+  als.enterWith(id);
+}
+
+/**
  * Get the current `reqId` from the context, or generate one if absent.
  */
 export function getReqId(): string {

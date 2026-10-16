@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { withReqId } from '../../../shared/logger/index.js';
+import { bindReqId } from '../../../shared/logger/index.js';
 
 /**
  * CorrelationGuard: Fastify plugin that binds the request correlation ID
@@ -11,11 +11,13 @@ export async function correlationGuard(
 ): Promise<void> {
   const reqId = req.id as string;
 
-  withReqId(() => {
-    req.log.info({ method: req.method, url: req.url }, 'incoming request');
-  }, reqId);
+  // Bind first: everything below (and every later log in the request) then
+  // carries `reqId` automatically via the shared `log` proxy.
+  bindReqId(reqId);
 
   req.reqId = reqId;
+
+  req.log.info({ method: req.method, url: req.url }, 'incoming request');
 }
 
 /**
