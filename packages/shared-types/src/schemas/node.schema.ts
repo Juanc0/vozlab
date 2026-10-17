@@ -14,6 +14,18 @@ export const CreateNodeSchema = z.object({
 export type CreateNodeInput = z.infer<typeof CreateNodeSchema>;
 
 /**
+ * Zod schema for the node list query string (NFR-04).
+ * `limit` is clamped to 1..100 (default 20); `cursor` is the opaque
+ * keyset token returned as `nextCursor` by a previous page.
+ */
+export const ListNodeQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+});
+
+export type ListNodeQueryInput = z.infer<typeof ListNodeQuerySchema>;
+
+/**
  * Zod schema for updating an existing Node (partial update via edit proposals).
  */
 export const UpdateNodeSchema = z.object({

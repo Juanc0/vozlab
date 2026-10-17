@@ -13,6 +13,8 @@ import { RedisEventPublisher } from '../events/RedisEventPublisher.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
+import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -58,7 +60,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   poolManager.startCleanupInterval();
 
   // --- Use cases (application) ---
-  const createNodeUseCase = new CreateNodeUseCase(nodeRepo, eventPublisher);
+  const createNodeUseCase = new CreateNodeUseCase(nodeRepo, ontologyRepo, eventPublisher);
+  const getNodeUseCase = new GetNodeUseCase(nodeRepo);
+  const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const createProposalUseCase = new CreateProposalUseCase(proposalRepo, eventPublisher);
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
@@ -89,6 +93,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   // --- Routes ---
   await registerRoutes(app, {
     createNodeUseCase,
+    getNodeUseCase,
+    listNodesUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,

@@ -1,9 +1,46 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateNodeSchema } from '@vozlab/shared-types';
+import { CreateNodeSchema, ListNodeQuerySchema } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
+import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
+import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
+import { Node } from '../../../domain/entities/Node.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
 import { sendError, mapDomainError } from './errorResponse.js';
+
+/**
+ * Stable JSON projection of a Node. Never leaks the raw entity internals
+ * (e.g. the `AuthorHash` value object) — the hash is emitted as a string.
+ */
+interface NodeDto {
+  id: string;
+  workspaceId: string;
+  typeKey: string;
+  title: string;
+  description: string | null;
+  attributes: Record<string, unknown>;
+  authorHash: string;
+  status: string;
+  communityScore: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function toNodeDto(node: Node): NodeDto {
+  return {
+    id: node.id,
+    workspaceId: node.workspaceId,
+    typeKey: node.typeKey,
+    title: node.title,
+    description: node.description,
+    attributes: node.attributes,
+    authorHash: node.authorHash.toString(),
+    status: node.status,
+    communityScore: node.communityScore,
+    createdAt: node.createdAt.toISOString(),
+    updatedAt: node.updatedAt.toISOString(),
+  };
+}
 
 /**
  * NodeController: HTTP adapter for node-related endpoints.
@@ -11,7 +48,11 @@ import { sendError, mapDomainError } from './errorResponse.js';
  * results/errors back to HTTP responses.
  */
 export class NodeController {
-  constructor(private readonly createNodeUseCase: CreateNodeUseCase) {}
+  constructor(
+    private readonly createNodeUseCase: CreateNodeUseCase,
+    private readonly getNodeUseCase: GetNodeUseCase,
+    private readonly listNodesUseCase: ListNodesUseCase
+  ) {}
 
   /**
    * POST /api/v1/nodes
@@ -45,11 +86,73 @@ export class NodeController {
         status: node.status,
       });
     } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error.message : error, reqId: ctx.reqId },
-        'createNode failed'
-      );
-      return sendError(reply, mapDomainError(error));
+      return this.handleError(req, reply, error, 'createNode failed');
     }
+  }
+
+  /**
+   * GET /api/v1/nodes/:id
+   * Returns the node, or 404 `ERR_NODE_NOT_FOUND` when it is missing or
+   * belongs to another workspace.
+   */
+  async getNodeHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      const node = await this.getNodeUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+      });
+      return reply.status(200).send({ node: toNodeDto(node) });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'getNode failed');
+    }
+  }
+
+  /**
+   * GET /api/v1/nodes
+   * Cursor-paginated listing of the workspace's nodes (NFR-04).
+   */
+  async listNodesHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = ListNodeQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    try {
+      const { items, nextCursor } = await this.listNodesUseCase.execute({
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        limit: parsed.data.limit,
+        cursor: parsed.data.cursor,
+      });
+
+      return reply.status(200).send({
+        nodes: items.map(toNodeDto),
+        nextCursor,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'listNodes failed');
+    }
+  }
+
+  private handleError(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    error: unknown,
+    op: string
+  ): void {
+    log.error(
+      { err: error instanceof Error ? error.message : error, reqId: req.reqId },
+      op
+    );
+    return sendError(reply, mapDomainError(error));
   }
 }

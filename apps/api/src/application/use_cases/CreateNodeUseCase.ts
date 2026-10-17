@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { Node } from '../../domain/entities/Node.js';
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import { CreateNodeInput } from '@vozlab/shared-types';
 
@@ -11,6 +13,7 @@ import { CreateNodeInput } from '@vozlab/shared-types';
 export class CreateNodeUseCase {
   constructor(
     private nodeRepo: INodeRepository,
+    private ontologyRepo: IOntologyRepository,
     private eventPublisher: IEventPublisher
   ) {}
 
@@ -22,6 +25,18 @@ export class CreateNodeUseCase {
       reqId?: string;
     }
   ): Promise<Node> {
+    // FR-06 / US-01 AC#1: the type must exist and be ACTIVE in the
+    // workspace's ontology. Validation is ontology-scoped, not identity-scoped,
+    // so system agents posting nodes are subject to the same rule.
+    const cls = await this.ontologyRepo.findClassByKey(
+      input.typeKey,
+      input.workspaceId,
+      input.tid
+    );
+    if (!cls || cls.status !== 'ACTIVE') {
+      throw new DomainError('ERR_VALIDATION_FAILED', 'unknown or inactive typeKey');
+    }
+
     const authorHashVO = AuthorHash.fromRawOrIdentity(input.authorHash, 'default-salt');
 
     const node = new Node(

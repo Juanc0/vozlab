@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
+import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -19,6 +21,8 @@ import { HealthController } from './controllers/HealthController.js';
  */
 export interface RouteDependencies {
   createNodeUseCase: CreateNodeUseCase;
+  getNodeUseCase: GetNodeUseCase;
+  listNodesUseCase: ListNodesUseCase;
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
@@ -43,6 +47,8 @@ export async function registerRoutes(
 ): Promise<void> {
   const {
     createNodeUseCase,
+    getNodeUseCase,
+    listNodesUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
@@ -53,7 +59,11 @@ export async function registerRoutes(
     rateLimiter,
   } = deps;
 
-  const nodeController = new NodeController(createNodeUseCase);
+  const nodeController = new NodeController(
+    createNodeUseCase,
+    getNodeUseCase,
+    listNodesUseCase
+  );
   const proposalController = new ProposalController(
     createProposalUseCase,
     approveProposalUseCase,
@@ -79,13 +89,13 @@ export async function registerRoutes(
     nodeController.createNode(req, reply)
   );
 
-  app.get('/api/v1/nodes', { preHandler: guard }, async (_req, reply) => {
-    return reply.status(200).send({ nodes: [] });
-  });
+  app.get('/api/v1/nodes', { preHandler: guard }, (req, reply) =>
+    nodeController.listNodesHandler(req, reply)
+  );
 
-  app.get('/api/v1/nodes/:id', { preHandler: guard }, async (_req, reply) => {
-    return reply.status(200).send({ node: null });
-  });
+  app.get('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>
+    nodeController.getNodeHandler(req, reply)
+  );
 
   // --- Proposals (Gobernanza / Pull-Request) ---
   app.post('/api/v1/proposals', { preHandler: guard }, (req, reply) =>
