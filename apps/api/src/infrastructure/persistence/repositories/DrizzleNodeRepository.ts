@@ -99,8 +99,15 @@ export class DrizzleNodeRepository implements INodeRepository {
     const depth = Math.min(Math.max(Math.trunc(opts.depth), 0), MAX_SUBGRAPH_DEPTH);
     const limit = Math.min(Math.max(Math.trunc(opts.limit), 1), MAX_SUBGRAPH_NODES);
 
-    // `UNION` (not UNION ALL) de-duplicates exact (id, depth) pairs while the
-    // `depth < N` guard terminates cycles regardless.
+    // NFR-01 bounds: `depth` terminates the walk and `limit` caps every step.
+    // PostgreSQL allows exactly ONE recursive self-reference, only in the
+    // right-hand operand of the top-level UNION (`parse_cte.c`), so the two
+    // edge directions are enumerated inside a single LATERAL union rather than
+    // two self-referencing branches. Each direction carries its own `LIMIT`
+    // and the whole recursive step carries a `LIMIT`, so the working table
+    // never exceeds `limit` rows per depth: with `depth <= 3` the traversal is
+    // `O(limit · depth)` rows instead of unbounded fan-out. The outer `LIMIT`
+    // is kept, and `UNION` (not UNION ALL) still de-duplicates (id, depth).
     const result = await db.execute(sql`
       WITH RECURSIVE reachable(id, depth) AS (
         SELECT n.id, 0
@@ -109,25 +116,35 @@ export class DrizzleNodeRepository implements INodeRepository {
           AND n.workspace_id = ${workspaceId}
           AND n.deleted_at IS NULL
         UNION
-        SELECT e.target_node_id, r.depth + 1
-        FROM reachable r
-        JOIN public.edges e ON e.source_node_id = r.id
-        JOIN public.nodes n ON n.id = e.target_node_id
-        WHERE r.depth < ${depth}
-          AND e.workspace_id = ${workspaceId}
-          AND e.deleted_at IS NULL
-          AND n.workspace_id = ${workspaceId}
-          AND n.deleted_at IS NULL
-        UNION
-        SELECT e.source_node_id, r.depth + 1
-        FROM reachable r
-        JOIN public.edges e ON e.target_node_id = r.id
-        JOIN public.nodes n ON n.id = e.source_node_id
-        WHERE r.depth < ${depth}
-          AND e.workspace_id = ${workspaceId}
-          AND e.deleted_at IS NULL
-          AND n.workspace_id = ${workspaceId}
-          AND n.deleted_at IS NULL
+        (
+          SELECT neighbor.id, r.depth + 1
+          FROM reachable r
+          JOIN LATERAL (
+            (
+              SELECT e.target_node_id AS id
+              FROM public.edges e
+              WHERE e.source_node_id = r.id
+                AND e.workspace_id = ${workspaceId}
+                AND e.deleted_at IS NULL
+              LIMIT ${limit}
+            )
+            UNION
+            (
+              SELECT e.source_node_id AS id
+              FROM public.edges e
+              WHERE e.target_node_id = r.id
+                AND e.workspace_id = ${workspaceId}
+                AND e.deleted_at IS NULL
+              LIMIT ${limit}
+            )
+          ) neighbor ON true
+          JOIN public.nodes n
+            ON n.id = neighbor.id
+           AND n.workspace_id = ${workspaceId}
+           AND n.deleted_at IS NULL
+          WHERE r.depth < ${depth}
+          LIMIT ${limit}
+        )
       )
       SELECT id, MIN(depth)::int AS depth
       FROM reachable

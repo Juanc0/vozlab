@@ -114,7 +114,29 @@
       → New pure `domain/value_objects/VoteValue.ts` is now the only `interactionType → delta` mapping (`DOWNVOTE → -1`, `UPVOTE|SUPPORT|VALIDATE → +1`); `CastVoteUseCase` dropped the inline ternary and computes `VoteValue.fromInteractionType(...)`. Added `IInteractionRepository.existsInWorkspace(targetId, targetType, workspaceId, tid)` + Drizzle impl (switch over `nodes`/`edges`/`editProposals`/`discussionPosts`, each `select({id}).limit(1)` filtered by id + workspace + `isNull(deletedAt)` where present; posts scoped via `discussionThreads` join, proposals have no `deletedAt`) — verified *before* the insert, so a missing/foreign-workspace/soft-deleted target throws the type-appropriate 404 (`ERR_NODE/EDGE/PROPOSAL/POST_NOT_FOUND`) and no interaction row is written; idempotency branch kept first. **Decision (CQRS): keep the synchronous atomic DB increment (FR-15) — the Redis-buffered `HINCRBY` + 60 s flush is deferred, tracked in `EXECUTION_PLAN.md`, not implemented piecewise.** Docs updated: `modules_01 §5` rewritten to the decision, `modules_02 §1` points at `VoteValue.ts` + states the mapping and server-derived rule. `pnpm turbo run build` = 3/3 ✓
 - [x] TASK-28 — Typed enums at the boundaries (L-1, concern #6)
       → Added `WorkspaceRoleSchema`/`SystemRoleSchema` + `isModeratorOrAdmin(role)` to `@vozlab/shared-types` (`schemas/roles.schema.ts`, exported from `index.ts`); `IMembershipRepository` now re-exports the derived `WorkspaceRole` (local union deleted) so call sites are unchanged, and `AutoApplyProposalUseCase`/`ActivateOntologyClassUseCase` use `isModeratorOrAdmin` (no restated literals); `RateLimitingMiddleware` hoists `WRITE_METHODS` and tests it via `(WRITE_METHODS as readonly string[]).includes(...)`; new `shared/assertNever.ts` (plain `Error`, not a `DomainError`, hence not in `domain/`); `ApproveProposalUseCase.applyProposalDelta` default is now `return assertNever(proposal.targetType, ...)`; `DrizzleInteractionRepository.applyScoreDelta` validates the untyped `string` with `InteractionTargetTypeSchema.safeParse` (bad DB value still throws `ERR_VALIDATION_FAILED`) then switches on the narrowed union with a `assertNever` default; `AuthGuard` already derives its allowlist from `AgentTypeSchema.options` (no literal set). `pnpm turbo run build` = 3/3 ✓
-- [ ] TASK-29 — Bound the subgraph CTE + index tuning + Apache AGE decision (M-4, concern #7)
+- [x] TASK-29 — Bound the subgraph CTE + index tuning + Apache AGE decision (M-4, concern #7)
+      → **Found & fixed a latent bug:** the shipped two-branch CTE could never parse on PostgreSQL
+      (verified against PG 18.6): both branches self-referenced `reachable`, but `parse_cte.c`
+      allows **exactly one** self-reference and only in the right-hand operand of the top-level
+      `UNION` → `recursive reference ... must not appear within its non-recursive term`. The
+      rewritten CTE keeps one self-reference: the two edge directions are enumerated in a single
+      `JOIN LATERAL` union inside **one** parenthesized recursive term, so it now runs. **Row
+      bounding:** each direction branch carries `LIMIT ${limit}` and the whole recursive step
+      carries `LIMIT ${limit}` (the outer `LIMIT ${limit}` is kept); `UNION`/`depth ≤ 3` unchanged,
+      so the working table is `O(limit · depth)`. **Indexes:** `tenant.public.schema.ts` swaps
+      `idx_edges_source`/`idx_edges_target` for workspace-covering partial indexes
+      `idx_edges_workspace_source (workspace_id, source_node_id) WHERE deleted_at IS NULL` and
+      `idx_edges_workspace_target (workspace_id, target_node_id) WHERE deleted_at IS NULL`;
+      generated `migrations/tenant/0001_demonic_tomas.sql` = 2 `DROP INDEX` + 2 `CREATE INDEX`,
+      non-destructive (nodes indexes untouched). **EXPLAIN ANALYZE** (5000 nodes / 20000 edges,
+      real PG 18.6): `Index Scan using idx_edges_workspace_source on edges e` +
+      `Index Scan using idx_edges_workspace_target on edges e_1` inside the `Recursive Union`,
+      **no `Seq Scan on edges`**; the query also matches a reference BFS exactly (both directions,
+      dedup, workspace + `deleted_at` filters) and a 3000-out-edge hub returns exactly 200 rows at
+      `limit=200`. Docs `modules_01 §4` and `EXECUTION_PLAN.md` (Deferred) record the **AGE
+      decision: keep the bounded SQL CTE for the read path; Apache AGE/Cypher is its own deferred
+      milestone (mirroring + reconciliation + backfill), not implemented piecewise.**
+      `pnpm turbo run build` = 3/3 ✓
 
 ### 1S.4 — Quality
 - [ ] TASK-31 — Vitest domain baseline (M-10, seeds Phase 4.1)

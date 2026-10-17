@@ -89,8 +89,15 @@ export const edges = pgTable(
     index('idx_edges_workspace_status')
       .on(table.workspaceId, table.status)
       .where(sql`${table.deletedAt} IS NULL`),
-    index('idx_edges_source').on(table.sourceNodeId),
-    index('idx_edges_target').on(table.targetNodeId),
+    // NFR-01: workspace-covering partial indexes for the subgraph traversal.
+    // `workspace_id` leads so the recursive CTE's workspace filter is
+    // index-covered; `deleted_at IS NULL` matches the partial predicate.
+    index('idx_edges_workspace_source')
+      .on(table.workspaceId, table.sourceNodeId)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index('idx_edges_workspace_target')
+      .on(table.workspaceId, table.targetNodeId)
+      .where(sql`${table.deletedAt} IS NULL`),
   ]
 );
 

@@ -188,6 +188,16 @@ SELECT ag_catalog.create_elabel('vozlab_graph', 'CAUSES');
 
 ```
 
+> **Decision (recorded TASK-29):** the read path uses the **bounded SQL recursive CTE** over
+> `public.edges` (workspace-scoped, `depth ≤ 3`, per-depth `LIMIT`), **not** Apache AGE/Cypher.
+> The graph itself and its labels are created per tenant DB
+> (`packages/database/scripts/02-extensions-and-graph.sql`), but nothing mirrors `public.nodes`
+> / `public.edges` into `vozlab_graph` today and no adapter issues Cypher. **Apache AGE/Cypher is
+> deferred to its own milestone** (mirroring + reconciliation + Cypher adapter): it requires
+> dual-write on every node/edge mutation and a backfill of existing rows, and is not needed for
+> the bounded subgraph view (NFR-01). Until that milestone, do not add AGE writes or a Cypher
+> adapter piecewise.
+
 ---
 
 ## 5. Vote Scoring: Synchronous Atomic DB Increment (Decision)
