@@ -42,8 +42,4 @@ export class Edge {
   updateAttributes(delta: Record<string, any>): void {
     this.attributes = { ...this.attributes, ...delta };
   }
-
-  softDelete(): void {
-    this.deletedAt = new Date();
-  }
 }

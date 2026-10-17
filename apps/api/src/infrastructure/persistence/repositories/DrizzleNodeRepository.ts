@@ -8,6 +8,7 @@ import {
   SubgraphResult,
 } from '../../../domain/ports/INodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /** NFR-01 hard bounds, enforced here so a pathological graph cannot blow up. */
 const MAX_SUBGRAPH_DEPTH = 3;
@@ -59,10 +60,7 @@ export class DrizzleNodeRepository implements INodeRepository {
 
     const conditions = [eq(nodes.workspaceId, workspaceId), isNull(nodes.deletedAt)];
     if (decoded) {
-      // Tuple comparison mirrors the ORDER BY and stays index-friendly.
-      conditions.push(
-        sql`(${nodes.createdAt}, ${nodes.id}) < (${decoded.createdAt}, ${decoded.id})`
-      );
+      conditions.push(keysetAfter(nodes.createdAt, nodes.id, decoded, 'desc'));
     }
 
     // Fetch one extra row to detect whether a next page exists.
@@ -245,23 +243,6 @@ export class DrizzleNodeRepository implements INodeRepository {
       })
       .where(eq(nodes.id, targetId));
   }
-}
-
-/** Opaque cursor encoding: base64("<createdAt ISO>|<id>"). */
-function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64');
-}
-
-function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
-  const raw = Buffer.from(cursor, 'base64').toString('utf8');
-  const separator = raw.lastIndexOf('|');
-  if (separator <= 0) return null;
-
-  const createdAt = new Date(raw.slice(0, separator));
-  const id = raw.slice(separator + 1);
-  if (Number.isNaN(createdAt.getTime()) || !id) return null;
-
-  return { createdAt, id };
 }
 
 /**

@@ -1,10 +1,11 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { edges } from '@vozlab/database';
 import { Edge, EdgeStatus } from '../../../domain/entities/Edge.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IEdgeRepository } from '../../../domain/ports/IEdgeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
  * DrizzleEdgeRepository: persists Edges to `public.edges` in the tenant DB.
@@ -56,10 +57,7 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
 
     const conditions = [eq(edges.workspaceId, workspaceId), isNull(edges.deletedAt)];
     if (decoded) {
-      // Tuple comparison mirrors the ORDER BY and stays index-friendly.
-      conditions.push(
-        sql`(${edges.createdAt}, ${edges.id}) < (${decoded.createdAt}, ${decoded.id})`
-      );
+      conditions.push(keysetAfter(edges.createdAt, edges.id, decoded, 'desc'));
     }
 
     // Fetch one extra row to detect whether a next page exists.
@@ -168,21 +166,4 @@ function toDomain(row: typeof edges.$inferSelect): Edge {
     row.createdAt,
     row.deletedAt ?? null
   );
-}
-
-/** Opaque cursor encoding: base64("<createdAt ISO>|<id>"). */
-function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64');
-}
-
-function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
-  const raw = Buffer.from(cursor, 'base64').toString('utf8');
-  const separator = raw.lastIndexOf('|');
-  if (separator <= 0) return null;
-
-  const createdAt = new Date(raw.slice(0, separator));
-  const id = raw.slice(separator + 1);
-  if (Number.isNaN(createdAt.getTime()) || !id) return null;
-
-  return { createdAt, id };
 }

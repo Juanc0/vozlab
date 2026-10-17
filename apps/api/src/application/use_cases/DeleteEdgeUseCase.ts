@@ -33,7 +33,6 @@ export class DeleteEdgeUseCase {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 
-    edge.softDelete();
     await this.edgeRepo.softDelete(edge.id, input.tid);
 
     await this.eventPublisher.publish('EDGE_DELETED', {

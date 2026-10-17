@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import {
   discussionThreads,
   discussionPosts,
@@ -13,6 +13,7 @@ import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../../domain/ports/IDiscussionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
  * DrizzleDiscussionRepository: persists threads/posts to the tenant DB's
@@ -60,9 +61,8 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       eq(discussionThreads.targetType, targetType),
     ];
     if (decoded) {
-      // Tuple comparison mirrors the ORDER BY and stays index-friendly.
       conditions.push(
-        sql`(${discussionThreads.createdAt}, ${discussionThreads.id}) < (${decoded.createdAt}, ${decoded.id})`
+        keysetAfter(discussionThreads.createdAt, discussionThreads.id, decoded, 'desc')
       );
     }
 
@@ -126,7 +126,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     const conditions = [eq(discussionPosts.threadId, threadId)];
     if (decoded) {
       conditions.push(
-        sql`(${discussionPosts.createdAt}, ${discussionPosts.id}) > (${decoded.createdAt}, ${decoded.id})`
+        keysetAfter(discussionPosts.createdAt, discussionPosts.id, decoded, 'asc')
       );
     }
 
@@ -191,21 +191,4 @@ function postToDomain(row: typeof discussionPosts.$inferSelect): DiscussionPost 
     row.createdAt,
     row.deletedAt ?? null
   );
-}
-
-/** Opaque cursor encoding: base64("<createdAt ISO>|<id>"). */
-function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64');
-}
-
-function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
-  const raw = Buffer.from(cursor, 'base64').toString('utf8');
-  const separator = raw.lastIndexOf('|');
-  if (separator <= 0) return null;
-
-  const createdAt = new Date(raw.slice(0, separator));
-  const id = raw.slice(separator + 1);
-  if (Number.isNaN(createdAt.getTime()) || !id) return null;
-
-  return { createdAt, id };
 }
