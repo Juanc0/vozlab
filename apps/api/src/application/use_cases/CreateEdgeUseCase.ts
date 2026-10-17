@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CreateEdgeInput as CreateEdgeDto } from '@vozlab/shared-types';
 import { Edge } from '../../domain/entities/Edge.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
-import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
@@ -52,7 +52,7 @@ export class CreateEdgeUseCase {
       input.targetNodeId,
       input.relationKey,
       input.attributes ?? {},
-      AuthorHash.fromRawOrIdentity(input.authorHash, 'default-salt'),
+      resolveAuthorHash(input.authorHash, input.authorHash),
       'PENDING'
     );
 

@@ -19,7 +19,7 @@ export class InteractionController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const interaction = await this.castVote.execute({

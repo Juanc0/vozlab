@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { env } from '../../../shared/config/env.js';
 import { buildError } from '@vozlab/shared-types';
+import { resolveAuthorHash } from '../../../application/services/resolveAuthorHash.js';
 import { RedisTokenBlacklist } from '../../events/RedisTokenBlacklist.js';
 
 /**
@@ -75,10 +76,20 @@ export function authGuard(blacklist: RedisTokenBlacklist) {
       return reply.status(e.status).send({ code: e.code, message: e.message });
     }
 
+    // A subject is mandatory: without it identity cannot be resolved
+    // deterministically, so we refuse the token instead of collapsing every
+    // caller onto a shared placeholder (NFR-07).
+    if (!payload.sub) {
+      const e = buildError('ERR_INVALID_TOKEN');
+      return reply.status(e.status).send({ code: e.code, message: e.message });
+    }
+
     // Attach identity to the request for downstream guards/use cases.
+    // The author hash is derived from the configured institutional salt when
+    // the token does not already carry one (RF-07, NFR-07).
     req.user = {
       userId: payload.sub,
-      authorHash: payload.authorHash ?? 'unknown',
+      authorHash: resolveAuthorHash(payload.authorHash, payload.sub).toString(),
     };
     req.oidcTenantId = payload.tid;
     req.jti = payload.jti;

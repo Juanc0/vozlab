@@ -14,16 +14,22 @@ export interface RequestContext {
 /**
  * Extract the identity/tenant context attached by AuthGuard +
  * TenantWorkspaceGuard. Returns null when the guards did not run.
+ *
+ * `userId` and `authorHash` are mandatory: the guards guarantee their
+ * presence on every protected route, so there is no shared-placeholder
+ * fallback (which would break pseudonymity and vote uniqueness).
  */
 export function getRequestContext(req: FastifyRequest): RequestContext | null {
   const workspaceId = req.workspaceId;
   const tid = req.tid;
-  if (!workspaceId || !tid) return null;
+  const userId = req.user?.userId;
+  const authorHash = req.user?.authorHash;
+  if (!workspaceId || !tid || !userId || !authorHash) return null;
   return {
     workspaceId,
     tid,
-    userId: req.user?.userId ?? 'anonymous',
-    authorHash: req.user?.authorHash ?? 'anonymous',
+    userId,
+    authorHash,
     reqId: req.reqId,
   };
 }

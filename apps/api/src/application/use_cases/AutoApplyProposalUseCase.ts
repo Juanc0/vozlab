@@ -1,4 +1,4 @@
-import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
@@ -50,7 +50,7 @@ export class AutoApplyProposalUseCase {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 
-    const resolver = AuthorHash.fromRawOrIdentity(input.resolverHash, 'default-salt');
+    const resolver = resolveAuthorHash(input.resolverHash, input.resolverUserId);
     // Domain rule: throws ERR_UNMET_AUTO_APPLY_CRITERIA when < 14 days or score < 10.
     proposal.autoApply(resolver);
 

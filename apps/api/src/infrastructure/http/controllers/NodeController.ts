@@ -68,7 +68,7 @@ export class NodeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const node = await this.createNodeUseCase.execute({
@@ -99,7 +99,7 @@ export class NodeController {
    */
   async getNodeHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const nodeId = (req.params as { id: string }).id;
 
@@ -126,7 +126,7 @@ export class NodeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { items, nextCursor } = await this.listNodesUseCase.execute({
@@ -158,7 +158,7 @@ export class NodeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { nodes, edges } = await this.getSubgraphUseCase.execute({

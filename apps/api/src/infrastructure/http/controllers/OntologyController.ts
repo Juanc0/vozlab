@@ -103,7 +103,7 @@ export class OntologyController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const cls = await this.proposeClass.execute({
@@ -135,7 +135,7 @@ export class OntologyController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const prop = await this.proposeDatatypeProperty.execute({
@@ -167,7 +167,7 @@ export class OntologyController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const prop = await this.proposeObjectProperty.execute({
@@ -193,7 +193,7 @@ export class OntologyController {
     const classId = (req.params as { id: string }).id;
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const cls = await this.activateOntologyClass.execute({
@@ -218,7 +218,7 @@ export class OntologyController {
   /** GET /api/v1/ontology */
   async getOntologyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { classes, objectProperties } = await this.getOntology.execute({

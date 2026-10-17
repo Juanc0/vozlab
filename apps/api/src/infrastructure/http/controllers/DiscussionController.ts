@@ -92,7 +92,7 @@ export class DiscussionController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const thread = await this.createThread.execute({
@@ -126,7 +126,7 @@ export class DiscussionController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { items, nextCursor } = await this.listThreads.execute({
@@ -157,7 +157,7 @@ export class DiscussionController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const post = await this.addPost.execute({
@@ -192,7 +192,7 @@ export class DiscussionController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const threadId = (req.params as { threadId: string }).threadId;
 
@@ -220,7 +220,7 @@ export class DiscussionController {
    */
   async closeThreadHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const threadId = (req.params as { threadId: string }).threadId;
 

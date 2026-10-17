@@ -122,6 +122,7 @@ sequenceDiagram
 ### 3.1. Persistent Pseudonyms and Fingerprint Control
 
 * **Alias Generation:** The system assigns an inoffensive random pseudonym (e.g. `Nave-Explorer-84`) and computes a secure cryptographic `author_hash`.
+* **Institutional Salt:** The `author_hash` is derived with the per-institution salt configured as `AUTHOR_HASH_SALT`; every authenticated token MUST carry a `sub` claim, and when it does not carry an `authorHash` claim the hash is derived deterministically from `sub` + salt (rotating the salt re-keys every pseudonym).
 * **Reconnection Token (Device Fingerprint):** A signed token is stored in the attendee's browser `LocalStorage`.
 * **Controlled Expiration:** Once the event's time window has expired (`expires_at`), the code prevents the creation of **new** anonymous accounts, but allows registered anonymous users to reconnect persistently to follow the evolution and impact of their contributions in the graph.
 

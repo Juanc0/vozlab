@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CastVoteInput as CastVoteDto } from '@vozlab/shared-types';
 import { Interaction } from '../../domain/entities/Interaction.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
-import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
@@ -50,7 +50,7 @@ export class CastVoteUseCase {
     const interaction = new Interaction(
       randomUUID(),
       input.workspaceId,
-      AuthorHash.fromRawOrIdentity(input.userHash, 'default-salt'),
+      resolveAuthorHash(input.userHash, input.userHash),
       input.targetId,
       input.targetType,
       input.interactionType,

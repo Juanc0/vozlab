@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Node } from '../../domain/entities/Node.js';
-import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
@@ -37,7 +37,7 @@ export class CreateNodeUseCase {
       throw new DomainError('ERR_VALIDATION_FAILED', 'unknown or inactive typeKey');
     }
 
-    const authorHashVO = AuthorHash.fromRawOrIdentity(input.authorHash, 'default-salt');
+    const authorHashVO = resolveAuthorHash(input.authorHash, input.authorHash);
 
     const node = new Node(
       randomUUID(),

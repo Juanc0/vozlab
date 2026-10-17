@@ -32,6 +32,12 @@ const EnvSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('8h'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
+  // Institutional salt for pseudonymous author hashes (RF-07, NFR-07).
+  // Rotating it re-keys every derived pseudonym.
+  AUTHOR_HASH_SALT: z
+    .string()
+    .min(16, 'AUTHOR_HASH_SALT must be at least 16 chars'),
+
   // --- OIDC (delegated identity) ---
   OIDC_CLIENT_ID: z.string().min(1, 'OIDC_CLIENT_ID is required'),
   OIDC_CLIENT_SECRET: z.string().min(1, 'OIDC_CLIENT_SECRET is required'),

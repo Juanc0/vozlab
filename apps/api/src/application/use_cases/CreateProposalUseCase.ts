@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { EditProposal, TargetType } from '../../domain/entities/EditProposal.js';
-import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 
@@ -34,7 +34,7 @@ export class CreateProposalUseCase {
       input.targetId,
       input.targetType,
       input.proposedChanges,
-      AuthorHash.fromRawOrIdentity(input.proposerHash, 'default-salt'),
+      resolveAuthorHash(input.proposerHash, input.proposerHash),
       'PENDING',
       input.justification ?? null
     );

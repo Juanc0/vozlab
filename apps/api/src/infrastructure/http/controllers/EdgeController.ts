@@ -68,7 +68,7 @@ export class EdgeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const edge = await this.createEdgeUseCase.execute({
@@ -98,7 +98,7 @@ export class EdgeController {
    */
   async get(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const edgeId = (req.params as { id: string }).id;
 
@@ -125,7 +125,7 @@ export class EdgeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { items, nextCursor } = await this.listEdgesUseCase.execute({
@@ -156,7 +156,7 @@ export class EdgeController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const edgeId = (req.params as { id: string }).id;
 
@@ -182,7 +182,7 @@ export class EdgeController {
    */
   async delete(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const edgeId = (req.params as { id: string }).id;
 

@@ -97,7 +97,8 @@
 ### 1S.2 — Identity
 - [x] TASK-19 — Dev identity bootstrap (multi-role seed + `mint-dev-token`) (H-5)
       → Added `scripts/dev-identities.ts` (frozen fixtures: maintainer/moderator/member/agent with fixed UUIDs, `sub` = `auth.users.id`, `authorHash` = sha256(`dev-<name>`), workspace UUID `33333333-3333-4333-8333-333333333333`) + `scripts/mint-dev-token.ts` (`--as <role>`, HS256 12h, claims `sub/tid=sabana/jti/authorHash` + `type` for the agent, refuses `JWT_SECRET` < 32 chars) and refactored `seed-dev.ts` to insert 4 users / 3 memberships via batch `onConflictDoNothing()` (ontology unchanged) + print a `role → sub → authorHash` table. Verified on the local migrated DB: seed run 3× stays 4 users / 3 memberships / 1 workspace / 3 classes; `--as moderator` yields a verifiable JWT with `tid=sabana` and `authorHash === sha256("dev-moderator")`; `--as agent` yields `type=AGENT_EXTRACTOR`. `pnpm turbo run build` = 3/3 ✓
-- [ ] TASK-20 — Author-hash hardening (configurable salt, no placeholders) (H-2, M-9)
+- [x] TASK-20 — Author-hash hardening (configurable salt, no placeholders) (H-2, M-9)
+      → Added required `AUTHOR_HASH_SALT` (≥16 chars) to `env.ts`/`.env.example`; new `application/services/resolveAuthorHash.ts` is the only salt reader (`fromRawOrIdentity(raw || subject, salt)`, preserved verbatim when a valid 64-hex `authorHash` is supplied); `AuthGuard` rejects tokens without `sub` (401 `ERR_INVALID_TOKEN`) and derives `authorHash` via the resolver (no `?? 'unknown'`); `getRequestContext` now requires `userId`+`authorHash` (no `'anonymous'`) and all 24 controller guards return 401 `ERR_INVALID_TOKEN`; the 9 `'default-salt'` sites call the resolver; added one sentence to `docs/system/system_04`. `grep 'default-salt'` clean; `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-21 — System-agent (AI worker) identity contract (FR-17, concern #1)
 
 ### 1S.3 — Policy
