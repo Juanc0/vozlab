@@ -247,6 +247,72 @@ This document defines the exhaustive and atomic roadmap for building the VozLab 
 
 ---
 
+## PHASE 1T: DEV ERGONOMICS, LAYERING & INGESTION CONTRACT
+
+> Added by the Phase-1S review (2026-10-17, `.claude/reviews/REVIEW-2026-10-17_phase-1s.md`).
+> Phase 1S landed all 14 tasks; this batch closes the seams it exposed: the documented `.env`
+> workflow, the global/unrotatable author-hash salt, the missing data-source → workspace mapping,
+> split timestamp ownership and the remaining type-safety debt. Each milestone maps to one atomic,
+> self-contained task prompt under `.claude/tasks/` (TASK-32…45).
+
+### MILESTONE-1T.1: Correctness & Bootstrap
+- **Module / Component:** `apps/api/src/{application,infrastructure,shared}`, `packages/database/scripts`
+- **Tasks:** TASK-32, TASK-33, TASK-34, TASK-35, TASK-36
+- **Task Description:** Load the repo-root `.env` in `dev`/`start`; reject a proposal whose target
+  does not exist in the request workspace; make the request-context error code consistent; scope
+  the NODE/EDGE target-author resolution by workspace; and pin the tenant-DB-config
+  null-vs-throw contract.
+- **Acceptance Criteria:**
+  - [ ] Copying `.env.example` → `.env` is enough to boot the API.
+  - [ ] A proposal with a missing or foreign-workspace target is rejected 404 with no row.
+  - [ ] An infrastructure failure from the router client is never converted into a 403.
+
+### MILESTONE-1T.2: Identity & Secrets
+- **Module / Component:** `apps/api/src/application/services`, `apps/api/src/shared/config`, `docs/`
+- **Tasks:** TASK-37
+- **Task Description:** Guard against the placeholder salt in production, make the salt reader
+  tenant-aware (defaulting to the current global value), and record the per-tenant/versioned
+  rotation model + runbook (storage and re-keying are a tracked milestone).
+- **Acceptance Criteria:**
+  - [ ] A weak/placeholder salt with `NODE_ENV=production` fails startup with a clear message.
+  - [ ] `system_04` documents "rotation is a migration, not a config change".
+  - [ ] The per-tenant salt milestone is in `EXECUTION_PLAN.md` → Deferred, with its trigger.
+
+### MILESTONE-1T.3: Layering & Vocabulary
+- **Module / Component:** `apps/api/src/{domain,infrastructure}`, `packages/database/scripts`, `docs/`
+- **Tasks:** TASK-38, TASK-39, TASK-40
+- **Task Description:** Adopt "domain owns `created_at`/`updated_at`, adapter owns `deleted_at`"
+  and make the code obey it; write and apply one port-naming vocabulary; remove the domain
+  `'unknown'` placeholder defaults and the duplicated dev role unions.
+- **Acceptance Criteria:**
+  - [ ] No domain entity stamps `deleted_at`; `update` persists the entity's `updatedAt`.
+  - [ ] `modules_02` §6.7 defines the vocabulary; the bounded renames are applied.
+  - [ ] `grep -rn "'unknown'" apps/api/src` is empty and the scripts import the shared role types.
+
+### MILESTONE-1T.4: Ingestion Contract (Phase 2 prep)
+- **Module / Component:** `packages/shared-types`, `docs/modules/modules_05_*`, `EXECUTION_PLAN.md`
+- **Tasks:** TASK-41, TASK-42
+- **Task Description:** Decide that the **API** owns the `source_id → workspace` mapping (per-tenant
+  registry), freeze the `RawSourceRecord`/connector contract in shared types, and align the
+  Extractor spec with the agent JWT contract, the correlation header and the real ontology key.
+- **Acceptance Criteria:**
+  - [ ] `ingestion.schema.ts` exports the connector/behavior/envelope types, exported from `index.ts`.
+  - [ ] `modules_05` states the worker never chooses a workspace and shows the bot JWT headers.
+  - [ ] The `meta.data_sources` table + resolution route are scheduled for Phase 2, not built here.
+
+### MILESTONE-1T.5: Type Safety & Quality
+- **Module / Component:** `apps/api/src/domain/ports`, `apps/api/tests`, repo root
+- **Tasks:** TASK-43, TASK-44, TASK-45
+- **Task Description:** Replace `tx?: any` with an opaque `DbTransaction` handle; add an
+  application-layer use-case test baseline with fakes; wire a root `pnpm test` and silence the
+  Turbo `test` outputs warning.
+- **Acceptance Criteria:**
+  - [ ] `grep -rn "tx?: any" apps/api/src` is empty and `domain/` imports no Drizzle/pg.
+  - [ ] ≥ 5 new application test files covering the 1S authorization/isolation rules.
+  - [ ] `pnpm test` from the root passes with no outputs warning.
+
+---
+
 ## PHASE 2: PYTHON AI WORKERS
 
 ### MILESTONE-2.1: Python Environment Initialization and Common Base

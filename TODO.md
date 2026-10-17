@@ -1,8 +1,9 @@
 # Active Task Board (VozLab)
 
 > **Atomic task prompts:** `.claude/tasks/TASK-NN_*.md` — one self-contained prompt per
-> vertical slice. The current batch is **Phase 1S** (consolidation, identity & dev readiness,
-> TASK-18…31); Phase 1R (TASK-01…17) is complete. Both are defined in `EXECUTION_PLAN.md`.
+> vertical slice. The current batch is **Phase 1T** (dev ergonomics, layering & ingestion
+> contract, TASK-32…45); Phase 1R (TASK-01…17) and Phase 1S (TASK-18…31) are complete. All are
+> defined in `EXECUTION_PLAN.md`.
 >
 > **Executor contract (per task):** read ONLY the assigned task file (it is self-contained),
 > implement it, run `pnpm turbo run build`, then mark the task `[x]` below with a one-line
@@ -80,7 +81,7 @@
 - [x] TASK-17 — Dev seed: provision tenant + base ontology in the router/tenant DBs
   - Result: added `packages/database/scripts/seed-dev.ts` (+ `db:seed:dev` script and `tsx` devDependency) — an idempotent dev-only seed (fixed UUIDs + `onConflictDoNothing()`, env `ROUTER_DB_*`/`TENANT_DB_*` with the drizzle defaults, pools closed in `finally`, clear non-zero exit when the DB is unreachable). Seeds the router tenant (`slug`/`oidc_tenant_id` = `sabana`, id `11111111-1111-4111-8111-111111111111`) + its `tenant_connections` row (`vozlab_tenant_dev`), and the tenant DB: workspace `general` (`33333333-3333-4333-8333-333333333333`), user `Dev Maintainer` (`44444444-4444-4444-8444-444444444444`, `authorHash` = sha256("dev-maintainer") = `1def18ae31049a4454a82b04b9903b36ef8534a70c4e6aa23eacf952b9fce58b`), an `ADMIN` membership, the ACTIVE classes `Problem`/`Idea`/`Resource`, datatype props `title`/`description` (domain `Problem`) and object prop `RELATES_TO` (`Problem`→`Idea`). Verified against the local migrated DB: run twice, counts stay 3/2/1/1/1/1; `select slug, oidc_tenant_id from tenants` → `sabana|sabana`; `select system_key, status from meta.ontology_classes` → Idea/Problem/Resource all ACTIVE. `pnpm turbo run build` = 3/3 ✓
 
-## PHASE 1S: CONSOLIDATION, IDENTITY & DEV READINESS (current batch)
+## PHASE 1S: CONSOLIDATION, IDENTITY & DEV READINESS (complete)
 > Post-Phase-1R review (`.claude/reviews/REVIEW-2026-10-17_phase-1r.md`): the verticals are real
 > and the monorepo type-checks, but the API cannot boot (`ERR_PACKAGE_PATH_NOT_EXPORTED`), no one
 > can obtain a token, and several cross-workspace / identity / soft-delete edges are open. This
@@ -142,6 +143,39 @@
 - [x] TASK-31 — Vitest domain baseline (M-10, seeds Phase 4.1) — **done:** added `apps/api/vitest.config.ts` (a `nodeNextJsToTs` Vite plugin resolving NodeNext `./x.js` specifiers to `./x.ts`) and `apps/api/tests/` (6 files / 19 tests: Node, Edge, EditProposal, AuthorHash, keyset, CloseThreadUseCase). Pure unit tests with in-memory fakes — no DB/Redis/network. `pnpm --filter @vozlab/api test` = 6 files / 19 tests ✓; `pnpm turbo run build` = 3/3 ✓ (tests live outside `src/**`, so `tsc` does not type-check them — no tsconfig change needed). CI (Phase 4) can now run `test` as a Turbo task.
 
 **Suggested wave order:** `18 → (19, 22, 23, 24, 30) → (20, 25, 26) → (21, 27, 28, 29) → 31`.
+
+## PHASE 1T: DEV ERGONOMICS, LAYERING & INGESTION CONTRACT (current batch)
+> Post-Phase-1S review (`.claude/reviews/REVIEW-2026-10-17_phase-1s.md`): all 14 tasks landed and
+> the verticals/identity/isolation work is real, but the documented dev workflow still cannot boot
+> (`.env` is never loaded), the author-hash salt is deployment-global and not rotatable, the AI
+> worker → workspace mapping does not exist, and timestamp ownership is split between domain and
+> adapter. This batch closes those seams. Full milestone definitions in `EXECUTION_PLAN.md`.
+
+### 1T.1 — Correctness & Bootstrap
+- [ ] TASK-32 — Load `.env` in `dev`/`start`
+- [ ] TASK-33 — Validate the proposal target on creation (workspace + existence)
+- [ ] TASK-34 — Request-context error consistency (`ERR_INVALID_TOKEN`)
+- [ ] TASK-35 — Workspace-scope proposal target-author resolution
+- [ ] TASK-36 — Tenant DB config null-vs-throw contract + caller audit
+
+### 1T.2 — Identity & Secrets
+- [ ] TASK-37 — Author-hash salt: per-tenant model, production guard, rotation runbook
+
+### 1T.3 — Layering & Vocabulary
+- [ ] TASK-38 — Timestamp ownership (domain `created/updated`, adapter `deleted_at`)
+- [ ] TASK-39 — Port/adapter naming convention + bounded renames
+- [ ] TASK-40 — Remove domain placeholder defaults + de-duplicate dev role types
+
+### 1T.4 — Ingestion Contract (Phase 2 prep)
+- [ ] TASK-41 — Data-source → workspace mapping: decision + shared-types contract
+- [ ] TASK-42 — Fix the Extractor spec drift (`modules_05`)
+
+### 1T.5 — Type Safety & Quality
+- [ ] TASK-43 — Type the transaction handle (`tx?: any` → `DbTransaction`)
+- [ ] TASK-44 — Use-case test baseline (application layer, fakes only)
+- [ ] TASK-45 — Wire the `test` task (root script + Turbo outputs warning)
+
+**Suggested wave order:** `(32, 33, 36, 41) → (34, 35, 37, 38) → (39, 42) → (40, 43) → (44, 45)`.
 
 ## PHASE 2: PYTHON AI WORKERS
 - [ ] MILESTONE-2.1 to MILESTONE-2.6 (Extractor and Relator)

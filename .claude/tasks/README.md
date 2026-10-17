@@ -6,8 +6,9 @@ constraints and acceptance criteria needed to execute it **without reading the r
 `[x]` in `TODO.md`.
 
 > Governing docs: `EXECUTION_PLAN.md` and `TODO.md`.
-> Batches: **Phase 1R** (remediation + vertical propagation, TASK-01…17 — done) and
-> **Phase 1S** (consolidation, identity & dev readiness, TASK-18…31 — current).
+> Batches: **Phase 1R** (remediation + vertical propagation, TASK-01…17 — done),
+> **Phase 1S** (consolidation, identity & dev readiness, TASK-18…31 — done) and
+> **Phase 1T** (dev ergonomics, layering & ingestion contract, TASK-32…45 — current).
 
 ## Phase 1R — execution order (TASK-01…17)
 
@@ -58,6 +59,33 @@ constraints and acceptance criteria needed to execute it **without reading the r
 TASK-18 unblocks booting the API; TASK-19 unblocks every manual/E2E check; TASK-24 (`keyset.ts`)
 unblocks TASK-23.
 
+## Phase 1T — execution order (TASK-32…45)
+
+> Full rationale, findings (H/M/L), the answered concerns and flag responses: see
+> `.claude/reviews/REVIEW-2026-10-17_phase-1s.md`.
+
+| # | Task file | Group | Depends on |
+| --- | --- | --- | --- |
+| 32 | `TASK-32_dev-env-loading.md` | 1T.1 Correctness | — |
+| 33 | `TASK-33_proposal-target-validation.md` | 1T.1 Correctness | — |
+| 34 | `TASK-34_request-context-error-consistency.md` | 1T.1 Correctness | 33 |
+| 35 | `TASK-35_proposal-authorization-workspace-scoping.md` | 1T.1 Correctness | 33 |
+| 36 | `TASK-36_tenant-db-config-contract.md` | 1T.1 Correctness | — |
+| 37 | `TASK-37_author-hash-salt-hardening-and-rotation.md` | 1T.2 Identity | — |
+| 38 | `TASK-38_timestamp-ownership.md` | 1T.3 Layering | — |
+| 39 | `TASK-39_port-naming-convention.md` | 1T.3 Layering | 38 |
+| 40 | `TASK-40_domain-placeholder-and-type-dedup.md` | 1T.3 Layering | 39 |
+| 41 | `TASK-41_datasource-workspace-mapping-decision.md` | 1T.4 Ingestion | — |
+| 42 | `TASK-42_extractor-doc-drift.md` | 1T.4 Ingestion | 41 |
+| 43 | `TASK-43_typed-transaction-handle.md` | 1T.5 Quality | 39 |
+| 44 | `TASK-44_use-case-test-baseline.md` | 1T.5 Quality | 38, 43 |
+| 45 | `TASK-45_test-task-wiring.md` | 1T.5 Quality | 44 |
+
+**Suggested waves (Phase 1T):**
+`(32, 33, 36, 41) → (34, 35, 37, 38) → (39, 42) → (40, 43) → (44, 45)`.
+TASK-32 makes the documented `.env` workflow boot; TASK-38/39 must precede TASK-43/44 so the
+transaction typing and tests start from the final port names.
+
 **Suggested first wave (Phase 1R, done):** TASK-01 → TASK-02, TASK-03, TASK-06, TASK-07 →
 TASK-04, TASK-05 → TASK-08 → TASK-09 → TASK-10/11/12/13/14/15 → TASK-16, TASK-17.
 
@@ -71,12 +99,18 @@ TASK-04, TASK-05 → TASK-08 → TASK-09 → TASK-10/11/12/13/14/15 → TASK-16,
 ## Deferred (not in this batch — tracked in `EXECUTION_PLAN.md`)
 - Auth flow endpoints (`/auth/login|callback|event-join|logout`) + `event_codes` table (FR-01/FR-03).
   Phase 1S ships **dev-only** token minting (TASK-19) instead.
+- **Per-tenant, versioned author-hash salt** (router DB `tenants.author_hash_salt` /
+  `tenant_secrets` + `hash_version` + dual-read/backfill). TASK-37 does the production guard and
+  model; the storage/rotation milestone triggers on the first two-institution deployment.
+- **Data-source registry** (`meta.data_sources` + a resolution route) and the worker behavior
+  profiles. TASK-41 freezes the contract; the table/routes belong to Phase 2 (Extractor).
 - Apache AGE graph adapter + Cypher mirroring. Phase 1S keeps the bounded SQL CTE and records the
   decision (TASK-29).
 - Redis-buffered CQRS vote scoring (`modules_01 §5`). Phase 1S keeps the synchronous DB increment
   and records the decision (TASK-27).
 - GraphQL facade (not in the spec; REST + Zod + `X-Workspace-ID` is mandated).
 - SSE notifications to the PWA.
-- Replacing `tx?: any` with a real transaction type (type-safety debt).
+- `edit_proposals.target_id` FK + `ontology_classes (workspace_id, system_key)` unique (`M-12`).
 - Python workers (Phase 2, incl. MILESTONE-2.7 Consolidator) and the SvelteKit PWA (Phase 3).
-- CI/CD, integration/E2E tests, coverage and k6 (Phase 4). TASK-31 seeds the Vitest domain baseline.
+- CI/CD, integration/E2E tests, coverage and k6 (Phase 4). TASK-31/TASK-44 seed the Vitest
+  baseline; integration tests are skipped in this environment (no Docker).
