@@ -70,10 +70,11 @@ export async function applyProposalDelta(
       await repos.ontologyRepo.applyClassDelta(
         proposal.targetId,
         proposal.proposedChanges,
+        workspaceId,
         tid,
         tx
       );
-      await repos.ontologyRepo.activateClass(proposal.targetId, tid, tx);
+      await repos.ontologyRepo.activateClass(proposal.targetId, workspaceId, tid, tx);
       return;
     default:
       throw new DomainError('ERR_VALIDATION_FAILED');
@@ -104,12 +105,19 @@ export class ApproveProposalUseCase {
       throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
     }
 
+    // Workspace isolation (FR-05): a proposal outside the request workspace is
+    // reported as not-found (never 403) before any role check runs.
+    if (proposal.workspaceId !== input.workspaceId) {
+      throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
+    }
+
     const resolver = resolveAuthorHash(input.resolverHash, input.resolverUserId);
 
     // Maintainer-only (FR-12): resolve the target author and compare.
     const targetAuthorHash = await resolveTargetAuthorHash(
       { nodeRepo: this.nodeRepo, edgeRepo: this.edgeRepo, ontologyRepo: this.ontologyRepo },
       proposal,
+      input.workspaceId,
       input.tid
     );
     assertIsMaintainer(resolver.toString(), targetAuthorHash);

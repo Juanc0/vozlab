@@ -40,7 +40,11 @@ export class ActivateOntologyClassUseCase {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 
-    const cls = await this.ontologyRepo.findClassById(input.classId, input.tid);
+    const cls = await this.ontologyRepo.findClassById(
+      input.classId,
+      input.workspaceId,
+      input.tid
+    );
     if (!cls) {
       throw new DomainError(
         'ERR_VALIDATION_FAILED',
@@ -53,7 +57,7 @@ export class ActivateOntologyClassUseCase {
     cls.activate();
 
     await this.uow.runInTransaction(input.tid, async (tx) => {
-      await this.ontologyRepo.activateClass(input.classId, input.tid, tx);
+      await this.ontologyRepo.activateClass(input.classId, input.workspaceId, input.tid, tx);
     });
 
     // Post-commit, best-effort publication.

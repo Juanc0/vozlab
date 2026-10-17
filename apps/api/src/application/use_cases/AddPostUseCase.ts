@@ -29,6 +29,12 @@ export class AddPostUseCase {
       throw new DomainError('ERR_THREAD_NOT_FOUND');
     }
 
+    // Workspace isolation (FR-05): a thread in another workspace is reported as
+    // not-found (never 403) so its existence is not leaked.
+    if (thread.workspaceId !== input.workspaceId) {
+      throw new DomainError('ERR_THREAD_NOT_FOUND');
+    }
+
     const post = new DiscussionPost(
       randomUUID(),
       input.threadId,

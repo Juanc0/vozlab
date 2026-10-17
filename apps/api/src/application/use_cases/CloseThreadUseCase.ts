@@ -5,6 +5,7 @@ import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 
 export type CloseThreadInput = {
   threadId: string;
+  workspaceId: string;
   tid: string;
   authorHash: string;
   reqId?: string;
@@ -27,6 +28,12 @@ export class CloseThreadUseCase {
   async execute(input: CloseThreadInput): Promise<DiscussionThread> {
     const thread = await this.discussionRepo.findThreadById(input.threadId, input.tid);
     if (!thread) {
+      throw new DomainError('ERR_THREAD_NOT_FOUND');
+    }
+
+    // Workspace isolation (FR-05): a thread in another workspace is reported as
+    // not-found (never 403) so its existence is not leaked.
+    if (thread.workspaceId !== input.workspaceId) {
       throw new DomainError('ERR_THREAD_NOT_FOUND');
     }
 

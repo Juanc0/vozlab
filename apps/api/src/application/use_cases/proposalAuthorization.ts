@@ -23,6 +23,7 @@ export interface ProposalTargetRepositories {
 export async function resolveTargetAuthorHash(
   repos: ProposalTargetRepositories,
   proposal: EditProposal,
+  workspaceId: string,
   tid: string
 ): Promise<string> {
   switch (proposal.targetType) {
@@ -37,7 +38,7 @@ export async function resolveTargetAuthorHash(
       return edge.authorHash.toString();
     }
     case 'ONTOLOGY': {
-      const cls = await repos.ontologyRepo.findClassById(proposal.targetId, tid);
+      const cls = await repos.ontologyRepo.findClassById(proposal.targetId, workspaceId, tid);
       if (!cls) throw new DomainError('ERR_VALIDATION_FAILED');
       return cls.proposedBy;
     }

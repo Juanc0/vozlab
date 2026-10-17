@@ -199,6 +199,7 @@ export class DiscussionController {
     try {
       const { items, nextCursor } = await this.listPosts.execute({
         threadId,
+        workspaceId: ctx.workspaceId,
         tid: ctx.tid,
         limit: parsed.data.limit,
         cursor: parsed.data.cursor,
@@ -227,6 +228,7 @@ export class DiscussionController {
     try {
       const thread = await this.closeThread.execute({
         threadId,
+        workspaceId: ctx.workspaceId,
         tid: ctx.tid,
         authorHash: ctx.authorHash,
         reqId: ctx.reqId,

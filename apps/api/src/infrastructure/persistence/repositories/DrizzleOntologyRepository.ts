@@ -22,12 +22,18 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return tx ?? (await this.poolManager.getDb(tid));
   }
 
-  async findClassById(id: string, tid: string): Promise<OntologyClass | null> {
+  async findClassById(
+    id: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<OntologyClass | null> {
     const db = await this.client(tid);
     const [row] = await db
       .select()
       .from(ontologyClasses)
-      .where(eq(ontologyClasses.id, id))
+      .where(
+        and(eq(ontologyClasses.id, id), eq(ontologyClasses.workspaceId, workspaceId))
+      )
       .limit(1);
     return row ? classToDomain(row) : null;
   }
@@ -175,6 +181,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
   async applyClassDelta(
     targetId: string,
     proposedChanges: Record<string, unknown>,
+    workspaceId: string,
     tid: string,
     tx?: any
   ): Promise<void> {
@@ -182,7 +189,9 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     const [row] = await db
       .select()
       .from(ontologyClasses)
-      .where(eq(ontologyClasses.id, targetId))
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      )
       .limit(1);
 
     if (!row) {
@@ -205,15 +214,27 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       return;
     }
 
-    await db.update(ontologyClasses).set(patch).where(eq(ontologyClasses.id, targetId));
+    await db
+      .update(ontologyClasses)
+      .set(patch)
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      );
   }
 
-  async activateClass(targetId: string, tid: string, tx?: any): Promise<void> {
+  async activateClass(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: any
+  ): Promise<void> {
     const db = await this.client(tid, tx);
     const [row] = await db
       .select()
       .from(ontologyClasses)
-      .where(eq(ontologyClasses.id, targetId))
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      )
       .limit(1);
 
     if (!row) {
@@ -227,7 +248,9 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     await db
       .update(ontologyClasses)
       .set({ status: cls.status })
-      .where(eq(ontologyClasses.id, targetId));
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      );
   }
 }
 

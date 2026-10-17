@@ -282,6 +282,33 @@ The pool manager was consolidated into **`ConnectionPoolManager`** (already cons
 instead of creating a second manager. This keeps a single source of truth for the
 multi-tenant physical isolation.
 
+### 6.6. Workspace scoping of id-addressed operations
+
+Physical tenant isolation (`tid` → one DB per institution) is necessary but not
+sufficient: inside a single tenant, **every read or mutation that addresses an
+existing object by id must also be scoped to the request workspace**
+(`X-Workspace-ID` → `ctx.workspaceId`). A caller in workspace A must never be
+able to read, mutate, or bridge to an object that lives in workspace B.
+
+The rule applies to:
+
+- **Edges** — both endpoints of a new edge must be in the request workspace
+  (`CreateEdgeUseCase`); a foreign endpoint yields `ERR_NODE_NOT_FOUND`.
+- **Proposals** — `proposal.workspaceId` is compared to the request workspace
+  *before* any maintainer/role check, in approve, reject and auto-apply
+  (`ERR_PROPOSAL_NOT_FOUND` on mismatch).
+- **Discussions** — `findThreadById` stays id-only (single round-trip, adapter
+  concern), but every consumer (`CloseThreadUseCase`, `AddPostUseCase`,
+  `ListPostsUseCase`) compares `thread.workspaceId` and yields
+  `ERR_THREAD_NOT_FOUND` on mismatch.
+- **Ontology** — `findClassById`, `applyClassDelta` and `activateClass` all take
+  a `workspaceId` and filter on it, so a class from another workspace can never
+  be read or mutated.
+
+**A workspace mismatch is reported as 404 (`ERR_*_NOT_FOUND`), never 403**
+(`ERR_AUTHORIZATION_FAILED`): a 403 would confirm that the object exists in
+another workspace and leak its existence.
+
 ---
 
 ## 7. Implementation Status — MILESTONE-1.5 (Governance) ✅

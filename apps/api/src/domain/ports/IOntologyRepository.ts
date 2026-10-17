@@ -7,7 +7,7 @@ import { ObjectProperty } from '../entities/ObjectProperty.js';
  * Scoped by `tid` (physical tenant DB).
  */
 export interface IOntologyRepository {
-  findClassById(id: string, tid: string): Promise<OntologyClass | null>;
+  findClassById(id: string, workspaceId: string, tid: string): Promise<OntologyClass | null>;
   findClassByKey(systemKey: string, workspaceId: string, tid: string): Promise<OntologyClass | null>;
   findActiveClasses(workspaceId: string, tid: string): Promise<OntologyClass[]>;
   findDatatypeProperties(
@@ -31,6 +31,7 @@ export interface IOntologyRepository {
   applyClassDelta(
     targetId: string,
     proposedChanges: Record<string, unknown>,
+    workspaceId: string,
     tid: string,
     tx?: any
   ): Promise<void>;
@@ -38,5 +39,5 @@ export interface IOntologyRepository {
    * Promote a proposed class to `ACTIVE` (FR-09), honouring the
    * `OntologyClass` state machine.
    */
-  activateClass(targetId: string, tid: string, tx?: any): Promise<void>;
+  activateClass(targetId: string, workspaceId: string, tid: string, tx?: any): Promise<void>;
 }

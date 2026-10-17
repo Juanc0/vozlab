@@ -35,6 +35,17 @@ export class CreateEdgeUseCase {
       throw new DomainError('ERR_NODE_NOT_FOUND');
     }
 
+    // Workspace isolation (FR-05): both endpoints must belong to the request
+    // workspace. A foreign endpoint is reported as not-found (never 403) so its
+    // existence outside the caller's workspace is not leaked; the failing
+    // endpoint is deliberately not identified.
+    if (
+      source.workspaceId !== input.workspaceId ||
+      target.workspaceId !== input.workspaceId
+    ) {
+      throw new DomainError('ERR_NODE_NOT_FOUND');
+    }
+
     // Domain/range restriction check (RF-08) — only when the ontology knows it.
     const property = await this.ontologyRepo.findObjectProperty(
       input.relationKey,

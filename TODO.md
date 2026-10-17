@@ -89,7 +89,8 @@
 ### 1S.1 — Correctness & Bootstrap
 - [x] TASK-18 — Fix API dev boot (`exports` conditions) + `.env.example` (H-3, L-7)
       → Added `require`/`default` export conditions to `@vozlab/database` & `@vozlab/shared-types`; created `.env.example`; `tsx src/index.ts` now reaches Zod env validation (exit 1), `pnpm turbo run build` 3/3.
-- [ ] TASK-22 — Cross-workspace isolation inside a tenant (H-4)
+- [x] TASK-22 — Cross-workspace isolation inside a tenant (H-4)
+      → Scoped every id-addressed read/mutation to the request workspace, returning `ERR_*_NOT_FOUND` (404, never 403) on mismatch: `CreateEdgeUseCase` requires both endpoints in `input.workspaceId`; approve/reject/auto-apply compare `proposal.workspaceId` **before** any maintainer/role check; `CloseThreadUseCase` gained `workspaceId` and all three discussion use cases compare `thread.workspaceId`; `IOntologyRepository.findClassById`/`applyClassDelta`/`activateClass` now take `workspaceId` and filter on it (adapter `and(...)` + same not-found error), with every call site (`ActivateOntologyClassUseCase`, `proposalAuthorization.resolveTargetAuthorHash`, `applyProposalDelta`) passing it; `DiscussionController` now forwards `ctx.workspaceId` to close/list-posts. Added §6.6 to `docs/modules/modules_02_backend_fastify_guide.md` stating the rule. `grep` clean; `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-23 — Real proposal read endpoints (`GET /proposals[/:id]`) (H-1)
 - [ ] TASK-24 — De-duplicate cursor helpers + make soft-delete single-writer (M-5, M-6)
 - [ ] TASK-30 — Infra error mapping (503 not 403) + graceful shutdown (M-2)

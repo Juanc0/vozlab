@@ -40,6 +40,12 @@ export class AutoApplyProposalUseCase {
       throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
     }
 
+    // Workspace isolation (FR-05): a proposal outside the request workspace is
+    // reported as not-found (never 403) before any role check runs.
+    if (proposal.workspaceId !== input.workspaceId) {
+      throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
+    }
+
     // Only MODERATOR / ADMIN may use the override path (FR-13).
     const role = await this.membershipRepo.getRole(
       input.resolverUserId,

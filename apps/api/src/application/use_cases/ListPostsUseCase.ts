@@ -4,6 +4,7 @@ import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.
 
 export type ListPostsInput = {
   threadId: string;
+  workspaceId: string;
   tid: string;
   limit: number;
   cursor?: string;
@@ -27,6 +28,12 @@ export class ListPostsUseCase {
   async execute(input: ListPostsInput): Promise<ListPostsResult> {
     const thread = await this.discussionRepo.findThreadById(input.threadId, input.tid);
     if (!thread) {
+      throw new DomainError('ERR_THREAD_NOT_FOUND');
+    }
+
+    // Workspace isolation (FR-05): a thread in another workspace is reported as
+    // not-found (never 403) so its existence is not leaked.
+    if (thread.workspaceId !== input.workspaceId) {
       throw new DomainError('ERR_THREAD_NOT_FOUND');
     }
 
