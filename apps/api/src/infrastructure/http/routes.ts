@@ -17,6 +17,11 @@ import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/Prop
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
+import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
+import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
+import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
+import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.js';
+import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -28,6 +33,7 @@ import { EdgeController } from './controllers/EdgeController.js';
 import { ProposalController } from './controllers/ProposalController.js';
 import { OntologyController } from './controllers/OntologyController.js';
 import { HealthController } from './controllers/HealthController.js';
+import { DiscussionController } from './controllers/DiscussionController.js';
 
 /**
  * Dependencies required to register routes (manual Composition Root).
@@ -51,6 +57,11 @@ export interface RouteDependencies {
   proposeObjectPropertyUseCase: ProposeObjectPropertyUseCase;
   activateOntologyClassUseCase: ActivateOntologyClassUseCase;
   getOntologyUseCase: GetOntologyUseCase;
+  createThreadUseCase: CreateThreadUseCase;
+  addPostUseCase: AddPostUseCase;
+  listThreadsUseCase: ListThreadsUseCase;
+  listPostsUseCase: ListPostsUseCase;
+  closeThreadUseCase: CloseThreadUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -88,6 +99,11 @@ export async function registerRoutes(
     proposeObjectPropertyUseCase,
     activateOntologyClassUseCase,
     getOntologyUseCase,
+    createThreadUseCase,
+    addPostUseCase,
+    listThreadsUseCase,
+    listPostsUseCase,
+    closeThreadUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -121,6 +137,13 @@ export async function registerRoutes(
     getOntologyUseCase
   );
   const healthController = new HealthController(routerDb, tokenBlacklist);
+  const discussionController = new DiscussionController(
+    createThreadUseCase,
+    addPostUseCase,
+    listThreadsUseCase,
+    listPostsUseCase,
+    closeThreadUseCase
+  );
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
@@ -217,5 +240,26 @@ export async function registerRoutes(
 
   app.get('/api/v1/ontology', { preHandler: guard }, (req, reply) =>
     ontologyController.getOntologyHandler(req, reply)
+  );
+
+  // --- Discussions (RF-11/FR-16) ---
+  app.post('/api/v1/discussions', { preHandler: guard }, (req, reply) =>
+    discussionController.createThreadHandler(req, reply)
+  );
+
+  app.get('/api/v1/discussions', { preHandler: guard }, (req, reply) =>
+    discussionController.listThreadsHandler(req, reply)
+  );
+
+  app.post('/api/v1/discussions/:threadId/posts', { preHandler: guard }, (req, reply) =>
+    discussionController.addPostHandler(req, reply)
+  );
+
+  app.get('/api/v1/discussions/:threadId/posts', { preHandler: guard }, (req, reply) =>
+    discussionController.listPostsHandler(req, reply)
+  );
+
+  app.put('/api/v1/discussions/:threadId/close', { preHandler: guard }, (req, reply) =>
+    discussionController.closeThreadHandler(req, reply)
   );
 }

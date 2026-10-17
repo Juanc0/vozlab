@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import {
   discussionThreads,
   discussionPosts,
@@ -9,10 +9,10 @@ import {
   ThreadStatus,
 } from '../../../domain/entities/DiscussionThread.js';
 import { DiscussionPost } from '../../../domain/entities/DiscussionPost.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../../domain/ports/IDiscussionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
-import { sql } from 'drizzle-orm';
 
 /**
  * DrizzleDiscussionRepository: persists threads/posts to the tenant DB's
@@ -35,22 +35,53 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     return row ? threadToDomain(row) : null;
   }
 
-  async findThreadsByTarget(
+  /**
+   * Keyset pagination over `(createdAt DESC, id DESC)`, mirroring
+   * `DrizzleNodeRepository`/`DrizzleEdgeRepository`. The cursor is an opaque
+   * base64 token encoding `"<iso>|<id>"`; a malformed token is a client error
+   * (422) rather than a silent first page.
+   */
+  async listThreads(
     targetId: string,
     targetType: string,
+    opts: { workspaceId: string; limit: number; cursor?: string },
     tid: string
-  ): Promise<DiscussionThread[]> {
+  ): Promise<{ items: DiscussionThread[]; nextCursor: string | null }> {
     const db = await this.client(tid);
+
+    const decoded = opts.cursor ? decodeCursor(opts.cursor) : null;
+    if (opts.cursor && !decoded) {
+      throw new DomainError('ERR_VALIDATION_FAILED', 'invalid pagination cursor');
+    }
+
+    const conditions = [
+      eq(discussionThreads.workspaceId, opts.workspaceId),
+      eq(discussionThreads.targetId, targetId),
+      eq(discussionThreads.targetType, targetType),
+    ];
+    if (decoded) {
+      // Tuple comparison mirrors the ORDER BY and stays index-friendly.
+      conditions.push(
+        sql`(${discussionThreads.createdAt}, ${discussionThreads.id}) < (${decoded.createdAt}, ${decoded.id})`
+      );
+    }
+
+    // Fetch one extra row to detect whether a next page exists.
     const rows = await db
       .select()
       .from(discussionThreads)
-      .where(
-        and(
-          eq(discussionThreads.targetId, targetId),
-          eq(discussionThreads.targetType, targetType)
-        )
-      );
-    return rows.map(threadToDomain);
+      .where(and(...conditions))
+      .orderBy(desc(discussionThreads.createdAt), desc(discussionThreads.id))
+      .limit(opts.limit + 1);
+
+    const hasNext = rows.length > opts.limit;
+    const page = hasNext ? rows.slice(0, opts.limit) : rows;
+    const last = page[page.length - 1];
+
+    return {
+      items: page.map(threadToDomain),
+      nextCursor: hasNext && last ? encodeCursor(last.createdAt, last.id) : null,
+    };
   }
 
   async saveThread(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
@@ -68,13 +99,52 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     });
   }
 
-  async findPostsByThread(threadId: string, tid: string): Promise<DiscussionPost[]> {
+  async updateThreadStatus(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db
+      .update(discussionThreads)
+      .set({ status: thread.status, updatedAt: thread.updatedAt })
+      .where(eq(discussionThreads.id, thread.id));
+  }
+
+  /**
+   * Keyset pagination over `(createdAt ASC, id ASC)` so a thread reads
+   * chronologically; the cursor encoding is shared with the thread listing.
+   */
+  async listPosts(
+    threadId: string,
+    opts: { limit: number; cursor?: string },
+    tid: string
+  ): Promise<{ items: DiscussionPost[]; nextCursor: string | null }> {
     const db = await this.client(tid);
+
+    const decoded = opts.cursor ? decodeCursor(opts.cursor) : null;
+    if (opts.cursor && !decoded) {
+      throw new DomainError('ERR_VALIDATION_FAILED', 'invalid pagination cursor');
+    }
+
+    const conditions = [eq(discussionPosts.threadId, threadId)];
+    if (decoded) {
+      conditions.push(
+        sql`(${discussionPosts.createdAt}, ${discussionPosts.id}) > (${decoded.createdAt}, ${decoded.id})`
+      );
+    }
+
     const rows = await db
       .select()
       .from(discussionPosts)
-      .where(eq(discussionPosts.threadId, threadId));
-    return rows.map(postToDomain);
+      .where(and(...conditions))
+      .orderBy(asc(discussionPosts.createdAt), asc(discussionPosts.id))
+      .limit(opts.limit + 1);
+
+    const hasNext = rows.length > opts.limit;
+    const page = hasNext ? rows.slice(0, opts.limit) : rows;
+    const last = page[page.length - 1];
+
+    return {
+      items: page.map(postToDomain),
+      nextCursor: hasNext && last ? encodeCursor(last.createdAt, last.id) : null,
+    };
   }
 
   async savePost(post: DiscussionPost, tid: string, tx?: any): Promise<void> {
@@ -140,4 +210,21 @@ function postToDomain(row: typeof discussionPosts.$inferSelect): DiscussionPost 
     row.createdAt,
     row.deletedAt ?? null
   );
+}
+
+/** Opaque cursor encoding: base64("<createdAt ISO>|<id>"). */
+function encodeCursor(createdAt: Date, id: string): string {
+  return Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64');
+}
+
+function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
+  const raw = Buffer.from(cursor, 'base64').toString('utf8');
+  const separator = raw.lastIndexOf('|');
+  if (separator <= 0) return null;
+
+  const createdAt = new Date(raw.slice(0, separator));
+  const id = raw.slice(separator + 1);
+  if (Number.isNaN(createdAt.getTime()) || !id) return null;
+
+  return { createdAt, id };
 }

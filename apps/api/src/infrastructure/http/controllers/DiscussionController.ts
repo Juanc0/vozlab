@@ -1,10 +1,76 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateThreadSchema, CreatePostSchema } from '@vozlab/shared-types';
+import {
+  CreateThreadSchema,
+  CreatePostSchema,
+  ListThreadsQuerySchema,
+  ListPostsQuerySchema,
+} from '@vozlab/shared-types';
 import { CreateThreadUseCase } from '../../../application/use_cases/CreateThreadUseCase.js';
 import { AddPostUseCase } from '../../../application/use_cases/AddPostUseCase.js';
+import { ListThreadsUseCase } from '../../../application/use_cases/ListThreadsUseCase.js';
+import { ListPostsUseCase } from '../../../application/use_cases/ListPostsUseCase.js';
+import { CloseThreadUseCase } from '../../../application/use_cases/CloseThreadUseCase.js';
+import { DiscussionThread } from '../../../domain/entities/DiscussionThread.js';
+import { DiscussionPost } from '../../../domain/entities/DiscussionPost.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
 import { sendError, mapDomainError } from './errorResponse.js';
+
+/**
+ * Stable JSON projection of a thread. Never leaks the raw entity internals
+ * (e.g. the `AuthorHash` value object) — the hash is emitted as a string.
+ */
+interface ThreadDto {
+  id: string;
+  workspaceId: string;
+  targetId: string;
+  targetType: string;
+  title: string;
+  status: string;
+  createdByHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PostDto {
+  id: string;
+  threadId: string;
+  parentPostId: string | null;
+  authorHash: string;
+  body: string;
+  upvotes: number;
+  downvotes: number;
+  communityScore: number;
+  createdAt: string;
+}
+
+function toThreadDto(thread: DiscussionThread): ThreadDto {
+  return {
+    id: thread.id,
+    workspaceId: thread.workspaceId,
+    targetId: thread.targetId,
+    targetType: thread.targetType,
+    title: thread.title,
+    status: thread.status,
+    createdByHash: thread.createdByHash.toString(),
+    createdAt: thread.createdAt.toISOString(),
+    updatedAt: thread.updatedAt.toISOString(),
+  };
+}
+
+function toPostDto(post: DiscussionPost): PostDto {
+  return {
+    id: post.id,
+    threadId: post.threadId,
+    parentPostId: post.parentPostId,
+    authorHash: post.authorHash.toString(),
+    body: post.body,
+    upvotes: post.upvotes,
+    downvotes: post.downvotes,
+    communityScore: post.communityScore,
+    createdAt: post.createdAt.toISOString(),
+  };
+}
 
 /**
  * DiscussionController: HTTP adapter for governance discussions (RF-11, RF-16).
@@ -12,7 +78,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
 export class DiscussionController {
   constructor(
     private readonly createThread: CreateThreadUseCase,
-    private readonly addPost: AddPostUseCase
+    private readonly addPost: AddPostUseCase,
+    private readonly listThreads: ListThreadsUseCase,
+    private readonly listPosts: ListPostsUseCase,
+    private readonly closeThread: CloseThreadUseCase
   ) {}
 
   /** POST /api/v1/discussions */
@@ -42,11 +111,39 @@ export class DiscussionController {
         status: thread.status,
       });
     } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error.message : error, reqId: ctx.reqId },
-        'createThread failed'
-      );
-      return sendError(reply, mapDomainError(error));
+      return this.handleError(req, reply, error, 'createThread failed');
+    }
+  }
+
+  /**
+   * GET /api/v1/discussions?targetId=&targetType=&limit=&cursor=
+   * Cursor-paginated listing of a target's threads (NFR-04).
+   */
+  async listThreadsHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = ListThreadsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    try {
+      const { items, nextCursor } = await this.listThreads.execute({
+        targetId: parsed.data.targetId,
+        targetType: parsed.data.targetType,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        limit: parsed.data.limit,
+        cursor: parsed.data.cursor,
+      });
+
+      return reply.status(200).send({
+        threads: items.map(toThreadDto),
+        nextCursor,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'listThreads failed');
     }
   }
 
@@ -79,11 +176,78 @@ export class DiscussionController {
         communityScore: post.communityScore,
       });
     } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error.message : error, reqId: ctx.reqId },
-        'addPost failed'
-      );
-      return sendError(reply, mapDomainError(error));
+      return this.handleError(req, reply, error, 'addPost failed');
     }
+  }
+
+  /**
+   * GET /api/v1/discussions/:threadId/posts?limit=&cursor=
+   * Chronological, cursor-paginated listing of a thread's posts (NFR-04).
+   * Unknown thread → 404 `ERR_THREAD_NOT_FOUND`.
+   */
+  async listPostsHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = ListPostsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    const threadId = (req.params as { threadId: string }).threadId;
+
+    try {
+      const { items, nextCursor } = await this.listPosts.execute({
+        threadId,
+        tid: ctx.tid,
+        limit: parsed.data.limit,
+        cursor: parsed.data.cursor,
+      });
+
+      return reply.status(200).send({
+        posts: items.map(toPostDto),
+        nextCursor,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'listPosts failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/discussions/:threadId/close
+   * Closes a thread (domain state machine). Only the creator may close it;
+   * a non-creator gets 403 `ERR_AUTHORIZATION_FAILED`.
+   */
+  async closeThreadHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    const threadId = (req.params as { threadId: string }).threadId;
+
+    try {
+      const thread = await this.closeThread.execute({
+        threadId,
+        tid: ctx.tid,
+        authorHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({ thread: toThreadDto(thread) });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'closeThread failed');
+    }
+  }
+
+  private handleError(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    error: unknown,
+    op: string
+  ): void {
+    log.error(
+      { err: error instanceof Error ? error.message : error, reqId: req.reqId },
+      op
+    );
+    return sendError(reply, mapDomainError(error));
   }
 }

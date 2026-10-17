@@ -25,3 +25,26 @@ export const CreatePostSchema = z.object({
   parentPostId: z.string().uuid().optional(),
 });
 export type CreatePostInput = z.infer<typeof CreatePostSchema>;
+
+/**
+ * Query string for listing a target's discussion threads (NFR-04).
+ * `limit` is clamped to 1..100 (default 20); `cursor` is the opaque keyset
+ * token returned as `nextCursor` by a previous page.
+ */
+export const ListThreadsQuerySchema = z.object({
+  targetId: z.string().uuid('targetId must be a valid UUID'),
+  targetType: DiscussionTargetTypeSchema,
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+});
+export type ListThreadsQueryInput = z.infer<typeof ListThreadsQuerySchema>;
+
+/**
+ * Query string for listing a thread's posts (NFR-04). Same pagination rules
+ * as `ListThreadsQuerySchema`.
+ */
+export const ListPostsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+});
+export type ListPostsQueryInput = z.infer<typeof ListPostsQuerySchema>;
