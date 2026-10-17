@@ -22,10 +22,17 @@ export const InteractionTypeSchema = z.enum([
 ]);
 export type InteractionType = z.infer<typeof InteractionTypeSchema>;
 
+/**
+ * Payload for casting a vote.
+ *
+ * The numeric score delta is NOT part of the input contract: it is derived
+ * server-side from `interactionType` (`DOWNVOTE` -> -1, everything else -> +1)
+ * by `CastVoteUseCase`. Clients must not send a `value`; it is not accepted as
+ * part of this schema and any such extra field is stripped by Zod.
+ */
 export const CastVoteSchema = z.object({
   targetId: z.string().uuid('targetId must be a valid UUID'),
   targetType: InteractionTargetTypeSchema,
   interactionType: InteractionTypeSchema,
-  value: z.number().int().min(-1).max(1).default(1),
 });
 export type CastVoteInput = z.infer<typeof CastVoteSchema>;

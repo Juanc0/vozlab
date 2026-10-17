@@ -26,7 +26,7 @@ export type TargetType = z.infer<typeof TargetTypeSchema>;
 export const CreateProposalSchema = z.object({
   targetId: z.string().uuid('targetId must be a valid UUID'),
   targetType: TargetTypeSchema,
-  proposedChanges: z.record(z.any()),
+  proposedChanges: z.record(z.unknown()),
   justification: z.string().optional(),
 });
 

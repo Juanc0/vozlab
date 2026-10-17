@@ -9,14 +9,14 @@ export const CreateEdgeSchema = z.object({
   sourceNodeId: z.string().uuid('sourceNodeId must be a valid UUID'),
   targetNodeId: z.string().uuid('targetNodeId must be a valid UUID'),
   relationKey: z.string().min(1, 'relationKey is required').max(100),
-  attributes: z.record(z.any()).default({}),
+  attributes: z.record(z.unknown()).default({}),
 });
 
 export type CreateEdgeInput = z.infer<typeof CreateEdgeSchema>;
 
 export const UpdateEdgeSchema = z.object({
   relationKey: z.string().min(1).max(100).optional(),
-  attributes: z.record(z.any()).optional(),
+  attributes: z.record(z.unknown()).optional(),
 });
 
 export type UpdateEdgeInput = z.infer<typeof UpdateEdgeSchema>;

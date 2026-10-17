@@ -5,10 +5,10 @@ import { z } from 'zod';
  * Validates all incoming HTTP payloads for node creation.
  */
 export const CreateNodeSchema = z.object({
-  typeKey: z.string().max(100, 'typeKey must be at most 100 chars'),
+  typeKey: z.string().min(1, 'typeKey is required').max(100, 'typeKey must be at most 100 chars'),
   title: z.string().min(3, 'title must be at least 3 chars').max(255, 'title must be at most 255 chars'),
   description: z.string().optional(),
-  attributes: z.record(z.any()).default({}),
+  attributes: z.record(z.unknown()).default({}),
 });
 
 export type CreateNodeInput = z.infer<typeof CreateNodeSchema>;
@@ -31,7 +31,7 @@ export type ListNodeQueryInput = z.infer<typeof ListNodeQuerySchema>;
 export const UpdateNodeSchema = z.object({
   title: z.string().min(3).max(255).optional(),
   description: z.string().optional(),
-  attributes: z.record(z.any()).optional(),
+  attributes: z.record(z.unknown()).optional(),
 });
 
 export type UpdateNodeInput = z.infer<typeof UpdateNodeSchema>;
