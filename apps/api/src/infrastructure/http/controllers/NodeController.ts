@@ -1,7 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateNodeSchema, buildError } from '@vozlab/shared-types';
+import { CreateNodeSchema } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { log } from '../../../shared/logger/index.js';
+import { getRequestContext } from './requestContext.js';
+import { sendError, mapDomainError } from './errorResponse.js';
 
 /**
  * NodeController: HTTP adapter for node-related endpoints.
@@ -19,30 +21,19 @@ export class NodeController {
   async createNode(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const parsed = CreateNodeSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = buildError('ERR_VALIDATION_FAILED');
-      return reply.status(err.status).send({
-        code: err.code,
-        message: err.message,
-        issues: parsed.error.issues,
-      });
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
     }
 
-    const workspaceId = req.workspaceId;
-    const tid = req.tid;
-    const authorHash = req.user?.authorHash;
-
-    if (!workspaceId || !tid) {
-      const err = buildError('ERR_MISSING_WORKSPACE_HEADER');
-      return reply.status(err.status).send({ code: err.code, message: err.message });
-    }
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
 
     try {
       const node = await this.createNodeUseCase.execute({
         ...parsed.data,
-        workspaceId,
-        tid,
-        authorHash: authorHash ?? 'anonymous',
-        reqId: req.reqId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        authorHash: ctx.authorHash,
+        reqId: ctx.reqId,
       });
 
       return reply.status(201).send({
@@ -54,10 +45,11 @@ export class NodeController {
         status: node.status,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown error';
-      log.error({ err: message, reqId: req.id }, 'createNode failed');
-      const err = buildError('ERR_INTERNAL_SERVER_ERROR');
-      return reply.status(err.status).send({ code: err.code, message: err.message });
+      log.error(
+        { err: error instanceof Error ? error.message : error, reqId: ctx.reqId },
+        'createNode failed'
+      );
+      return sendError(reply, mapDomainError(error));
     }
   }
 }

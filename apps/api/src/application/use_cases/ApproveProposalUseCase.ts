@@ -1,5 +1,6 @@
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
@@ -31,7 +32,7 @@ export class ApproveProposalUseCase {
   async execute(input: ResolveProposalInput): Promise<EditProposal> {
     const proposal = await this.proposalRepo.findById(input.proposalId, input.tid);
     if (!proposal) {
-      throw new Error('ERR_PROPOSAL_NOT_FOUND');
+      throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
     }
 
     const resolver = AuthorHash.fromRawOrIdentity(input.resolverHash, 'default-salt');

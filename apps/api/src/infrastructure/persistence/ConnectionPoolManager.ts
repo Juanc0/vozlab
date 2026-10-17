@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 
 /**
  * Cached pool entry.
@@ -50,7 +51,10 @@ export class ConnectionPoolManager {
     // `tid` is the internal tenant UUID; resolve config from the router DB.
     const config = await this.routerDb.getTenantDatabaseConfig(tid);
     if (!config) {
-      throw new Error(`ERR_TENANT_NOT_PROVISIONED: tenant ${tid} has no database config`);
+      throw new DomainError(
+        'ERR_TENANT_NOT_PROVISIONED',
+        `tenant ${tid} has no database config`
+      );
     }
 
     const pool = new Pool({

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { CreatePostInput as CreatePostDto } from '@vozlab/shared-types';
 import { DiscussionPost } from '../../domain/entities/DiscussionPost.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
@@ -25,7 +26,7 @@ export class AddPostUseCase {
   async execute(input: AddPostInput): Promise<DiscussionPost> {
     const thread = await this.discussionRepo.findThreadById(input.threadId, input.tid);
     if (!thread) {
-      throw new Error('ERR_THREAD_NOT_FOUND');
+      throw new DomainError('ERR_THREAD_NOT_FOUND');
     }
 
     const post = new DiscussionPost(

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ProposeOntologyClassInput as ProposeOntologyClassDto } from '@vozlab/shared-types';
 import { OntologyClass } from '../../domain/entities/OntologyClass.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 
@@ -28,7 +29,7 @@ export class ProposeOntologyClassUseCase {
       input.tid
     );
     if (existing) {
-      throw new Error('ERR_VALIDATION_FAILED');
+      throw new DomainError('ERR_VALIDATION_FAILED');
     }
 
     const cls = new OntologyClass(

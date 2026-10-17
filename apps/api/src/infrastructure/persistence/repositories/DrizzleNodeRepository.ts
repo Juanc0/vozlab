@@ -1,6 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { nodes } from '@vozlab/database';
 import { Node, NodeStatus } from '../../../domain/entities/Node.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { INodeRepository } from '../../../domain/ports/INodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
@@ -80,7 +81,7 @@ export class DrizzleNodeRepository implements INodeRepository {
       .limit(1);
 
     if (!existing) {
-      throw new Error('ERR_NODE_NOT_FOUND');
+      throw new DomainError('ERR_NODE_NOT_FOUND');
     }
 
     const existingAttributes = (existing.attributes as Record<string, any>) ?? {};

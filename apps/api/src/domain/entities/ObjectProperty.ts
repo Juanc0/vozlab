@@ -1,4 +1,5 @@
 import { OntologyStatus } from './OntologyClass.js';
+import { DomainError } from '../errors/DomainError.js';
 
 /**
  * ObjectProperty entity — a typed, directed relation between two classes,
@@ -46,8 +47,9 @@ export class ObjectProperty {
 
   activate(): void {
     if (this.status !== 'PROPOSED') {
-      throw new Error(
-        `ERR_INVALID_STATE_TRANSITION: cannot activate property in status ${this.status}`
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot activate property in status ${this.status}`
       );
     }
     this.status = 'ACTIVE';

@@ -1,5 +1,6 @@
 import { FastifyReply } from 'fastify';
 import { ERROR_CODES, buildError } from '@vozlab/shared-types';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 
 export type ErrorCode = keyof typeof ERROR_CODES;
 
@@ -17,22 +18,22 @@ export function sendError(
 }
 
 /**
- * Domain-error → HTTP code mapping. Domain/use cases throw `Error` whose
- * message starts with a stable `ERR_*` token.
+ * DOMAIN→HTTP guard: a domain code is only forwarded when it is a known
+ * `ErrorCode` in the shared dictionary.
  */
-const DOMAIN_ERROR_CODES: ErrorCode[] = [
-  'ERR_NODE_NOT_FOUND',
-  'ERR_EDGE_NOT_FOUND',
-  'ERR_THREAD_NOT_FOUND',
-  'ERR_PROPOSAL_NOT_FOUND',
-  'ERR_DUPLICATE_INTERACTION',
-  'ERR_INVALID_RELATION_DOMAIN_RANGE',
-  'ERR_INVALID_STATE_TRANSITION',
-  'ERR_VALIDATION_FAILED',
-];
+function isErrorCode(code: string): code is ErrorCode {
+  return Object.prototype.hasOwnProperty.call(ERROR_CODES, code);
+}
 
+/**
+ * Domain-error → HTTP code mapping.
+ *
+ * Uses `instanceof DomainError` and the typed `error.code`; never parses the
+ * message. Any non-domain (or unknown) error degrades to a 500.
+ */
 export function mapDomainError(error: unknown): ErrorCode {
-  const message = error instanceof Error ? error.message : '';
-  const match = DOMAIN_ERROR_CODES.find((code) => message.includes(code));
-  return match ?? 'ERR_INTERNAL_SERVER_ERROR';
+  if (error instanceof DomainError && isErrorCode(error.code)) {
+    return error.code;
+  }
+  return 'ERR_INTERNAL_SERVER_ERROR';
 }

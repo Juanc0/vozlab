@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { CreateEdgeInput as CreateEdgeDto } from '@vozlab/shared-types';
 import { Edge } from '../../domain/entities/Edge.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
@@ -31,7 +32,7 @@ export class CreateEdgeUseCase {
     const source = await this.nodeRepo.findById(input.sourceNodeId, input.tid);
     const target = await this.nodeRepo.findById(input.targetNodeId, input.tid);
     if (!source || !target) {
-      throw new Error('ERR_NODE_NOT_FOUND');
+      throw new DomainError('ERR_NODE_NOT_FOUND');
     }
 
     // Domain/range restriction check (RF-08) — only when the ontology knows it.
@@ -41,7 +42,7 @@ export class CreateEdgeUseCase {
       input.tid
     );
     if (property && !property.accepts(source.typeKey, target.typeKey)) {
-      throw new Error('ERR_INVALID_RELATION_DOMAIN_RANGE');
+      throw new DomainError('ERR_INVALID_RELATION_DOMAIN_RANGE');
     }
 
     const edge = new Edge(

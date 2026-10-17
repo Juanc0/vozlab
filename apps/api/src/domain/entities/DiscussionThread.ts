@@ -1,4 +1,5 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
+import { DomainError } from '../errors/DomainError.js';
 
 /**
  * DiscussionThread entity — governance debate attached to any target
@@ -22,7 +23,7 @@ export class DiscussionThread {
 
   close(): void {
     if (this.status === 'CLOSED') {
-      throw new Error('ERR_INVALID_STATE_TRANSITION: thread is already closed');
+      throw new DomainError('ERR_INVALID_STATE_TRANSITION', 'thread is already closed');
     }
     this.status = 'CLOSED';
     this.updatedAt = new Date();

@@ -30,6 +30,10 @@ export const ERROR_CODES = {
     status: 403,
     message: 'User does not belong to the requested workspace',
   },
+  ERR_AUTHORIZATION_FAILED: {
+    status: 403,
+    message: 'User is not authorized to perform this action',
+  },
   ERR_TENANT_NOT_PROVISIONED: {
     status: 403,
     message: 'Tenant is not provisioned in the system',
@@ -69,6 +73,10 @@ export const ERROR_CODES = {
   ERR_INVALID_STATE_TRANSITION: {
     status: 422,
     message: 'Invalid state transition for the entity',
+  },
+  ERR_UNMET_AUTO_APPLY_CRITERIA: {
+    status: 422,
+    message: 'Proposal does not meet the auto-apply criteria',
   },
   ERR_VALIDATION_FAILED: {
     status: 422,

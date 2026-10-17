@@ -1,4 +1,5 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
+import { DomainError } from '../errors/DomainError.js';
 
 export type TargetType = 'NODE' | 'EDGE' | 'ONTOLOGY';
 export type ProposalStatus = 'PENDING' | 'APPROVED_BY_AUTHOR' | 'REJECTED_BY_AUTHOR' | 'AUTO_APPLIED';
@@ -32,7 +33,10 @@ export class EditProposal {
    */
   public approve(resolverHash: AuthorHash): void {
     if (this.status !== 'PENDING') {
-      throw new Error(`ERR_INVALID_STATE_TRANSITION: cannot approve proposal in status ${this.status}`);
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot approve proposal in status ${this.status}`
+      );
     }
     this.status = 'APPROVED_BY_AUTHOR';
     this.resolvedBy = resolverHash;
@@ -44,7 +48,10 @@ export class EditProposal {
    */
   public reject(resolverHash: AuthorHash): void {
     if (this.status !== 'PENDING') {
-      throw new Error(`ERR_INVALID_STATE_TRANSITION: cannot reject proposal in status ${this.status}`);
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot reject proposal in status ${this.status}`
+      );
     }
     this.status = 'REJECTED_BY_AUTHOR';
     this.resolvedBy = resolverHash;
@@ -56,12 +63,16 @@ export class EditProposal {
    */
   public autoApply(moderatorHash: AuthorHash): void {
     if (this.status !== 'PENDING') {
-      throw new Error(`ERR_INVALID_STATE_TRANSITION: cannot auto-apply proposal in status ${this.status}`);
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot auto-apply proposal in status ${this.status}`
+      );
     }
     const daysSinceCreation = (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceCreation < 14 || this.communityScore < 10) {
-      throw new Error(
-        `ERR_UNMET_AUTO_APPLY_CRITERIA: Requires score >= 10 (current: ${this.communityScore}) and age >= 14 days (current: ${Math.floor(daysSinceCreation)} days)`
+      throw new DomainError(
+        'ERR_UNMET_AUTO_APPLY_CRITERIA',
+        `Requires score >= 10 (current: ${this.communityScore}) and age >= 14 days (current: ${Math.floor(daysSinceCreation)} days)`
       );
     }
     this.status = 'AUTO_APPLIED';

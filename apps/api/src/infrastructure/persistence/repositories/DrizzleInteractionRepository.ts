@@ -99,7 +99,7 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
           .where(eq(discussionPosts.id, targetId));
         break;
       default:
-        throw new Error(`ERR_UNSUPPORTED_TARGET_TYPE: ${targetType}`);
+        throw new Error(`Unsupported interaction target type: ${targetType}`);
     }
   }
 }

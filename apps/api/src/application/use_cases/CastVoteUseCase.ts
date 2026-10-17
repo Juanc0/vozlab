@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { CastVoteInput as CastVoteDto } from '@vozlab/shared-types';
 import { Interaction } from '../../domain/entities/Interaction.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
@@ -40,7 +41,7 @@ export class CastVoteUseCase {
       if (existing.interactionType === input.interactionType) {
         return existing; // idempotent
       }
-      throw new Error('ERR_DUPLICATE_INTERACTION');
+      throw new DomainError('ERR_DUPLICATE_INTERACTION');
     }
 
     // Derive the score delta from the interaction type (single source of truth).

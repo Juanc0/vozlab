@@ -1,4 +1,5 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
+import { DomainError } from '../errors/DomainError.js';
 
 /**
  * Edge entity — directed relation between two nodes (RF-08).
@@ -30,8 +31,9 @@ export class Edge {
       REJECTED: [],
     };
     if (!validTransitions[this.status].includes(newStatus)) {
-      throw new Error(
-        `ERR_INVALID_STATE_TRANSITION: cannot transition edge from ${this.status} to ${newStatus}`
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot transition edge from ${this.status} to ${newStatus}`
       );
     }
     this.status = newStatus;

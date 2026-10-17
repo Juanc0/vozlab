@@ -13,7 +13,7 @@ export class AuthorHash {
 
   private constructor(hash: string) {
     if (!AuthorHash.isValid(hash)) {
-      throw new Error(`ERR_INVALID_AUTHOR_HASH: "${hash}" is not a valid 64-char hex SHA-256 hash`);
+      throw new Error(`Invalid AuthorHash: "${hash}" is not a valid 64-char hex SHA-256 hash`);
     }
     this.value = hash.toLowerCase();
   }
@@ -30,7 +30,7 @@ export class AuthorHash {
    */
   public static fromIdentity(userId: string, salt: string): AuthorHash {
     if (!userId || !salt) {
-      throw new Error('ERR_INVALID_AUTHOR_HASH: userId and salt are required');
+      throw new Error('userId and salt are required to derive an AuthorHash');
     }
     const hash = createHash('sha256')
       .update(`${userId}:${salt}`)
