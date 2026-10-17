@@ -139,7 +139,7 @@
       `pnpm turbo run build` = 3/3 ✓
 
 ### 1S.4 — Quality
-- [ ] TASK-31 — Vitest domain baseline (M-10, seeds Phase 4.1)
+- [x] TASK-31 — Vitest domain baseline (M-10, seeds Phase 4.1) — **done:** added `apps/api/vitest.config.ts` (a `nodeNextJsToTs` Vite plugin resolving NodeNext `./x.js` specifiers to `./x.ts`) and `apps/api/tests/` (6 files / 19 tests: Node, Edge, EditProposal, AuthorHash, keyset, CloseThreadUseCase). Pure unit tests with in-memory fakes — no DB/Redis/network. `pnpm --filter @vozlab/api test` = 6 files / 19 tests ✓; `pnpm turbo run build` = 3/3 ✓ (tests live outside `src/**`, so `tsc` does not type-check them — no tsconfig change needed). CI (Phase 4) can now run `test` as a Turbo task.
 
 **Suggested wave order:** `18 → (19, 22, 23, 24, 30) → (20, 25, 26) → (21, 27, 28, 29) → 31`.
 
