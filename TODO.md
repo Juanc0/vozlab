@@ -1,8 +1,8 @@
 # Active Task Board (VozLab)
 
 > **Atomic task prompts:** `.claude/tasks/TASK-NN_*.md` — one self-contained prompt per
-> vertical slice. The current batch is **Phase 1R** (remediation + vertical propagation),
-> defined in `EXECUTION_PLAN.md`.
+> vertical slice. The current batch is **Phase 1S** (consolidation, identity & dev readiness,
+> TASK-18…31); Phase 1R (TASK-01…17) is complete. Both are defined in `EXECUTION_PLAN.md`.
 >
 > **Executor contract (per task):** read ONLY the assigned task file (it is self-contained),
 > implement it, run `pnpm turbo run build`, then mark the task `[x]` below with a one-line
@@ -79,6 +79,36 @@
   - Result: removed the misleading `value` field from `CastVoteSchema` and documented that the score delta is derived server-side from `interactionType` (Zod strips any stray `value`); `CreateNodeSchema.typeKey` now requires `.min(1)`; replaced all `z.record(z.any())` input usages with `z.record(z.unknown())` (node/edge/proposal schemas); added `batch.schema.ts` (`BatchCreateNodeSchema` = 1..1000 `CreateNodeSchema`, contract-only for the future Extractor worker) exported from `index.ts`; verified `ERR_UNMET_AUTO_APPLY_CRITERIA` (422) and `ERR_AUTHORIZATION_FAILED` (403) already present. `pnpm turbo run build` = 3/3 ✓
 - [x] TASK-17 — Dev seed: provision tenant + base ontology in the router/tenant DBs
   - Result: added `packages/database/scripts/seed-dev.ts` (+ `db:seed:dev` script and `tsx` devDependency) — an idempotent dev-only seed (fixed UUIDs + `onConflictDoNothing()`, env `ROUTER_DB_*`/`TENANT_DB_*` with the drizzle defaults, pools closed in `finally`, clear non-zero exit when the DB is unreachable). Seeds the router tenant (`slug`/`oidc_tenant_id` = `sabana`, id `11111111-1111-4111-8111-111111111111`) + its `tenant_connections` row (`vozlab_tenant_dev`), and the tenant DB: workspace `general` (`33333333-3333-4333-8333-333333333333`), user `Dev Maintainer` (`44444444-4444-4444-8444-444444444444`, `authorHash` = sha256("dev-maintainer") = `1def18ae31049a4454a82b04b9903b36ef8534a70c4e6aa23eacf952b9fce58b`), an `ADMIN` membership, the ACTIVE classes `Problem`/`Idea`/`Resource`, datatype props `title`/`description` (domain `Problem`) and object prop `RELATES_TO` (`Problem`→`Idea`). Verified against the local migrated DB: run twice, counts stay 3/2/1/1/1/1; `select slug, oidc_tenant_id from tenants` → `sabana|sabana`; `select system_key, status from meta.ontology_classes` → Idea/Problem/Resource all ACTIVE. `pnpm turbo run build` = 3/3 ✓
+
+## PHASE 1S: CONSOLIDATION, IDENTITY & DEV READINESS (current batch)
+> Post-Phase-1R review (`.claude/reviews/REVIEW-2026-10-17_phase-1r.md`): the verticals are real
+> and the monorepo type-checks, but the API cannot boot (`ERR_PACKAGE_PATH_NOT_EXPORTED`), no one
+> can obtain a token, and several cross-workspace / identity / soft-delete edges are open. This
+> batch closes those gaps. Full milestone definitions in `EXECUTION_PLAN.md`.
+
+### 1S.1 — Correctness & Bootstrap
+- [ ] TASK-18 — Fix API dev boot (`exports` conditions) + `.env.example` (H-3, L-7)
+- [ ] TASK-22 — Cross-workspace isolation inside a tenant (H-4)
+- [ ] TASK-23 — Real proposal read endpoints (`GET /proposals[/:id]`) (H-1)
+- [ ] TASK-24 — De-duplicate cursor helpers + make soft-delete single-writer (M-5, M-6)
+- [ ] TASK-30 — Infra error mapping (503 not 403) + graceful shutdown (M-2)
+
+### 1S.2 — Identity
+- [ ] TASK-19 — Dev identity bootstrap (multi-role seed + `mint-dev-token`) (H-5)
+- [ ] TASK-20 — Author-hash hardening (configurable salt, no placeholders) (H-2, M-9)
+- [ ] TASK-21 — System-agent (AI worker) identity contract (FR-17, concern #1)
+
+### 1S.3 — Policy
+- [ ] TASK-25 — Soft-delete policy: filter reads + node/post deletion + docs (M-1, M-7)
+- [ ] TASK-26 — Rate limit per actor (M-3, concern #4)
+- [ ] TASK-27 — Vote semantics: `VoteValue` VO + CQRS decision record (concern #10)
+- [ ] TASK-28 — Typed enums at the boundaries (L-1, concern #6)
+- [ ] TASK-29 — Bound the subgraph CTE + index tuning + Apache AGE decision (M-4, concern #7)
+
+### 1S.4 — Quality
+- [ ] TASK-31 — Vitest domain baseline (M-10, seeds Phase 4.1)
+
+**Suggested wave order:** `18 → (19, 22, 23, 24, 30) → (20, 25, 26) → (21, 27, 28, 29) → 31`.
 
 ## PHASE 2: PYTHON AI WORKERS
 - [ ] MILESTONE-2.1 to MILESTONE-2.6 (Extractor and Relator)

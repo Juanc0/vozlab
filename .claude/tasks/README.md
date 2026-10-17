@@ -5,10 +5,11 @@ constraints and acceptance criteria needed to execute it **without reading the r
 (beyond the files it names). The executor must run `pnpm turbo run build` and then mark the task
 `[x]` in `TODO.md`.
 
-> Governing docs: `EXECUTION_PLAN.md` (Phase 1R) and `TODO.md`.
-> Batch = **Phase 1R: Remediation & Vertical Propagation**.
+> Governing docs: `EXECUTION_PLAN.md` and `TODO.md`.
+> Batches: **Phase 1R** (remediation + vertical propagation, TASK-01…17 — done) and
+> **Phase 1S** (consolidation, identity & dev readiness, TASK-18…31 — current).
 
-## Execution order (respect dependencies)
+## Phase 1R — execution order (TASK-01…17)
 
 | # | Task file | Depends on |
 | --- | --- | --- |
@@ -30,7 +31,34 @@ constraints and acceptance criteria needed to execute it **without reading the r
 | 16 | `TASK-16_shared-types-alignment.md` | 06, 10, 15 |
 | 17 | `TASK-17_dev-seed-tenant-and-ontology.md` | 02, 05 |
 
-**Suggested first wave (independent):** TASK-01 → TASK-02, TASK-03, TASK-06, TASK-07 →
+## Phase 1S — execution order (TASK-18…31)
+
+> Full rationale, findings (H/M/L) and the 10 answered concerns: see
+> `.claude/reviews/REVIEW-2026-10-17_phase-1r.md`.
+
+| # | Task file | Group | Depends on |
+| --- | --- | --- | --- |
+| 18 | `TASK-18_api-dev-boot-and-env-example.md` | 1S.1 Bootstrap | — |
+| 19 | `TASK-19_dev-identity-bootstrap.md` | 1S.2 Identity | 17, 18 |
+| 20 | `TASK-20_author-hash-hardening.md` | 1S.2 Identity | 18 |
+| 21 | `TASK-21_system-agent-identity-contract.md` | 1S.2 Identity | 19, 20 |
+| 22 | `TASK-22_cross-workspace-isolation.md` | 1S.1 Correctness | — |
+| 23 | `TASK-23_proposal-read-endpoints.md` | 1S.1 Correctness | 22, 24 |
+| 24 | `TASK-24_keyset-and-softdelete-deduplication.md` | 1S.1 Correctness | — |
+| 25 | `TASK-25_soft-delete-policy.md` | 1S.3 Policy | 22, 24 |
+| 26 | `TASK-26_rate-limit-per-actor.md` | 1S.3 Policy | 20 |
+| 27 | `TASK-27_vote-semantics-alignment.md` | 1S.3 Policy | 20 |
+| 28 | `TASK-28_typed-enums-at-boundaries.md` | 1S.3 Policy | 21 |
+| 29 | `TASK-29_subgraph-bounding-and-age-decision.md` | 1S.3 Policy | 02 |
+| 30 | `TASK-30_infra-error-mapping-and-shutdown.md` | 1S.1 Correctness | — |
+| 31 | `TASK-31_vitest-domain-baseline.md` | 1S.4 Quality | 24, 27 |
+
+**Suggested waves (Phase 1S):**
+`18 → (19, 22, 23, 24, 30) → (20, 25, 26) → (21, 27, 28, 29) → 31`.
+TASK-18 unblocks booting the API; TASK-19 unblocks every manual/E2E check; TASK-24 (`keyset.ts`)
+unblocks TASK-23.
+
+**Suggested first wave (Phase 1R, done):** TASK-01 → TASK-02, TASK-03, TASK-06, TASK-07 →
 TASK-04, TASK-05 → TASK-08 → TASK-09 → TASK-10/11/12/13/14/15 → TASK-16, TASK-17.
 
 ## How to use one file
@@ -42,8 +70,13 @@ TASK-04, TASK-05 → TASK-08 → TASK-09 → TASK-10/11/12/13/14/15 → TASK-16,
 
 ## Deferred (not in this batch — tracked in `EXECUTION_PLAN.md`)
 - Auth flow endpoints (`/auth/login|callback|event-join|logout`) + `event_codes` table (FR-01/FR-03).
-- Apache AGE graph adapter + Cypher mirroring.
+  Phase 1S ships **dev-only** token minting (TASK-19) instead.
+- Apache AGE graph adapter + Cypher mirroring. Phase 1S keeps the bounded SQL CTE and records the
+  decision (TASK-29).
+- Redis-buffered CQRS vote scoring (`modules_01 §5`). Phase 1S keeps the synchronous DB increment
+  and records the decision (TASK-27).
+- GraphQL facade (not in the spec; REST + Zod + `X-Workspace-ID` is mandated).
 - SSE notifications to the PWA.
 - Replacing `tx?: any` with a real transaction type (type-safety debt).
 - Python workers (Phase 2, incl. MILESTONE-2.7 Consolidator) and the SvelteKit PWA (Phase 3).
-- CI/CD, tests and k6 (Phase 4).
+- CI/CD, integration/E2E tests, coverage and k6 (Phase 4). TASK-31 seeds the Vitest domain baseline.

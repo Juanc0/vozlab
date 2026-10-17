@@ -184,6 +184,69 @@ This document defines the exhaustive and atomic roadmap for building the VozLab 
 
 ---
 
+## PHASE 1S: CONSOLIDATION, IDENTITY & DEV READINESS
+
+> Added by the Phase-1R review (2026-10-17,
+> `.claude/reviews/REVIEW-2026-10-17_phase-1r.md`). Phase 1R delivered all 17 vertical tasks and
+> the monorepo type-checks, but a fresh audit found integration/policy gaps: the API cannot boot
+> for local dev, no caller can obtain a token, and several cross-workspace / identity /
+> soft-delete edges remain open. Each milestone maps to one atomic, self-contained task prompt
+> under `.claude/tasks/` (TASK-18…31).
+
+### MILESTONE-1S.1: Correctness & Bootstrap
+- **Module / Component:** repo root, `packages/{database,shared-types}/package.json`,
+  `apps/api/src/{application,infrastructure}`
+- **Tasks:** TASK-18, TASK-22, TASK-23, TASK-24, TASK-30
+- **Task Description:** Make the API resolvable and bootable under `tsx` (export conditions +
+  `.env.example`), enforce **workspace** isolation inside a tenant (edges, proposals, threads,
+  ontology), replace the hard-coded `GET /proposals[/:id]` stubs with real reads, de-duplicate the
+  keyset cursor helpers and make soft-delete a single-writer operation, and map infrastructure
+  failures to 503 (not 403) with a graceful shutdown.
+- **Acceptance Criteria:**
+  - [ ] `cd apps/api && node -e "require.resolve('@vozlab/database')"` succeeds; `.env.example` lists every var from `env.ts`.
+  - [ ] Addressing an object of another workspace inside the same tenant yields 404, never a mutation.
+  - [ ] `GET /api/v1/proposals` and `/proposals/:id` return real, workspace-scoped data.
+  - [ ] One `keyset.ts` helper; one writer of `deleted_at`.
+  - [ ] A router-DB outage answers 503 `ERR_DATABASE_CONNECTION_FAILED`; `SIGTERM` closes cleanly.
+
+### MILESTONE-1S.2: Identity
+- **Module / Component:** `packages/database/scripts`, `packages/shared-types`,
+  `apps/api/src/infrastructure/http/middlewares`
+- **Tasks:** TASK-19, TASK-20, TASK-21
+- **Task Description:** Provision multiple dev users/roles and a dev-only JWT minting script so
+  every endpoint is testable without an IdP; derive the author hash from a configured
+  institutional salt and remove the shared `'unknown'`/`'anonymous'`/`'default-salt'` placeholders;
+  define and document the system-agent (AI worker) identity contract.
+- **Acceptance Criteria:**
+  - [ ] `db:seed:dev` provisions 4 users / 3 memberships idempotently; `db:mint-token` prints a valid token.
+  - [ ] `grep -rn "default-salt" apps/api/src` is empty; a token without `sub` is rejected 401.
+  - [ ] `AgentTypeSchema` is the single agent allowlist; the worker contract is documented.
+
+### MILESTONE-1S.3: Policy
+- **Module / Component:** `apps/api/src/{application,infrastructure,domain}`, `docs/`
+- **Tasks:** TASK-25, TASK-26, TASK-27, TASK-28, TASK-29
+- **Task Description:** Write down and implement the soft-delete policy (filter reads, add node/
+  post deletion, document status-based tables); key the rate limiter by actor (+ coarse workspace
+  ceiling); centralize the `interactionType → value` mapping in a `VoteValue` value object and
+  record the CQRS-vs-synchronous decision; replace boundary magic strings with shared typed enums;
+  bound the subgraph CTE, index the traversal, and record the Apache AGE decision.
+- **Acceptance Criteria:**
+  - [ ] Soft-deleted rows never leak on read; the policy table is in `modules_01`.
+  - [ ] Per-actor rate buckets; one actor cannot lock out the workspace.
+  - [ ] `VoteValue` is the only mapping; the CQRS decision is recorded.
+  - [ ] `EXPLAIN ANALYZE` shows index usage for the subgraph query; the AGE decision is recorded.
+
+### MILESTONE-1S.4: Quality
+- **Module / Component:** `apps/api/vitest.config.ts`, `apps/api/tests/`
+- **Tasks:** TASK-31
+- **Task Description:** Stand up the Vitest setup (with NodeNext `.js`→`.ts` resolution) and cover
+  the pure domain entities, the `AuthorHash`/`keyset` helpers and one use case with fakes.
+- **Acceptance Criteria:**
+  - [ ] `pnpm --filter @vozlab/api test` passes with ≥ 6 test files, no DB/Redis.
+  - [ ] `pnpm turbo run build` still passes and does not type-check `tests/**`.
+
+---
+
 ## PHASE 2: PYTHON AI WORKERS
 
 ### MILESTONE-2.1: Python Environment Initialization and Common Base
@@ -255,9 +318,11 @@ This document defines the exhaustive and atomic roadmap for building the VozLab 
   - [ ] Publishes the synthesized opportunity through the Fastify API (never writes to the DB directly).
 
 ### Deferred (tracked, out of the current batch scope)
-The re-audit also identified work that is **not** part of Phase 1R and has no milestone yet. It is recorded here so it is not lost:
-- **Auth flow endpoints** (FR-01/FR-03/§5): `/api/v1/auth/login`, `/auth/callback`, `/auth/event-join`, `/auth/logout` (invokes `RedisTokenBlacklist.revoke`), plus an `event_codes` table.
-- **Apache AGE integration** (docs/00, modules_01 §4): an `AgeGraphRepository` with Cypher mirroring of nodes/edges into `vozlab_graph`.
+The re-audit also identified work that is **not** part of Phase 1R/1S and has no milestone yet. It is recorded here so it is not lost:
+- **Auth flow endpoints** (FR-01/FR-03/§5): `/api/v1/auth/login`, `/auth/callback`, `/auth/event-join`, `/auth/logout` (invokes `RedisTokenBlacklist.revoke`), plus an `event_codes` table. Phase 1S ships **dev-only** token minting (TASK-19) as an interim.
+- **Apache AGE integration** (docs/00, modules_01 §4): an `AgeGraphRepository` with Cypher mirroring of nodes/edges into `vozlab_graph`. **Decision (TASK-29): keep the bounded SQL recursive CTE for the read path; AGE is its own milestone (mirroring + reconciliation + backfill).**
+- **Redis-buffered CQRS vote scoring** (`modules_01 §5`): **Decision (TASK-27): keep the synchronous atomic DB increment (FR-15); the Redis-buffered variant is deferred, not implemented piecewise.**
+- **GraphQL**: not chosen (the spec mandates Fastify + REST + Zod + `X-Workspace-ID`); a thin read-only facade can be added later without redesign.
 - **SSE notifications** to the PWA (system_03 §4).
 - **Type-safety debt:** replace `tx?: any` across the ports with a real transaction type (M3).
 - **Consolidator/Extractor/Relator Dockerfiles** and per-service CI (devops_01).
