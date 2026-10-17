@@ -12,6 +12,11 @@ import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
+import { ProposeOntologyClassUseCase } from '../../application/use_cases/ProposeOntologyClassUseCase.js';
+import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
+import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
+import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
+import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -21,6 +26,7 @@ import { RateLimitingMiddleware, rateLimitMiddleware } from './middlewares/RateL
 import { NodeController } from './controllers/NodeController.js';
 import { EdgeController } from './controllers/EdgeController.js';
 import { ProposalController } from './controllers/ProposalController.js';
+import { OntologyController } from './controllers/OntologyController.js';
 import { HealthController } from './controllers/HealthController.js';
 
 /**
@@ -40,6 +46,11 @@ export interface RouteDependencies {
   listEdgesUseCase: ListEdgesUseCase;
   updateEdgeUseCase: UpdateEdgeUseCase;
   deleteEdgeUseCase: DeleteEdgeUseCase;
+  proposeOntologyClassUseCase: ProposeOntologyClassUseCase;
+  proposeDatatypePropertyUseCase: ProposeDatatypePropertyUseCase;
+  proposeObjectPropertyUseCase: ProposeObjectPropertyUseCase;
+  activateOntologyClassUseCase: ActivateOntologyClassUseCase;
+  getOntologyUseCase: GetOntologyUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -72,6 +83,11 @@ export async function registerRoutes(
     listEdgesUseCase,
     updateEdgeUseCase,
     deleteEdgeUseCase,
+    proposeOntologyClassUseCase,
+    proposeDatatypePropertyUseCase,
+    proposeObjectPropertyUseCase,
+    activateOntologyClassUseCase,
+    getOntologyUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -96,6 +112,13 @@ export async function registerRoutes(
     approveProposalUseCase,
     rejectProposalUseCase,
     autoApplyProposalUseCase
+  );
+  const ontologyController = new OntologyController(
+    proposeOntologyClassUseCase,
+    proposeDatatypePropertyUseCase,
+    proposeObjectPropertyUseCase,
+    activateOntologyClassUseCase,
+    getOntologyUseCase
   );
   const healthController = new HealthController(routerDb, tokenBlacklist);
 
@@ -174,4 +197,25 @@ export async function registerRoutes(
   app.get('/api/v1/proposals/:id', { preHandler: guard }, async (_req, reply) => {
     return reply.status(200).send({ proposal: null });
   });
+
+  // --- Ontology metamodel (RF-06/FR-08/FR-09) ---
+  app.post('/api/v1/ontology/classes', { preHandler: guard }, (req, reply) =>
+    ontologyController.proposeClassHandler(req, reply)
+  );
+
+  app.post('/api/v1/ontology/datatype-properties', { preHandler: guard }, (req, reply) =>
+    ontologyController.proposeDatatypePropertyHandler(req, reply)
+  );
+
+  app.post('/api/v1/ontology/object-properties', { preHandler: guard }, (req, reply) =>
+    ontologyController.proposeObjectPropertyHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/classes/:id/activate', { preHandler: guard }, (req, reply) =>
+    ontologyController.activateClassHandler(req, reply)
+  );
+
+  app.get('/api/v1/ontology', { preHandler: guard }, (req, reply) =>
+    ontologyController.getOntologyHandler(req, reply)
+  );
 }

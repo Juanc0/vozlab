@@ -25,6 +25,11 @@ import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
+import { ProposeOntologyClassUseCase } from '../../application/use_cases/ProposeOntologyClassUseCase.js';
+import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
+import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
+import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
+import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -106,6 +111,25 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listEdgesUseCase = new ListEdgesUseCase(edgeRepo);
   const updateEdgeUseCase = new UpdateEdgeUseCase(edgeRepo, eventPublisher);
   const deleteEdgeUseCase = new DeleteEdgeUseCase(edgeRepo, eventPublisher);
+  const proposeOntologyClassUseCase = new ProposeOntologyClassUseCase(
+    ontologyRepo,
+    eventPublisher
+  );
+  const proposeDatatypePropertyUseCase = new ProposeDatatypePropertyUseCase(
+    ontologyRepo,
+    eventPublisher
+  );
+  const proposeObjectPropertyUseCase = new ProposeObjectPropertyUseCase(
+    ontologyRepo,
+    eventPublisher
+  );
+  const activateOntologyClassUseCase = new ActivateOntologyClassUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const getOntologyUseCase = new GetOntologyUseCase(ontologyRepo);
 
   // --- Routes ---
   await registerRoutes(app, {
@@ -122,6 +146,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     listEdgesUseCase,
     updateEdgeUseCase,
     deleteEdgeUseCase,
+    proposeOntologyClassUseCase,
+    proposeDatatypePropertyUseCase,
+    proposeObjectPropertyUseCase,
+    activateOntologyClassUseCase,
+    getOntologyUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
