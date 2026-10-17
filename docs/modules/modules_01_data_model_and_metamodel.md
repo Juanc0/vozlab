@@ -23,7 +23,25 @@ VozLab uses **PostgreSQL 16+** as a unified persistence engine within the exclus
 Every object created in the system — whether a node, an edge proposed by the Relator Agent, or a contribution from a common user — is born under a transient governance state, linked to a discussion and community voting thread.
 
 * **Valid States:** `DRAFT` | `PENDING` | `ACTIVE` | `REJECTED`.
-* **Integrated Soft-Delete (`deleted_at`):** All main tables implement logical deletion to prevent entity deletion from breaking relationships or associated edit proposals.
+* **Logical deletion policy:** Deletion is entity-specific, not universal. Every entity that supports
+  deletion keeps its history; nothing is ever hard-deleted. Soft-deleted rows are filtered out of
+  every read path (lookup, list, subgraph) and only ever stamped by the repository (single writer).
+
+  | Table / entity | Deletion mechanism | Read filter | Delete endpoint |
+  | --- | --- | --- | --- |
+  | `public.nodes` | `deleted_at` (timestamp) | yes (`findById`, `listByWorkspace`, `getSubgraph`) | `DELETE /api/v1/nodes/:id` (author-only, 204) |
+  | `public.edges` | `deleted_at` (timestamp) | yes (`findById`, `listByWorkspace`, `getSubgraph`) | `DELETE /api/v1/edges/:id` (author-only, 204) |
+  | `social.discussion_posts` | `deleted_at` (timestamp) | yes (`listPosts`, `findPostById`) | `DELETE /api/v1/discussions/posts/:id` (author-only, 204) |
+  | `social.discussion_threads` | status (`OPEN` / `CLOSED`) | n/a — no `deleted_at` | `PUT /api/v1/discussions/:threadId/close` (creator-only) |
+  | `public.edit_proposals` | status (`PENDING` / `APPROVED` / `REJECTED`) | n/a — no `deleted_at` | none (governance transitions) |
+  | `meta.ontology_*` | status (`PROPOSED` / `ACTIVE` / `REJECTED`) | n/a — no `deleted_at` | none (governance transitions) |
+  | `public.interactions_log` | **immutable** — never deleted | n/a | none |
+
+  Consequences: deleting a node does **not** cascade to its edges at the domain level — both are
+  soft-deleted independently, and a node's deletion never mutates or removes edges. A delete of an
+  entity that is already deleted (or belongs to another workspace) is reported as not-found, so a
+  repeated client call is idempotent. Non-authors get `403 ERR_AUTHORIZATION_FAILED`; a
+  foreign-workspace or missing row gets `404` (never `403`, so existence is not leaked).
 
 ---
 

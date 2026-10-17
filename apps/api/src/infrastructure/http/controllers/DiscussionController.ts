@@ -10,6 +10,7 @@ import { AddPostUseCase } from '../../../application/use_cases/AddPostUseCase.js
 import { ListThreadsUseCase } from '../../../application/use_cases/ListThreadsUseCase.js';
 import { ListPostsUseCase } from '../../../application/use_cases/ListPostsUseCase.js';
 import { CloseThreadUseCase } from '../../../application/use_cases/CloseThreadUseCase.js';
+import { DeletePostUseCase } from '../../../application/use_cases/DeletePostUseCase.js';
 import { DiscussionThread } from '../../../domain/entities/DiscussionThread.js';
 import { DiscussionPost } from '../../../domain/entities/DiscussionPost.js';
 import { log } from '../../../shared/logger/index.js';
@@ -81,7 +82,8 @@ export class DiscussionController {
     private readonly addPost: AddPostUseCase,
     private readonly listThreads: ListThreadsUseCase,
     private readonly listPosts: ListPostsUseCase,
-    private readonly closeThread: CloseThreadUseCase
+    private readonly closeThread: CloseThreadUseCase,
+    private readonly deletePost: DeletePostUseCase
   ) {}
 
   /** POST /api/v1/discussions */
@@ -237,6 +239,32 @@ export class DiscussionController {
       return reply.status(200).send({ thread: toThreadDto(thread) });
     } catch (error) {
       return this.handleError(req, reply, error, 'closeThread failed');
+    }
+  }
+
+  /**
+   * DELETE /api/v1/discussions/posts/:id
+   * Soft-deletes a post (204). Only the author may delete; a non-author gets
+   * 403 `ERR_AUTHORIZATION_FAILED`; a missing/foreign/already-deleted post
+   * yields 404 `ERR_POST_NOT_FOUND`.
+   */
+  async deletePostHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const postId = (req.params as { id: string }).id;
+
+    try {
+      await this.deletePost.execute({
+        postId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        authorHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return this.handleError(req, reply, error, 'deletePost failed');
     }
   }
 

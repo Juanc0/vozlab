@@ -3,6 +3,7 @@ import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
+import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -24,6 +25,7 @@ import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
 import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
 import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.js';
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
+import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase.js';
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
@@ -46,6 +48,7 @@ export interface RouteDependencies {
   createNodeUseCase: CreateNodeUseCase;
   getNodeUseCase: GetNodeUseCase;
   listNodesUseCase: ListNodesUseCase;
+  deleteNodeUseCase: DeleteNodeUseCase;
   getSubgraphUseCase: GetSubgraphUseCase;
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
@@ -68,6 +71,7 @@ export interface RouteDependencies {
   listThreadsUseCase: ListThreadsUseCase;
   listPostsUseCase: ListPostsUseCase;
   closeThreadUseCase: CloseThreadUseCase;
+  deletePostUseCase: DeletePostUseCase;
   castVoteUseCase: CastVoteUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
@@ -91,6 +95,7 @@ export async function registerRoutes(
     createNodeUseCase,
     getNodeUseCase,
     listNodesUseCase,
+    deleteNodeUseCase,
     getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,
@@ -113,6 +118,7 @@ export async function registerRoutes(
     listThreadsUseCase,
     listPostsUseCase,
     closeThreadUseCase,
+    deletePostUseCase,
     castVoteUseCase,
     routerDb,
     membershipRepo,
@@ -124,7 +130,8 @@ export async function registerRoutes(
     createNodeUseCase,
     getNodeUseCase,
     listNodesUseCase,
-    getSubgraphUseCase
+    getSubgraphUseCase,
+    deleteNodeUseCase
   );
   const edgeController = new EdgeController(
     createEdgeUseCase,
@@ -154,7 +161,8 @@ export async function registerRoutes(
     addPostUseCase,
     listThreadsUseCase,
     listPostsUseCase,
-    closeThreadUseCase
+    closeThreadUseCase,
+    deletePostUseCase
   );
   const interactionController = new InteractionController(castVoteUseCase);
 
@@ -186,6 +194,10 @@ export async function registerRoutes(
 
   app.get('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>
     nodeController.getNodeHandler(req, reply)
+  );
+
+  app.delete('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>
+    nodeController.delete(req, reply)
   );
 
   // --- Edges (RF-08) ---
@@ -274,6 +286,10 @@ export async function registerRoutes(
 
   app.put('/api/v1/discussions/:threadId/close', { preHandler: guard }, (req, reply) =>
     discussionController.closeThreadHandler(req, reply)
+  );
+
+  app.delete('/api/v1/discussions/posts/:id', { preHandler: guard }, (req, reply) =>
+    discussionController.deletePostHandler(req, reply)
   );
 
   // --- Interactions / Votes (RF-14, RF-15) ---

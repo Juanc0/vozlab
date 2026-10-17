@@ -212,6 +212,15 @@ export class DrizzleNodeRepository implements INodeRepository {
       .where(eq(nodes.id, node.id));
   }
 
+  /**
+   * Soft-delete a node by stamping `deletedAt`. The adapter is the single
+   * writer of `deletedAt` (the use case never stamps it).
+   */
+  async softDelete(id: string, tid: string, tx?: any): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db.update(nodes).set({ deletedAt: new Date() }).where(eq(nodes.id, id));
+  }
+
   async applyDelta(
     targetId: string,
     proposedChanges: Record<string, any>,

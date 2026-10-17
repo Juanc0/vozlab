@@ -53,6 +53,12 @@ export interface INodeRepository {
   ): Promise<SubgraphResult>;
   save(node: Node, tid: string, tx?: any): Promise<void>;
   update(node: Node, tid: string, tx?: any): Promise<void>;
+  /**
+   * Soft-delete a node by stamping `deletedAt`. The adapter is the single
+   * writer of `deletedAt`; deleted nodes drop out of every read path
+   * (`findById`, `listByWorkspace`, `getSubgraph`).
+   */
+  softDelete(id: string, tid: string, tx?: any): Promise<void>;
   applyDelta(
     targetId: string,
     proposedChanges: Record<string, any>,

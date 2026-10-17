@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import {
   discussionThreads,
   discussionPosts,
@@ -123,7 +123,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       throw new DomainError('ERR_VALIDATION_FAILED', 'invalid pagination cursor');
     }
 
-    const conditions = [eq(discussionPosts.threadId, threadId)];
+    const conditions = [eq(discussionPosts.threadId, threadId), isNull(discussionPosts.deletedAt)];
     if (decoded) {
       conditions.push(
         keysetAfter(discussionPosts.createdAt, discussionPosts.id, decoded, 'asc')
@@ -161,6 +161,32 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       createdAt: post.createdAt,
       deletedAt: post.deletedAt,
     });
+  }
+
+  /**
+   * Load a single post, excluding soft-deleted rows (a deleted post is
+   * reported as not-found, so delete clicks are idempotent).
+   */
+  async findPostById(id: string, tid: string): Promise<DiscussionPost | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(discussionPosts)
+      .where(and(eq(discussionPosts.id, id), isNull(discussionPosts.deletedAt)))
+      .limit(1);
+    return row ? postToDomain(row) : null;
+  }
+
+  /**
+   * Soft-delete a post by stamping `deletedAt`. The adapter is the single
+   * writer of `deletedAt` (the use case never stamps it).
+   */
+  async softDeletePost(id: string, tid: string, tx?: any): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db
+      .update(discussionPosts)
+      .set({ deletedAt: new Date() })
+      .where(eq(discussionPosts.id, id));
   }
 }
 

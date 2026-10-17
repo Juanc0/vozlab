@@ -18,6 +18,7 @@ import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
+import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -39,6 +40,7 @@ import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
 import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
 import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.js';
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
+import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase.js';
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
@@ -87,6 +89,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const getNodeUseCase = new GetNodeUseCase(nodeRepo);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
+  const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
   const createProposalUseCase = new CreateProposalUseCase(proposalRepo, eventPublisher);
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
@@ -149,6 +152,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listThreadsUseCase = new ListThreadsUseCase(discussionRepo);
   const listPostsUseCase = new ListPostsUseCase(discussionRepo);
   const closeThreadUseCase = new CloseThreadUseCase(discussionRepo, eventPublisher);
+  const deletePostUseCase = new DeletePostUseCase(discussionRepo, eventPublisher);
   const castVoteUseCase = new CastVoteUseCase(interactionRepo, uow, eventPublisher);
 
   // --- Routes ---
@@ -156,6 +160,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     createNodeUseCase,
     getNodeUseCase,
     listNodesUseCase,
+    deleteNodeUseCase,
     getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,
@@ -178,6 +183,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     listThreadsUseCase,
     listPostsUseCase,
     closeThreadUseCase,
+    deletePostUseCase,
     castVoteUseCase,
     routerDb,
     membershipRepo,

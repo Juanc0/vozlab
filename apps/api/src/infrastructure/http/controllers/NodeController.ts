@@ -4,6 +4,7 @@ import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseC
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
+import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
 import { Node } from '../../../domain/entities/Node.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
@@ -53,7 +54,8 @@ export class NodeController {
     private readonly createNodeUseCase: CreateNodeUseCase,
     private readonly getNodeUseCase: GetNodeUseCase,
     private readonly listNodesUseCase: ListNodesUseCase,
-    private readonly getSubgraphUseCase: GetSubgraphUseCase
+    private readonly getSubgraphUseCase: GetSubgraphUseCase,
+    private readonly deleteNodeUseCase: DeleteNodeUseCase
   ) {}
 
   /**
@@ -181,6 +183,32 @@ export class NodeController {
       });
     } catch (error) {
       return this.handleError(req, reply, error, 'getSubgraph failed');
+    }
+  }
+
+  /**
+   * DELETE /api/v1/nodes/:id
+   * Soft-deletes the node (204). Only the author may delete; a non-author
+   * gets 403 `ERR_AUTHORIZATION_FAILED`. A missing/foreign/already-deleted
+   * node yields 404 `ERR_NODE_NOT_FOUND`.
+   */
+  async delete(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      await this.deleteNodeUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        authorHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return this.handleError(req, reply, error, 'deleteNode failed');
     }
   }
 

@@ -62,6 +62,10 @@ export const ERROR_CODES = {
     status: 404,
     message: 'Discussion thread not found',
   },
+  ERR_POST_NOT_FOUND: {
+    status: 404,
+    message: 'Discussion post not found',
+  },
   ERR_DUPLICATE_INTERACTION: {
     status: 409,
     message: 'A vote already exists for this user and target',

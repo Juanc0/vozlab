@@ -25,12 +25,19 @@ export interface IDiscussionRepository {
   /**
    * List a thread's posts using keyset (cursor) pagination ordered by
    * `createdAt ASC, id ASC` — chronological, for a stable conversation read
-   * (NFR-04).
+   * (NFR-04). Soft-deleted posts are excluded.
    */
   listPosts(
     threadId: string,
     opts: { limit: number; cursor?: string },
     tid: string
   ): Promise<{ items: DiscussionPost[]; nextCursor: string | null }>;
+  /** Load a single non-deleted post; soft-deleted rows read as `null`. */
+  findPostById(id: string, tid: string): Promise<DiscussionPost | null>;
   savePost(post: DiscussionPost, tid: string, tx?: any): Promise<void>;
+  /**
+   * Soft-delete a post by stamping `deletedAt`. The adapter is the single
+   * writer of `deletedAt`.
+   */
+  softDeletePost(id: string, tid: string, tx?: any): Promise<void>;
 }
