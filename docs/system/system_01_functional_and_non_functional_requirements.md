@@ -75,9 +75,9 @@ Non-functional requirements establish the technical constraints, quality attribu
 * **NFR-05 (Zero Password Storage):** The system will not store or process passwords in its databases.
 * **NFR-06 (PII Anonymization at Ingestion):** The Extractor Agent must filter and anonymize any Personally Identifiable Information (PII) before entering records into the system.
 * **NFR-07 (Pseudonymous Traceability):** The user's public identity in the Graph will always be abstracted behind an `author_hash` (SHA-256 of the identity with institutional salt), preventing the direct exposure of personal data in the visible graph.
-* **NFR-08 (Anti-Abuse Protection / Rate Limiting):** The Fastify API must implement Rate Limiting per IP/Tenant backed by Redis:
-  * Read routes (`GET`): Maximum 300 requests/minute.
-  * Write routes (`POST`/`PUT`/`DELETE`): Maximum 30 requests/minute.
+* **NFR-08 (Anti-Abuse Protection / Rate Limiting):** The Fastify API must implement Rate Limiting backed by Redis on a **per-actor bucket** (the pseudonymous `author_hash` when authenticated, the remote IP otherwise) **plus a coarse per-workspace ceiling** so a single workspace cannot overwhelm the tenant. The workspace ceiling is the per-actor maximum multiplied by `RATE_LIMIT_WORKSPACE_MULTIPLIER` (default 10). A request is rejected when either bucket is over its cap.
+  * Read routes (`GET`): Maximum 300 requests/minute per actor.
+  * Write routes (`POST`/`PUT`/`DELETE`): Maximum 30 requests/minute per actor.
 
 ---
 

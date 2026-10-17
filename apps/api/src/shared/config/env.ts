@@ -56,6 +56,8 @@ const EnvSchema = z.object({
   RATE_LIMIT_READ_MAX: z.coerce.number().default(300),
   RATE_LIMIT_WRITE_MAX: z.coerce.number().default(30),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
+  // Coarse per-workspace ceiling = per-actor max × this factor.
+  RATE_LIMIT_WORKSPACE_MULTIPLIER: z.coerce.number().int().min(1).default(10),
 
   // --- Observability ---
   LOG_LEVEL: z

@@ -1,9 +1,12 @@
 /**
- * RateLimitingMiddleware: Implements rate limiting per tenant/workspace using Redis.
+ * RateLimitingMiddleware: Implements rate limiting per actor, with a coarse
+ * per-workspace ceiling, backed by Redis.
  * 
  * Complies with RNF-08:
- *   - GET routes: 300 requests/minute max per tenant
- *   - POST/PUT/DELETE routes: 30 requests/minute max per tenant
+ *   - GET routes: 300 requests/minute max per actor
+ *   - POST/PUT/DELETE routes: 30 requests/minute max per actor
+ *   - A workspace-wide ceiling bounds total traffic
+ *     (per-actor max × RATE_LIMIT_WORKSPACE_MULTIPLIER).
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
@@ -53,20 +56,50 @@ export class RateLimitingMiddleware {
   }
 
   /**
-   * Check if the client has exceeded their rate limit.
+   * Increment the fixed-window counter for `key` and report whether it is now
+   * over `limitMax`.
+   *
+   * Fixed window anchored at the first request of the window: INCR the counter
+   * and only set the TTL when the key is created (count === 1). Refreshing the
+   * TTL on every request would never let the bucket reset under sustained
+   * traffic (de-facto lockout). Trade-off: a client can burst up to 2x the
+   * limit across a window boundary; acceptable here and far simpler than a
+   * sliding-window or token-bucket (see TASK-07).
+   */
+  private async hit(key: string, limitMax: number): Promise<boolean> {
+    // EXPIRE requires an integer number of seconds.
+    const windowSeconds = Math.ceil(env.RATE_LIMIT_WINDOW_MS / 1000);
+
+    const count = await this.client.incr(key);
+
+    if (count === 1) {
+      await this.client.expire(key, windowSeconds);
+    }
+
+    return count > limitMax;
+  }
+
+  /**
+   * Check if the caller has exceeded their rate limit.
    * Returns true if limited, false otherwise.
+   *
+   * Two buckets are enforced so one member cannot lock out their colleagues:
+   *   - `actor` bucket: per-caller cap (`authorHash`, or IP when anonymous).
+   *   - `workspace` bucket: coarse ceiling for the whole workspace, so a single
+   *     workspace still cannot overwhelm the tenant.
+   * A request is limited if either bucket is over its cap. The actor bucket is
+   * evaluated first so an abusive caller trips their own limit before the
+   * shared workspace ceiling is reached.
    */
   async isRateLimited(
     tenantId: string,
     workspaceId: string,
-    method: string
+    method: string,
+    actor: string
   ): Promise<boolean> {
-    // Create a unique key for the rate limit bucket
-    const limitMax = getRateLimitMax(method);
-    // EXPIRE requires an integer number of seconds.
-    const windowSeconds = Math.ceil(env.RATE_LIMIT_WINDOW_MS / 1000);
-
-    const key = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}`;
+    const perActorMax = getRateLimitMax(method);
+    const actorKey = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}:${actor}`;
+    const workspaceKey = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}`;
 
     try {
       if (!this.connected) {
@@ -74,27 +107,27 @@ export class RateLimitingMiddleware {
         return false;
       }
 
-      // Fixed window anchored at the first request of the window: INCR the
-      // counter and only set the TTL when the key is created (count === 1).
-      // Refreshing the TTL on every request would never let the bucket reset
-      // under sustained traffic (de-facto lockout). Trade-off: a client can
-      // burst up to 2x the limit across a window boundary; acceptable here
-      // and far simpler than a sliding-window or token-bucket (see TASK-07).
-      const count = await this.client.incr(key);
-
-      if (count === 1) {
-        await this.client.expire(key, windowSeconds);
+      if (await this.hit(actorKey, perActorMax)) {
+        log.warn(
+          { tenantId, workspaceId, method, actor, bucket: 'actor', limit: perActorMax },
+          'rate limit exceeded'
+        );
+        return true;
       }
 
-      if (count > limitMax) {
-        log.warn({ tenantId, workspaceId, method, count, limit: limitMax }, 'rate limit exceeded');
+      const workspaceMax = perActorMax * env.RATE_LIMIT_WORKSPACE_MULTIPLIER;
+      if (await this.hit(workspaceKey, workspaceMax)) {
+        log.warn(
+          { tenantId, workspaceId, method, actor, bucket: 'workspace', limit: workspaceMax },
+          'rate limit exceeded'
+        );
         return true;
       }
 
       return false;
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      log.error({ err: error, tenantId, workspaceId, method }, 'failed to check rate limit');
+      log.error({ err: error, tenantId, workspaceId, method, actor }, 'failed to check rate limit');
       
       // On error, be permissive (fail-open) to avoid blocking legitimate requests
       return false;
@@ -102,16 +135,19 @@ export class RateLimitingMiddleware {
   }
 
   /**
-   * Reset the rate limit for a specific bucket (useful for testing/recovery).
+   * Reset the rate limit for a specific actor and the workspace bucket
+   * (useful for testing/recovery).
    */
   async resetRateLimit(
     tenantId: string,
     workspaceId: string,
-    method: string
+    method: string,
+    actor: string
   ): Promise<void> {
-    const key = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}`;
-    await this.client.del(key);
-    log.info({ tenantId, workspaceId, method }, 'rate limit reset');
+    const actorKey = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}:${actor}`;
+    const workspaceKey = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}`;
+    await this.client.del([actorKey, workspaceKey]);
+    log.info({ tenantId, workspaceId, method, actor }, 'rate limit reset');
   }
 }
 
@@ -133,10 +169,15 @@ export function rateLimitMiddleware(limiter: RateLimitingMiddleware) {
     // If the tenant was not resolved (e.g. an unauthenticated route), skip.
     if (!tenantId || !workspaceId) return;
 
+    // Authenticated (and agent) callers key on their pseudonymous author hash;
+    // anonymous callers fall back to the remote address.
+    const actor = req.user?.authorHash ?? req.ip;
+
     const limited = await limiter.isRateLimited(
       tenantId,
       workspaceId,
-      req.method
+      req.method,
+      actor
     );
 
     if (limited) {
