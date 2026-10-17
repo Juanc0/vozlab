@@ -87,7 +87,8 @@
 > batch closes those gaps. Full milestone definitions in `EXECUTION_PLAN.md`.
 
 ### 1S.1 — Correctness & Bootstrap
-- [ ] TASK-18 — Fix API dev boot (`exports` conditions) + `.env.example` (H-3, L-7)
+- [x] TASK-18 — Fix API dev boot (`exports` conditions) + `.env.example` (H-3, L-7)
+      → Added `require`/`default` export conditions to `@vozlab/database` & `@vozlab/shared-types`; created `.env.example`; `tsx src/index.ts` now reaches Zod env validation (exit 1), `pnpm turbo run build` 3/3.
 - [ ] TASK-22 — Cross-workspace isolation inside a tenant (H-4)
 - [ ] TASK-23 — Real proposal read endpoints (`GET /proposals[/:id]`) (H-1)
 - [ ] TASK-24 — De-duplicate cursor helpers + make soft-delete single-writer (M-5, M-6)
