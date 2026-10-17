@@ -2,10 +2,13 @@ import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
+import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import { applyProposalDelta } from './ApproveProposalUseCase.js';
 import type { ResolveProposalInput } from './ApproveProposalUseCase.js';
 
 /**
@@ -23,6 +26,8 @@ import type { ResolveProposalInput } from './ApproveProposalUseCase.js';
 export class AutoApplyProposalUseCase {
   constructor(
     private readonly nodeRepo: INodeRepository,
+    private readonly edgeRepo: IEdgeRepository,
+    private readonly ontologyRepo: IOntologyRepository,
     private readonly proposalRepo: IProposalRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly uow: IUnitOfWork,
@@ -50,15 +55,17 @@ export class AutoApplyProposalUseCase {
     proposal.autoApply(resolver);
 
     await this.uow.runInTransaction(input.tid, async (tx) => {
-      if (proposal.targetType === 'NODE') {
-        await this.nodeRepo.applyDelta(
-          proposal.targetId,
-          proposal.proposedChanges,
-          input.workspaceId,
-          input.tid,
-          tx
-        );
-      }
+      await applyProposalDelta(
+        {
+          nodeRepo: this.nodeRepo,
+          edgeRepo: this.edgeRepo,
+          ontologyRepo: this.ontologyRepo,
+        },
+        proposal,
+        input.workspaceId,
+        input.tid,
+        tx
+      );
       await this.proposalRepo.updateStatus(
         proposal.id,
         proposal.status,

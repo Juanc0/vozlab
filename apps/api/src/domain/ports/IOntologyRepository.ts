@@ -24,4 +24,19 @@ export interface IOntologyRepository {
   saveClass(cls: OntologyClass, tid: string, tx?: any): Promise<void>;
   saveDatatypeProperty(prop: DatatypeProperty, tid: string, tx?: any): Promise<void>;
   saveObjectProperty(prop: ObjectProperty, tid: string, tx?: any): Promise<void>;
+  /**
+   * Apply an approved proposal's delta to an ontology class (RF-10/FR-12):
+   * only `displayNames` / `descriptions` / `parentClassKey` are accepted.
+   */
+  applyClassDelta(
+    targetId: string,
+    proposedChanges: Record<string, unknown>,
+    tid: string,
+    tx?: any
+  ): Promise<void>;
+  /**
+   * Promote a proposed class to `ACTIVE` (FR-09), honouring the
+   * `OntologyClass` state machine.
+   */
+  activateClass(targetId: string, tid: string, tx?: any): Promise<void>;
 }

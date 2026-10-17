@@ -1,6 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { edges } from '@vozlab/database';
 import { Edge, EdgeStatus } from '../../../domain/entities/Edge.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IEdgeRepository } from '../../../domain/ports/IEdgeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
@@ -55,6 +56,44 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
   async softDelete(id: string, tid: string, tx?: any): Promise<void> {
     const db = await this.client(tid, tx);
     await db.update(edges).set({ deletedAt: new Date() }).where(eq(edges.id, id));
+  }
+
+  async applyDelta(
+    targetId: string,
+    proposedChanges: Record<string, unknown>,
+    workspaceId: string,
+    tid: string,
+    tx?: any
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [existing] = await db
+      .select()
+      .from(edges)
+      .where(
+        and(
+          eq(edges.id, targetId),
+          eq(edges.workspaceId, workspaceId),
+          isNull(edges.deletedAt)
+        )
+      )
+      .limit(1);
+
+    if (!existing) {
+      throw new DomainError('ERR_EDGE_NOT_FOUND');
+    }
+
+    const existingAttributes = (existing.attributes as Record<string, any>) ?? {};
+    const attributesDelta = (proposedChanges.attributes as Record<string, any>) ?? {};
+
+    // Whitelist accepted keys; never spread unknown jsonb keys into the update.
+    const patch: Record<string, any> = {
+      attributes: { ...existingAttributes, ...attributesDelta },
+    };
+    if (typeof proposedChanges.relationKey === 'string') {
+      patch.relationKey = proposedChanges.relationKey;
+    }
+
+    await db.update(edges).set(patch).where(eq(edges.id, targetId));
   }
 }
 

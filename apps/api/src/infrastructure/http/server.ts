@@ -78,6 +78,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   const autoApplyProposalUseCase = new AutoApplyProposalUseCase(
     nodeRepo,
+    edgeRepo,
+    ontologyRepo,
     proposalRepo,
     membershipRepo,
     uow,

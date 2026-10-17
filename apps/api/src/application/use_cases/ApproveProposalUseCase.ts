@@ -23,6 +23,64 @@ export interface ResolveProposalInput {
 }
 
 /**
+ * Repositories required to apply an approved proposal's delta to its
+ * polymorphic target (FR-10).
+ */
+export interface ProposalDeltaRepositories {
+  nodeRepo: INodeRepository;
+  edgeRepo: IEdgeRepository;
+  ontologyRepo: IOntologyRepository;
+}
+
+/**
+ * Apply `proposal.proposedChanges` to the target entity selected by
+ * `proposal.targetType` (NODE / EDGE / ONTOLOGY) — RF-10/FR-12.
+ *
+ * MUST run inside the caller's UnitOfWork `tx` so the target mutation and the
+ * proposal status change commit atomically. An approved ONTOLOGY proposal
+ * always ends with the class `ACTIVE` (FR-09).
+ */
+export async function applyProposalDelta(
+  repos: ProposalDeltaRepositories,
+  proposal: EditProposal,
+  workspaceId: string,
+  tid: string,
+  tx: any
+): Promise<void> {
+  switch (proposal.targetType) {
+    case 'NODE':
+      await repos.nodeRepo.applyDelta(
+        proposal.targetId,
+        proposal.proposedChanges,
+        workspaceId,
+        tid,
+        tx
+      );
+      return;
+    case 'EDGE':
+      await repos.edgeRepo.applyDelta(
+        proposal.targetId,
+        proposal.proposedChanges,
+        workspaceId,
+        tid,
+        tx
+      );
+      return;
+    case 'ONTOLOGY':
+      await repos.ontologyRepo.applyClassDelta(
+        proposal.targetId,
+        proposal.proposedChanges,
+        tid,
+        tx
+      );
+      await repos.ontologyRepo.activateClass(proposal.targetId, tid, tx);
+      return;
+    default:
+      throw new DomainError('ERR_VALIDATION_FAILED');
+  }
+}
+
+/**
  * Use Case: maintainer approves an edit proposal (Merge) — RF-12.
  *
  * Only the target's maintainer may approve (FR-12); everyone else is
@@ -59,17 +117,19 @@ export class ApproveProposalUseCase {
     // Domain state machine: throws ERR_INVALID_STATE_TRANSITION if not PENDING.
     proposal.approve(resolver);
 
-    // Atomic multi-table write: node delta + proposal status.
+    // Atomic multi-table write: target delta + proposal status.
     await this.uow.runInTransaction(input.tid, async (tx) => {
-      if (proposal.targetType === 'NODE') {
-        await this.nodeRepo.applyDelta(
-          proposal.targetId,
-          proposal.proposedChanges,
-          input.workspaceId,
-          input.tid,
-          tx
-        );
-      }
+      await applyProposalDelta(
+        {
+          nodeRepo: this.nodeRepo,
+          edgeRepo: this.edgeRepo,
+          ontologyRepo: this.ontologyRepo,
+        },
+        proposal,
+        input.workspaceId,
+        input.tid,
+        tx
+      );
       await this.proposalRepo.updateStatus(
         proposal.id,
         proposal.status,

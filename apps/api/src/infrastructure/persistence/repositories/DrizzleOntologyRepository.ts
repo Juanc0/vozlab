@@ -7,6 +7,7 @@ import {
 import { OntologyClass, OntologyStatus } from '../../../domain/entities/OntologyClass.js';
 import { DatatypeProperty, DatatypeKind } from '../../../domain/entities/DatatypeProperty.js';
 import { ObjectProperty } from '../../../domain/entities/ObjectProperty.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { IOntologyRepository } from '../../../domain/ports/IOntologyRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
 
@@ -169,6 +170,64 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       proposedBy: prop.proposedBy,
       createdAt: prop.createdAt,
     });
+  }
+
+  async applyClassDelta(
+    targetId: string,
+    proposedChanges: Record<string, unknown>,
+    tid: string,
+    tx?: any
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(ontologyClasses)
+      .where(eq(ontologyClasses.id, targetId))
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `ontology class ${targetId} not found`);
+    }
+
+    // Whitelist accepted keys; never spread unknown jsonb keys into the update.
+    const patch: Record<string, any> = {};
+    if (proposedChanges.displayNames !== undefined) {
+      patch.displayNames = proposedChanges.displayNames;
+    }
+    if (proposedChanges.descriptions !== undefined) {
+      patch.descriptions = proposedChanges.descriptions;
+    }
+    if (proposedChanges.parentClassKey !== undefined) {
+      patch.parentClassKey = proposedChanges.parentClassKey;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return;
+    }
+
+    await db.update(ontologyClasses).set(patch).where(eq(ontologyClasses.id, targetId));
+  }
+
+  async activateClass(targetId: string, tid: string, tx?: any): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(ontologyClasses)
+      .where(eq(ontologyClasses.id, targetId))
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `ontology class ${targetId} not found`);
+    }
+
+    // Domain state machine: throws ERR_INVALID_STATE_TRANSITION when not PROPOSED.
+    const cls = classToDomain(row);
+    cls.activate();
+
+    await db
+      .update(ontologyClasses)
+      .set({ status: cls.status })
+      .where(eq(ontologyClasses.id, targetId));
   }
 }
 
