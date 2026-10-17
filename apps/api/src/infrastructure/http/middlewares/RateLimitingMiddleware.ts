@@ -63,7 +63,8 @@ export class RateLimitingMiddleware {
   ): Promise<boolean> {
     // Create a unique key for the rate limit bucket
     const limitMax = getRateLimitMax(method);
-    const windowSeconds = env.RATE_LIMIT_WINDOW_MS / 1000;
+    // EXPIRE requires an integer number of seconds.
+    const windowSeconds = Math.ceil(env.RATE_LIMIT_WINDOW_MS / 1000);
 
     const key = `vozlab:ratelimit:${tenantId}:${workspaceId}:${method}`;
 
@@ -73,19 +74,22 @@ export class RateLimitingMiddleware {
         return false;
       }
 
-      // Use Redis INCRBYFLOAT with EXPIRE for atomic rate limiting.
-      // node-redis returns the float as a string, so coerce explicitly.
-      const count = Number(await this.client.incrByFloat(key, 1));
+      // Fixed window anchored at the first request of the window: INCR the
+      // counter and only set the TTL when the key is created (count === 1).
+      // Refreshing the TTL on every request would never let the bucket reset
+      // under sustained traffic (de-facto lockout). Trade-off: a client can
+      // burst up to 2x the limit across a window boundary; acceptable here
+      // and far simpler than a sliding-window or token-bucket (see TASK-07).
+      const count = await this.client.incr(key);
+
+      if (count === 1) {
+        await this.client.expire(key, windowSeconds);
+      }
 
       if (count > limitMax) {
-        // Rate limit exceeded - set shorter TTL to quickly release the bucket
-        await this.client.expire(key, Math.floor(windowSeconds / 2));
         log.warn({ tenantId, workspaceId, method, count, limit: limitMax }, 'rate limit exceeded');
         return true;
       }
-
-      // Set or refresh the window expiration
-      await this.client.expire(key, windowSeconds);
 
       return false;
     } catch (err) {

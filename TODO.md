@@ -28,7 +28,7 @@
 - [x] MILESTONE-1.4: Identity and Isolation Middlewares (Zero-Trust) ✅ COMPLETE
   - `AuthGuard`: JWT verification + Redis O(1) blacklist + system agent detection
   - `TenantWorkspaceGuard`: `X-Workspace-ID` header (UUID) + tenant provisioned in router DB + workspace membership verified in the tenant DB (FR-05, TASK-05) — system agents bypass
-  - `RateLimitingMiddleware`: per tenant/workspace limits (NFR-08) (see TASK-07 — window bug)
+  - `RateLimitingMiddleware`: per tenant/workspace fixed-window limits (NFR-08, TASK-07)
   - `ConnectionPoolManager`: physical pools per tenant (`tid`) with TTL and eviction
   - `FastifyRequest` type augmentation (identity/tenant) without `any` casts
 - [x] MILESTONE-1.5: Use Cases and REST Controllers (Governance) ✅ COMPLETE
@@ -53,7 +53,8 @@
   - Result: added `IMembershipRepository` port (+ `WorkspaceRole`) and `DrizzleMembershipRepository` (`isMember`/`getRole` querying `auth.workspace_memberships` by workspace+user in the tenant DB via `tid`); `tenantWorkspaceGuard` now takes `membershipRepo`, skips the check for `req.isSystemAgent`, returns 401 `ERR_INVALID_TOKEN` when no identity, and 403 `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` for non-members before attaching `tid`/`workspaceId`/`tenantSlug`; wired through `server.ts` and `routes.ts`. `pnpm turbo run build` = 3/3 ✓
 - [x] TASK-06 — Typed domain errors + centralized HTTP mapping
   - Result: added `domain/errors/DomainError.ts` (`DomainErrorCode` union + `DomainError` class, no HTTP deps); replaced every `throw new Error('ERR_…')`/template-`Error` in the 7 entities + 6 use cases (+ `DrizzleNodeRepository`) with `new DomainError(code, detail)`; added `ERR_UNMET_AUTO_APPLY_CRITERIA` (422) and `ERR_AUTHORIZATION_FAILED` (403) to `ERROR_CODES`; rewrote `errorResponse.ts` `mapDomainError` to use `instanceof DomainError` + a known-code guard (removed all `message.includes`); `NodeController`/`ProposalController` now share `getRequestContext` + `sendError` + `mapDomainError`; `AuthorHash` programmer errors are plain `Error` (no `ERR_` token). Also converted the two stray infrastructure tokens: `ConnectionPoolManager` now throws `DomainError('ERR_TENANT_NOT_PROVISIONED')` (added to the union), and the unreachable `DrizzleInteractionRepository` switch default is a plain `Error` (no `ERR_` token). `pnpm turbo run build` = 3/3 ✓
-- [ ] TASK-07 — Rate limiter fixed-window correctness (NFR-08)
+- [x] TASK-07 — Rate limiter fixed-window correctness (NFR-08)
+  - Result: replaced `INCRBYFLOAT` + unconditional `EXPIRE` (which refreshed the TTL on every request and effectively locked a bucket once it hit the limit) with integer `INCR` and a conditional `EXPIRE` that only runs when `count === 1`, anchoring the window at the first request; removed the `expire(key, floor(window/2))` branch; `windowSeconds` now `Math.ceil(env.RATE_LIMIT_WINDOW_MS / 1000)` to guarantee an integer for `EXPIRE`. Key format, `getRateLimitMax`, `isRateLimited`/`rateLimitMiddleware` signatures, the `ERR_RATE_LIMIT_EXCEEDED` 429 path, and the fail-open `catch` all unchanged. `pnpm turbo run build` = 3/3 ✓
 
 ### 1R.2 — Governance correctness (proposals)
 - [ ] TASK-08 — Proposal resolution authorization (maintainer / moderator, FR-12/FR-13)
