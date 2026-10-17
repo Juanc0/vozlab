@@ -21,6 +21,16 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return tx ?? (await this.poolManager.getDb(tid));
   }
 
+  async findClassById(id: string, tid: string): Promise<OntologyClass | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(ontologyClasses)
+      .where(eq(ontologyClasses.id, id))
+      .limit(1);
+    return row ? classToDomain(row) : null;
+  }
+
   async findClassByKey(
     systemKey: string,
     workspaceId: string,

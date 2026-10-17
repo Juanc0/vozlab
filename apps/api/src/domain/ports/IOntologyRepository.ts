@@ -7,6 +7,7 @@ import { ObjectProperty } from '../entities/ObjectProperty.js';
  * Scoped by `tid` (physical tenant DB).
  */
 export interface IOntologyRepository {
+  findClassById(id: string, tid: string): Promise<OntologyClass | null>;
   findClassByKey(systemKey: string, workspaceId: string, tid: string): Promise<OntologyClass | null>;
   findActiveClasses(workspaceId: string, tid: string): Promise<OntologyClass[]>;
   findDatatypeProperties(

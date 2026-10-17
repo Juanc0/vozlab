@@ -5,6 +5,8 @@ import { logger } from '../../shared/logger/index.js';
 import { registerRoutes } from './routes.js';
 import { correlationGuard, sendCorrelationHeader } from './middlewares/CorrelationGuard.js';
 import { DrizzleNodeRepository } from '../persistence/repositories/DrizzleNodeRepository.js';
+import { DrizzleEdgeRepository } from '../persistence/repositories/DrizzleEdgeRepository.js';
+import { DrizzleOntologyRepository } from '../persistence/repositories/DrizzleOntologyRepository.js';
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
 import { RedisEventPublisher } from '../events/RedisEventPublisher.js';
@@ -14,6 +16,7 @@ import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
+import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -37,6 +40,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const routerDb = new RouterDatabaseClient();
   const poolManager = new ConnectionPoolManager(routerDb);
   const nodeRepo = new DrizzleNodeRepository(poolManager);
+  const edgeRepo = new DrizzleEdgeRepository(poolManager);
+  const ontologyRepo = new DrizzleOntologyRepository(poolManager);
   const proposalRepo = new DrizzleProposalRepository(poolManager);
   const membershipRepo = new DrizzleMembershipRepository(poolManager);
   const uow = new UnitOfWork(poolManager);
@@ -57,11 +62,27 @@ export async function buildServer(): Promise<FastifyInstance> {
   const createProposalUseCase = new CreateProposalUseCase(proposalRepo, eventPublisher);
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
+    edgeRepo,
+    ontologyRepo,
     proposalRepo,
     uow,
     eventPublisher
   );
-  const rejectProposalUseCase = new RejectProposalUseCase(proposalRepo, uow, eventPublisher);
+  const rejectProposalUseCase = new RejectProposalUseCase(
+    nodeRepo,
+    edgeRepo,
+    ontologyRepo,
+    proposalRepo,
+    uow,
+    eventPublisher
+  );
+  const autoApplyProposalUseCase = new AutoApplyProposalUseCase(
+    nodeRepo,
+    proposalRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
 
   // --- Routes ---
   await registerRoutes(app, {
@@ -69,6 +90,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
+    autoApplyProposalUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,

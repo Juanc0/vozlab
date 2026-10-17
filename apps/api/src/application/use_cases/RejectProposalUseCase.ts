@@ -1,19 +1,31 @@
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
+import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
+import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import type { ResolveProposalInput } from './ApproveProposalUseCase.js';
+import {
+  assertIsMaintainer,
+  resolveTargetAuthorHash,
+} from './proposalAuthorization.js';
 
 /**
  * Use Case: maintainer rejects an edit proposal — RF-12.
  *
- * Unlike approval, rejection does not touch the target entity; only the
- * proposal status is updated (still inside a UnitOfWork for consistency).
+ * Only the target's maintainer may reject (FR-12); everyone else receives
+ * `ERR_AUTHORIZATION_FAILED`. Unlike approval, rejection does not touch the
+ * target entity; only the proposal status is updated (still inside a
+ * UnitOfWork for consistency).
  */
 export class RejectProposalUseCase {
   constructor(
+    private readonly nodeRepo: INodeRepository,
+    private readonly edgeRepo: IEdgeRepository,
+    private readonly ontologyRepo: IOntologyRepository,
     private readonly proposalRepo: IProposalRepository,
     private readonly uow: IUnitOfWork,
     private readonly eventPublisher: IEventPublisher
@@ -26,6 +38,15 @@ export class RejectProposalUseCase {
     }
 
     const resolver = AuthorHash.fromRawOrIdentity(input.resolverHash, 'default-salt');
+
+    // Maintainer-only (FR-12): resolve the target author and compare.
+    const targetAuthorHash = await resolveTargetAuthorHash(
+      { nodeRepo: this.nodeRepo, edgeRepo: this.edgeRepo, ontologyRepo: this.ontologyRepo },
+      proposal,
+      input.tid
+    );
+    assertIsMaintainer(resolver.toString(), targetAuthorHash);
+
     // Domain state machine: throws ERR_INVALID_STATE_TRANSITION if not PENDING.
     proposal.reject(resolver);
 

@@ -3,6 +3,7 @@ import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
+import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -21,6 +22,7 @@ export interface RouteDependencies {
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
+  autoApplyProposalUseCase: AutoApplyProposalUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -44,6 +46,7 @@ export async function registerRoutes(
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
+    autoApplyProposalUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -54,7 +57,8 @@ export async function registerRoutes(
   const proposalController = new ProposalController(
     createProposalUseCase,
     approveProposalUseCase,
-    rejectProposalUseCase
+    rejectProposalUseCase,
+    autoApplyProposalUseCase
   );
   const healthController = new HealthController(routerDb, tokenBlacklist);
 
@@ -94,6 +98,10 @@ export async function registerRoutes(
 
   app.put('/api/v1/proposals/:id/reject', { preHandler: guard }, (req, reply) =>
     proposalController.reject(req, reply)
+  );
+
+  app.put('/api/v1/proposals/:id/auto-apply', { preHandler: guard }, (req, reply) =>
+    proposalController.autoApply(req, reply)
   );
 
   app.get('/api/v1/proposals', { preHandler: guard }, async (_req, reply) => {

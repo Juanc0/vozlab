@@ -6,6 +6,7 @@ import { FastifyRequest } from 'fastify';
 export interface RequestContext {
   workspaceId: string;
   tid: string;
+  userId: string;
   authorHash: string;
   reqId?: string;
 }
@@ -21,6 +22,7 @@ export function getRequestContext(req: FastifyRequest): RequestContext | null {
   return {
     workspaceId,
     tid,
+    userId: req.user?.userId ?? 'anonymous',
     authorHash: req.user?.authorHash ?? 'anonymous',
     reqId: req.reqId,
   };

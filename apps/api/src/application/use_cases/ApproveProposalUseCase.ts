@@ -2,12 +2,20 @@ import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
+import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import {
+  assertIsMaintainer,
+  resolveTargetAuthorHash,
+} from './proposalAuthorization.js';
 
 export interface ResolveProposalInput {
   proposalId: string;
+  /** Authenticated user id (used for role-based checks, e.g. auto-apply). */
+  resolverUserId: string;
   resolverHash: string;
   workspaceId: string;
   tid: string;
@@ -17,13 +25,16 @@ export interface ResolveProposalInput {
 /**
  * Use Case: maintainer approves an edit proposal (Merge) — RF-12.
  *
- * Applies the proposed delta to the target and flips the proposal status
- * inside a single UnitOfWork transaction (atomic), then publishes the
- * post-commit event outside the transaction.
+ * Only the target's maintainer may approve (FR-12); everyone else is
+ * rejected with `ERR_AUTHORIZATION_FAILED`. Applies the proposed delta to the
+ * target and flips the proposal status inside a single UnitOfWork transaction
+ * (atomic), then publishes the post-commit event outside the transaction.
  */
 export class ApproveProposalUseCase {
   constructor(
     private readonly nodeRepo: INodeRepository,
+    private readonly edgeRepo: IEdgeRepository,
+    private readonly ontologyRepo: IOntologyRepository,
     private readonly proposalRepo: IProposalRepository,
     private readonly uow: IUnitOfWork,
     private readonly eventPublisher: IEventPublisher
@@ -36,6 +47,15 @@ export class ApproveProposalUseCase {
     }
 
     const resolver = AuthorHash.fromRawOrIdentity(input.resolverHash, 'default-salt');
+
+    // Maintainer-only (FR-12): resolve the target author and compare.
+    const targetAuthorHash = await resolveTargetAuthorHash(
+      { nodeRepo: this.nodeRepo, edgeRepo: this.edgeRepo, ontologyRepo: this.ontologyRepo },
+      proposal,
+      input.tid
+    );
+    assertIsMaintainer(resolver.toString(), targetAuthorHash);
+
     // Domain state machine: throws ERR_INVALID_STATE_TRANSITION if not PENDING.
     proposal.approve(resolver);
 
