@@ -14,6 +14,7 @@ import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
@@ -63,6 +64,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const createNodeUseCase = new CreateNodeUseCase(nodeRepo, ontologyRepo, eventPublisher);
   const getNodeUseCase = new GetNodeUseCase(nodeRepo);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
+  const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
   const createProposalUseCase = new CreateProposalUseCase(proposalRepo, eventPublisher);
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
@@ -95,6 +97,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     createNodeUseCase,
     getNodeUseCase,
     listNodesUseCase,
+    getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,

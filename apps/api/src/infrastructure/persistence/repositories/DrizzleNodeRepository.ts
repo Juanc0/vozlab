@@ -1,10 +1,17 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
-import { nodes } from '@vozlab/database';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { edges, nodes } from '@vozlab/database';
 import { Node, NodeStatus } from '../../../domain/entities/Node.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
-import { INodeRepository } from '../../../domain/ports/INodeRepository.js';
+import {
+  INodeRepository,
+  SubgraphResult,
+} from '../../../domain/ports/INodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+
+/** NFR-01 hard bounds, enforced here so a pathological graph cannot blow up. */
+const MAX_SUBGRAPH_DEPTH = 3;
+const MAX_SUBGRAPH_NODES = 200;
 
 /**
  * DrizzleNodeRepository: adapter that persists Nodes to `public.nodes`
@@ -74,6 +81,105 @@ export class DrizzleNodeRepository implements INodeRepository {
       items: page.map(toDomain),
       nextCursor: hasNext && last ? encodeCursor(last.createdAt, last.id) : null,
     };
+  }
+
+  /**
+   * NFR-01 subgraph: iterative-BFS via a recursive CTE over `edges` (followed
+   * in both directions, so "neighbour" is undirected), bounded by `depth` and
+   * `limit`. The CTE yields ordered, de-duplicated node ids (shallowest first,
+   * stable by id); nodes and the edges among them are then loaded through the
+   * Drizzle query builder so the existing `toDomain` mapper is reused.
+   */
+  async getSubgraph(
+    rootId: string,
+    workspaceId: string,
+    opts: { depth: number; limit: number },
+    tid: string
+  ): Promise<SubgraphResult> {
+    const db = await this.client(tid);
+
+    const depth = Math.min(Math.max(Math.trunc(opts.depth), 0), MAX_SUBGRAPH_DEPTH);
+    const limit = Math.min(Math.max(Math.trunc(opts.limit), 1), MAX_SUBGRAPH_NODES);
+
+    // `UNION` (not UNION ALL) de-duplicates exact (id, depth) pairs while the
+    // `depth < N` guard terminates cycles regardless.
+    const result = await db.execute(sql`
+      WITH RECURSIVE reachable(id, depth) AS (
+        SELECT n.id, 0
+        FROM public.nodes n
+        WHERE n.id = ${rootId}
+          AND n.workspace_id = ${workspaceId}
+          AND n.deleted_at IS NULL
+        UNION
+        SELECT e.target_node_id, r.depth + 1
+        FROM reachable r
+        JOIN public.edges e ON e.source_node_id = r.id
+        JOIN public.nodes n ON n.id = e.target_node_id
+        WHERE r.depth < ${depth}
+          AND e.workspace_id = ${workspaceId}
+          AND e.deleted_at IS NULL
+          AND n.workspace_id = ${workspaceId}
+          AND n.deleted_at IS NULL
+        UNION
+        SELECT e.source_node_id, r.depth + 1
+        FROM reachable r
+        JOIN public.edges e ON e.target_node_id = r.id
+        JOIN public.nodes n ON n.id = e.source_node_id
+        WHERE r.depth < ${depth}
+          AND e.workspace_id = ${workspaceId}
+          AND e.deleted_at IS NULL
+          AND n.workspace_id = ${workspaceId}
+          AND n.deleted_at IS NULL
+      )
+      SELECT id, MIN(depth)::int AS depth
+      FROM reachable
+      GROUP BY id
+      ORDER BY depth ASC, id ASC
+      LIMIT ${limit}
+    `);
+
+    const idRows = result.rows as { id: string; depth: number }[];
+
+    if (idRows.length === 0) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Preserve the CTE ordering (shallowest first) after the unordered IN.
+    const depthById = new Map(idRows.map((row) => [row.id, row.depth]));
+    const ids = idRows.map((row) => row.id);
+
+    const nodeRows = await db
+      .select()
+      .from(nodes)
+      .where(and(inArray(nodes.id, ids), isNull(nodes.deletedAt)));
+
+    const orderedNodes = nodeRows
+      .map(toDomain)
+      .sort(
+        (a: Node, b: Node) =>
+          (depthById.get(a.id) ?? 0) - (depthById.get(b.id) ?? 0) ||
+          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+      );
+
+    const edgeRows = await db
+      .select({
+        id: edges.id,
+        sourceNodeId: edges.sourceNodeId,
+        targetNodeId: edges.targetNodeId,
+        relationKey: edges.relationKey,
+        status: edges.status,
+      })
+      .from(edges)
+      .where(
+        and(
+          eq(edges.workspaceId, workspaceId),
+          isNull(edges.deletedAt),
+          inArray(edges.sourceNodeId, ids),
+          inArray(edges.targetNodeId, ids)
+        )
+      );
+
+    return { nodes: orderedNodes, edges: edgeRows };
   }
 
   async save(node: Node, tid: string, tx?: any): Promise<void> {

@@ -1,7 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateNodeSchema, ListNodeQuerySchema } from '@vozlab/shared-types';
+import { CreateNodeSchema, ListNodeQuerySchema, SubgraphQuerySchema } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
+import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { Node } from '../../../domain/entities/Node.js';
 import { log } from '../../../shared/logger/index.js';
@@ -51,7 +52,8 @@ export class NodeController {
   constructor(
     private readonly createNodeUseCase: CreateNodeUseCase,
     private readonly getNodeUseCase: GetNodeUseCase,
-    private readonly listNodesUseCase: ListNodesUseCase
+    private readonly listNodesUseCase: ListNodesUseCase,
+    private readonly getSubgraphUseCase: GetSubgraphUseCase
   ) {}
 
   /**
@@ -140,6 +142,45 @@ export class NodeController {
       });
     } catch (error) {
       return this.handleError(req, reply, error, 'listNodes failed');
+    }
+  }
+
+  /**
+   * GET /api/v1/nodes/subgraph
+   * Bounded workspace subgraph around `rootId` (NFR-01): root + neighbours
+   * up to `depth` hops and the edges connecting them. Unknown/foreign root
+   * → 404 `ERR_NODE_NOT_FOUND`.
+   */
+  async getSubgraphHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = SubgraphQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+
+    try {
+      const { nodes, edges } = await this.getSubgraphUseCase.execute({
+        rootId: parsed.data.rootId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        depth: parsed.data.depth,
+        limit: parsed.data.limit,
+      });
+
+      return reply.status(200).send({
+        nodes: nodes.map(toNodeDto),
+        edges: edges.map((edge) => ({
+          id: edge.id,
+          sourceNodeId: edge.sourceNodeId,
+          targetNodeId: edge.targetNodeId,
+          relationKey: edge.relationKey,
+          status: edge.status,
+        })),
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'getSubgraph failed');
     }
   }
 

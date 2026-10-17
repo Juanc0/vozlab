@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
@@ -23,6 +24,7 @@ export interface RouteDependencies {
   createNodeUseCase: CreateNodeUseCase;
   getNodeUseCase: GetNodeUseCase;
   listNodesUseCase: ListNodesUseCase;
+  getSubgraphUseCase: GetSubgraphUseCase;
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
@@ -49,6 +51,7 @@ export async function registerRoutes(
     createNodeUseCase,
     getNodeUseCase,
     listNodesUseCase,
+    getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
@@ -62,7 +65,8 @@ export async function registerRoutes(
   const nodeController = new NodeController(
     createNodeUseCase,
     getNodeUseCase,
-    listNodesUseCase
+    listNodesUseCase,
+    getSubgraphUseCase
   );
   const proposalController = new ProposalController(
     createProposalUseCase,
@@ -91,6 +95,11 @@ export async function registerRoutes(
 
   app.get('/api/v1/nodes', { preHandler: guard }, (req, reply) =>
     nodeController.listNodesHandler(req, reply)
+  );
+
+  // Static route MUST be declared before the parameterised `/nodes/:id`.
+  app.get('/api/v1/nodes/subgraph', { preHandler: guard }, (req, reply) =>
+    nodeController.getSubgraphHandler(req, reply)
   );
 
   app.get('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>

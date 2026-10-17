@@ -1,6 +1,23 @@
 import { Node } from '../entities/Node.js';
 
 /**
+ * A connecting edge in a subgraph projection. Deliberately narrow: the
+ * view does not need edge attributes/author, only the topology.
+ */
+export interface SubgraphEdge {
+  id: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  relationKey: string;
+  status: string;
+}
+
+export interface SubgraphResult {
+  nodes: Node[];
+  edges: SubgraphEdge[];
+}
+
+/**
  * Port: Node persistence contract.
  * Implementations live in infrastructure/ (e.g. DrizzleNodeRepository).
  *
@@ -22,6 +39,18 @@ export interface INodeRepository {
     opts: { limit: number; cursor?: string },
     tid: string
   ): Promise<{ items: Node[]; nextCursor: string | null }>;
+  /**
+   * Workspace-scoped subgraph (NFR-01): the root, its neighbours up to
+   * `depth` undirected hops, and every edge whose both endpoints fall in the
+   * covered node set. Soft-deleted nodes/edges are excluded and the node set
+   * is bounded by `limit` (adapter caps depth at 3 and limit at 200).
+   */
+  getSubgraph(
+    rootId: string,
+    workspaceId: string,
+    opts: { depth: number; limit: number },
+    tid: string
+  ): Promise<SubgraphResult>;
   save(node: Node, tid: string, tx?: any): Promise<void>;
   update(node: Node, tid: string, tx?: any): Promise<void>;
   applyDelta(
