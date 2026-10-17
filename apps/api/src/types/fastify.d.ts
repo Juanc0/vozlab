@@ -6,6 +6,7 @@
  * codebase strongly typed instead of scattering `(req as any)` casts.
  */
 import 'fastify';
+import type { AgentType } from '@vozlab/shared-types';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -29,6 +30,6 @@ declare module 'fastify' {
     /** True when the caller is a system AI agent (bot identity). */
     isSystemAgent?: boolean;
     /** System agent identifier (e.g. AGENT_EXTRACTOR). */
-    agentType?: string;
+    agentType?: AgentType;
   }
 }

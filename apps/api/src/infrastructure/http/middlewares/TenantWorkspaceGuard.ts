@@ -64,7 +64,14 @@ export async function tenantWorkspaceGuard(
   }
 
   // Enforce workspace membership (FR-05) — runs against the tenant DB.
-  // System AI agents act on behalf of the platform and have no membership row.
+  //
+  // System-agent contract (FR-17, US-07): agents are platform actors, not
+  // workspace members, so they have no `auth.workspace_memberships` row and
+  // this membership check is skipped. The rest of the guard still applies:
+  //   - the agent MUST send `X-Workspace-ID` (validated above), and
+  //   - its `tid` claim MUST resolve to a provisioned tenant in the router DB.
+  // Agents are therefore scoped to a workspace exactly like humans, without
+  // ever being granted membership or an implicit role.
   if (!req.isSystemAgent) {
     if (!req.user?.userId) {
       const err = buildError('ERR_INVALID_TOKEN');

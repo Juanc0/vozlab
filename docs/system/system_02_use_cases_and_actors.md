@@ -172,6 +172,7 @@ flowchart TD
     1. It processes messages **record by record**, filtering any personally identifiable information (PII).
     2. It invokes the Fastify API (`POST /api/v1/nodes`) authenticated as a system bot.
     3. The API saves the nodes in `DRAFT` or `ACTIVE` status, guaranteeing that they pass through all the Workspace ontology validations.
+* **Identity contract:** the bot JWT claims (`sub`, `tid`, `jti`, `authorHash`, `type`), the agent-type allowlist and the membership-bypass rules are specified in `docs/modules/modules_02_backend_fastify_guide.md` §3.2 (System-Agent Identity Contract).
 
 
 

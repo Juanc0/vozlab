@@ -120,6 +120,43 @@ export async function tenantWorkspaceGuard(req: FastifyRequest, reply: FastifyRe
 
 ```
 
+### 3.2. System-Agent (AI worker) Identity Contract (FR-17, US-07)
+
+The three Python workers (Extractor, Relator, Consolidator) authenticate against
+the same REST endpoints as humans, but as **bots**. Their identity is an HS256
+JWT carrying the claims below; `AuthGuard` reads the allowlist from
+`AgentTypeSchema` (`packages/shared-types/src/schemas/agent.schema.ts`) — the
+single source of truth for the three agent types.
+
+| Claim | Required | Meaning |
+| --- | --- | --- |
+| `sub` | yes (all callers) | Identity UUID. For a worker it is the seeded `SYSTEM_AGENT` row in `auth.users` (audit trail). |
+| `tid` | yes | OIDC tenant id; must match `tenants.oidc_tenant_id` in the router DB, otherwise `403 ERR_TENANT_NOT_PROVISIONED`. |
+| `jti` | yes | Unique token id; the Redis blacklist key used for O(1) revocation. |
+| `authorHash` | yes for agents | 64-hex pseudonymous author (FR-12). Taken verbatim when present, otherwise derived deterministically from `sub` + `AUTHOR_HASH_SALT`, so it is stable per agent. |
+| `type` | yes for agents | One of `AGENT_EXTRACTOR` \| `AGENT_RELACIONADOR` \| `AGENT_CONSOLIDADOR`. Any other value → `401 ERR_INVALID_TOKEN` (an unknown bot is never treated as a human). |
+
+Behaviour:
+
+- An agent **must still send `X-Workspace-ID`** and its `tid` must resolve in the
+  router DB; it is scoped to a workspace exactly like a human.
+- Workspace **membership is skipped** for agents: they are platform actors, not
+  members, and never appear in `auth.workspace_memberships` (FR-05).
+- Agents receive **no implicit role**: moderator/admin-gated actions stay
+  role-gated and will reject an agent that lacks the role.
+- Agents mutate the graph only through the public API — `POST /api/v1/nodes`
+  and `POST /api/v1/proposals` — **never via direct DB writes**.
+
+```bash
+# Local example: mint an agent token and create a node as the bot.
+TOKEN=$(pnpm --filter @vozlab/database db:mint-token -- --as agent | tail -1)
+curl -s -X POST localhost:3000/api/v1/nodes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workspace-ID: 33333333-3333-4333-8333-333333333333" \
+  -H 'content-type: application/json' \
+  -d '{"typeKey":"Problem","title":"agent-created"}'
+```
+
 ---
 
 ## 4. Use Case and Transaction Implementation (`UnitOfWork`)

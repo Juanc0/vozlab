@@ -1,19 +1,20 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { env } from '../../../shared/config/env.js';
-import { buildError } from '@vozlab/shared-types';
+import { AgentTypeSchema, buildError, type AgentType } from '@vozlab/shared-types';
 import { resolveAuthorHash } from '../../../application/services/resolveAuthorHash.js';
 import { RedisTokenBlacklist } from '../../events/RedisTokenBlacklist.js';
 
 /**
  * System agent identifiers allowed to act on the graph as bots.
- * Kept in sync with docs/system/system_02_use_cases_and_actors.md.
+ * Derived from the shared `@vozlab/shared-types` vocabulary so the allowlist
+ * has a single source of truth (see `agent.schema.ts`).
  */
-const AGENT_TYPES: ReadonlySet<string> = new Set([
-  'AGENT_EXTRACTOR',
-  'AGENT_RELACIONADOR',
-  'AGENT_CONSOLIDADOR',
-]);
+const AGENT_TYPES: ReadonlySet<string> = new Set(AgentTypeSchema.options);
+
+function isAgentType(value: string): value is AgentType {
+  return AGENT_TYPES.has(value);
+}
 
 /**
  * Decoded JWT payload shape expected by VozLab.
@@ -94,10 +95,21 @@ export function authGuard(blacklist: RedisTokenBlacklist) {
     req.oidcTenantId = payload.tid;
     req.jti = payload.jti;
 
-    // System AI agents are identified by the `type` claim.
-    if (payload.type) {
-      req.isSystemAgent = AGENT_TYPES.has(payload.type);
-      if (req.isSystemAgent) req.agentType = payload.type;
+    // System AI agents are identified by the `type` claim (FR-17, US-07).
+    //   - An allow-listed `type` marks the request as a bot; membership is
+    //     skipped downstream (TenantWorkspaceGuard).
+    //   - Any other `type` is rejected outright with 401 ERR_INVALID_TOKEN: an
+    //     unknown bot is never silently downgraded to a human caller.
+    // Agents must resolve a deterministic `authorHash`. The resolver above
+    // preserves a valid claim verbatim and otherwise derives it from `sub`
+    // (which is mandatory), so an agent always gets a stable per-agent hash.
+    if (payload.type !== undefined) {
+      if (!isAgentType(payload.type)) {
+        const e = buildError('ERR_INVALID_TOKEN');
+        return reply.status(e.status).send({ code: e.code, message: e.message });
+      }
+      req.isSystemAgent = true;
+      req.agentType = payload.type;
     }
   };
 }

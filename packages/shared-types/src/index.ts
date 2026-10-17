@@ -2,6 +2,7 @@
 export * from './schemas/node.schema.js';
 export * from './schemas/subgraph.schema.js';
 export * from './schemas/batch.schema.js';
+export * from './schemas/agent.schema.js';
 export * from './schemas/edge.schema.js';
 export * from './schemas/proposal.schema.js';
 export * from './schemas/ontology.schema.js';
