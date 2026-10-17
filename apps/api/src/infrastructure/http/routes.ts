@@ -7,6 +7,11 @@ import { CreateProposalUseCase } from '../../application/use_cases/CreateProposa
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
+import { CreateEdgeUseCase } from '../../application/use_cases/CreateEdgeUseCase.js';
+import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
+import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
+import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
+import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -14,6 +19,7 @@ import { authGuard } from './middlewares/AuthGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
 import { RateLimitingMiddleware, rateLimitMiddleware } from './middlewares/RateLimitingMiddleware.js';
 import { NodeController } from './controllers/NodeController.js';
+import { EdgeController } from './controllers/EdgeController.js';
 import { ProposalController } from './controllers/ProposalController.js';
 import { HealthController } from './controllers/HealthController.js';
 
@@ -29,6 +35,11 @@ export interface RouteDependencies {
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
   autoApplyProposalUseCase: AutoApplyProposalUseCase;
+  createEdgeUseCase: CreateEdgeUseCase;
+  getEdgeUseCase: GetEdgeUseCase;
+  listEdgesUseCase: ListEdgesUseCase;
+  updateEdgeUseCase: UpdateEdgeUseCase;
+  deleteEdgeUseCase: DeleteEdgeUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -56,6 +67,11 @@ export async function registerRoutes(
     approveProposalUseCase,
     rejectProposalUseCase,
     autoApplyProposalUseCase,
+    createEdgeUseCase,
+    getEdgeUseCase,
+    listEdgesUseCase,
+    updateEdgeUseCase,
+    deleteEdgeUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -67,6 +83,13 @@ export async function registerRoutes(
     getNodeUseCase,
     listNodesUseCase,
     getSubgraphUseCase
+  );
+  const edgeController = new EdgeController(
+    createEdgeUseCase,
+    getEdgeUseCase,
+    listEdgesUseCase,
+    updateEdgeUseCase,
+    deleteEdgeUseCase
   );
   const proposalController = new ProposalController(
     createProposalUseCase,
@@ -104,6 +127,27 @@ export async function registerRoutes(
 
   app.get('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>
     nodeController.getNodeHandler(req, reply)
+  );
+
+  // --- Edges (RF-08) ---
+  app.post('/api/v1/edges', { preHandler: guard }, (req, reply) =>
+    edgeController.create(req, reply)
+  );
+
+  app.get('/api/v1/edges', { preHandler: guard }, (req, reply) =>
+    edgeController.list(req, reply)
+  );
+
+  app.get('/api/v1/edges/:id', { preHandler: guard }, (req, reply) =>
+    edgeController.get(req, reply)
+  );
+
+  app.patch('/api/v1/edges/:id', { preHandler: guard }, (req, reply) =>
+    edgeController.update(req, reply)
+  );
+
+  app.delete('/api/v1/edges/:id', { preHandler: guard }, (req, reply) =>
+    edgeController.delete(req, reply)
   );
 
   // --- Proposals (Gobernanza / Pull-Request) ---

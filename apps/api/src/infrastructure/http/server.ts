@@ -20,6 +20,11 @@ import { CreateProposalUseCase } from '../../application/use_cases/CreateProposa
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
+import { CreateEdgeUseCase } from '../../application/use_cases/CreateEdgeUseCase.js';
+import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
+import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
+import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
+import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -91,6 +96,16 @@ export async function buildServer(): Promise<FastifyInstance> {
     uow,
     eventPublisher
   );
+  const createEdgeUseCase = new CreateEdgeUseCase(
+    edgeRepo,
+    nodeRepo,
+    ontologyRepo,
+    eventPublisher
+  );
+  const getEdgeUseCase = new GetEdgeUseCase(edgeRepo);
+  const listEdgesUseCase = new ListEdgesUseCase(edgeRepo);
+  const updateEdgeUseCase = new UpdateEdgeUseCase(edgeRepo, eventPublisher);
+  const deleteEdgeUseCase = new DeleteEdgeUseCase(edgeRepo, eventPublisher);
 
   // --- Routes ---
   await registerRoutes(app, {
@@ -102,6 +117,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     approveProposalUseCase,
     rejectProposalUseCase,
     autoApplyProposalUseCase,
+    createEdgeUseCase,
+    getEdgeUseCase,
+    listEdgesUseCase,
+    updateEdgeUseCase,
+    deleteEdgeUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
