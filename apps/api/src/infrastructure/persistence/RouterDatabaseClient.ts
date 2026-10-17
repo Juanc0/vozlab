@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
+import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
 import { tenants, tenantConnections } from '@vozlab/database';
 
@@ -46,7 +47,7 @@ export class RouterDatabaseClient implements IRouterDatabase {
       return { id: row.id, slug: row.slug };
     } catch (err) {
       log.error({ err, oidcTenantId }, 'failed to find tenant by OIDC id');
-      return null;
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 
@@ -74,7 +75,7 @@ export class RouterDatabaseClient implements IRouterDatabase {
       };
     } catch (err) {
       log.error({ err, tenantId }, 'failed to resolve tenant database config');
-      return null;
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 

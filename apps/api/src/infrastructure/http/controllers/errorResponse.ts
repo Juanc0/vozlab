@@ -1,6 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { ERROR_CODES, buildError } from '@vozlab/shared-types';
 import { DomainError } from '../../../domain/errors/DomainError.js';
+import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
 
 export type ErrorCode = keyof typeof ERROR_CODES;
 
@@ -32,6 +33,9 @@ function isErrorCode(code: string): code is ErrorCode {
  * message. Any non-domain (or unknown) error degrades to a 500.
  */
 export function mapDomainError(error: unknown): ErrorCode {
+  if (error instanceof InfrastructureError) {
+    return error.code;
+  }
   if (error instanceof DomainError && isErrorCode(error.code)) {
     return error.code;
   }

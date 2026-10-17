@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { buildError } from '@vozlab/shared-types';
 import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
+import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
 
 /**
  * TenantWorkspaceGuard: Zero-Trust isolation middleware.
@@ -54,7 +55,18 @@ export async function tenantWorkspaceGuard(
   }
 
   // Verify the tenant is provisioned in the global router DB.
-  const tenant = await deps.routerDb.findTenantByOidcId(oidcTenantId);
+  let tenant: { id: string; slug: string } | null;
+  try {
+    tenant = await deps.routerDb.findTenantByOidcId(oidcTenantId);
+  } catch (e) {
+    const err = buildError(
+      e instanceof InfrastructureError ? e.code : 'ERR_INTERNAL_SERVER_ERROR'
+    );
+    return reply.status(err.status).send({
+      code: err.code,
+      message: err.message,
+    });
+  }
   if (!tenant) {
     const err = buildError('ERR_TENANT_NOT_PROVISIONED');
     return reply.status(err.status).send({
@@ -81,11 +93,22 @@ export async function tenantWorkspaceGuard(
       });
     }
 
-    const isMember = await deps.membershipRepo.isMember(
-      req.user.userId,
-      workspaceId,
-      tenant.id
-    );
+    let isMember: boolean;
+    try {
+      isMember = await deps.membershipRepo.isMember(
+        req.user.userId,
+        workspaceId,
+        tenant.id
+      );
+    } catch (e) {
+      const err = buildError(
+        e instanceof InfrastructureError ? e.code : 'ERR_INTERNAL_SERVER_ERROR'
+      );
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
     if (!isMember) {
       const err = buildError('ERR_UNAUTHORIZED_WORKSPACE_ACCESS');
       return reply.status(err.status).send({
