@@ -10,6 +10,7 @@ import { DrizzleOntologyRepository } from '../persistence/repositories/DrizzleOn
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
 import { DrizzleDiscussionRepository } from '../persistence/repositories/DrizzleDiscussionRepository.js';
+import { DrizzleInteractionRepository } from '../persistence/repositories/DrizzleInteractionRepository.js';
 import { RedisEventPublisher } from '../events/RedisEventPublisher.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
@@ -36,6 +37,7 @@ import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
 import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
 import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.js';
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
+import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -64,6 +66,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const proposalRepo = new DrizzleProposalRepository(poolManager);
   const membershipRepo = new DrizzleMembershipRepository(poolManager);
   const discussionRepo = new DrizzleDiscussionRepository(poolManager);
+  const interactionRepo = new DrizzleInteractionRepository(poolManager);
   const uow = new UnitOfWork(poolManager);
   const eventPublisher = new RedisEventPublisher();
   const tokenBlacklist = new RedisTokenBlacklist();
@@ -142,6 +145,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listThreadsUseCase = new ListThreadsUseCase(discussionRepo);
   const listPostsUseCase = new ListPostsUseCase(discussionRepo);
   const closeThreadUseCase = new CloseThreadUseCase(discussionRepo, eventPublisher);
+  const castVoteUseCase = new CastVoteUseCase(interactionRepo, uow, eventPublisher);
 
   // --- Routes ---
   await registerRoutes(app, {
@@ -168,6 +172,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     listThreadsUseCase,
     listPostsUseCase,
     closeThreadUseCase,
+    castVoteUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,

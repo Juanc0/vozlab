@@ -162,25 +162,6 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       deletedAt: post.deletedAt,
     });
   }
-
-  async applyPostVote(
-    postId: string,
-    value: number,
-    tid: string,
-    tx?: any
-  ): Promise<void> {
-    const db = await this.client(tid, tx);
-    const up = value > 0 ? 1 : 0;
-    const down = value < 0 ? 1 : 0;
-    await db
-      .update(discussionPosts)
-      .set({
-        upvotes: sql`${discussionPosts.upvotes} + ${up}`,
-        downvotes: sql`${discussionPosts.downvotes} + ${down}`,
-        communityScore: sql`${discussionPosts.communityScore} + ${up - down}`,
-      })
-      .where(eq(discussionPosts.id, postId));
-  }
 }
 
 function threadToDomain(row: typeof discussionThreads.$inferSelect): DiscussionThread {

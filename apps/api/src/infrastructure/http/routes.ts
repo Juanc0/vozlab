@@ -22,6 +22,7 @@ import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
 import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
 import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.js';
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
+import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -34,6 +35,7 @@ import { ProposalController } from './controllers/ProposalController.js';
 import { OntologyController } from './controllers/OntologyController.js';
 import { HealthController } from './controllers/HealthController.js';
 import { DiscussionController } from './controllers/DiscussionController.js';
+import { InteractionController } from './controllers/InteractionController.js';
 
 /**
  * Dependencies required to register routes (manual Composition Root).
@@ -62,6 +64,7 @@ export interface RouteDependencies {
   listThreadsUseCase: ListThreadsUseCase;
   listPostsUseCase: ListPostsUseCase;
   closeThreadUseCase: CloseThreadUseCase;
+  castVoteUseCase: CastVoteUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -104,6 +107,7 @@ export async function registerRoutes(
     listThreadsUseCase,
     listPostsUseCase,
     closeThreadUseCase,
+    castVoteUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -144,6 +148,7 @@ export async function registerRoutes(
     listPostsUseCase,
     closeThreadUseCase
   );
+  const interactionController = new InteractionController(castVoteUseCase);
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
@@ -261,5 +266,10 @@ export async function registerRoutes(
 
   app.put('/api/v1/discussions/:threadId/close', { preHandler: guard }, (req, reply) =>
     discussionController.closeThreadHandler(req, reply)
+  );
+
+  // --- Interactions / Votes (RF-14, RF-15) ---
+  app.post('/api/v1/interactions', { preHandler: guard }, (req, reply) =>
+    interactionController.vote(req, reply)
   );
 }

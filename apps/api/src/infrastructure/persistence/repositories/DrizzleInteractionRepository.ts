@@ -12,6 +12,7 @@ import {
   InteractionType,
 } from '../../../domain/entities/Interaction.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { IInteractionRepository } from '../../../domain/ports/IInteractionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
 
@@ -90,16 +91,29 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
           })
           .where(eq(editProposals.id, targetId));
         break;
-      case 'POST':
+      case 'POST': {
+        // Single source of truth for post counters. A duplicate updater used
+        // to live on the discussion repository but was never called; it was
+        // removed so only one code path maintains these columns. An upvote
+        // increments `upvotes`, a downvote increments `downvotes`, and
+        // `community_score` is maintained as `upvotes - downvotes`.
+        const up = delta > 0 ? 1 : 0;
+        const down = delta < 0 ? 1 : 0;
         await db
           .update(discussionPosts)
           .set({
-            communityScore: sql`${discussionPosts.communityScore} + ${delta}`,
+            upvotes: sql`${discussionPosts.upvotes} + ${up}`,
+            downvotes: sql`${discussionPosts.downvotes} + ${down}`,
+            communityScore: sql`${discussionPosts.communityScore} + ${up - down}`,
           })
           .where(eq(discussionPosts.id, targetId));
         break;
+      }
       default:
-        throw new Error(`Unsupported interaction target type: ${targetType}`);
+        throw new DomainError(
+          'ERR_VALIDATION_FAILED',
+          `unsupported target type: ${targetType}`
+        );
     }
   }
 }
