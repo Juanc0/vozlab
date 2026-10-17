@@ -27,7 +27,7 @@
 - [x] MILESTONE-1.3: Persistence Adapters and Multi-Tenant Pool Manager
 - [x] MILESTONE-1.4: Identity and Isolation Middlewares (Zero-Trust) ✅ COMPLETE
   - `AuthGuard`: JWT verification + Redis O(1) blacklist + system agent detection
-  - `TenantWorkspaceGuard`: `X-Workspace-ID` header (UUID) + tenant provisioned in router DB (see TASK-05 — membership not yet verified)
+  - `TenantWorkspaceGuard`: `X-Workspace-ID` header (UUID) + tenant provisioned in router DB + workspace membership verified in the tenant DB (FR-05, TASK-05) — system agents bypass
   - `RateLimitingMiddleware`: per tenant/workspace limits (NFR-08) (see TASK-07 — window bug)
   - `ConnectionPoolManager`: physical pools per tenant (`tid`) with TTL and eviction
   - `FastifyRequest` type augmentation (identity/tenant) without `any` casts
@@ -49,6 +49,8 @@
   - Result: added `bindReqId(id)` to `shared/logger/index.ts` (uses `AsyncLocalStorage.enterWith`, not `run`, so the store survives past the hook); `CorrelationGuard` now calls `bindReqId(req.id)` as its first statement before the incoming-request log, removing the synchronous `withReqId` wrapper. `req.log` carries `reqId` natively (`requestIdLogLabel: 'reqId'`) and later `log.*` calls pick it up from ALS. `pnpm turbo run build` = 3/3 ✓
 - [x] TASK-04 — Real `/health/ready` dependency probes
   - Result: added `ping(): Promise<void>` to `IRouterDatabase` + `RouterDatabaseClient` (`SELECT 1` via Drizzle, throws on error); added `RedisTokenBlacklist.ping()` (`PING`, throws when `!connected`); rewrote `HealthController.ready` to probe both and return `200 { status: 'ready', checks: { database, redis } }` or `503 { status: 'degraded', ... }`; `live()` unchanged. `pnpm turbo run build` = 3/3 ✓
+- [x] TASK-05 — Enforce workspace membership in `TenantWorkspaceGuard` (FR-05)
+  - Result: added `IMembershipRepository` port (+ `WorkspaceRole`) and `DrizzleMembershipRepository` (`isMember`/`getRole` querying `auth.workspace_memberships` by workspace+user in the tenant DB via `tid`); `tenantWorkspaceGuard` now takes `membershipRepo`, skips the check for `req.isSystemAgent`, returns 401 `ERR_INVALID_TOKEN` when no identity, and 403 `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` for non-members before attaching `tid`/`workspaceId`/`tenantSlug`; wired through `server.ts` and `routes.ts`. `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-06 — Typed domain errors + centralized HTTP mapping
 - [ ] TASK-07 — Rate limiter fixed-window correctness (NFR-08)
 

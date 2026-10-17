@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { buildError } from '@vozlab/shared-types';
 import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
+import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
 
 /**
  * TenantWorkspaceGuard: Zero-Trust isolation middleware.
@@ -9,7 +10,9 @@ import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
  *   1. Enforce the presence of the `X-Workspace-ID` header (UUID v4).
  *   2. Resolve the tenant `tid` from the OIDC claim / header.
  *   3. Verify the tenant is provisioned in the global router DB.
- *   4. Attach `tid` and `workspaceId` to the request object for downstream use.
+ *   4. Verify the authenticated user is a member of the header workspace
+ *      (FR-05), in the tenant's physical database.
+ *   5. Attach `tid` and `workspaceId` to the request object for downstream use.
  *
  * This guard runs BEFORE any tenant-scoped persistence code, guaranteeing
  * physical multi-tenant isolation (each tenant has its own database).
@@ -17,7 +20,7 @@ import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
 export async function tenantWorkspaceGuard(
   req: FastifyRequest,
   reply: FastifyReply,
-  deps: { routerDb: IRouterDatabase }
+  deps: { routerDb: IRouterDatabase; membershipRepo: IMembershipRepository }
 ): Promise<void> {
   const workspaceId = req.headers['x-workspace-id'] as string | undefined;
 
@@ -58,6 +61,31 @@ export async function tenantWorkspaceGuard(
       code: err.code,
       message: err.message,
     });
+  }
+
+  // Enforce workspace membership (FR-05) — runs against the tenant DB.
+  // System AI agents act on behalf of the platform and have no membership row.
+  if (!req.isSystemAgent) {
+    if (!req.user?.userId) {
+      const err = buildError('ERR_INVALID_TOKEN');
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
+
+    const isMember = await deps.membershipRepo.isMember(
+      req.user.userId,
+      workspaceId,
+      tenant.id
+    );
+    if (!isMember) {
+      const err = buildError('ERR_UNAUTHORIZED_WORKSPACE_ACCESS');
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
   }
 
   // Attach resolved identifiers to the request for downstream layers.

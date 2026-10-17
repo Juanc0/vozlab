@@ -6,6 +6,7 @@ import { registerRoutes } from './routes.js';
 import { correlationGuard, sendCorrelationHeader } from './middlewares/CorrelationGuard.js';
 import { DrizzleNodeRepository } from '../persistence/repositories/DrizzleNodeRepository.js';
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
+import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
 import { RedisEventPublisher } from '../events/RedisEventPublisher.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
@@ -37,6 +38,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const poolManager = new ConnectionPoolManager(routerDb);
   const nodeRepo = new DrizzleNodeRepository(poolManager);
   const proposalRepo = new DrizzleProposalRepository(poolManager);
+  const membershipRepo = new DrizzleMembershipRepository(poolManager);
   const uow = new UnitOfWork(poolManager);
   const eventPublisher = new RedisEventPublisher();
   const tokenBlacklist = new RedisTokenBlacklist();
@@ -68,6 +70,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     approveProposalUseCase,
     rejectProposalUseCase,
     routerDb,
+    membershipRepo,
     tokenBlacklist,
     rateLimiter,
   });

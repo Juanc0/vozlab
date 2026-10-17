@@ -4,6 +4,7 @@ import { CreateProposalUseCase } from '../../application/use_cases/CreateProposa
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
+import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
@@ -21,6 +22,7 @@ export interface RouteDependencies {
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
   routerDb: IRouterDatabase;
+  membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
   rateLimiter: RateLimitingMiddleware;
 }
@@ -43,6 +45,7 @@ export async function registerRoutes(
     approveProposalUseCase,
     rejectProposalUseCase,
     routerDb,
+    membershipRepo,
     tokenBlacklist,
     rateLimiter,
   } = deps;
@@ -63,7 +66,7 @@ export async function registerRoutes(
   // --- Protected chain ---
   const auth = authGuard(tokenBlacklist);
   const workspace = (req: FastifyRequest, reply: FastifyReply) =>
-    tenantWorkspaceGuard(req, reply, { routerDb });
+    tenantWorkspaceGuard(req, reply, { routerDb, membershipRepo });
   const limit = rateLimitMiddleware(rateLimiter);
   const guard = [auth, workspace, limit];
 
