@@ -21,6 +21,21 @@ export const TargetTypeSchema = z.enum(['NODE', 'EDGE', 'ONTOLOGY']);
 export type TargetType = z.infer<typeof TargetTypeSchema>;
 
 /**
+ * Zod schema for the proposal list query string (NFR-04).
+ * `status`/`targetType` narrow the workspace's proposals; `limit` is clamped
+ * to 1..100 (default 20); `cursor` is the opaque keyset token returned as
+ * `nextCursor` by a previous page.
+ */
+export const ListProposalQuerySchema = z.object({
+  status: ProposalStatusSchema.optional(),
+  targetType: TargetTypeSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+});
+
+export type ListProposalQueryInput = z.infer<typeof ListProposalQuerySchema>;
+
+/**
  * Zod schema for creating an edit proposal (Pull Request style).
  */
 export const CreateProposalSchema = z.object({

@@ -7,6 +7,8 @@ import { CreateProposalUseCase } from '../../application/use_cases/CreateProposa
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
+import { ListProposalsUseCase } from '../../application/use_cases/ListProposalsUseCase.js';
+import { GetProposalUseCase } from '../../application/use_cases/GetProposalUseCase.js';
 import { CreateEdgeUseCase } from '../../application/use_cases/CreateEdgeUseCase.js';
 import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
@@ -49,6 +51,8 @@ export interface RouteDependencies {
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
   autoApplyProposalUseCase: AutoApplyProposalUseCase;
+  listProposalsUseCase: ListProposalsUseCase;
+  getProposalUseCase: GetProposalUseCase;
   createEdgeUseCase: CreateEdgeUseCase;
   getEdgeUseCase: GetEdgeUseCase;
   listEdgesUseCase: ListEdgesUseCase;
@@ -92,6 +96,8 @@ export async function registerRoutes(
     approveProposalUseCase,
     rejectProposalUseCase,
     autoApplyProposalUseCase,
+    listProposalsUseCase,
+    getProposalUseCase,
     createEdgeUseCase,
     getEdgeUseCase,
     listEdgesUseCase,
@@ -131,7 +137,9 @@ export async function registerRoutes(
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
-    autoApplyProposalUseCase
+    autoApplyProposalUseCase,
+    listProposalsUseCase,
+    getProposalUseCase
   );
   const ontologyController = new OntologyController(
     proposeOntologyClassUseCase,
@@ -218,13 +226,13 @@ export async function registerRoutes(
     proposalController.autoApply(req, reply)
   );
 
-  app.get('/api/v1/proposals', { preHandler: guard }, async (_req, reply) => {
-    return reply.status(200).send({ proposals: [] });
-  });
+  app.get('/api/v1/proposals', { preHandler: guard }, (req, reply) =>
+    proposalController.list(req, reply)
+  );
 
-  app.get('/api/v1/proposals/:id', { preHandler: guard }, async (_req, reply) => {
-    return reply.status(200).send({ proposal: null });
-  });
+  app.get('/api/v1/proposals/:id', { preHandler: guard }, (req, reply) =>
+    proposalController.get(req, reply)
+  );
 
   // --- Ontology metamodel (RF-06/FR-08/FR-09) ---
   app.post('/api/v1/ontology/classes', { preHandler: guard }, (req, reply) =>

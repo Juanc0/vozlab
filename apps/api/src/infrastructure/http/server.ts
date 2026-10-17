@@ -22,6 +22,8 @@ import { CreateProposalUseCase } from '../../application/use_cases/CreateProposa
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../application/use_cases/AutoApplyProposalUseCase.js';
+import { ListProposalsUseCase } from '../../application/use_cases/ListProposalsUseCase.js';
+import { GetProposalUseCase } from '../../application/use_cases/GetProposalUseCase.js';
 import { CreateEdgeUseCase } from '../../application/use_cases/CreateEdgeUseCase.js';
 import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
@@ -111,6 +113,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     uow,
     eventPublisher
   );
+  const listProposalsUseCase = new ListProposalsUseCase(proposalRepo);
+  const getProposalUseCase = new GetProposalUseCase(proposalRepo);
   const createEdgeUseCase = new CreateEdgeUseCase(
     edgeRepo,
     nodeRepo,
@@ -157,6 +161,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     approveProposalUseCase,
     rejectProposalUseCase,
     autoApplyProposalUseCase,
+    listProposalsUseCase,
+    getProposalUseCase,
     createEdgeUseCase,
     getEdgeUseCase,
     listEdgesUseCase,

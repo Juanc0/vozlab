@@ -1,13 +1,15 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { editProposals } from '@vozlab/database';
 import {
   EditProposal,
   ProposalStatus,
   TargetType,
 } from '../../../domain/entities/EditProposal.js';
+import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IProposalRepository } from '../../../domain/ports/IProposalRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
  * DrizzleProposalRepository: adapter that persists EditProposals to
@@ -33,6 +35,79 @@ export class DrizzleProposalRepository implements IProposalRepository {
       .limit(1);
 
     return row ? toDomain(row) : null;
+  }
+
+  /**
+   * Read a single proposal scoped to its workspace; a row from another
+   * workspace is invisible to this caller (returns `null` → 404).
+   */
+  async findByIdInWorkspace(
+    id: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<EditProposal | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(editProposals)
+      .where(
+        and(eq(editProposals.id, id), eq(editProposals.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    return row ? toDomain(row) : null;
+  }
+
+  /**
+   * Keyset pagination over `(createdAt DESC, id DESC)` for a workspace's
+   * proposals, optionally filtered by `status`/`targetType`. The cursor is
+   * the shared opaque base64 token; a malformed token is a client error
+   * (`ERR_VALIDATION_FAILED`) rather than a silent first page.
+   */
+  async findByWorkspace(
+    workspaceId: string,
+    opts: {
+      status?: ProposalStatus;
+      targetType?: TargetType;
+      limit: number;
+      cursor?: string;
+    },
+    tid: string
+  ): Promise<{ items: EditProposal[]; nextCursor: string | null }> {
+    const db = await this.client(tid);
+
+    const decoded = opts.cursor ? decodeCursor(opts.cursor) : null;
+    if (opts.cursor && !decoded) {
+      throw new DomainError('ERR_VALIDATION_FAILED', 'invalid pagination cursor');
+    }
+
+    const conditions = [eq(editProposals.workspaceId, workspaceId)];
+    if (opts.status) {
+      conditions.push(eq(editProposals.status, opts.status));
+    }
+    if (opts.targetType) {
+      conditions.push(eq(editProposals.targetType, opts.targetType));
+    }
+    if (decoded) {
+      conditions.push(keysetAfter(editProposals.createdAt, editProposals.id, decoded, 'desc'));
+    }
+
+    // Fetch one extra row to detect whether a next page exists.
+    const rows = await db
+      .select()
+      .from(editProposals)
+      .where(and(...conditions))
+      .orderBy(desc(editProposals.createdAt), desc(editProposals.id))
+      .limit(opts.limit + 1);
+
+    const hasNext = rows.length > opts.limit;
+    const page = hasNext ? rows.slice(0, opts.limit) : rows;
+    const last = page[page.length - 1];
+
+    return {
+      items: page.map(toDomain),
+      nextCursor: hasNext && last ? encodeCursor(last.createdAt, last.id) : null,
+    };
   }
 
   async findPendingByTarget(targetId: string, tid: string): Promise<EditProposal[]> {
