@@ -190,12 +190,23 @@ SELECT ag_catalog.create_elabel('vozlab_graph', 'CAUSES');
 
 ---
 
-## 5. Concurrency Mitigation in Votes (Redis Buffer and CQRS)
+## 5. Vote Scoring: Synchronous Atomic DB Increment (Decision)
 
-To comply with the strict latency requirements ($p_{95} < 15\text{ ms}$) under high interaction concurrency in the PWA (e.g. viral votings):
+**Decision (recorded TASK-27):** vote scoring is implemented as a **synchronous,
+atomic DB increment** inside the same UnitOfWork transaction as the interaction
+insert, as required by `FR-15` / `US-04 AC#2`. `CastVoteUseCase` derives the
+delta from `interactionType` via the domain value object
+`domain/value_objects/VoteValue.ts` (`DOWNVOTE -> -1`,
+`UPVOTE | SUPPORT | VALIDATE -> +1`), and `DrizzleInteractionRepository.applyScoreDelta`
+performs an O(1) `sql`-level `+=` on the target's denormalized counters:
+`community_score` for `NODE`/`EDGE`/`PROPOSAL`, and the
+`upvotes`/`downvotes`/`community_score` trio for `POST`.
 
-1. **In-Memory Write (Buffer):** Vote interactions do not directly impact the `community_score` columns of PostgreSQL in real time. They are recorded atomically in Redis via `HINCRBY vozlab:scores:{entity_id}`.
-2. **Asynchronous Consolidation (Batch Job):** A background process or periodic worker flushes the accumulated counters from Redis to PostgreSQL via bulk transactions every 60 seconds, eliminating exclusive lock contention (`RowExclusiveLock`) in the database.
+The previously drafted Redis-buffered CQRS scheme (`HINCRBY vozlab:scores:{id}`
+plus a periodic 60 s flush) is **deferred**: it is tracked as a future milestone
+in `EXECUTION_PLAN.md` and must not be implemented piecewise. Until then, the
+counters are read directly from PostgreSQL and are strongly consistent with the
+interactions log.
 
 ---
 

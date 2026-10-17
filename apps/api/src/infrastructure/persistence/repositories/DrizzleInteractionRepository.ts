@@ -1,9 +1,10 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   nodes,
   edges,
   editProposals,
   discussionPosts,
+  discussionThreads,
   interactionsLog,
 } from '@vozlab/database';
 import {
@@ -45,6 +46,81 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
       )
       .limit(1);
     return row ? toDomain(row) : null;
+  }
+
+  async existsInWorkspace(
+    targetId: string,
+    targetType: InteractionTargetType,
+    workspaceId: string,
+    tid: string
+  ): Promise<boolean> {
+    const db = await this.client(tid);
+
+    switch (targetType) {
+      case 'NODE': {
+        const [row] = await db
+          .select({ id: nodes.id })
+          .from(nodes)
+          .where(
+            and(
+              eq(nodes.id, targetId),
+              eq(nodes.workspaceId, workspaceId),
+              isNull(nodes.deletedAt)
+            )
+          )
+          .limit(1);
+        return !!row;
+      }
+      case 'EDGE': {
+        const [row] = await db
+          .select({ id: edges.id })
+          .from(edges)
+          .where(
+            and(
+              eq(edges.id, targetId),
+              eq(edges.workspaceId, workspaceId),
+              isNull(edges.deletedAt)
+            )
+          )
+          .limit(1);
+        return !!row;
+      }
+      case 'PROPOSAL': {
+        // edit_proposals has no `deletedAt` column.
+        const [row] = await db
+          .select({ id: editProposals.id })
+          .from(editProposals)
+          .where(
+            and(
+              eq(editProposals.id, targetId),
+              eq(editProposals.workspaceId, workspaceId)
+            )
+          )
+          .limit(1);
+        return !!row;
+      }
+      case 'POST': {
+        // `discussion_posts` has no `workspaceId`: scope it through its thread.
+        const [row] = await db
+          .select({ id: discussionPosts.id })
+          .from(discussionPosts)
+          .innerJoin(
+            discussionThreads,
+            eq(discussionPosts.threadId, discussionThreads.id)
+          )
+          .where(
+            and(
+              eq(discussionPosts.id, targetId),
+              eq(discussionThreads.workspaceId, workspaceId),
+              isNull(discussionPosts.deletedAt)
+            )
+          )
+          .limit(1);
+        return !!row;
+      }
+      default:
+        return false;
+    }
   }
 
   async save(interaction: Interaction, tid: string, tx?: any): Promise<void> {

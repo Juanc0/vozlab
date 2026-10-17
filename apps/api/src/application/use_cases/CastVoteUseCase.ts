@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { CastVoteInput as CastVoteDto } from '@vozlab/shared-types';
-import { Interaction } from '../../domain/entities/Interaction.js';
-import { DomainError } from '../../domain/errors/DomainError.js';
+import {
+  Interaction,
+  InteractionTargetType,
+} from '../../domain/entities/Interaction.js';
+import { VoteValue } from '../../domain/value_objects/VoteValue.js';
+import { DomainError, DomainErrorCode } from '../../domain/errors/DomainError.js';
 import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
@@ -44,8 +48,20 @@ export class CastVoteUseCase {
       throw new DomainError('ERR_DUPLICATE_INTERACTION');
     }
 
+    // A vote target that does not exist, or belongs to another workspace, is
+    // indistinguishable from a missing one: 404, never 403 (TASK-22 rule).
+    const targetExists = await this.interactionRepo.existsInWorkspace(
+      input.targetId,
+      input.targetType,
+      input.workspaceId,
+      input.tid
+    );
+    if (!targetExists) {
+      throw new DomainError(notFoundCode(input.targetType));
+    }
+
     // Derive the score delta from the interaction type (single source of truth).
-    const value = input.interactionType === 'DOWNVOTE' ? -1 : 1;
+    const value = VoteValue.fromInteractionType(input.interactionType).value;
 
     const interaction = new Interaction(
       randomUUID(),
@@ -78,5 +94,20 @@ export class CastVoteUseCase {
     });
 
     return interaction;
+  }
+}
+
+/** Type-appropriate 404 code for an unavailable vote target (TASK-22 rule). */
+function notFoundCode(targetType: InteractionTargetType): DomainErrorCode {
+  switch (targetType) {
+    case 'EDGE':
+      return 'ERR_EDGE_NOT_FOUND';
+    case 'PROPOSAL':
+      return 'ERR_PROPOSAL_NOT_FOUND';
+    case 'POST':
+      return 'ERR_POST_NOT_FOUND';
+    case 'NODE':
+    default:
+      return 'ERR_NODE_NOT_FOUND';
   }
 }

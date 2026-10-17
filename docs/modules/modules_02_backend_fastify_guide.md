@@ -44,6 +44,14 @@ apps/api/src/
 
 ```
 
+**Vote scoring value object.** `domain/value_objects/VoteValue.ts` is the one and
+only place that maps an `interactionType` to a numeric score delta (RF-14):
+`DOWNVOTE -> -1`, `UPVOTE | SUPPORT | VALIDATE -> +1`. The integer is
+**server-derived and persisted** (`interactions_log.value`); it is never accepted
+from the client. `CastVoteUseCase` derives it via
+`VoteValue.fromInteractionType(...)` before writing the interaction and the
+synchronous counter increment.
+
 ---
 
 ## 2. Server Initialization and Manual Composition (Composition Root)
