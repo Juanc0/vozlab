@@ -1,4 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { InteractionTargetTypeSchema } from '@vozlab/shared-types';
 import {
   nodes,
   edges,
@@ -16,6 +17,7 @@ import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { IInteractionRepository } from '../../../domain/ports/IInteractionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { assertNever } from '../../../shared/assertNever.js';
 
 /**
  * DrizzleInteractionRepository: persists the immutable interactions log and
@@ -146,7 +148,20 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
   ): Promise<void> {
     const db = await this.client(tid, tx);
 
-    switch (targetType) {
+    // `targetType` crosses this boundary untyped (`string`): DB rows are not
+    // parsed through the Zod DTO layer. Validate it against the shared enum so
+    // the switch below is checked against the union — a bad value keeps its
+    // historical 422 instead of silently falling through.
+    const parsed = InteractionTargetTypeSchema.safeParse(targetType);
+    if (!parsed.success) {
+      throw new DomainError(
+        'ERR_VALIDATION_FAILED',
+        `unsupported target type: ${targetType}`
+      );
+    }
+    const target = parsed.data;
+
+    switch (target) {
       case 'NODE':
         await db
           .update(nodes)
@@ -186,10 +201,7 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
         break;
       }
       default:
-        throw new DomainError(
-          'ERR_VALIDATION_FAILED',
-          `unsupported target type: ${targetType}`
-        );
+        return assertNever(target, 'interaction targetType');
     }
   }
 }

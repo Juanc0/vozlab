@@ -16,11 +16,17 @@ import { log } from '../../../shared/logger/index.js';
 import { buildError } from '@vozlab/shared-types';
 
 /**
+ * HTTP methods that mutate state and therefore get the tighter write cap.
+ * Hoisted so the method vocabulary is declared once (RNF-08).
+ */
+const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
+
+/**
  * Get max requests based on HTTP method, sourced from env (RNF-08).
  */
 function getRateLimitMax(method: string): number {
   if (method === 'GET') return env.RATE_LIMIT_READ_MAX;
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) return env.RATE_LIMIT_WRITE_MAX;
+  if ((WRITE_METHODS as readonly string[]).includes(method)) return env.RATE_LIMIT_WRITE_MAX;
   return env.RATE_LIMIT_READ_MAX; // Default for other methods
 }
 

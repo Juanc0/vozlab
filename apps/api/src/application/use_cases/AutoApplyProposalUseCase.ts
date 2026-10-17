@@ -1,3 +1,4 @@
+import { isModeratorOrAdmin } from '@vozlab/shared-types';
 import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
@@ -52,7 +53,7 @@ export class AutoApplyProposalUseCase {
       input.workspaceId,
       input.tid
     );
-    if (role !== 'MODERATOR' && role !== 'ADMIN') {
+    if (!isModeratorOrAdmin(role)) {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 

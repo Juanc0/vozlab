@@ -1,5 +1,11 @@
-/** Roles a user can hold inside a workspace (`auth.workspace_memberships.role`). */
-export type WorkspaceRole = 'ADMIN' | 'MODERATOR' | 'MEMBER';
+import type { WorkspaceRole } from '@vozlab/shared-types';
+
+/**
+ * Roles a user can hold inside a workspace (`auth.workspace_memberships.role`).
+ * Declared once by `WorkspaceRoleSchema` in `@vozlab/shared-types` and
+ * re-exported here so existing imports keep working.
+ */
+export type { WorkspaceRole };
 
 /**
  * Port: Workspace membership contract.

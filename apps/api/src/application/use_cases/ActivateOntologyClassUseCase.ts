@@ -1,3 +1,4 @@
+import { isModeratorOrAdmin } from '@vozlab/shared-types';
 import { OntologyClass } from '../../domain/entities/OntologyClass.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
@@ -36,7 +37,7 @@ export class ActivateOntologyClassUseCase {
       input.workspaceId,
       input.tid
     );
-    if (role !== 'MODERATOR' && role !== 'ADMIN') {
+    if (!isModeratorOrAdmin(role)) {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 

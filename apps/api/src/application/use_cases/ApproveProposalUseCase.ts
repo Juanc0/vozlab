@@ -11,6 +11,7 @@ import {
   assertIsMaintainer,
   resolveTargetAuthorHash,
 } from './proposalAuthorization.js';
+import { assertNever } from '../../shared/assertNever.js';
 
 export interface ResolveProposalInput {
   proposalId: string;
@@ -77,7 +78,7 @@ export async function applyProposalDelta(
       await repos.ontologyRepo.activateClass(proposal.targetId, workspaceId, tid, tx);
       return;
     default:
-      throw new DomainError('ERR_VALIDATION_FAILED');
+      return assertNever(proposal.targetType, 'proposal targetType');
   }
 }
 
