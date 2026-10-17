@@ -41,6 +41,16 @@ export class RedisTokenBlacklist {
   }
 
   /**
+   * Ping Redis. MUST throw when the connection is down.
+   */
+  async ping(): Promise<void> {
+    if (!this.connected) {
+      throw new Error('RedisTokenBlacklist is not connected');
+    }
+    await this.client.ping();
+  }
+
+  /**
    * Check whether a token has been revoked.
    * Returns true if the token is blacklisted.
    */

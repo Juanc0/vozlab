@@ -47,8 +47,8 @@
   - Result: reset `migrations/router/**` + `migrations/tenant/**` to a single fresh `0000_*` per DB (router `0000_jazzy_stone_men.sql`, tenant `0000_illegal_fallen_one.sql`); tenant SQL now has `edges."attributes" jsonb`, `vector(768)`, HNSW/GIN/partial indexes, `unique_user_target_vote`, all `meta.*`/`social.*` tables; router SQL = only `tenants` + `tenant_connections`. Removed `scripts/init-age.sql`. Verified on a fresh DB (`\d edges` → `attributes jsonb`; `\dx` → `age` + `vector`) and `db:migrate` is idempotent. Extra fix: added `ssl: false` to both drizzle-kit configs (v0.31 forces TLS when `ssl` is absent, breaking local `db:migrate`). `pnpm turbo run build` = 3/3 ✓
 - [x] TASK-03 — Correlation ID (`reqId`) propagation via AsyncLocalStorage
   - Result: added `bindReqId(id)` to `shared/logger/index.ts` (uses `AsyncLocalStorage.enterWith`, not `run`, so the store survives past the hook); `CorrelationGuard` now calls `bindReqId(req.id)` as its first statement before the incoming-request log, removing the synchronous `withReqId` wrapper. `req.log` carries `reqId` natively (`requestIdLogLabel: 'reqId'`) and later `log.*` calls pick it up from ALS. `pnpm turbo run build` = 3/3 ✓
-- [ ] TASK-04 — Real `/health/ready` dependency probes
-- [ ] TASK-05 — Enforce workspace membership in `TenantWorkspaceGuard` (FR-05)
+- [x] TASK-04 — Real `/health/ready` dependency probes
+  - Result: added `ping(): Promise<void>` to `IRouterDatabase` + `RouterDatabaseClient` (`SELECT 1` via Drizzle, throws on error); added `RedisTokenBlacklist.ping()` (`PING`, throws when `!connected`); rewrote `HealthController.ready` to probe both and return `200 { status: 'ready', checks: { database, redis } }` or `503 { status: 'degraded', ... }`; `live()` unchanged. `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-06 — Typed domain errors + centralized HTTP mapping
 - [ ] TASK-07 — Rate limiter fixed-window correctness (NFR-08)
 

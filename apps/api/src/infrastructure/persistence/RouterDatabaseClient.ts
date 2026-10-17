@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
@@ -76,6 +76,14 @@ export class RouterDatabaseClient implements IRouterDatabase {
       log.error({ err, tenantId }, 'failed to resolve tenant database config');
       return null;
     }
+  }
+
+  /**
+   * Cheap liveness probe for the router database.
+   * Executes `SELECT 1` through Drizzle and throws on failure.
+   */
+  async ping(): Promise<void> {
+    await this.db.execute(sql`SELECT 1`);
   }
 
   async close(): Promise<void> {

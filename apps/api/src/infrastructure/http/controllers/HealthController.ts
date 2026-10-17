@@ -18,28 +18,29 @@ export class HealthController {
     return reply.status(200).send({ status: 'alive' });
   }
 
-  async ready(req: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const checks: Record<string, 'ok' | 'fail'> = {};
+  async ready(_req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const checks: { database: 'up' | 'down'; redis: 'up' | 'down' } = {
+      database: 'up',
+      redis: 'up',
+    };
 
-    // Router DB check — resolves a sentinel tenant lookup (cheap query path).
+    // Router DB check — cheap `SELECT 1`; ping() throws on failure.
     try {
-      await this.routerDb.findTenantByOidcId('__healthcheck__');
-      checks.routerDb = 'ok';
+      await this.routerDb.ping();
     } catch {
-      checks.routerDb = 'fail';
+      checks.database = 'down';
     }
 
-    // Redis check — blacklist probe (no-op GET).
+    // Redis check — PING; ping() throws when the connection is down.
     try {
-      await this.tokenBlacklist.isBlacklisted('__healthcheck__');
-      checks.redis = 'ok';
+      await this.tokenBlacklist.ping();
     } catch {
-      checks.redis = 'fail';
+      checks.redis = 'down';
     }
 
-    const healthy = Object.values(checks).every((v) => v === 'ok');
+    const healthy = checks.database === 'up' && checks.redis === 'up';
     return reply
       .status(healthy ? 200 : 503)
-      .send({ status: healthy ? 'ok' : 'degraded', checks });
+      .send({ status: healthy ? 'ready' : 'degraded', checks });
   }
 }
