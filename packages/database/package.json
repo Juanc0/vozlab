@@ -24,6 +24,7 @@
     "db:migrate:router": "drizzle-kit migrate --config=drizzle.router.config.ts",
     "db:migrate:tenant": "drizzle-kit migrate --config=drizzle.tenant.config.ts",
     "db:seed:dev": "NODE_OPTIONS='--import tsx' tsx scripts/seed-dev.ts",
+    "db:mint-token": "NODE_OPTIONS='--import tsx' tsx scripts/mint-dev-token.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
   },
   "dependencies": {
@@ -33,9 +34,11 @@
   },
   "devDependencies": {
     "@vozlab/ts-config": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.0.0",
     "@types/pg": "^8.11.0",
     "drizzle-kit": "^0.31.11",
+    "jsonwebtoken": "^9.0.2",
     "tsx": "^4.19.0",
     "typescript": "^5.0.0"
   }

@@ -16,18 +16,23 @@
  *     - tenant_connections : physical config of the dev tenant DB
  *   Tenant DB  (`vozlab_tenant_dev`)
  *     - auth.workspaces            : slug `general`
- *     - auth.users                 : dev maintainer (stable SHA-256 authorHash)
- *     - auth.workspace_memberships : user -> workspace, role ADMIN
+ *     - auth.users                 : 4 dev identities (stable authorHash each)
+ *     - auth.workspace_memberships : 3 of them (agent has none)
  *     - meta.ontology_classes      : Problem, Idea, Resource (ACTIVE)
  *     - meta.datatype_properties   : title, description
  *     - meta.object_properties     : RELATES_TO (Problem -> Idea)
+ *
+ * The identities live in `./dev-identities.js` and are shared with
+ * `mint-dev-token.ts`, so the seeded `authorHash` and the one embedded in a
+ * minted token are guaranteed to match.
  *
  * JWT / guard mapping
  * -------------------
  * `TenantWorkspaceGuard` resolves the internal `tid` from the JWT `tid` claim
  * via `tenants.oidc_tenant_id`. The seeded value is `sabana`, so a token whose
- * `tid` claim is `sabana` resolves. Requests must also send the workspace UUID
- * in the `X-Workspace-ID` header (see the summary printed at the end).
+ * `tid` claim is `sabana` resolves. The JWT `sub` must be the identity's
+ * `auth.users.id` UUID (membership is looked up by `user_id`). Requests must
+ * also send the workspace UUID in the `X-Workspace-ID` header.
  *
  * Credentials default to the docker-compose local values and are overridable
  * through the same env vars the drizzle configs use (`ROUTER_DB_*`,
@@ -36,7 +41,6 @@
  * Usage:
  *   pnpm --filter @vozlab/database db:seed:dev
  */
-import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import {
@@ -50,15 +54,21 @@ import {
   datatypeProperties,
   objectProperties,
 } from '../src/index.js';
+import {
+  authorHashFor,
+  DEV_IDENTITIES,
+  DEV_IDENTITY_NAMES,
+  OIDC_TENANT_ID,
+  TENANT_CONNECTION_ID,
+  TENANT_ID,
+  TENANT_SLUG,
+  WORKSPACE_ID,
+  WORKSPACE_SLUG,
+} from './dev-identities.js';
 
 // ---------------------------------------------------------------------------
 // Fixed identifiers — deterministic so the seed can be re-run safely.
 // ---------------------------------------------------------------------------
-const TENANT_ID = '11111111-1111-4111-8111-111111111111';
-const TENANT_CONNECTION_ID = '22222222-2222-4222-8222-222222222222';
-const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
-const USER_ID = '44444444-4444-4444-8444-444444444444';
-const MEMBERSHIP_ID = '55555555-5555-4555-8555-555555555555';
 const CLASS_PROBLEM_ID = '66666666-6666-4666-8666-666666666661';
 const CLASS_IDEA_ID = '66666666-6666-4666-8666-666666666662';
 const CLASS_RESOURCE_ID = '66666666-6666-4666-8666-666666666663';
@@ -66,12 +76,8 @@ const DTP_TITLE_ID = '77777777-7777-4777-8777-777777777771';
 const DTP_DESCRIPTION_ID = '77777777-7777-4777-8777-777777777772';
 const OP_RELATES_TO_ID = '88888888-8888-4888-8888-888888888888';
 
-const TENANT_SLUG = 'sabana';
-const OIDC_TENANT_ID = 'sabana';
-const WORKSPACE_SLUG = 'general';
-
 /** Valid 64-char hex SHA-256 required by the `AuthorHash` value object. */
-const AUTHOR_HASH = createHash('sha256').update('dev-maintainer').digest('hex');
+const AUTHOR_HASH = authorHashFor('maintainer');
 
 // ---------------------------------------------------------------------------
 // Connection config — same defaults as the drizzle configs.
@@ -126,7 +132,7 @@ async function seed(): Promise<void> {
       })
       .onConflictDoNothing();
 
-    // --- Tenant DB: workspace, user, membership ---------------------------
+    // --- Tenant DB: workspace, users, memberships -------------------------
     await tenantDb
       .insert(workspaces)
       .values({
@@ -137,27 +143,40 @@ async function seed(): Promise<void> {
       })
       .onConflictDoNothing();
 
+    // One row per dev identity (fixed ids + stable authorHash -> idempotent).
     await tenantDb
       .insert(users)
-      .values({
-        id: USER_ID,
-        provider: 'OIDC_INSTITUTIONAL',
-        providerUserId: 'dev-maintainer',
-        authorHash: AUTHOR_HASH,
-        fullName: 'Dev Maintainer',
-        email: 'dev-maintainer@example.edu',
-        systemRole: 'ADMIN',
-      })
+      .values(
+        DEV_IDENTITY_NAMES.map((name) => {
+          const identity = DEV_IDENTITIES[name];
+          return {
+            id: identity.id,
+            provider: 'OIDC_INSTITUTIONAL',
+            providerUserId: identity.providerUserId,
+            authorHash: identity.authorHash,
+            fullName: identity.fullName,
+            email: identity.email,
+            systemRole: identity.systemRole,
+          };
+        }),
+      )
       .onConflictDoNothing();
 
+    // Memberships — the system agent acts platform-wide and has none.
     await tenantDb
       .insert(workspaceMemberships)
-      .values({
-        id: MEMBERSHIP_ID,
-        workspaceId: WORKSPACE_ID,
-        userId: USER_ID,
-        role: 'ADMIN',
-      })
+      .values(
+        DEV_IDENTITY_NAMES.flatMap((name) => {
+          const identity = DEV_IDENTITIES[name];
+          if (identity.membership === null) return [];
+          return {
+            id: identity.membership.id,
+            workspaceId: WORKSPACE_ID,
+            userId: identity.id,
+            role: identity.membership.role,
+          };
+        }),
+      )
       .onConflictDoNothing();
 
     // --- Tenant DB: base ontology (US-00 fixture) -------------------------
@@ -253,19 +272,57 @@ async function seed(): Promise<void> {
       .onConflictDoNothing();
 
     // --- Summary -----------------------------------------------------------
+    const rows = DEV_IDENTITY_NAMES.map((name) => {
+      const identity = DEV_IDENTITIES[name];
+      return {
+        role: name,
+        workspaceRole: identity.membership?.role ?? '-',
+        sub: identity.sub,
+        authorHash: identity.authorHash,
+      };
+    });
+    const roleWidth = Math.max(
+      'role'.length,
+      ...rows.map((r) => r.role.length),
+    );
+    const wsWidth = Math.max(
+      'workspace role'.length,
+      ...rows.map((r) => r.workspaceRole.length),
+    );
+    const subWidth = Math.max('sub'.length, ...rows.map((r) => r.sub.length));
+
+    const userCount = rows.length;
+    const membershipCount = rows.filter((r) => r.workspaceRole !== '-').length;
+
     console.log('\n✅ Dev seed applied (idempotent).\n');
     console.log('Router DB:', routerConfig.database);
     console.log(`  tenant id         ${TENANT_ID}`);
     console.log(`  slug              ${TENANT_SLUG}`);
-    console.log(`  oidc_tenant_id    ${OIDC_TENANT_ID}  <- JWT "tid" claim must be this`);
-    console.log('Tenant DB:', tenantConfig.database);
-    console.log(`  workspace id      ${WORKSPACE_ID}  <- X-Workspace-ID header`);
-    console.log(`  workspace slug    ${WORKSPACE_SLUG}`);
-    console.log(`  user id           ${USER_ID}`);
-    console.log(`  authorHash        ${AUTHOR_HASH}`);
     console.log(
-      '\nMint a JWT with tid="sabana" and call with header:\n' +
-        `  X-Workspace-ID: ${WORKSPACE_ID}\n`
+      `  oidc_tenant_id    ${OIDC_TENANT_ID}  <- JWT "tid" claim must be this`,
+    );
+    console.log('Tenant DB:', tenantConfig.database);
+    console.log(
+      `  workspace id      ${WORKSPACE_ID}  <- X-Workspace-ID header`,
+    );
+    console.log(`  workspace slug    ${WORKSPACE_SLUG}`);
+    console.log(`  users             ${userCount}`);
+    console.log(`  memberships       ${membershipCount}`);
+    console.log('\nDev identities (role -> sub -> authorHash):');
+    console.log(
+      `  ${'role'.padEnd(roleWidth)}  ${'workspace role'.padEnd(wsWidth)}  ` +
+        `${'sub'.padEnd(subWidth)}  authorHash`,
+    );
+    for (const row of rows) {
+      console.log(
+        `  ${row.role.padEnd(roleWidth)}  ${row.workspaceRole.padEnd(wsWidth)}  ` +
+          `${row.sub.padEnd(subWidth)}  ${row.authorHash}`,
+      );
+    }
+    console.log(
+      '\nMint a JWT and call the API:\n' +
+        '  pnpm --filter @vozlab/database db:mint-token -- --as maintainer\n' +
+        `  X-Workspace-ID: ${WORKSPACE_ID}\n`,
     );
   } finally {
     await routerPool.end();
@@ -283,7 +340,7 @@ seed()
     console.error(
       '\nIs Postgres running and migrated? Try:\n' +
         '  docker compose up -d\n' +
-        '  pnpm --filter @vozlab/database db:migrate\n'
+        '  pnpm --filter @vozlab/database db:migrate\n',
     );
     process.exit(1);
   });
