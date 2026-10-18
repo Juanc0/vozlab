@@ -63,6 +63,26 @@ volumes:
 
 ```
 
+### 1.1 Local `.env` loading
+
+Copy `.env.example` to the **repository root** as `.env` and fill it in (the file is git-ignored;
+`.env.example` is the only committed sample). The API and the database helper scripts read it through
+Node's own loader, so no `dotenv` dependency is involved:
+
+```jsonc
+// apps/api/package.json
+"dev": "tsx --env-file-if-exists=../../.env watch src/index.ts"
+// packages/database/package.json
+"db:mint-token": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/mint-dev-token.ts"
+```
+
+Notes:
+- `--env-file-if-exists` is tolerant: with no `.env` the process starts normally and
+  `apps/api/src/shared/config/env.ts` fails with the Zod message rather than an `ENOENT`.
+- Variables already present in the process environment are never overridden by the file.
+- Production does **not** read `.env`: env comes from the orchestrator/secret manager, and the same
+  scripts run unchanged because the flag simply finds no file.
+
 ---
 
 ## 2. CI/CD Pipeline (GitHub Actions)

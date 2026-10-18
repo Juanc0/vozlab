@@ -23,8 +23,8 @@
     "db:migrate": "pnpm db:migrate:router && pnpm db:migrate:tenant",
     "db:migrate:router": "drizzle-kit migrate --config=drizzle.router.config.ts",
     "db:migrate:tenant": "drizzle-kit migrate --config=drizzle.tenant.config.ts",
-    "db:seed:dev": "NODE_OPTIONS='--import tsx' tsx scripts/seed-dev.ts",
-    "db:mint-token": "NODE_OPTIONS='--import tsx' tsx scripts/mint-dev-token.ts",
+    "db:seed:dev": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/seed-dev.ts",
+    "db:mint-token": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/mint-dev-token.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
   },
   "dependencies": {

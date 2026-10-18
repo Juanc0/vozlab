@@ -152,7 +152,8 @@
 > adapter. This batch closes those seams. Full milestone definitions in `EXECUTION_PLAN.md`.
 
 ### 1T.1 — Correctness & Bootstrap
-- [ ] TASK-32 — Load `.env` in `dev`/`start`
+- [x] TASK-32 — Load `.env` in `dev`/`start`
+      → Result: loaded root `.env` via `tsx --env-file-if-exists=../../.env` in `@vozlab/api` (`dev`, `start`) and `@vozlab/database` (`db:seed:dev`, `db:mint-token`); updated `.env.example` header and `docs/devops/devops_01`. `pnpm turbo run build` = 3/3 ✓
 - [ ] TASK-33 — Validate the proposal target on creation (workspace + existence)
 - [ ] TASK-34 — Request-context error consistency (`ERR_INVALID_TOKEN`)
 - [ ] TASK-35 — Workspace-scope proposal target-author resolution
