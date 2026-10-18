@@ -32,6 +32,7 @@ export class RouterDatabaseClient implements IRouterDatabase {
   /**
    * Find a tenant by its OIDC claim `tid`.
    * Returns the internal tenant id and slug, or null if not provisioned.
+   * Throws InfrastructureError('ERR_DATABASE_CONNECTION_FAILED') on driver/connection failure.
    */
   async findTenantByOidcId(
     oidcTenantId: string
@@ -54,6 +55,7 @@ export class RouterDatabaseClient implements IRouterDatabase {
   /**
    * Resolve the physical database connection config for a tenant.
    * Returns null if the tenant has no provisioned connection row.
+   * Throws InfrastructureError('ERR_DATABASE_CONNECTION_FAILED') on driver/connection failure.
    */
   async getTenantDatabaseConfig(
     tenantId: string

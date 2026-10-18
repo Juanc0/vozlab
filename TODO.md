@@ -158,7 +158,8 @@
       → Result: validated proposal target via reuse shape (a) using IInteractionRepository.existsInWorkspace (NODE/EDGE) and IOntologyRepository.findClassById (ONTOLOGY), throwing 404 ERR_NODE_NOT_FOUND, ERR_EDGE_NOT_FOUND, or ERR_VALIDATION_FAILED before persisting; added unit tests. pnpm turbo run build = 3/3 ✓
 - [ ] TASK-34 — Request-context error consistency (`ERR_INVALID_TOKEN`)
 - [ ] TASK-35 — Workspace-scope proposal target-author resolution
-- [ ] TASK-36 — Tenant DB config null-vs-throw contract + caller audit
+- [x] TASK-36 — Tenant DB config null-vs-throw contract + caller audit
+      → Result: documented IRouterDatabase.getTenantDatabaseConfig contract (null = missing, throw = infra), audited 9 call sites (repositories, UoW, manager) to ensure infra errors propagate, and added ConnectionPoolManager unit tests for both outcomes. pnpm turbo run build = 3/3 ✓
 
 ### 1T.2 — Identity & Secrets
 - [ ] TASK-37 — Author-hash salt: per-tenant model, production guard, rotation runbook

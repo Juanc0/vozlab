@@ -49,8 +49,11 @@ export class ConnectionPoolManager {
     }
 
     // `tid` is the internal tenant UUID; resolve config from the router DB.
+    // InfrastructureError (e.g. router DB unreachable) must propagate directly
+    // so the HTTP layer maps it to 503 ERR_DATABASE_CONNECTION_FAILED, never 403.
     const config = await this.routerDb.getTenantDatabaseConfig(tid);
     if (!config) {
+      // Reached only when the tenant_connections row genuinely does not exist.
       throw new DomainError(
         'ERR_TENANT_NOT_PROVISIONED',
         `tenant ${tid} has no database config`
