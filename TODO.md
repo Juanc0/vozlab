@@ -170,7 +170,8 @@
 - [ ] TASK-40 — Remove domain placeholder defaults + de-duplicate dev role types
 
 ### 1T.4 — Ingestion Contract (Phase 2 prep)
-- [ ] TASK-41 — Data-source → workspace mapping: decision + shared-types contract
+- [x] TASK-41 — Data-source → workspace mapping: decision + shared-types contract
+      → Result: added ingestion schema (`RawSourceRecord`, `ConnectorType`, `BehaviorProfile`) to `@vozlab/shared-types`, documented API-owned source registry decision in `modules_05`, and scheduled `meta.data_sources` table + resolution route for Phase 2 in `EXECUTION_PLAN.md`. pnpm turbo run build = 3/3 ✓
 - [ ] TASK-42 — Fix the Extractor spec drift (`modules_05`)
 
 ### 1T.5 — Type Safety & Quality

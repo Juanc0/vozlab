@@ -9,4 +9,5 @@ export * from './schemas/ontology.schema.js';
 export * from './schemas/discussion.schema.js';
 export * from './schemas/interaction.schema.js';
 export * from './schemas/roles.schema.js';
+export * from './schemas/ingestion.schema.js';
 export * from './errors/http-errors.js';

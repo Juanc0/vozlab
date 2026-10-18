@@ -150,3 +150,11 @@ class SourceExtractorService:
 
 1. **Write Isolation:** Agent 1 **never** writes directly to the PostgreSQL database. All ingestion is done exclusively through the secure REST endpoints of the **Fastify API**, guaranteeing that the active ontology, the Workspace restrictions and the Zod validations are applied.
 2. **Periodicity and Resilience:** The connectors operate through scheduled batch reading tasks or institutional webhooks, applying retry strategies upon temporary outages of the origin servers.
+
+---
+
+## 5. Source → Workspace Mapping Decision
+
+- **API-Owned Registry:** The mapping from external data sources (`source_id`) to internal workspaces (`workspace_id`) is owned by the Fastify API via a tenant-scoped registry table (`meta.data_sources`), not trusted or supplied arbitrarily by ingestion payloads.
+- **Envelope Contract:** The Extractor consumes `RawSourceRecord` (defined in `@vozlab/shared-types`), which carries no `workspace_id`. The ingestion gateway or Extractor queries the API's resolution endpoint to determine target workspace and authorization context prior to posting nodes.
+- **Alternatives Rejected:** Envelope-carried `workspace_id` (trusted, unauditable) and one worker deployment per workspace (operational overhead). Behavior is a function of connector type (`ConnectorTypeSchema`), sharing a single worker codebase.
