@@ -104,7 +104,7 @@ export class ProposalController {
     }
 
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
       const { items, nextCursor } = await this.listProposals.execute({
@@ -132,7 +132,7 @@ export class ProposalController {
    */
   async get(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
-    if (!ctx) return sendError(reply, 'ERR_MISSING_WORKSPACE_HEADER');
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     const proposalId = (req.params as { id: string }).id;
 
