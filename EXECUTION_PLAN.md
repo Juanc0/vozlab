@@ -392,6 +392,7 @@ The re-audit also identified work that is **not** part of Phase 1R/1S and has no
 - **SSE notifications** to the PWA (system_03 §4).
 - **Type-safety debt:** replace `tx?: any` across the ports with a real transaction type (M3).
 - **Consolidator/Extractor/Relator Dockerfiles** and per-service CI (devops_01).
+- **Data Source Registry:** The `meta.data_sources` table (tenant DB) and its resolution route (`GET /api/v1/ingestion/resolve-source`) belong to Phase 2 (Extractor integration), not built during the Phase 1T contract definition.
 
 ---
 

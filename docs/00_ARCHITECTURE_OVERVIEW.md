@@ -150,3 +150,4 @@ flowchart TD
 
 1. **Graph Isolation per Workspace:** Agent 2's relationship suggestions occur strictly within the same `workspace_id`.
 2. **LLM Connectivity Failures:** If Ollama/LLM does not respond during Agent 2's evaluation, the task is not lost; it remains retained in Redis Streams for automatic re-evaluation.
+3. **Data-Source → Workspace Mapping:** The API owns the registry of institutional sources (`meta.data_sources`). Workers never choose a workspace; they query the API to resolve the `source_id` to its target workspace and authorization context.

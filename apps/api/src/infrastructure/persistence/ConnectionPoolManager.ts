@@ -38,6 +38,11 @@ export class ConnectionPoolManager {
   /**
    * Get or create a Drizzle client for the given tenant id.
    * Caches pools and evicts stale entries.
+   *
+   * Note: An `InfrastructureError` thrown by `routerDb.getTenantDatabaseConfig`
+   * must propagate unchanged (never be caught or swallowed here) so the HTTP layer
+   * correctly maps database connection/driver outages to 503 `ERR_DATABASE_CONNECTION_FAILED`.
+   * A `null` config (genuinely missing row) throws `DomainError('ERR_TENANT_NOT_PROVISIONED')`.
    */
   async getDb(tid: string): Promise<ReturnType<typeof drizzle>> {
     const now = Date.now();
