@@ -90,7 +90,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
-  const createProposalUseCase = new CreateProposalUseCase(proposalRepo, eventPublisher);
+  const createProposalUseCase = new CreateProposalUseCase(
+    proposalRepo,
+    interactionRepo,
+    ontologyRepo,
+    eventPublisher
+  );
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
     edgeRepo,

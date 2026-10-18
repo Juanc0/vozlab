@@ -154,7 +154,8 @@
 ### 1T.1 — Correctness & Bootstrap
 - [x] TASK-32 — Load `.env` in `dev`/`start`
       → Result: loaded root `.env` via `tsx --env-file-if-exists=../../.env` in `@vozlab/api` (`dev`, `start`) and `@vozlab/database` (`db:seed:dev`, `db:mint-token`); updated `.env.example` header and `docs/devops/devops_01`. `pnpm turbo run build` = 3/3 ✓
-- [ ] TASK-33 — Validate the proposal target on creation (workspace + existence)
+- [x] TASK-33 — Validate the proposal target on creation (workspace + existence)
+      → Result: validated proposal target via reuse shape (a) using IInteractionRepository.existsInWorkspace (NODE/EDGE) and IOntologyRepository.findClassById (ONTOLOGY), throwing 404 ERR_NODE_NOT_FOUND, ERR_EDGE_NOT_FOUND, or ERR_VALIDATION_FAILED before persisting; added unit tests. pnpm turbo run build = 3/3 ✓
 - [ ] TASK-34 — Request-context error consistency (`ERR_INVALID_TOKEN`)
 - [ ] TASK-35 — Workspace-scope proposal target-author resolution
 - [ ] TASK-36 — Tenant DB config null-vs-throw contract + caller audit
