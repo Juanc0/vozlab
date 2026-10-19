@@ -41,6 +41,17 @@ export class DrizzleNodeRepository implements INodeRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByIdInWorkspace(id: string, workspaceId: string, tid: string): Promise<Node | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(nodes)
+      .where(and(eq(nodes.id, id), eq(nodes.workspaceId, workspaceId), isNull(nodes.deletedAt)))
+      .limit(1);
+
+    return row ? toDomain(row) : null;
+  }
+
   /**
    * Keyset pagination over `(createdAt DESC, id DESC)`. The cursor is an
    * opaque base64 token that encodes `"<iso>|<id>"`; a malformed token is a

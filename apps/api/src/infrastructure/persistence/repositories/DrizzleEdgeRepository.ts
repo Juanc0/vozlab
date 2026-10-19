@@ -28,6 +28,16 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByIdInWorkspace(id: string, workspaceId: string, tid: string): Promise<Edge | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(edges)
+      .where(and(eq(edges.id, id), eq(edges.workspaceId, workspaceId), isNull(edges.deletedAt)))
+      .limit(1);
+    return row ? toDomain(row) : null;
+  }
+
   async findByWorkspace(workspaceId: string, tid: string): Promise<Edge[]> {
     const db = await this.client(tid);
     const rows = await db

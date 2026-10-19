@@ -27,6 +27,7 @@ export interface SubgraphResult {
  */
 export interface INodeRepository {
   findById(id: string, tid: string): Promise<Node | null>;
+  findByIdInWorkspace(id: string, workspaceId: string, tid: string): Promise<Node | null>;
   /**
    * List non-deleted nodes of a workspace using keyset (cursor) pagination
    * ordered by `createdAt DESC, id DESC` (NFR-04, O(1) — never OFFSET).

@@ -5,6 +5,7 @@ import { Edge } from '../entities/Edge.js';
  */
 export interface IEdgeRepository {
   findById(id: string, tid: string): Promise<Edge | null>;
+  findByIdInWorkspace(id: string, workspaceId: string, tid: string): Promise<Edge | null>;
   findByWorkspace(workspaceId: string, tid: string): Promise<Edge[]>;
   /**
    * List non-deleted edges of a workspace using keyset (cursor) pagination

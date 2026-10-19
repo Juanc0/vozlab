@@ -28,12 +28,12 @@ export async function resolveTargetAuthorHash(
 ): Promise<string> {
   switch (proposal.targetType) {
     case 'NODE': {
-      const node = await repos.nodeRepo.findById(proposal.targetId, tid);
+      const node = await repos.nodeRepo.findByIdInWorkspace(proposal.targetId, workspaceId, tid);
       if (!node) throw new DomainError('ERR_NODE_NOT_FOUND');
       return node.authorHash.toString();
     }
     case 'EDGE': {
-      const edge = await repos.edgeRepo.findById(proposal.targetId, tid);
+      const edge = await repos.edgeRepo.findByIdInWorkspace(proposal.targetId, workspaceId, tid);
       if (!edge) throw new DomainError('ERR_EDGE_NOT_FOUND');
       return edge.authorHash.toString();
     }
