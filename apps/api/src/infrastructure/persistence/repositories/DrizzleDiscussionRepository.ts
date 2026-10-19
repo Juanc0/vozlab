@@ -13,6 +13,12 @@ import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../../domain/ports/IDiscussionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
@@ -22,8 +28,8 @@ import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 export class DrizzleDiscussionRepository implements IDiscussionRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async findThreadById(id: string, tid: string): Promise<DiscussionThread | null> {
@@ -84,7 +90,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     };
   }
 
-  async saveThread(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
+  async saveThread(thread: DiscussionThread, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(discussionThreads).values({
       id: thread.id,
@@ -99,7 +105,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     });
   }
 
-  async update(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
+  async update(thread: DiscussionThread, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .update(discussionThreads)
@@ -147,7 +153,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     };
   }
 
-  async savePost(post: DiscussionPost, tid: string, tx?: any): Promise<void> {
+  async savePost(post: DiscussionPost, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(discussionPosts).values({
       id: post.id,
@@ -183,7 +189,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
    * Soft-delete a post by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt` (the use case never stamps it).
    */
-  async softDelete(id: string, tid: string, tx?: any): Promise<void> {
+  async softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .update(discussionPosts)

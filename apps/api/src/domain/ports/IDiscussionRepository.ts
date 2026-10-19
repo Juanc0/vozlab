@@ -1,3 +1,4 @@
+import { DbTransaction } from './Transaction.js';
 import { DiscussionThread } from '../entities/DiscussionThread.js';
 import { DiscussionPost } from '../entities/DiscussionPost.js';
 
@@ -20,9 +21,9 @@ export interface IDiscussionRepository {
     opts: { workspaceId: string; limit: number; cursor?: string },
     tid: string
   ): Promise<{ items: DiscussionThread[]; nextCursor: string | null }>;
-  saveThread(thread: DiscussionThread, tid: string, tx?: any): Promise<void>;
+  saveThread(thread: DiscussionThread, tid: string, tx?: DbTransaction): Promise<void>;
   /** Persist a thread's mutated state (status/updatedAt) after a transition. */
-  update(thread: DiscussionThread, tid: string, tx?: any): Promise<void>;
+  update(thread: DiscussionThread, tid: string, tx?: DbTransaction): Promise<void>;
   /**
    * List a thread's posts using keyset (cursor) pagination ordered by
    * `createdAt ASC, id ASC` — chronological, for a stable conversation read
@@ -35,10 +36,10 @@ export interface IDiscussionRepository {
   ): Promise<{ items: DiscussionPost[]; nextCursor: string | null }>;
   /** Load a single non-deleted post; soft-deleted rows read as `null`. */
   findPostById(id: string, tid: string): Promise<DiscussionPost | null>;
-  savePost(post: DiscussionPost, tid: string, tx?: any): Promise<void>;
+  savePost(post: DiscussionPost, tid: string, tx?: DbTransaction): Promise<void>;
   /**
    * Soft-delete a post by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt`.
    */
-  softDelete(id: string, tid: string, tx?: any): Promise<void>;
+  softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void>;
 }

@@ -7,6 +7,7 @@ import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import { DbTransaction } from '../../domain/ports/Transaction.js';
 import {
   assertIsMaintainer,
   resolveTargetAuthorHash,
@@ -46,7 +47,7 @@ export async function applyProposalDelta(
   proposal: EditProposal,
   workspaceId: string,
   tid: string,
-  tx: any
+  tx: DbTransaction
 ): Promise<void> {
   switch (proposal.targetType) {
     case 'NODE':

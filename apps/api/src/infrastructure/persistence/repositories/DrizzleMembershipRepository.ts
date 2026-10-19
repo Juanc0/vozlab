@@ -5,6 +5,12 @@ import {
   WorkspaceRole,
 } from '../../../domain/ports/IMembershipRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 
 /**
  * DrizzleMembershipRepository: reads `auth.workspace_memberships` inside the
@@ -17,8 +23,8 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
   /** Resolve the Drizzle client: the open transaction, or the tenant pool. */
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async isMember(userId: string, workspaceId: string, tid: string): Promise<boolean> {

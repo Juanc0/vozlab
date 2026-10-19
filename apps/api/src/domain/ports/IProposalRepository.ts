@@ -1,3 +1,4 @@
+import { DbTransaction } from './Transaction.js';
 import { EditProposal, ProposalStatus, TargetType } from '../entities/EditProposal.js';
 
 // Naming follows `modules_02 §6.8`.
@@ -34,12 +35,12 @@ export interface IProposalRepository {
     tid: string
   ): Promise<{ items: EditProposal[]; nextCursor: string | null }>;
   findPendingByTarget(targetId: string, tid: string): Promise<EditProposal[]>;
-  save(proposal: EditProposal, tid: string, tx?: any): Promise<void>;
+  save(proposal: EditProposal, tid: string, tx?: DbTransaction): Promise<void>;
   updateStatus(
     id: string,
     status: ProposalStatus,
     resolvedBy: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void>;
 }

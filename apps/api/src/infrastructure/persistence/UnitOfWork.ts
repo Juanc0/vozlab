@@ -1,5 +1,6 @@
 import { ConnectionPoolManager } from './ConnectionPoolManager.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
+import { DbTransaction } from '../../domain/ports/Transaction.js';
 
 /**
  * UnitOfWork: transactional boundary for tenant-scoped operations.
@@ -13,11 +14,11 @@ export class UnitOfWork implements IUnitOfWork {
 
   async runInTransaction<T>(
     tid: string,
-    work: (tx: any) => Promise<T>
+    work: (tx: DbTransaction) => Promise<T>
   ): Promise<T> {
     const db = await this.poolManager.getDb(tid);
 
-    return db.transaction(async (tx: any) => {
+    return db.transaction(async (tx) => {
       return work(tx);
     });
   }

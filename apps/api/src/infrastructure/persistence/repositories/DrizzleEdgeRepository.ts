@@ -5,6 +5,12 @@ import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IEdgeRepository } from '../../../domain/ports/IEdgeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
@@ -14,8 +20,8 @@ import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 export class DrizzleEdgeRepository implements IEdgeRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async findById(id: string, tid: string): Promise<Edge | null> {
@@ -88,7 +94,7 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
     };
   }
 
-  async save(edge: Edge, tid: string, tx?: any): Promise<void> {
+  async save(edge: Edge, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(edges).values({
       id: edge.id,
@@ -105,7 +111,7 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
     });
   }
 
-  async update(edge: Edge, tid: string, tx?: any): Promise<void> {
+  async update(edge: Edge, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .update(edges)
@@ -118,7 +124,7 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
       .where(eq(edges.id, edge.id));
   }
 
-  async softDelete(id: string, tid: string, tx?: any): Promise<void> {
+  async softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.update(edges).set({ deletedAt: new Date() }).where(eq(edges.id, id));
   }
@@ -128,7 +134,7 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
     proposedChanges: Record<string, unknown>,
     workspaceId: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
     const [existing] = await db

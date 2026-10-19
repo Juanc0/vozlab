@@ -1,3 +1,4 @@
+import { DbTransaction } from './Transaction.js';
 import { Node } from '../entities/Node.js';
 
 /**
@@ -52,19 +53,19 @@ export interface INodeRepository {
     opts: { depth: number; limit: number },
     tid: string
   ): Promise<SubgraphResult>;
-  save(node: Node, tid: string, tx?: any): Promise<void>;
-  update(node: Node, tid: string, tx?: any): Promise<void>;
+  save(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
+  update(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
   /**
    * Soft-delete a node by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt`; deleted nodes drop out of every read path
    * (`findById`, `listByWorkspace`, `getSubgraph`).
    */
-  softDelete(id: string, tid: string, tx?: any): Promise<void>;
+  softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void>;
   applyDelta(
     targetId: string,
     proposedChanges: Record<string, any>,
     workspaceId: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void>;
 }

@@ -10,6 +10,12 @@ import { ObjectProperty } from '../../../domain/entities/ObjectProperty.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { IOntologyRepository } from '../../../domain/ports/IOntologyRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 
 /**
  * DrizzleOntologyRepository: persists the metamodel in the tenant DB's
@@ -18,8 +24,8 @@ import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
 export class DrizzleOntologyRepository implements IOntologyRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async findClassById(
@@ -125,7 +131,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return rows.map(objectToDomain);
   }
 
-  async saveClass(cls: OntologyClass, tid: string, tx?: any): Promise<void> {
+  async saveClass(cls: OntologyClass, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(ontologyClasses).values({
       id: cls.id,
@@ -140,7 +146,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     });
   }
 
-  async saveDatatypeProperty(prop: DatatypeProperty, tid: string, tx?: any): Promise<void> {
+  async saveDatatypeProperty(prop: DatatypeProperty, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(datatypeProperties).values({
       id: prop.id,
@@ -159,7 +165,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     });
   }
 
-  async saveObjectProperty(prop: ObjectProperty, tid: string, tx?: any): Promise<void> {
+  async saveObjectProperty(prop: ObjectProperty, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(objectProperties).values({
       id: prop.id,
@@ -183,7 +189,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     proposedChanges: Record<string, unknown>,
     workspaceId: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
     const [row] = await db
@@ -226,7 +232,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     targetId: string,
     workspaceId: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
     const [row] = await db

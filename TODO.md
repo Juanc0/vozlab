@@ -182,7 +182,8 @@
       → Result: rewrote the sample to the TASK-41 contract (`RawSourceRecord` = `source_id`/`connector_type`/`channel_name`/`raw_content`, no `workspace_id`; `type_key` default `"Problem"` with an alias to `typeKey` and a FR-06 note); `_send_to_fastify` now uses the agent JWT (`Bearer` bot JWT, `X-Workspace-ID`, `x-correlation-id`) per `modules_02` §3.2 instead of `api_key`; §1 Redis cache/dedup marked **Phase-2 planned**; §4 Write Isolation references the agent identity + `BatchCreateNodeSchema` (1..1000, no such endpoint today). `pnpm turbo run build` = 3/3 ✓
 
 ### 1T.5 — Type Safety & Quality
-- [ ] TASK-43 — Type the transaction handle (`tx?: any` → `DbTransaction`)
+- [x] TASK-43 — Type the transaction handle (`tx?: any` → `DbTransaction`)
+      → Result: added opaque `DbTransaction = unknown` in `domain/ports/Transaction.ts`; all ports + Drizzle adapters + `UnitOfWork` now use it (adapters narrow once via `type Tx = Parameters<Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]>[0]` — `NodePgTransaction` extracted from `drizzle-orm/node-postgres`). `grep tx?: any` empty, domain free of Drizzle/pg. `pnpm turbo run build` = 3/3 ✓, `pnpm --filter @vozlab/api test` = 36/36 ✓
 - [ ] TASK-44 — Use-case test baseline (application layer, fakes only)
 - [ ] TASK-45 — Wire the `test` task (root script + Turbo outputs warning)
 

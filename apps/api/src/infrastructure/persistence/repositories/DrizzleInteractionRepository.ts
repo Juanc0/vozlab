@@ -17,6 +17,12 @@ import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { IInteractionRepository } from '../../../domain/ports/IInteractionRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 import { assertNever } from '../../../shared/assertNever.js';
 
 /**
@@ -27,8 +33,8 @@ import { assertNever } from '../../../shared/assertNever.js';
 export class DrizzleInteractionRepository implements IInteractionRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async findByUserAndTarget(
@@ -125,7 +131,7 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
     }
   }
 
-  async save(interaction: Interaction, tid: string, tx?: any): Promise<void> {
+  async save(interaction: Interaction, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(interactionsLog).values({
       id: interaction.id,
@@ -144,7 +150,7 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
     targetType: string,
     delta: number,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
 

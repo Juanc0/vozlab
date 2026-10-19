@@ -9,6 +9,12 @@ import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { IProposalRepository } from '../../../domain/ports/IProposalRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
+import { DbTransaction } from '../../../domain/ports/Transaction.js';
+
+/** Concrete Drizzle transaction type resolved from the tenant pool client. */
+type Tx = Parameters<
+  Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]
+>[0];
 import { decodeCursor, encodeCursor, keysetAfter } from '../keyset.js';
 
 /**
@@ -22,8 +28,8 @@ export class DrizzleProposalRepository implements IProposalRepository {
   constructor(private readonly poolManager: ConnectionPoolManager) {}
 
   /** Resolve the Drizzle client: the open transaction, or the tenant pool. */
-  private async client(tid: string, tx?: any) {
-    return tx ?? (await this.poolManager.getDb(tid));
+  private async client(tid: string, tx?: DbTransaction) {
+    return (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
   }
 
   async findById(id: string, tid: string): Promise<EditProposal | null> {
@@ -125,7 +131,7 @@ export class DrizzleProposalRepository implements IProposalRepository {
     return rows.map(toDomain);
   }
 
-  async save(proposal: EditProposal, tid: string, tx?: any): Promise<void> {
+  async save(proposal: EditProposal, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.insert(editProposals).values({
       id: proposal.id,
@@ -148,7 +154,7 @@ export class DrizzleProposalRepository implements IProposalRepository {
     status: ProposalStatus,
     resolvedBy: string,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
     await db

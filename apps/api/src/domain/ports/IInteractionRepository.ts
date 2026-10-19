@@ -1,3 +1,4 @@
+import { DbTransaction } from './Transaction.js';
 import {
   Interaction,
   InteractionTargetType,
@@ -25,7 +26,7 @@ export interface IInteractionRepository {
     workspaceId: string,
     tid: string
   ): Promise<boolean>;
-  save(interaction: Interaction, tid: string, tx?: any): Promise<void>;
+  save(interaction: Interaction, tid: string, tx?: DbTransaction): Promise<void>;
   /**
    * Applies a delta to the target entity's denormalized counters (RF-15).
    * Always a `sql`-level `+=` (never read-modify-write) so the update stays
@@ -39,6 +40,6 @@ export interface IInteractionRepository {
     targetType: string,
     delta: number,
     tid: string,
-    tx?: any
+    tx?: DbTransaction
   ): Promise<void>;
 }

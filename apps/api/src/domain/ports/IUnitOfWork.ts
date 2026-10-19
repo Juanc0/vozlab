@@ -1,3 +1,5 @@
+import { DbTransaction } from './Transaction.js';
+
 /**
  * Port: Unit of Work — transaction boundary for atomic multi-table operations.
  *
@@ -6,5 +8,5 @@
  * and opens the transaction against it.
  */
 export interface IUnitOfWork {
-  runInTransaction<T>(tid: string, work: (tx: any) => Promise<T>): Promise<T>;
+  runInTransaction<T>(tid: string, work: (tx: DbTransaction) => Promise<T>): Promise<T>;
 }
