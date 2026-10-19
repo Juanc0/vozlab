@@ -1,6 +1,6 @@
 # Architecture
 
-VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. The PWA and the three Python workers are specified but not built.
+VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. The PWA and the Python worker handlers are specified but not built; Phase 2 has a shared Python runtime and an embedder scaffold.
 
 ## Context and containers
 
@@ -8,7 +8,7 @@ VozLab is currently a **modular monolith**: one Fastify process exposes the REST
 flowchart LR
   U["Community and staff"] -. planned .-> PWA["SvelteKit PWA"]
   PWA --> API["Fastify API"]
-  W["Python workers"] -. planned .-> API
+  W["Python workers<br/>runtime scaffold"] -. planned .-> API
   API --> R[("Router DB<br/>tenants · event codes")]
   API --> T[("Tenant DB<br/>auth · meta · public · social")]
   API --> REDIS[("Redis<br/>blacklist · rate limits · OIDC state · streams")]
@@ -22,7 +22,8 @@ flowchart LR
 | Tenant DB | PostgreSQL 18.6 + pgvector; one physical DB per institution | Implemented |
 | Broker/cache | Redis 7 (Streams, fixed-window counters, token blacklist, OIDC state) | Implemented |
 | PWA | SvelteKit 5 + Cytoscape.js | Empty scaffold |
-| Workers | Python 3.12 (Extractor, Relacionador, Consolidador) | Empty scaffolds |
+| Workers | Python 3.12 + uv; shared `vozlab_worker` runtime (ADR-0021) | Runtime + embedder scaffold; no handler runs |
+| AI workers | Extractor, Relacionador, Consolidador | Empty scaffolds |
 | LLM | Ollama (`nomic-embed-text`, 768 dims) | Container only; unused |
 
 ## Request path
@@ -85,7 +86,7 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | `EDGE_CREATED`, `EDGE_UPDATED`, `EDGE_DELETED` | `stream:edge_created`, `stream:edge_updated`, `stream:edge_deleted` |
 | Ontology, discussion, interaction and deletion events | `stream:<event-lowercase>` |
 
-`NODE_CREATED` carries `reqId`, `nodeId`, `workspaceId`, `typeKey` and `title`. It is intended to trigger embedding computation and the Relacionador, but **no consumer exists** and nothing writes `nodes.embedding`. Publication is fire-and-forget: if Redis is disconnected, the event is dropped with a warning (there is no outbox or retry).
+`NODE_CREATED` carries `reqId`, `nodeId`, `workspaceId`, `typeKey` and `title`. ADR-0020 assigns it to a dedicated embedder and the Relator, each with its own consumer group. The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream, but **no worker handler is running** and nothing writes `nodes.embedding` yet. Publication is fire-and-forget: if Redis is disconnected, the event is dropped with a warning (there is no outbox or retry).
 
 ## Runtime and deployment facts
 
@@ -103,8 +104,8 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 - PWA OIDC login screen, session restore UI and event QR scanner (the API half of FR-01/02/03 exists).
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SvelteKit PWA, SSE, GraphQL.
-- Python Extractor/Relacionador/Consolidador and any Redis consumer groups.
-- Embedding computation; `NODE_CREATED` has no consumer.
+- Python Extractor/Relacionador/Consolidador handlers and all running consumer groups. The shared runtime and embedder scaffold are not a deployed worker.
+- Embedding computation: `NODE_CREATED` has no consumer, `PUT /api/v1/nodes/:id/embedding` is not implemented, and `nodes.embedding` stays `NULL`.
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.
 - Data-source registry (`meta.data_sources`) and ingestion resolution route (Phase 2).
 - Metrics, tracing, dashboards and load tests.
@@ -112,4 +113,4 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 
 ## Decisions and further reading
 
-The architecture decisions are recorded in the [ADR set](decisions/) (`docs/decisions/ADR-*.md`): Bearer access JWT with an `HttpOnly` refresh credential, OIDC + JIT accounts, physical database per tenant, the global event-code exception, bounded SQL CTE over Apache AGE for reads, synchronous vote scoring, soft-delete policy, opaque pseudonyms, and the API-owned source registry. The manual Composition Root is a convention, described in [conventions.md](conventions.md). Implementation details are in [auth-and-tenancy.md](auth-and-tenancy.md), [domain-model.md](domain-model.md), [api-reference.md](api-reference.md) and [runbook-ops.md](runbook-ops.md).
+The architecture decisions are recorded in the [ADR set](decisions/) (`docs/decisions/ADR-*.md`): Bearer access JWT with an `HttpOnly` refresh credential, OIDC + JIT accounts, physical database per tenant, the global event-code exception, bounded SQL CTE over Apache AGE for reads, synchronous vote scoring, soft-delete policy, opaque pseudonyms, the API-owned source registry, the dedicated embedding pipeline (ADR-0020) and the shared Python worker runtime (ADR-0021). The manual Composition Root is a convention, described in [conventions.md](conventions.md). Implementation details are in [auth-and-tenancy.md](auth-and-tenancy.md), [domain-model.md](domain-model.md), [api-reference.md](api-reference.md) and [runbook-ops.md](runbook-ops.md).

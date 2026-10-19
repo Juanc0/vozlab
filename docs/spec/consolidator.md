@@ -1,8 +1,10 @@
 # Consolidator Worker (`worker-consolidador`)
 
-> **Not implemented (Phase 2).** `apps/worker-consolidador/` is an empty
-> scaffold. There is no scheduler, package, Dockerfile or API endpoint for
-> opportunities. This page records the intended design and open decisions.
+> **Not implemented (Phase 2).** `apps/worker-consolidador/` is still an empty
+> scaffold. There is no scheduler, handler, Dockerfile or API endpoint for
+> opportunities. The shared runtime in `packages/worker-shared` (ADR-0021) is
+> available for config/logging/HTTP, but the Consolidator is scheduled rather
+> than stream-driven. This page records the intended design and open decisions.
 
 The Consolidator is Agent 3: a scheduled, idempotent worker that finds dense
 clusters of related nodes and high-interaction discussions, synthesizes them

@@ -59,7 +59,7 @@ The access token is never placed in a URL. The refresh cookie is scoped to
 | `tid` | Yes in practice | Indirectly — missing → `403` in `tenantGuard` | OIDC tenant identifier matched against `tenants.oidc_tenant_id`. `iss` is not consulted. |
 | `jti` | Yes by contract | Only when present | Unique token id / Redis blacklist key. Tokens issued by the auth flow always carry one. |
 | `authorHash` | Yes | Yes — must match `^[a-fA-F0-9]{64}$`, else `401 ERR_INVALID_TOKEN` | Opaque pseudonym stored on `auth.users.author_hash`; generated randomly on first account creation. Never derived by the API. |
-| `type` | Only for agents | Yes | One of `AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR`. Any other value → `401 ERR_INVALID_TOKEN`. Absent = human. |
+| `type` | Only for agents | Yes | One of `AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR`, `AGENT_EMBEDDER`. Any other value → `401 ERR_INVALID_TOKEN`. Absent = human. |
 | `iat`, `exp` | Standard | `exp` verified by `jsonwebtoken` | Expired → `401 ERR_TOKEN_EXPIRED`; default lifetime 15 min. |
 
 The API signs and verifies its own HS256 token with `JWT_SECRET`; the IdP's
@@ -195,20 +195,22 @@ System agents use the same bearer contract as humans, with `type` added.
 
 | Requirement | Agent behaviour |
 | --- | --- |
-| `sub`, `tid`, `authorHash` | Required; `sub` is the seeded `SYSTEM_AGENT` user so audit trails resolve. |
-| `type` | Required; `AGENT_EXTRACTOR`, `AGENT_RELACIONADOR` or `AGENT_CONSOLIDADOR`. Unknown values are rejected, never downgraded to human. |
+| `sub`, `tid`, `authorHash` | Required. The three AI agents use the seeded `SYSTEM_AGENT` user so audit trails resolve; the embedder is a utility and authors no graph rows, but still needs a valid 64-hex `authorHash`. |
+| `type` | Required; `AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR` or `AGENT_EMBEDDER`. Unknown values are rejected, never downgraded to human. |
 | `jti` | Required by contract; used for revocation when present. |
 | `X-Workspace-ID` | **Required**; the agent is scoped to that workspace like any caller. |
 | Tenant resolution | `tid` must resolve to a provisioned tenant. |
 | Membership | **Skipped** — agents are platform actors and have no `workspace_memberships` row. |
-| Refresh | Never issued; `/auth/refresh` rejects a `SYSTEM_AGENT` row. Agents are minted out of band (`db:mint-token` locally; worker credentials in Phase 2). |
+| Refresh | Never issued; `/auth/refresh` rejects a `SYSTEM_AGENT` row. Agents are minted out of band (`db:mint-token` locally; a mounted token file or injected token in deployments — ADR-0021). |
 | Roles | No implicit role. Moderator/admin-gated actions reject an agent that lacks the role. |
 | Mutation path | Public API only (`POST /api/v1/nodes`, `POST /api/v1/proposals`, …) — never direct DB writes. |
 | Pseudonym | Stable `authorHash` minted for the agent user; it appears as the author of agent-created objects. |
 
-There is no separate agent secret or agent-only route namespace. A valid agent
-token can call the same endpoints as a human, subject to ontology and role
-rules.
+There is no separate agent namespace for existing routes: a valid agent token
+can call the same endpoints as a human, subject to ontology and role rules.
+ADR-0020 reserves one narrower future route, `PUT /api/v1/nodes/:id/embedding`,
+which will additionally require `type=AGENT_EMBEDDER`; it is not implemented
+yet.
 
 ## 9. Event-code join (FR-03)
 

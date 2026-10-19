@@ -2,7 +2,7 @@
 
 VozLab is a multi-tenant knowledge-graph platform for institutional co-creation. Community members turn scattered listening inputs (surveys, suggestion boxes, meeting minutes) into typed graph nodes, debate them in threads, and propose edits through a pull-request-style governance flow. Each institution gets its own physical PostgreSQL database; each workspace is isolated inside it.
 
-The platform is specified as a Fastify API plus a SvelteKit 5 PWA and three Python AI workers. **Only the API is implemented today.**
+The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python AI workers, and a dedicated embedding worker. **Only the API is implemented today; the Phase 2 Python worker runtime exists as a scaffold.**
 
 ## Status
 
@@ -10,11 +10,12 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA and three Pyth
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 24 files / 114 unit tests green (`pnpm test`); opt-in auth integration suite (5 tests) |
+| Tests | 24 files / 114 TypeScript unit tests green (`pnpm test`); opt-in auth integration suite (5 tests); Python runtime 37 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
-| CI | Thin GitHub Actions: install + `build type-check test` |
+| CI | Thin GitHub Actions: install + `build type-check test` (TypeScript only; Python tests are not wired yet) |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
-| Python workers, PWA, Apache AGE adapter, embeddings, SSE, metrics | Not built |
+| Python workers | Shared `vozlab_worker` runtime + embedder scaffold; no handler consumes events yet |
+| PWA, Apache AGE adapter, embeddings, SSE, metrics | Not built; `nodes.embedding` stays `NULL` |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
@@ -27,6 +28,8 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | `apps/worker-extractor` | Python 3.12 ingestion worker | Empty scaffold (Phase 2) |
 | `apps/worker-relacionador` | Python 3.12 relationship evaluator | Empty scaffold (Phase 2) |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |
+| `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Python package + `--check`; handler is Phase 2.4 |
+| `packages/worker-shared` | Shared Python runtime: config, JSON logs, agent tokens, HTTP client, Redis Streams consumer | Implemented and tested |
 | `packages/database` | Drizzle schemas, migrations, dev seed/token/event-code scripts | Implemented |
 | `packages/shared-types` | Zod DTOs, agent/role/ingestion contracts, `ERROR_CODES` | Implemented |
 | `packages/ts-config` | Shared TypeScript configuration | Implemented |
@@ -34,7 +37,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 
 ## Quickstart (5 minutes)
 
-Prerequisites: Node 22 (CI baseline), pnpm 12.11.2 (`corepack enable`), Docker with Compose.
+Prerequisites: Node 22 (CI baseline), pnpm 12.11.2 (`corepack enable`), Docker with Compose. Python worker work additionally needs uv and Python 3.12.
 
 ```bash
 pnpm install
@@ -78,6 +81,10 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:event-code -- --workspace <uuid>` | Creates a global event code for QR join; prints the raw code once |
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
+| `uv sync` | Creates the Python 3.12 workspace environment from `uv.lock` |
+| `uv run pytest` | Runs the shared worker runtime and embedder scaffold tests (37) |
+| `uv run ruff check packages/worker-shared apps/worker-embedder` | Lints the Python worker code |
+| `uv run vozlab-worker-embedder --check` | Validates the embedder scaffold configuration and agent credential source |
 
 The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-only, so there is no `dist/` to run.
 

@@ -22,6 +22,7 @@ are in [docs/decisions/](decisions/); unbuilt components are specified in
 | **Agent 1 — Extractor** | Atomic multi-source ingestion worker. | System service | Bot JWT (`AGENT_EXTRACTOR`) |
 | **Agent 2 — Relator** | Event-driven semantic evaluator of new nodes. | System service | Bot JWT (`AGENT_RELACIONADOR`) |
 | **Agent 3 — Consolidator** | Scheduled synthesis of dense clusters into opportunities. | System service | Bot JWT (`AGENT_CONSOLIDADOR`) |
+| **Embedding utility worker** | Dedicated consumer that turns `NODE_CREATED` into a 768-dimensional vector (not an LLM agent). | System service | Bot JWT (`AGENT_EMBEDDER`, ADR-0020) |
 
 The identity model, guard chain and pseudonym rules are in
 [auth-and-tenancy.md](auth-and-tenancy.md).
@@ -119,9 +120,10 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
-  (pgvector). *(Partial: the event is published, but no consumer exists and
-  nothing writes `embedding`. A dedicated embedding step is a Phase 2
-  milestone.)*
+  (pgvector). *(Partial: the event is published; [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md)
+  fixes the dedicated embedder plus agent-only write-back contract, and the
+  shared runtime/embedder scaffold exist. No consumer, write endpoint or vector
+  production is implemented yet.)*
 - **FR-19 — Agent 2, non-deterministic relationship evaluator.** The Relator
   must compare a new node against the closest active nodes and clusters returned
   by pgvector, and decide whether it merges, needs an edge, or stays
@@ -176,7 +178,9 @@ The identity model, guard chain and pseudonym rules are in
 - **NFR-10 — AI-decoupled resilience.** If Ollama or embeddings are offline,
   the API and PWA must keep operating; AI tasks accumulate in Redis Streams and
   are processed when the service returns. *(Partial: publication is
-  fire-and-forget with no outbox/retry, and no consumer group exists yet.)*
+  fire-and-forget with no outbox/retry. The shared runtime implements consumer
+  groups, `XAUTOCLAIM`, bounded attempts and a DLQ, but no worker handler is
+  running yet.)*
 - **NFR-11 — Strict hexagonal architecture.** Domain, use cases and
   infrastructure must stay decoupled through ports and adapters so databases or
   AI adapters can be swapped without touching business logic.
@@ -284,14 +288,16 @@ sequenceDiagram
    `AGENT_EXTRACTOR`.
 2. API validates the ontology, stores the node as `PENDING`, publishes
    `NODE_CREATED` → `stream:node_created`.
-3. The embedding step (Phase 2, new milestone) computes and stores the vector.
+3. The dedicated embedder (ADR-0020) computes and stores the vector through the
+   agent-only write endpoint.
 4. Relator consumes the event, queries the top-5 nearest active nodes, asks the
    LLM, and proposes a merge/edge through the API.
 5. Consolidator runs on a schedule and drafts opportunities; publication in the
    PWA closes the loop.
 
-The embedding step is the missing link: `NODE_CREATED` is published today, but
-nothing computes vectors, so step 4 cannot run yet.
+The embedding handler is the missing link: `NODE_CREATED` is published today and
+the runtime/embedder scaffold exists, but nothing consumes the stream or writes
+vectors, so step 4 cannot run yet.
 
 ## 6. Traceability
 
@@ -308,7 +314,7 @@ nothing computes vectors, so step 4 cannot run yet.
 | FR-13 | US-06 | `AutoApplyProposalUseCase.ts` | `public.edit_proposals` |
 | FR-14, FR-15 | US-04 | `CastVoteUseCase.ts` | `public.interactions_log`, counters |
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
-| FR-17 | US-07 | *(planned)* `apps/worker-extractor` | API only |
-| FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), *(embedder missing)* | `public.nodes.embedding` |
-| FR-19 | US-08 | *(planned)* `apps/worker-relacionador` | `public.edges`, `edit_proposals` |
-| FR-20 | US-09 | *(planned)* `apps/worker-consolidador` | `public.nodes`, `social.*` |
+| FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `packages/worker-shared` (runtime) | API only |
+| FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), ADR-0020, `apps/worker-embedder` (scaffold) | `public.nodes.embedding` |
+| FR-19 | US-08 | *(planned)* `apps/worker-relacionador`; `packages/worker-shared` (runtime) | `public.edges`, `edit_proposals` |
+| FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

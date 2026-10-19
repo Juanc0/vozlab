@@ -92,9 +92,11 @@ never throws and a broker failure only produces an error log.
 | `stream:interaction_cast` | Votes |
 | `stream:ontology_class_proposed`, `stream:ontology_class_activated`, `stream:ontology_property_proposed` | Ontology |
 
-There are **no consumers and no consumer groups** today, including
-`stream:node_created`. Streams are never trimmed (`MAXLEN` is not set), so they
-grow without bound. There is also no replay or dead-letter mechanism.
+There are **no running consumers and no consumer groups** today, including
+`stream:node_created`. The shared Python runtime implements groups,
+`XAUTOCLAIM`, bounded attempts and a dead-letter stream, but no worker handler
+is wired to it. Streams are never trimmed (`MAXLEN` is not set), so they grow
+without bound. There is no replay or backfill tool.
 
 ## Graceful shutdown
 
@@ -129,18 +131,20 @@ these alerts **cannot** be implemented with the current code:
 | AGE/Cypher query latency > 50 ms | No query instrumentation. |
 | Readiness failures over time | Only point-in-time HTTP responses; no scrape/history. |
 | Rate-limit spikes or abusive actors | Only per-request warning logs. |
-| Stream depth / consumer lag | No worker consumers and no lag metric. |
+| Stream depth / consumer lag | No running worker consumers and no lag metric. |
 | Dropped event publications | Only an error log line; no counter. |
 | Tenant pool saturation | No pool metrics. |
 | Ollama latency/errors | No calls from the current API; no instrumentation. |
-| Worker failures/heartbeats | Workers are not implemented. |
+| Worker failures/heartbeats | No worker handler runs; the scaffold has no heartbeat. |
 
 ## Planned observability (Phase 4 — not implemented)
 
 - HTTP RED metrics (rate, errors, duration) and DB pool metrics.
 - Stream length/lag and worker heartbeat metrics once consumers exist.
 - OpenTelemetry traces propagated with `reqId` across API, Redis and workers.
-- Structured JSON logs in Python workers using the same correlation id.
+- Structured JSON logs in Python workers using the same correlation id. The
+  shared runtime already emits JSON and binds `reqId` from `NODE_CREATED`, but
+  no worker process is deployed.
 - Alerts for readiness failure, API error rate, AGE p95 > 50 ms, stream pending
   entries > 100, and Redis memory pressure.
 - Dashboards for API, Postgres/AGE/pgvector, Redis and worker throughput.

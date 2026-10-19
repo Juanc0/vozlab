@@ -120,8 +120,10 @@ boolean predicate is `existsInWorkspace`, not `find…`. See
 - Event names are upper snake case; the stream key is
   `stream:<lowercase event>` (`NODE_CREATED` → `stream:node_created`). Payloads
   are flat strings; the adapter JSON-encodes nested values.
-- This milestone has no consumers: `NODE_CREATED` is published, but nothing
-  consumes it and nothing computes `nodes.embedding`.
+- The shared Python worker runtime (`packages/worker-shared`, ADR-0021) has
+  consumer groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream. No
+  worker handler is running yet, so `NODE_CREATED` is still unconsumed and
+  nothing computes `nodes.embedding`.
 
 ## 9. Type safety
 
@@ -135,7 +137,25 @@ boolean predicate is `existsInWorkspace`, not `find…`. See
   currently fails with pre-existing `no-explicit-any` errors. Do not add more;
   `pnpm turbo run build` is the green gate.
 
-## 10. Related decisions
+## 10. Python workers
+
+- Python code targets **3.12** and is managed with **uv** from the repo-root
+  `pyproject.toml` / `uv.lock`. Each worker is a package under `apps/worker-*`;
+  shared runtime code lives in `packages/worker-shared` (import
+  `vozlab_worker`). Do not duplicate config, retry or consumer-group code.
+- Format and lint with `uv run ruff format` / `uv run ruff check`; test with
+  `uv run pytest`. Python is not yet in the Turbo task graph or CI.
+- Workers call the API with an agent JWT and `X-Workspace-ID`; they never open
+  a tenant PostgreSQL connection or write graph tables directly. Read-only
+  vector queries are the future Relator exception and must still enforce
+  `workspace_id`, `deleted_at IS NULL` and a status allow-list.
+- Stream handlers acknowledge only after success, are idempotent, and carry the
+  event's `reqId` as the `x-correlation-id`. Retryable failures stay in the PEL;
+  permanent failures go to `<stream>:dead`.
+- JSON logs go to stdout with the same correlation id; do not log tokens,
+  connection strings or raw PII.
+
+## 11. Related decisions
 
 [ADR-0007 — Rate limiting](decisions/ADR-0007-per-actor-rate-limiting.md) ·
 [ADR-0008 — Cross-workspace 404](decisions/ADR-0008-cross-workspace-404.md) ·

@@ -1,8 +1,9 @@
 # Extractor Worker (`worker-extractor`)
 
-> **Not implemented (Phase 2).** `apps/worker-extractor/` is an empty scaffold:
-> no `pyproject.toml`, source files, Dockerfile or tests. This page defines the
-> intended contract; nothing here runs today.
+> **Not implemented (Phase 2).** `apps/worker-extractor/` is still an empty
+> scaffold: no `pyproject.toml`, handler, Dockerfile or tests. The shared
+> runtime in `packages/worker-shared` (ADR-0021) is available for the future
+> package. This page defines the intended contract; nothing here runs today.
 
 The Extractor is Agent 1: it turns heterogeneous institutional records
 (surveys, suggestion boxes, meeting minutes, open comments) into draft nodes
@@ -21,7 +22,7 @@ through the Fastify API. It never writes to PostgreSQL directly.
 
 | Component | Status |
 | --- | --- |
-| Worker process / Python package | Not implemented |
+| Worker process / Python package | Not implemented; shared `vozlab_worker` runtime exists |
 | `stream:source_raw` producer and consumer | Not implemented |
 | PII sanitizer | Not implemented |
 | Ollama extraction | Not implemented |
@@ -154,7 +155,9 @@ Send `payload.model_dump(by_alias=True)` so the API receives `typeKey`.
   duplicate node. No server-side idempotency key exists today.
 - Decide whether an AWS API Gateway + Lambda ingestion front door is adopted.
   It is an **open option**, not a decision; Redis Streams is the current plan.
-- Define agent credential issuance/rotation. Dev tokens are minted manually.
+- Production agent credential issuance/rotation beyond an injected or mounted
+  token remains open. The dev minting path and runtime token providers are
+  defined in [ADR-0021](../decisions/ADR-0021-python-worker-runtime.md).
 - Confirm the final `attributes` vocabulary per node type with the ontology.
 
 ## Phase 2 acceptance criteria
@@ -174,3 +177,5 @@ Send `payload.model_dump(by_alias=True)` so the API receives `typeKey`.
   isolation.
 - [api-reference.md](../api-reference.md) — `POST /api/v1/nodes` and errors.
 - [relator.md](relator.md) — downstream consumer of `stream:node_created`.
+- [ADR-0021](../decisions/ADR-0021-python-worker-runtime.md) — shared Python
+  runtime and consumer-group conventions.

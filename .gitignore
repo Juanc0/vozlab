@@ -28,3 +28,9 @@ test-results/
 .DS_Store
 .idea/
 .vscode/
+
+# Python caches and local tool state
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/

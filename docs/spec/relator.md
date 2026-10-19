@@ -1,8 +1,10 @@
 # Relator Worker (`worker-relacionador`)
 
-> **Not implemented (Phase 2).** `apps/worker-relacionador/` is an empty
-> scaffold: no Python package, source, Dockerfile or tests. This page defines
-> the intended behavior; nothing here runs today.
+> **Not implemented (Phase 2).** `apps/worker-relacionador/` is still an empty
+> scaffold: no Python package, handler, Dockerfile or tests. The shared runtime
+> in `packages/worker-shared` (ADR-0021) already provides config, logging, agent
+> tokens, the API client and the consumer group/`XAUTOCLAIM`/DLQ machinery. This
+> page defines the intended behavior; no Relator process runs today.
 
 The Relator is Agent 2: when a node is created, it finds semantically close
 nodes in the same workspace, asks a local LLM whether the new node should be
@@ -42,15 +44,17 @@ the vector query.
 | Dependency | Status |
 | --- | --- |
 | `stream:node_created` producer | Implemented |
-| Consumer / consumer group | Not implemented |
-| Embedding computation (FR-18) | **Missing**: nothing writes `nodes.embedding`; the column stays `NULL` |
+| Consumer runtime (groups, `XAUTOCLAIM`, DLQ) | Implemented in `packages/worker-shared`; no Relator handler |
+| Embedding computation (FR-18) | **Missing**: ADR-0020 defines the dedicated embedder, but no consumer/endpoint exists; `nodes.embedding` stays `NULL` |
 | HNSW index | Present on `public.nodes.embedding` |
 | Proposal API for new edges | Partial: `POST /api/v1/proposals` is edit-only today |
 | Active cluster centroids | Not modelled; not part of the Phase 2 scope below |
 
 Because no embedding is produced, the vector query currently returns zero rows.
-A Relator implementation must either wait for the embedding worker/step or
-explicitly skip nodes with `embedding IS NULL`. FR-18 is **Partial**, not done.
+ADR-0020 requires the Relator to **leave the entry pending and retry** when
+`embedding IS NULL`; it must not acknowledge and silently skip the node. After
+the bounded attempts the shared runtime moves it to `stream:node_created:dead`
+for inspection. FR-18 is **Partial**, not done.
 
 ## Evaluation flow
 
@@ -59,7 +63,7 @@ flowchart LR
     A[stream:node_created] --> B[XREADGROUP]
     B --> C[Load node from tenant DB]
     C --> D{embedding NULL?}
-    D -->|yes| E[XACK / skip]
+    D -->|yes| E[Retryable error; leave pending for XAUTOCLAIM]
     D -->|no| F[pgvector top-5]
     F --> G[Ollama evaluation]
     G --> H[POST /api/v1/proposals]
@@ -151,8 +155,9 @@ Content-Type: application/json
 - Retry transient DB/Ollama/API failures with capped exponential backoff.
   Leave the entry pending when Ollama is down; the API must stay available
   (NFR-10).
-- Bound attempts and define a dead-letter stream or quarantine key. Neither
-  exists today.
+- Bound attempts and use the shared dead-letter stream
+  (`stream:node_created:dead` by default). The runtime implements this; the
+  Relator handler selects the retryable/permanent classification.
 - Deduplicate retries: the same `nodeId` + `targetId` + action must not create
   duplicate proposals after a timed-out response. No server-side idempotency
   key exists yet.
@@ -165,7 +170,8 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
 - [ ] Consumes `stream:node_created` with a consumer group and recovers the PEL.
 - [ ] Runs `<=>` search filtered by `workspace_id`, `deleted_at IS NULL`,
   status allow-list and `embedding IS NOT NULL`; limit 5.
-- [ ] Skips or queues nodes without an embedding instead of failing.
+- [ ] Queues/retries nodes without an embedding (leaves them pending); never
+  acknowledges and silently skips them.
 - [ ] Validates LLM JSON and target ids.
 - [ ] Submits only through `POST /api/v1/proposals`; no direct writes.
 - [ ] Carries agent JWT, `X-Workspace-ID` and `x-correlation-id`.
@@ -178,3 +184,7 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
 - [architecture.md](../architecture.md) — event flow.
 - [api-reference.md](../api-reference.md) — proposal contract.
 - [auth-and-tenancy.md](../auth-and-tenancy.md) — agent identity.
+- [ADR-0020](../decisions/ADR-0020-dedicated-embedding-pipeline.md) — embedding
+  handoff and write-back.
+- [ADR-0021](../decisions/ADR-0021-python-worker-runtime.md) — shared consumer
+  runtime.

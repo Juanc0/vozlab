@@ -17,11 +17,13 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 24 test files / 114 unit tests green; opt-in auth integration suite (1 file /
-  5 tests) green against local PostgreSQL/Redis; `build` + `type-check` green;
-  thin CI runs install + `build type-check test`.
-- Not started: Python workers, PWA (including its login/QR UI), observability,
-  broad integration/E2E/load tests.
+- 24 test files / 114 TypeScript unit tests green; opt-in auth integration suite
+  (1 file / 5 tests) green against local PostgreSQL/Redis; Python worker runtime
+  scaffold has 37 green tests (`uv run pytest`); `build` + `type-check` green;
+  thin CI runs install + `build type-check test` (TypeScript only).
+- Phase 2 started: shared `vozlab_worker` runtime + embedder scaffold, no
+  handler consumes events yet. PWA (including its login/QR UI), observability,
+  broad integration/E2E/load tests are not started.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
@@ -79,20 +81,23 @@ Result: 114 tests green; `build` + `type-check` green.
 
 Kickoff decisions (record as ADRs before coding):
 
-- [ ] Embedding pipeline design (FR-18): dedicated embedder consumer vs.
-      Relator-inline; how it writes back without breaking API-only writes
-      (leading option: agent-only endpoint such as
-      `PUT /api/v1/nodes/:id/embedding`).
+- [x] Embedding pipeline design (FR-18): dedicated embedder consumer;
+      agent-only write-back via `PUT /api/v1/nodes/:id/embedding`; Relator
+      retries until a vector exists
+      ([ADR-0020](docs/decisions/ADR-0020-dedicated-embedding-pipeline.md)).
 - [ ] Batch ingestion contract: `POST /api/v1/nodes/batch` (schema exists) vs.
       single-node loop; add the route if batching wins.
-- [ ] Worker stack: Python 3.12, dependency manager, shared client/config
-      library, consumer-group naming, `XAUTOCLAIM` recovery.
+- [x] Worker stack: Python 3.12 + uv, shared client/config library,
+      per-worker consumer groups, `XAUTOCLAIM` recovery
+      ([ADR-0021](docs/decisions/ADR-0021-python-worker-runtime.md)).
 
 Milestones:
 
-- [ ] 2.1 Worker scaffold + shared Python library (env, logging with
+- [x] 2.1 Worker scaffold + shared Python library (env, logging with
       `x-correlation-id`, JWT minting/refresh for agent identities, API client,
-      Redis Streams consumer with consumer groups and retries, tests).
+      Redis Streams consumer with consumer groups and retries, tests). Result:
+      uv workspace, `packages/worker-shared` + `apps/worker-embedder` scaffold,
+      37 Python tests; no handler consumes events yet.
 - [ ] 2.2 `meta.data_sources` registry + `GET /api/v1/ingestion/resolve-source`
       (ADR-0009).
 - [ ] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts

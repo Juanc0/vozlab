@@ -78,9 +78,13 @@ interactions) requires:
 JWT claims: `sub` (`auth.users.id`), `tid` (OIDC tenant id, matched against
 `tenants.oidc_tenant_id`), `jti` (Redis blacklist key) and `authorHash` (opaque
 64-hex pseudonym copied verbatim from `auth.users.author_hash`). Agents also
-send `type` (`AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR`);
-agent requests skip workspace membership but still need a valid
-`X-Workspace-ID` and a provisioned `tid`.
+send `type` (`AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR`,
+`AGENT_EMBEDDER`); agent requests skip workspace membership but still need a
+valid `X-Workspace-ID` and a provisioned `tid`.
+
+ADR-0020 reserves `PUT /api/v1/nodes/{id}/embedding` for the Phase 2 embedder
+(agent type `AGENT_EMBEDDER`, body `{ embedding: number[768], model }`). It is
+**not implemented yet**; do not call it.
 
 Local development without an IdP still uses the seeded identities and a
 minted token:
@@ -287,11 +291,13 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
 ## 10. Not implemented
 
 No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a
-contract only); SSE; metrics; Apache AGE/Cypher; embedding computation or a
-`NODE_CREATED` consumer; node or edge status transitions; datatype/object-
-property activation; interaction reads or vote retraction. The PWA (including
-its OIDC login screen and event QR scanner) and Python worker apps are still
-empty scaffolds.
+contract only); SSE; metrics; Apache AGE/Cypher; embedding computation; the
+`NODE_CREATED` consumer; the `PUT /api/v1/nodes/{id}/embedding` write endpoint
+reserved by ADR-0020; node or edge status transitions; datatype/object-property
+activation; interaction reads or vote retraction. The PWA (including its OIDC
+login screen and event QR scanner) and the Extractor/Relator/Consolidator apps
+are still empty scaffolds. The shared Python runtime and embedder scaffold
+exist, but no worker handler runs.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·
 [Errors](errors.md).

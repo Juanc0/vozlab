@@ -89,7 +89,9 @@ soft deletion. `display_names` and `descriptions` are JSONB locale maps, e.g.
 | `public.interactions_log` | `id`, `workspace_id`, `user_hash`, `target_id`, `target_type`, `interaction_type`, `value`, `created_at` | `target_type`: `NODE`, `EDGE`, `PROPOSAL`, `POST`. UNIQUE(`user_hash`, `target_id`, `target_type`) — one vote per user/target. `value` is server-derived. Immutable: no update/delete path. |
 
 `nodes.embedding` is currently always `NULL`: nothing computes embeddings.
-`NODE_CREATED` is published, but no consumer exists yet.
+`NODE_CREATED` is published, but no worker handler consumes it yet. ADR-0020
+defines the dedicated embedder and the future agent-only write endpoint; the
+shared runtime and embedder scaffold exist, but the handler is milestone 2.4.
 
 ### 3.4 `social` — discussions
 

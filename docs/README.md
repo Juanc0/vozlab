@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 24 files / 114 unit tests; the opt-in auth integration suite adds 1 file / 5 tests against local Postgres/Redis; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Phase 2 has started: the shared Python worker runtime and the embedder scaffold exist, but no worker handler consumes events yet; the PWA (Phase 3) and operational hardening (Phase 4) are not started. `pnpm test` = 24 files / 114 unit tests; the opt-in auth integration suite adds 1 file / 5 tests against local Postgres/Redis; the Python runtime adds 37 tests (`uv run pytest`); `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
 
 ## Live documents
 
@@ -53,10 +53,10 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 | FR-14 | Implemented | `CastVoteUseCase.ts`, `interactions_log` unique index | [domain](domain-model.md) | Immutable log; `UNIQUE(user_hash, target_id, target_type)` enforces one vote per user/target. |
 | FR-15 | Implemented | `DrizzleInteractionRepository.applyScoreDelta`, `VoteValue.ts` | [domain](domain-model.md) | Synchronous atomic counter update in the same transaction; no CQRS buffer. |
 | FR-16 | Implemented | `social.discussion_posts`, discussion use cases | [api](api-reference.md) | Nested replies (`parent_post_id`), close thread, author-only soft delete. |
-| FR-17 | Deferred | `apps/worker-extractor` (empty) | [architecture](architecture.md) | Only the ingestion contract (`ingestion.schema.ts`) exists. |
-| FR-18 | Partial | `CreateNodeUseCase.ts` publishes `NODE_CREATED` | [architecture](architecture.md) | No worker consumes the stream and nothing writes `nodes.embedding`; vectors stay NULL. |
-| FR-19 | Deferred | `apps/worker-relacionador` (empty) | [architecture](architecture.md) | No pgvector query path or LLM evaluation. |
-| FR-20 | Deferred | `apps/worker-consolidador` (empty) | [architecture](architecture.md) | No opportunity entity, endpoint or scheduled synthesis. |
+| FR-17 | Deferred | `apps/worker-extractor` (empty); `packages/worker-shared` | [architecture](architecture.md) | Only the ingestion contract (`ingestion.schema.ts`) and the shared runtime exist. No Extractor handler. |
+| FR-18 | Partial | `CreateNodeUseCase.ts` publishes `NODE_CREATED`; [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md); `apps/worker-embedder` scaffold | [architecture](architecture.md) | No worker consumes the stream, the embedding write endpoint is not built, and nothing writes `nodes.embedding`; vectors stay NULL. |
+| FR-19 | Deferred | `apps/worker-relacionador` (empty); `packages/worker-shared` | [architecture](architecture.md) | No Relator handler, pgvector query path or LLM evaluation; ADR-0020 defines the embedding-retry handoff. |
+| FR-20 | Deferred | `apps/worker-consolidador` (empty); `packages/worker-shared` | [architecture](architecture.md) | No opportunity entity, endpoint or scheduled synthesis. |
 
 ### Non-functional requirements
 
@@ -71,7 +71,7 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 | NFR-07 | Implemented | `AuthorHash.ts`, `auth.users.author_hash` | [auth](auth-and-tenancy.md) | Opaque 64-hex pseudonym per user, carried verbatim; no salt. Requirement wording about “SHA-256 + salt” is superseded. |
 | NFR-08 | Implemented | `RateLimitingMiddleware.ts` | [auth](auth-and-tenancy.md) | Per-actor and per-workspace fixed windows in Redis; fail-open on Redis errors. |
 | NFR-09 | Unverified | — | [runbook-ops](runbook-ops.md) | No SLA evidence, metrics or load profile; not deployed. |
-| NFR-10 | Partial | `RedisEventPublisher.ts` | [architecture](architecture.md) | Publication is post-commit and best-effort; Redis outages drop events and no consumer groups exist. |
+| NFR-10 | Partial | `RedisEventPublisher.ts`; `packages/worker-shared` consumer runtime | [architecture](architecture.md) | Publication is post-commit and best-effort; Redis outages drop events. The consumer runtime exists and implements groups/`XAUTOCLAIM`/DLQ, but no worker consumes the stream yet. |
 | NFR-11 | Implemented | `apps/api/src/domain`, manual Composition Root | [conventions](conventions.md) | `domain/` imports no Fastify/Drizzle/pg; adapters are wired explicitly in `server.ts`. |
 
 ## Reading paths
@@ -96,7 +96,7 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 - **Auth works but needs an IdP.** FR-01/02/03 endpoints, refresh and logout exist and are unit-tested; no IdP runs in Compose, so local development still uses `db:mint-token`. The PWA login/QR UI is Phase 3. Event codes live in the router DB by explicit exception ([ADR-0019](decisions/ADR-0019-global-event-codes.md)).
 - **Lint is red.** 26 pre-existing `@typescript-eslint/no-explicit-any` errors; CI does not run lint. Do not claim `pnpm lint` passes.
 - **M-12:** `public.edit_proposals.target_id` is polymorphic and has no foreign key. The target is validated at creation and before resolution; this is the accepted interim decision.
-- **No async pipeline.** `NODE_CREATED` is published but no worker consumes it; no embedding is computed.
+- **No async pipeline yet.** `NODE_CREATED` is published and the shared Python runtime implements consumer groups, `XAUTOCLAIM` and a DLQ, but no worker handler consumes the stream and no embedding is computed. See [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) and [ADR-0021](decisions/ADR-0021-python-worker-runtime.md).
 - **No load/availability proof.** NFR-01/02/03/09 remain unverified.
 - **No Apache AGE adapter.** The bounded SQL CTE is the read path; AGE mirroring/backfill is a separate milestone.
 - **No observability stack.** Pino logs + `x-correlation-id` only; no metrics, tracing or dashboards.

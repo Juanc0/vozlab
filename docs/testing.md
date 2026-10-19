@@ -1,8 +1,8 @@
 # Testing Strategy
 
-Current automated tests are **unit tests by default plus an opt-in auth
-integration suite**. This page records what is green today, what is deliberately
-missing, and the Phase 4 plan.
+Current automated tests are **TypeScript unit tests by default, an opt-in auth
+integration suite, and a Python worker-runtime suite**. This page records what
+is green today, what is deliberately missing, and the Phase 4 plan.
 
 ## Current suites
 
@@ -39,6 +39,19 @@ revocation, logout/blacklist, unknown-tenant and unverified-email rejection,
 event-code capacity, and anonymous membership. The mock provider is test-only
 and signs ephemeral RS256 tokens; no external IdP is required.
 
+### Python worker runtime
+
+The Phase 2 scaffold has **37 Python tests** in
+`packages/worker-shared/tests` and `apps/worker-embedder/tests`. They cover
+environment validation, JSON logging and correlation context, agent-token
+minting/static/file/dev providers, the `httpx` API client (auth/workspace/
+correlation headers, typed errors, opt-in 5xx retries), retry backoff, and the
+Redis Streams consumer (`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
+delivery-count-based dead-lettering and `PermanentError`). Redis is simulated
+with `fakeredis`; HTTP with `httpx.MockTransport`. No live Redis, Ollama, API or
+IdP is contacted. The embedder app test only validates configuration and the
+`--check` CLI; the embedding handler is milestone 2.4.
+
 ## Running tests
 
 ```bash
@@ -69,7 +82,17 @@ pnpm --filter @vozlab/database db:seed:dev
 pnpm --filter @vozlab/api test:integration
 ```
 
-It listens on `13000` (API) and `18080` (mock OIDC) by default; override with
+The Python worker runtime has its own toolchain (run from the repo root; uv
+creates or reuses `.venv`):
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check packages/worker-shared apps/worker-embedder
+```
+
+The integration suite listens on `13000` (API) and `18080` (mock OIDC) by
+default; override with
 `INTEGRATION_API_PORT` and `MOCK_OIDC_PORT`. It must not point at a production
 database: the tests create and delete users and event codes.
 
@@ -102,15 +125,19 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
   docker-compose pair; Testcontainers or service containers are Phase 4.
 - End-to-end tests (Playwright) for the PWA.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
-- Python worker tests; the workers do not exist yet.
+- Python tests in CI/Turbo. The runtime suite runs locally (`uv run pytest`),
+  but CI does not install uv or run it yet; that is Phase 2.7.
+- Worker handler and end-to-end pipeline tests: no Extractor/Relator/
+  Consolidator/embedder handler exists, and nothing has been tested against a
+  live Redis stream, Ollama or the embedding write endpoint.
 - Contract tests between Zod DTOs and Python/Pydantic models.
 - Mutation, accessibility, visual-regression and PWA offline tests.
 - A `test:ci` package script. `turbo.json` declares the task, but no package
   implements it, so `pnpm turbo run test:ci` is currently a no-op.
 
 CI runs `pnpm turbo run build type-check test` and nothing else. It runs the
-unit suite only; it does not run integration, E2E, coverage, Docker builds or
-deployments.
+TypeScript unit suite only; it does not run integration, Python, E2E, coverage,
+Docker builds or deployments.
 
 ## Known lint debt
 

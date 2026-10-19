@@ -141,7 +141,29 @@ The response is an `AuthSessionDto`; the refresh cookie is written to
 `/tmp/vozlab-cookies.txt`. Existing anonymous users keep their refresh session
 after the code expires or is revoked; only new joins are blocked.
 
-### 8. Start the API
+### 8. Worker runtime scaffold (optional)
+
+Phase 2 has a shared Python runtime and an embedder scaffold, but no worker
+handler consumes events yet. Python 3.12 and uv are required; run from the repo
+root so the root `.env` is visible.
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check packages/worker-shared apps/worker-embedder
+
+# Validate the embedder scaffold with any valid agent token
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as agent | awk '/^eyJ/')" \
+  uv run vozlab-worker-embedder --check
+```
+
+`--check` only loads configuration, validates the token source and prints the
+resolved stream/consumer/model settings; it exits `2` without `--check` because
+the Ollama handler and embedding write endpoint are milestone 2.4. `uv sync`
+uses the repo-root `.venv`; do not keep unrelated Python packages in that
+environment.
+
+### 9. Start the API
 
 ```bash
 pnpm --filter @vozlab/api dev
@@ -191,6 +213,10 @@ pnpm lint                                # known red: 26 pre-existing no-explici
 
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
+
+# Python worker runtime (37 tests; no live Redis/Ollama/API)
+uv sync
+uv run pytest
 ```
 
 The integration suite starts the API on `13000`, a mock OIDC provider on
@@ -218,6 +244,11 @@ deletes its own users and event codes; never point it at production. See
 | `429 ERR_RATE_LIMIT_EXCEEDED` | Write cap is 30/min per actor, or the workspace ceiling was hit. | Wait for the window or clear `vozlab:ratelimit:*` keys in dev. |
 | Pretty logs despite JSON expectations | `LOG_PRETTY` uses `z.coerce.boolean()`, so the string `false` is truthy. | Leave `LOG_PRETTY` unset for JSON output. |
 | `pnpm lint` fails on `no-explicit-any` | Known debt (26 errors), not a regression. | Treat build/type-check/tests as the gate until the debt is paid. |
+| Worker `--check` says `missing agent identity` | `JWT_SECRET` is set but no static token and no `AGENT_*` identity is configured. | Set `AGENT_TOKEN`/`AGENT_TOKEN_FILE`, or set `AGENT_TENANT_KEY`, `AGENT_USER_ID` and `AGENT_AUTHOR_HASH` for development minting. |
+| `uv sync` replaced an unrelated `.venv` | uv uses the repo-root `.venv` as the workspace environment. | Keep the root `.venv` dedicated to this workspace; use a separate checkout/environment for unrelated Python projects. |
 
-The workers and PWA are empty scaffolds, and no embedding is computed today
-(`nodes.embedding` stays `NULL`). See [testing.md](testing.md) for scope.
+The three AI worker apps are still empty scaffolds; the shared runtime and
+embedder scaffold exist but no handler consumes events, and no embedding is
+computed today (`nodes.embedding` stays `NULL`). See [testing.md](testing.md)
+for scope and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
+[ADR-0021](decisions/ADR-0021-python-worker-runtime.md) for the design.
