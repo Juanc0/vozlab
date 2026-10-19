@@ -165,6 +165,29 @@ curl -s -X POST localhost:3000/api/v1/nodes \
   -d '{"typeKey":"Problem","title":"agent-created"}'
 ```
 
+### 3.3. Author hash & salt
+
+`author_hash = SHA-256(identity + salt)` is the pseudonymous public identity
+(NFR-07). `resolveAuthorHash(raw, subject, tenantId?)`
+(`application/services/resolveAuthorHash.ts`) is the **only** reader of the
+salt:
+
+- a token that already carries a valid 64-hex `authorHash` is preserved
+  verbatim — never re-hashed (TASK-19/20; also keeps `db:seed:dev` /
+  `db:mint-token` values working, since those use `sha256('dev-<name>')`
+  without the salt);
+- otherwise the hash is derived deterministically from `sub` + salt.
+
+The salt is **per institution**, not per user/workspace. `tenantId` is optional
+today and resolves to the global `env.AUTHOR_HASH_SALT`; a future `SaltProvider`
+will resolve `tenantId -> salt` from the router DB. Because the pseudonym is
+*stored* on rows and *compared* for authorization (FR-12) and the vote
+uniqueness constraint (FR-14/15), **rotating the salt is a data migration, not a
+config change** — see `docs/system/system_04_*` §3.1.1 for the runbook and the
+deferred per-tenant/versioned milestone (`EXECUTION_PLAN.md` → Deferred).
+`env.ts` rejects the `.env.example` placeholder and any salt < 32 chars when
+`NODE_ENV=production` (≥ 16 elsewhere).
+
 ---
 
 ## 4. Use Case and Transaction Implementation (`UnitOfWork`)

@@ -126,6 +126,22 @@ sequenceDiagram
 * **Reconnection Token (Device Fingerprint):** A signed token is stored in the attendee's browser `LocalStorage`.
 * **Controlled Expiration:** Once the event's time window has expired (`expires_at`), the code prevents the creation of **new** anonymous accounts, but allows registered anonymous users to reconnect persistently to follow the evolution and impact of their contributions in the graph.
 
+#### 3.1.1. Salt Model, Production Guard and Rotation Runbook
+
+**Scope — the salt is per institution.** `author_hash = SHA-256(identity + salt)` is the pseudonymous public identity (NFR-07). The salt is a property of the **institution** (tenant), never of a user or a workspace: the users of one institution share a salt and two institutions must not. Today the API reads a single process-wide value (`AUTHOR_HASH_SALT`); `resolveAuthorHash(raw, subject, tenantId?)` already accepts an optional `tenantId` reserved for a future `SaltProvider` that will resolve `tenantId -> salt` from the router DB (`tenants.author_hash_salt` or `tenant_secrets`). Per-tenant storage and versioned re-keying are a tracked deferred milestone (`EXECUTION_PLAN.md` → Deferred), triggered by the first deployment that serves two institutions from one API instance.
+
+**Production guard.** `env.ts` refuses to start when `NODE_ENV=production` and `AUTHOR_HASH_SALT` equals the `.env.example` placeholder `dev-institutional-salt-change-me` or is shorter than 32 characters (≥ 16 is kept for non-production). This fails through the normal startup path (`process.exit(1)`, before Fastify is built).
+
+**Rotation is a data migration, not a config change.** The pseudonym is **stored** on rows (`auth.users.author_hash`, `public.nodes.author_hash`, …) and additionally **compared** for authorization (maintainer approve/reject, FR-12) and for the `unique_user_target_vote` constraint (FR-14/15). Changing the salt only in config changes every *derived* caller hash while the stored rows keep the old value: approve/reject would immediately fail and votes could double-count.
+
+Required future shape for a safe rotation:
+
+1. **Version the salt.** Add `hash_version` (and/or `salt_id`) to `auth.users` and the graph tables that store an `author_hash`, and keep both salts resolvable at once.
+2. **Dual-read during a window.** Accept either version while the shift is in flight, so old stored hashes still authorize.
+3. **Backfill.** Recompute stored `author_hash` values under the new version in the background, then retire the old salt.
+
+**Rule until then: do not rotate `AUTHOR_HASH_SALT` on a populated database.** A rotation on a fresh/empty database is harmless.
+
 ---
 
 ## 4. Connection Concurrency Mitigation Strategy (Thundering Herd)

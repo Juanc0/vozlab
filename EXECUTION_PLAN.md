@@ -393,6 +393,7 @@ The re-audit also identified work that is **not** part of Phase 1R/1S and has no
 - **Type-safety debt:** replace `tx?: any` across the ports with a real transaction type (M3).
 - **Consolidator/Extractor/Relator Dockerfiles** and per-service CI (devops_01).
 - **Data Source Registry:** The `meta.data_sources` table (tenant DB) and its resolution route (`GET /api/v1/ingestion/resolve-source`) belong to Phase 2 (Extractor integration), not built during the Phase 1T contract definition.
+- **Per-tenant, versioned author-hash salt (TASK-37):** store the salt per tenant in the router DB (`tenants.author_hash_salt` or `tenant_secrets`), add `hash_version`/`salt_id` to `auth.users` and the graph tables that store `author_hash`, and implement dual-read + backfill so the salt can be rotated without breaking approve/reject (FR-12) or the vote uniqueness constraint (FR-14/15). Today `resolveAuthorHash` accepts an optional `tenantId` reserved for a future `SaltProvider`, but still returns the single global `AUTHOR_HASH_SALT`. **Trigger:** the first deployment that serves two institutions from one API instance.
 
 ---
 

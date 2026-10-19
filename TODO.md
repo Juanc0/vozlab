@@ -164,7 +164,8 @@
       → Result: documented IRouterDatabase.getTenantDatabaseConfig contract (null = missing, throw = infra), audited 9 call sites (repositories, UoW, manager) to ensure infra errors propagate, and added ConnectionPoolManager unit tests for both outcomes. pnpm turbo run build = 3/3 ✓
 
 ### 1T.2 — Identity & Secrets
-- [ ] TASK-37 — Author-hash salt: per-tenant model, production guard, rotation runbook
+- [x] TASK-37 — Author-hash salt: per-tenant model, production guard, rotation runbook
+      → Result: `env.ts` now rejects the `.env.example` placeholder `dev-institutional-salt-change-me` and enforces `AUTHOR_HASH_SALT` ≥ 32 chars when `NODE_ENV=production` (≥ 16 elsewhere) via a Zod `superRefine`, failing through the normal `process.exit(1)` path; `resolveAuthorHash(raw, subject, tenantId?)` gained an optional tenant seam defaulting to the global salt (call sites unchanged, 64-hex tokens preserved verbatim); documented the per-institution model + "rotation = data migration" requirement + dual-read/backfill runbook in `system_04` §3.1.1 and a new `modules_02` §3.3 "Author hash & salt"; annotated `.env.example`; recorded the per-tenant, versioned salt milestone with its trigger in `EXECUTION_PLAN.md` → Deferred (router-DB storage + `hash_version` explicitly deferred). Production minimum = 32 chars. `pnpm --filter @vozlab/api test` = 9 files / 33 tests ✓; `pnpm turbo run build` = 3/3 ✓
 
 ### 1T.3 — Layering & Vocabulary
 - [ ] TASK-38 — Timestamp ownership (domain `created/updated`, adapter `deleted_at`)
