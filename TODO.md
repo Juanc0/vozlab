@@ -184,7 +184,8 @@
 ### 1T.5 — Type Safety & Quality
 - [x] TASK-43 — Type the transaction handle (`tx?: any` → `DbTransaction`)
       → Result: added opaque `DbTransaction = unknown` in `domain/ports/Transaction.ts`; all ports + Drizzle adapters + `UnitOfWork` now use it (adapters narrow once via `type Tx = Parameters<Parameters<Awaited<ReturnType<ConnectionPoolManager['getDb']>>['transaction']>[0]>[0]` — `NodePgTransaction` extracted from `drizzle-orm/node-postgres`). `grep tx?: any` empty, domain free of Drizzle/pg. `pnpm turbo run build` = 3/3 ✓, `pnpm --filter @vozlab/api test` = 36/36 ✓
-- [ ] TASK-44 — Use-case test baseline (application layer, fakes only)
+- [x] TASK-44 — Use-case test baseline (application layer, fakes only)
+      → Added 5 application test files + `tests/support/fakes.ts` (shared event publisher/UoW sentinel/node/edge/ontology repo fakes): `CreateEdgeUseCase` (same-workspace save+event; foreign source/target and missing endpoint → `ERR_NODE_NOT_FOUND`, no save), `CastVoteUseCase` (DOWNVOTE → -1, UPVOTE/SUPPORT/VALIDATE → +1, existsInWorkspace-before-insert 404 with no insert, idempotent same vote, different vote → `ERR_DUPLICATE_INTERACTION`; fake UoW passes a non-undefined `tx` sentinel and asserts save→applyScoreDelta order), `DeleteNodeUseCase`/`DeletePostUseCase` (author deletes + event; missing/foreign → 404; non-author → 403, no delete; post thread foreign → `ERR_THREAD_NOT_FOUND`; post/thread mismatch → `ERR_POST_NOT_FOUND`), `AutoApplyProposalUseCase` (MEMBER/null → 403 before touching target; foreign workspace → `ERR_PROPOSAL_NOT_FOUND` even for ADMIN; MODERATOR + unmet criteria → `ERR_UNMET_AUTO_APPLY_CRITERIA`, no tx). No DB/Redis/network. `pnpm --filter @vozlab/api test` = 15 files / 60 tests ✓; `pnpm turbo run build` = 3/3 ✓.
 - [ ] TASK-45 — Wire the `test` task (root script + Turbo outputs warning)
 
 **Suggested wave order:** `(32, 33, 36, 41) → (34, 35, 37, 38) → (39, 42) → (40, 43) → (44, 45)`.

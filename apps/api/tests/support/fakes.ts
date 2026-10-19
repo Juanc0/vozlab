@@ -1,0 +1,159 @@
+import type { Edge } from '../../src/domain/entities/Edge.js';
+import type { Node } from '../../src/domain/entities/Node.js';
+import type { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
+import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
+import type { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
+import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
+import type { INodeRepository } from '../../src/domain/ports/INodeRepository.js';
+import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
+import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
+
+/**
+ * Shared in-memory fakes for application-layer use-case tests.
+ *
+ * Fakes only: no DB, no Redis, no network. Repositories are plain object
+ * literals implementing the port, so a port change breaks compilation of the
+ * test on the next `tsc --noEmit` run rather than silently drifting.
+ */
+
+/** Non-`undefined` transaction handle so the use case's `tx` branch runs. */
+export const TX_SENTINEL: DbTransaction = { testTx: true };
+
+/** Records published event names in call order. */
+export function makeEventPublisher(): { publisher: IEventPublisher; events: string[] } {
+  const events: string[] = [];
+  const publisher: IEventPublisher = {
+    async publish(event) {
+      events.push(event);
+    },
+  };
+  return { publisher, events };
+}
+
+/** Runs the callback with `TX_SENTINEL` and counts invocations. */
+export function makeUnitOfWork(): { uow: IUnitOfWork; ran: { count: number } } {
+  const ran = { count: 0 };
+  const uow: IUnitOfWork = {
+    async runInTransaction(_tid, work) {
+      ran.count += 1;
+      return work(TX_SENTINEL);
+    },
+  };
+  return { uow, ran };
+}
+
+export interface FakeNodeRepository {
+  repo: INodeRepository;
+  softDeleted: string[];
+  appliedDeltas: Array<{ targetId: string; workspaceId: string; tx: DbTransaction | undefined }>;
+}
+
+/** In-memory `INodeRepository` backed by the supplied nodes. */
+export function makeNodeRepository(nodes: Node[] = []): FakeNodeRepository {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const softDeleted: string[] = [];
+  const appliedDeltas: FakeNodeRepository['appliedDeltas'] = [];
+  const repo: INodeRepository = {
+    async findById(id) {
+      return byId.get(id) ?? null;
+    },
+    async findByIdInWorkspace(id, workspaceId) {
+      const node = byId.get(id);
+      return node && node.workspaceId === workspaceId ? node : null;
+    },
+    async listByWorkspace() {
+      return { items: [], nextCursor: null };
+    },
+    async getSubgraph() {
+      return { nodes: [], edges: [] };
+    },
+    async save() {},
+    async update() {},
+    async softDelete(id) {
+      softDeleted.push(id);
+    },
+    async applyDelta(targetId, _changes, workspaceId, _tid, tx) {
+      appliedDeltas.push({ targetId, workspaceId, tx });
+    },
+  };
+  return { repo, softDeleted, appliedDeltas };
+}
+
+export interface FakeEdgeRepository {
+  repo: IEdgeRepository;
+  saved: Edge[];
+  appliedDeltas: Array<{ targetId: string; workspaceId: string; tx: DbTransaction | undefined }>;
+}
+
+/** In-memory `IEdgeRepository` recording saves and applied deltas. */
+export function makeEdgeRepository(): FakeEdgeRepository {
+  const saved: Edge[] = [];
+  const appliedDeltas: FakeEdgeRepository['appliedDeltas'] = [];
+  const repo: IEdgeRepository = {
+    async findById() {
+      return null;
+    },
+    async findByIdInWorkspace() {
+      return null;
+    },
+    async listAllByWorkspace() {
+      return [];
+    },
+    async listByWorkspace() {
+      return { items: [], nextCursor: null };
+    },
+    async save(edge) {
+      saved.push(edge);
+    },
+    async update() {},
+    async softDelete() {},
+    async applyDelta(targetId, _changes, workspaceId, _tid, tx) {
+      appliedDeltas.push({ targetId, workspaceId, tx });
+    },
+  };
+  return { repo, saved, appliedDeltas };
+}
+
+export interface FakeOntologyRepository {
+  repo: IOntologyRepository;
+  activated: string[];
+  deltasApplied: string[];
+}
+
+/** In-memory `IOntologyRepository`; only `findObjectProperty` is behaviourful. */
+export function makeOntologyRepository(
+  objectProperty: ObjectProperty | null = null
+): FakeOntologyRepository {
+  const activated: string[] = [];
+  const deltasApplied: string[] = [];
+  const repo: IOntologyRepository = {
+    async findClassById() {
+      return null;
+    },
+    async findClassByKey() {
+      return null;
+    },
+    async findActiveClasses() {
+      return [];
+    },
+    async findDatatypeProperties() {
+      return [];
+    },
+    async findObjectProperty() {
+      return objectProperty;
+    },
+    async findActiveObjectProperties() {
+      return [];
+    },
+    async saveClass() {},
+    async saveDatatypeProperty() {},
+    async saveObjectProperty() {},
+    async applyClassDelta(targetId) {
+      deltasApplied.push(targetId);
+    },
+    async activateClass(targetId) {
+      activated.push(targetId);
+    },
+  };
+  return { repo, activated, deltasApplied };
+}
