@@ -116,6 +116,7 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 - SvelteKit PWA, SSE, GraphQL.
 - Python Extractor/Consolidador handlers. The embedder and the Relator are implemented but are not in Compose or CI yet (Phase 2.7), and pre-existing nodes are not backfilled.
 - A merge contract: the Relator can judge that two nodes should be merged but has nothing to submit ([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+- Management of the source registry: `meta.data_sources` exists and the resolution route reads it, but there is no route to create or deactivate a source ([ADR-0025](decisions/ADR-0025-source-resolution-route.md)).
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.
 - Data-source registry (`meta.data_sources`) and ingestion resolution route (Phase 2).
 - Metrics, tracing, dashboards and load tests.

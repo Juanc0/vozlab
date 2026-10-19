@@ -17,13 +17,14 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 26 test files / 125 TypeScript unit tests green; opt-in integration suite
-  (3 files / 18 tests) green against local PostgreSQL/Redis; Python worker
+- 27 test files / 127 TypeScript unit tests green; opt-in integration suite
+  (4 files / 23 tests) green against local PostgreSQL/Redis; Python worker
   runtime has 72 green tests (`uv run pytest`); `build` + `type-check` green;
   thin CI runs install + `build type-check test` (TypeScript only).
 - Phase 2 in progress: shared `vozlab_worker` runtime, the dedicated embedder
-  (FR-18 implemented end to end) and the Relator (FR-19 partial — merges are
-  logged, not applied). Extractor and Consolidator handlers, PWA (including its
+  (FR-18 implemented end to end), the Relator (FR-19 partial — merges are
+  logged, not applied) and the source registry + resolution route (FR-17
+  prerequisite). Extractor and Consolidator handlers, PWA (including its
   login/QR UI), observability and broad integration/E2E/load tests are not
   started.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
@@ -87,8 +88,11 @@ Kickoff decisions (record as ADRs before coding):
       agent-only write-back via `PUT /api/v1/nodes/:id/embedding`; Relator
       retries until a vector exists
       ([ADR-0020](docs/decisions/ADR-0020-dedicated-embedding-pipeline.md)).
-- [ ] Batch ingestion contract: `POST /api/v1/nodes/batch` (schema exists) vs.
-      single-node loop; add the route if batching wins.
+- [x] Batch ingestion contract: `POST /api/v1/nodes/batch` (schema exists) vs.
+      single-node loop; add the route if batching wins. Result: single-node
+      loop, no batch route
+      ([ADR-0024](docs/decisions/ADR-0024-no-batch-node-endpoint.md)) — the rate
+      limiter counts requests, so a bulk route would bypass the write budget.
 - [x] Worker stack: Python 3.12 + uv, shared client/config library,
       per-worker consumer groups, `XAUTOCLAIM` recovery
       ([ADR-0021](docs/decisions/ADR-0021-python-worker-runtime.md)).
@@ -100,8 +104,10 @@ Milestones:
       Redis Streams consumer with consumer groups and retries, tests). Result:
       uv workspace, `packages/worker-shared` + `apps/worker-embedder` scaffold,
       72 Python tests (the embedder handler landed with 2.4, the Relator with 2.5).
-- [ ] 2.2 `meta.data_sources` registry + `GET /api/v1/ingestion/resolve-source`
-      (ADR-0009).
+- [x] 2.2 `meta.data_sources` registry + `GET /api/v1/ingestion/resolve-source`
+      (ADR-0009). Result: registry + agent-only, tenant-scoped resolution route
+      ([ADR-0025](docs/decisions/ADR-0025-source-resolution-route.md)); no
+      management route for the registry yet.
 - [ ] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
       ([spec](docs/spec/extractor.md)).
 - [x] 2.4 Embedding computation: `NODE_CREATED` → `nomic-embed-text` (768) →

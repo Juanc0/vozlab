@@ -8,6 +8,7 @@ import { logger } from '../../shared/logger/index.js';
 import { registerRoutes } from './routes.js';
 import { correlationGuard, sendCorrelationHeader } from './middlewares/CorrelationGuard.js';
 import { DrizzleNodeRepository } from '../persistence/repositories/DrizzleNodeRepository.js';
+import { DrizzleDataSourceRepository } from '../persistence/repositories/DrizzleDataSourceRepository.js';
 import { DrizzleEdgeRepository } from '../persistence/repositories/DrizzleEdgeRepository.js';
 import { DrizzleOntologyRepository } from '../persistence/repositories/DrizzleOntologyRepository.js';
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
@@ -25,6 +26,7 @@ import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js'
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
+import { ResolveSourceUseCase } from '../../application/use_cases/ResolveSourceUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
@@ -97,6 +99,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const routerDb = new RouterDatabaseClient();
   const poolManager = new ConnectionPoolManager(routerDb);
   const nodeRepo = new DrizzleNodeRepository(poolManager);
+  const dataSourceRepo = new DrizzleDataSourceRepository(poolManager);
   const edgeRepo = new DrizzleEdgeRepository(poolManager);
   const ontologyRepo = new DrizzleOntologyRepository(poolManager);
   const proposalRepo = new DrizzleProposalRepository(poolManager);
@@ -127,6 +130,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const createNodeUseCase = new CreateNodeUseCase(nodeRepo, ontologyRepo, eventPublisher);
   const getNodeUseCase = new GetNodeUseCase(nodeRepo);
   const getNodeNeighborsUseCase = new GetNodeNeighborsUseCase(nodeRepo);
+  const resolveSourceUseCase = new ResolveSourceUseCase(dataSourceRepo);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
@@ -244,6 +248,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     createNodeUseCase,
     getNodeUseCase,
     getNodeNeighborsUseCase,
+    resolveSourceUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,

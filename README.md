@@ -10,12 +10,13 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 26 files / 125 TypeScript unit tests green (`pnpm test`); opt-in integration suite (3 files / 18 tests); Python runtime 72 tests (`uv run pytest`) |
+| Tests | 27 files / 127 TypeScript unit tests green (`pnpm test`); opt-in integration suite (4 files / 23 tests); Python runtime 72 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: install + `build type-check test` (TypeScript only; Python tests are not wired yet) |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
 | Embedding pipeline | Done — `NODE_CREATED` → Ollama (768) → `nodes.embedding` via the agent-only API route; the worker is not in Compose/CI yet |
 | Relator (Agent 2) | Partial — reads the top-5 neighbours, asks the LLM and creates `PENDING` edges; a merge verdict is logged, not applied |
+| Source registry | Done — `meta.data_sources` + agent-only `GET /api/v1/ingestion/resolve-source`; no management route yet |
 | Extractor / Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
@@ -32,6 +33,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Implemented (Ollama → agent-only API write-back); not in Compose/CI yet |
 | `packages/worker-shared` | Shared Python runtime: config, JSON logs, agent tokens, HTTP client, Redis Streams consumer | Implemented and tested |
 | `packages/database` | Drizzle schemas, migrations, dev seed/token/event-code scripts | Implemented |
+| `meta.data_sources` | API-owned `sourceId -> workspace` registry (ADR-0009) | Implemented (no management route) |
 | `packages/shared-types` | Zod DTOs, agent/role/ingestion contracts, `ERROR_CODES` | Implemented |
 | `packages/ts-config` | Shared TypeScript configuration | Implemented |
 | `docker/postgres` | Custom PostgreSQL 18.6 + Apache AGE 1.8 + pgvector image | Implemented |
@@ -50,7 +52,7 @@ pnpm --filter @vozlab/database db:seed:dev
 pnpm --filter @vozlab/api dev
 ```
 
-The API listens on `http://localhost:3000`. The dev seed is idempotent and provisions tenant `sabana`, workspace `general` (`33333333-3333-4333-8333-333333333333`), four identities, and a base ontology (`Problem`, `Idea`, `Resource`). The init scripts run only on a fresh Postgres volume.
+The API listens on `http://localhost:3000`. The dev seed is idempotent and provisions tenant `sabana`, workspace `general` (`33333333-3333-4333-8333-333333333333`), five identities, a base ontology (`Problem`, `Idea`, `Resource`) and one example data source. The init scripts run only on a fresh Postgres volume.
 
 In a second terminal, mint a token and call the API:
 

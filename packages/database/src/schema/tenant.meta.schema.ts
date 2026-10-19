@@ -119,6 +119,53 @@ export const objectProperties = metaSchema.table(
   ]
 );
 
+/**
+ * Data sources: the API-owned `sourceId -> workspace` registry
+ * (ADR-0009, ADR-0025).
+ *
+ * The Extractor never chooses a workspace; it resolves the target through
+ * the API, which looks the source up here. The per-source behavior profile
+ * lives with the source, so a connector change is data and not a redeploy.
+ */
+export const dataSources = metaSchema.table(
+  'data_sources',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    /** The external source id carried by the ingestion envelope. */
+    sourceKey: varchar('source_key', { length: 200 }).notNull(),
+    /** MINUTES | SURVEY | INBOX | OPEN_COMMENT */
+    connectorType: varchar('connector_type', { length: 30 }).notNull(),
+    /** BATCH | STREAM — the per-source behavior profile. */
+    behaviorProfile: varchar('behavior_profile', { length: 20 })
+      .default('BATCH')
+      .notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    /** ACTIVE | INACTIVE — only ACTIVE sources resolve. */
+    status: varchar('status', { length: 20 }).default('ACTIVE').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // One source key per workspace. The key is NOT unique per tenant: the
+    // resolution route looks the key up inside the caller's tenant and
+    // returns the owning workspace (ADR-0025).
+    uniqueIndex('uniq_data_sources_workspace_key').on(
+      table.workspaceId,
+      table.sourceKey
+    ),
+    // The resolution query filters by key only.
+    index('idx_data_sources_key').on(table.sourceKey),
+  ]
+);
+
 export type OntologyClass = typeof ontologyClasses.$inferSelect;
 export type DatatypeProperty = typeof datatypeProperties.$inferSelect;
 export type ObjectProperty = typeof objectProperties.$inferSelect;
+export type DataSource = typeof dataSources.$inferSelect;

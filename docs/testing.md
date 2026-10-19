@@ -10,8 +10,8 @@ is green today, what is deliberately missing, and the Phase 4 plan.
 | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
-| Size | 26 files / 125 tests | 3 files / 18 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path |
+| Size | 27 files / 127 tests | 4 files / 23 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
 | Coverage | Not measured; no coverage provider installed | Not measured |
@@ -52,6 +52,11 @@ vectors through the same route and checks that
 above 0.99, never returns the source node, answers `409` while the node has no
 vector, `404` for an unknown or foreign node and `422` for an out-of-range
 limit.
+
+The ingestion integration suite (`ingestion.integration.test.ts`) checks the
+agent-only resolution route: the seeded source resolves to its workspace with
+its behavior profile, a human token gets `403`, an unknown source gets `404`,
+a missing `sourceId` gets `422` and an unauthenticated call gets `401`.
 
 ### Python worker runtime
 

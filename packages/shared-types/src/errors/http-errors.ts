@@ -74,6 +74,10 @@ export const ERROR_CODES = {
     status: 404,
     message: 'Proposal not found',
   },
+  ERR_DATA_SOURCE_NOT_FOUND: {
+    status: 404,
+    message: 'Data source not found',
+  },
   ERR_NODE_NOT_FOUND: {
     status: 404,
     message: 'Node not found',

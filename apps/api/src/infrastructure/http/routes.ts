@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
+import { ResolveSourceUseCase } from '../../application/use_cases/ResolveSourceUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
@@ -39,13 +40,14 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
-import { requireAgentType } from './middlewares/agentGuard.js';
+import { requireAgentType, requireSystemAgent } from './middlewares/agentGuard.js';
 import { tenantGuard } from './middlewares/TenantGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
 import {
   RateLimitingMiddleware,
   publicAuthRateLimitMiddleware,
   rateLimitMiddleware,
+  scopedRateLimitMiddleware,
 } from './middlewares/RateLimitingMiddleware.js';
 import { NodeController } from './controllers/NodeController.js';
 import { EdgeController } from './controllers/EdgeController.js';
@@ -55,6 +57,7 @@ import { HealthController } from './controllers/HealthController.js';
 import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
+import { IngestionController } from './controllers/IngestionController.js';
 
 /**
  * Dependencies required to register routes (manual Composition Root).
@@ -63,6 +66,7 @@ export interface RouteDependencies {
   createNodeUseCase: CreateNodeUseCase;
   getNodeUseCase: GetNodeUseCase;
   getNodeNeighborsUseCase: GetNodeNeighborsUseCase;
+  resolveSourceUseCase: ResolveSourceUseCase;
   listNodesUseCase: ListNodesUseCase;
   deleteNodeUseCase: DeleteNodeUseCase;
   setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase;
@@ -118,6 +122,7 @@ export async function registerRoutes(
     createNodeUseCase,
     getNodeUseCase,
     getNodeNeighborsUseCase,
+    resolveSourceUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
@@ -206,6 +211,7 @@ export async function registerRoutes(
     getMeUseCase,
     joinEventUseCase
   );
+  const ingestionController = new IngestionController(resolveSourceUseCase);
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
@@ -394,5 +400,23 @@ export async function registerRoutes(
   // --- Interactions / Votes (RF-14, RF-15) ---
   app.post('/api/v1/interactions', { preHandler: guard }, (req, reply) =>
     interactionController.vote(req, reply)
+  );
+
+  // --- Ingestion (FR-17, ADR-0009, ADR-0025) ---
+  // The resolution route is the one protected route without an
+  // `X-Workspace-ID`: the workspace is the answer, not an input. It is
+  // agent-only and tenant-scoped, and it is rate limited on a fixed scope
+  // key because it has no workspace to bucket on.
+  app.get(
+    '/api/v1/ingestion/resolve-source',
+    {
+      preHandler: [
+        auth,
+        tenant,
+        scopedRateLimitMiddleware(rateLimiter, 'ingestion'),
+        requireSystemAgent(),
+      ],
+    },
+    (req, reply) => ingestionController.resolveSource(req, reply)
   );
 }

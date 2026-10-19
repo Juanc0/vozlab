@@ -205,6 +205,38 @@ export function rateLimitMiddleware(limiter: RateLimitingMiddleware) {
  * `RATE_LIMIT_WRITE_MAX` requests/minute per IP (GET login/callback use the
  * read cap). Fail-open on Redis errors matches the authenticated limiter.
  */
+/**
+ * Rate limit for routes that do not act inside a workspace — the ingestion
+ * resolution route, where the workspace is the answer and not an input
+ * (ADR-0025).
+ *
+ * The workspace bucket is replaced by a fixed scope key, so the per-actor
+ * budget still applies while the counters stay tenant-scoped.
+ */
+export function scopedRateLimitMiddleware(
+  limiter: RateLimitingMiddleware,
+  scope: string
+) {
+  return async function scopedRateLimitHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const tenantId = req.tid;
+    if (!tenantId) return;
+
+    const actor = req.user?.authorHash ?? req.ip;
+
+    const limited = await limiter.isRateLimited(tenantId, scope, req.method, actor);
+    if (limited) {
+      const err = buildError('ERR_RATE_LIMIT_EXCEEDED');
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
+  };
+}
+
 export function publicAuthRateLimitMiddleware(
   limiter: RateLimitingMiddleware
 ) {

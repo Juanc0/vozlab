@@ -116,8 +116,10 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-17 — Agent 1, atomized multi-source ingestion.** The Extractor must
   connect institutional listening channels (surveys, suggestion boxes, meeting
   minutes), homogenize non-confidential records one by one, and create node/edge
-  drafts by calling the API. *(Worker not built; contract in
-  [spec/extractor.md](spec/extractor.md).)*
+  drafts by calling the API. *(Deferred: the worker is not built. Its
+  prerequisites are — the API-owned `meta.data_sources` registry and the
+  agent-only resolution route ([ADR-0025](decisions/ADR-0025-source-resolution-route.md));
+  contract in [spec/extractor.md](spec/extractor.md).)*
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
@@ -322,7 +324,7 @@ implementation yet.
 | FR-13 | US-06 | `AutoApplyProposalUseCase.ts` | `public.edit_proposals` |
 | FR-14, FR-15 | US-04 | `CastVoteUseCase.ts` | `public.interactions_log`, counters |
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
-| FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `packages/worker-shared` (runtime) | API only |
+| FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `ResolveSourceUseCase.ts`; ADR-0025 | `meta.data_sources` |
 | FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), `SetNodeEmbeddingUseCase.ts`, ADR-0020, `apps/worker-embedder` | `public.nodes.embedding` |
 | FR-19 | US-08 | `apps/worker-relacionador`; `GetNodeNeighborsUseCase.ts`; ADR-0022, ADR-0023 | `public.edges`, `edit_proposals` |
 | FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

@@ -285,7 +285,24 @@ Notes:
 - The insert and the target counter update share one transaction. There is no
   read, retract or change-vote endpoint.
 
-## 9. Examples
+## 9. Ingestion
+
+| Method | Path | Input | Success | Route errors |
+| --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/ingestion/resolve-source` | `sourceId` query (1–200) | `200 { sourceId, workspaceId, connectorType, behaviorProfile, displayName }` | `404 ERR_DATA_SOURCE_NOT_FOUND` unknown/inactive source; `422` missing `sourceId` |
+
+The route is **agent-only** and **tenant-scoped**, and it is the one protected
+route that does **not** take an `X-Workspace-ID` header: the workspace is the
+answer, not an input ([ADR-0025](decisions/ADR-0025-source-resolution-route.md)).
+The lookup runs inside the tenant resolved from the `tid` claim, so a source
+of another tenant is never visible. A human token gets
+`403 ERR_AUTHORIZATION_FAILED`.
+
+The registry (`meta.data_sources`) has **no management route yet**: the rows
+are inserted by an operator. The dev seed provisions one example source
+(`dev-minutes-2026`).
+
+## 10. Examples
 
 Create a node as the seeded maintainer:
 
@@ -305,11 +322,13 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
   -H "X-Workspace-ID: $WS"
 ```
 
-## 10. Not implemented
+## 11. Not implemented
 
 No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a
-contract only); SSE; metrics; Apache AGE/Cypher; a merge proposal (the Relator
-can judge a merge but has nothing to submit); node or edge status transitions;
+contract only — [ADR-0024](decisions/ADR-0024-no-batch-node-endpoint.md) keeps
+the write path one node per request); management of the source registry; SSE;
+metrics; Apache AGE/Cypher; a merge proposal (the Relator can judge a merge
+but has nothing to submit); node or edge status transitions;
 datatype/object-property activation; interaction reads or vote retraction. The
 PWA (including its OIDC login screen and event QR scanner) and the
 Extractor/Consolidator apps are still empty scaffolds; the embedder and the

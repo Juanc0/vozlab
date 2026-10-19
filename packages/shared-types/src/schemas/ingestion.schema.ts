@@ -21,3 +21,25 @@ export const RawSourceRecordSchema = z.object({
   // NOTE: no workspaceId — the API resolves it from the source registry.
 });
 export type RawSourceRecord = z.infer<typeof RawSourceRecordSchema>;
+
+/**
+ * Query of the source resolution route
+ * (`GET /api/v1/ingestion/resolve-source`, ADR-0025).
+ */
+export const ResolveSourceQuerySchema = z.object({
+  sourceId: z.string().min(1, 'sourceId is required').max(200),
+});
+export type ResolveSourceQueryInput = z.infer<typeof ResolveSourceQuerySchema>;
+
+/**
+ * Answer of the source resolution route: the workspace a source belongs to,
+ * plus the per-source behavior the worker needs (ADR-0009, ADR-0025).
+ */
+export const DataSourceResolutionSchema = z.object({
+  sourceId: z.string(),
+  workspaceId: z.string().uuid(),
+  connectorType: ConnectorTypeSchema,
+  behaviorProfile: BehaviorProfileSchema,
+  displayName: z.string(),
+});
+export type DataSourceResolution = z.infer<typeof DataSourceResolutionSchema>;

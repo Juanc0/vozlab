@@ -94,7 +94,13 @@ through the agent-only `PUT /api/v1/nodes/:id/embedding` route, together with
 `embedding_model` and `embedded_at`. Nodes created before the worker ran keep
 a `NULL` embedding until they are re-embedded; there is no backfill tool yet.
 
-### 3.4 `social` — discussions
+### 3.4 `meta` — data sources
+
+| Table | Key columns | Constraints / notes |
+| --- | --- | --- |
+| `meta.data_sources` | `id`, `workspace_id`, `source_key`, `connector_type`, `behavior_profile`, `display_name`, `status`, `created_at`, `updated_at` | The API-owned `sourceId -> workspace` registry (ADR-0009, ADR-0025). `connector_type` is `MINUTES`/`SURVEY`/`INBOX`/`OPEN_COMMENT`; `behavior_profile` is `BATCH`/`STREAM`; `status` is `ACTIVE`/`INACTIVE` (only `ACTIVE` resolves). UNIQUE(`workspace_id`, `source_key`); the key itself is **not** unique per tenant — the resolution route looks it up inside the caller's tenant. |
+
+### 3.5 `social` — discussions
 
 | Table | Key columns | Constraints / notes |
 | --- | --- | --- |

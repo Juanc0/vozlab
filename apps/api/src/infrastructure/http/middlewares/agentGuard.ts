@@ -26,3 +26,25 @@ export function requireAgentType(agentType: AgentType) {
     }
   };
 }
+
+/**
+ * Accept every allow-listed system agent, whatever its type.
+ *
+ * Used by routes that are tenant plumbing rather than a specific agent's
+ * feature — the source resolution route (ADR-0025), which any ingestion
+ * capable worker may need. Humans are still refused.
+ */
+export function requireSystemAgent() {
+  return async function requireSystemAgentHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    if (!req.isSystemAgent) {
+      const err = buildError('ERR_AUTHORIZATION_FAILED');
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
+  };
+}

@@ -53,6 +53,7 @@ import {
   ontologyClasses,
   datatypeProperties,
   objectProperties,
+  dataSources,
 } from '../src/index.js';
 import {
   authorHashFor,
@@ -75,6 +76,7 @@ const CLASS_RESOURCE_ID = '66666666-6666-4666-8666-666666666663';
 const DTP_TITLE_ID = '77777777-7777-4777-8777-777777777771';
 const DTP_DESCRIPTION_ID = '77777777-7777-4777-8777-777777777772';
 const OP_RELATES_TO_ID = '88888888-8888-4888-8888-888888888888';
+const DATA_SOURCE_ID = '99999999-9999-4999-8999-999999999991';
 
 /** Valid 64-char hex SHA-256 required by the `AuthorHash` value object. */
 const AUTHOR_HASH = authorHashFor('maintainer');
@@ -268,6 +270,22 @@ async function seed(): Promise<void> {
         allowsSelfRelation: false,
         status: 'ACTIVE',
         proposedBy: AUTHOR_HASH,
+      })
+      .onConflictDoNothing();
+
+    // --- Data sources (ADR-0009, ADR-0025) -------------------------------
+    // One example source so the resolution route can be exercised locally.
+    // There is no management route yet: the registry is filled by an operator.
+    await tenantDb
+      .insert(dataSources)
+      .values({
+        id: DATA_SOURCE_ID,
+        workspaceId: WORKSPACE_ID,
+        sourceKey: 'dev-minutes-2026',
+        connectorType: 'MINUTES',
+        behaviorProfile: 'BATCH',
+        displayName: 'Dev meeting minutes',
+        status: 'ACTIVE',
       })
       .onConflictDoNothing();
 

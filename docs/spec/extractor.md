@@ -3,7 +3,10 @@
 > **Not implemented (Phase 2).** `apps/worker-extractor/` is still an empty
 > scaffold: no `pyproject.toml`, handler, Dockerfile or tests. The shared
 > runtime in `packages/worker-shared` (ADR-0021) is available for the future
-> package. This page defines the intended contract; nothing here runs today.
+> package, and the API side the worker depends on now exists: the
+> `meta.data_sources` registry and the agent-only resolution route
+> `GET /api/v1/ingestion/resolve-source` ([ADR-0025](../decisions/ADR-0025-source-resolution-route.md)).
+> This page defines the intended contract; nothing here runs today.
 
 The Extractor is Agent 1: it turns heterogeneous institutional records
 (surveys, suggestion boxes, meeting minutes, open comments) into draft nodes
@@ -26,8 +29,8 @@ through the Fastify API. It never writes to PostgreSQL directly.
 | `stream:source_raw` producer and consumer | Not implemented |
 | PII sanitizer | Not implemented |
 | Ollama extraction | Not implemented |
-| `meta.data_sources` registry + resolution route | Deferred to Phase 2 |
-| Batch node endpoint | Does not exist |
+| `meta.data_sources` registry + resolution route | **Implemented** (registry + agent-only route, ADR-0025); no management route yet |
+| Batch node endpoint | Does not exist, and will not: one node per request ([ADR-0024](../decisions/ADR-0024-no-batch-node-endpoint.md)) |
 | Root-entity cache / dedup | Phase 2 planned, not part of the contract |
 | API `POST /api/v1/nodes` | Implemented and usable |
 
@@ -45,9 +48,10 @@ The envelope is defined in `@vozlab/shared-types` as
 
 There is **no `workspaceId`** in the envelope. The API owns the mapping from
 `sourceId` to workspace (`meta.data_sources`); workers never choose a workspace
-from untrusted payload data. The planned resolution route is
-`GET /api/v1/ingestion/resolve-source`, but neither the table nor the route
-exists yet.
+from untrusted payload data. The resolution route
+`GET /api/v1/ingestion/resolve-source` exists and is agent-only
+([ADR-0025](../decisions/ADR-0025-source-resolution-route.md)); it takes no
+`X-Workspace-ID` header, because the workspace is its answer.
 
 > **Naming mismatch:** the canonical Zod contract is **camelCase**
 > (`sourceId`, `connectorType`, `channelName`, `rawContent`). The Python
@@ -179,3 +183,7 @@ Send `payload.model_dump(by_alias=True)` so the API receives `typeKey`.
 - [relator.md](relator.md) — downstream consumer of `stream:node_created`.
 - [ADR-0021](../decisions/ADR-0021-python-worker-runtime.md) — shared Python
   runtime and consumer-group conventions.
+- [ADR-0025](../decisions/ADR-0025-source-resolution-route.md) — the
+  resolution route the worker calls.
+- [ADR-0024](../decisions/ADR-0024-no-batch-node-endpoint.md) — why ingestion
+  stays one node per request.

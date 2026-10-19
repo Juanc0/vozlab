@@ -85,19 +85,24 @@ they disagree with the code, **the code wins** — fix the doc.
 ## Current state / gotchas (verified 2026-10-19)
 - Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 TypeScript
   tests plus 72 Python worker-runtime tests.
+- `GET /api/v1/ingestion/resolve-source` is the one protected route without
+  `X-Workspace-ID` (the workspace is the answer); it is agent-only and
+  tenant-scoped (ADR-0025).
 - Phase 2 in progress: `packages/worker-shared`, `apps/worker-embedder` (FR-18)
-  and `apps/worker-relacionador` (FR-19, partial) are implemented.
+  and `apps/worker-relacionador` (FR-19, partial) are implemented, and the
+  source registry + resolution route exist (FR-17 prerequisite).
   Extractor/Consolidator handlers, worker Dockerfiles and CI wiring are still
   missing.
 - `build` type-checks `src/**`; `type-check` additionally covers
   `apps/api/tests/**` and `packages/database/scripts/**` via
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
 - Thin CI at `.github/workflows/ci.yml`: install + `turbo run build type-check test`.
-- Not built: Extractor/Consolidator handlers, a merge proposal contract, PWA,
-  SSE, AGE adapter, metrics/tracing, worker Dockerfiles/compose profiles,
-  backfill of existing nodes. The embedding pipeline (FR-18) and the Relator
-  (FR-19, except merges) are implemented but the workers are not deployed. Real
-  auth endpoints exist (FR-01/02/03).
+- Not built: Extractor/Consolidator handlers, a merge proposal contract, a
+  management route for `meta.data_sources`, PWA, SSE, AGE adapter,
+  metrics/tracing, worker Dockerfiles/compose profiles, backfill of existing
+  nodes. The embedding pipeline (FR-18) and the Relator (FR-19, except merges)
+  are implemented but the workers are not deployed. Real auth endpoints exist
+  (FR-01/02/03).
 - Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
   `package.json` and `docker/`. Some archived docs describe older versions.
 - `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;
