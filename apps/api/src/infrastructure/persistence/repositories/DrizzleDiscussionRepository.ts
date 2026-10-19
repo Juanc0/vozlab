@@ -159,7 +159,9 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       downvotes: post.downvotes,
       communityScore: post.communityScore,
       createdAt: post.createdAt,
-      deletedAt: post.deletedAt,
+      // `deleted_at` is never supplied by the domain (TASK-38): a fresh post
+      // is always active, so the column is left to its NULL default. The
+      // adapter's `softDeletePost` is the single writer.
     });
   }
 

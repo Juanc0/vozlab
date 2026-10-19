@@ -340,6 +340,40 @@ The rule applies to:
 (`ERR_AUTHORIZATION_FAILED`): a 403 would confirm that the object exists in
 another workspace and leak its existence.
 
+### 6.7. Timestamp ownership (TASK-38)
+
+Two writers must never stamp the same column. The rule is:
+
+> **The domain owns the business timestamps (`created_at`, `updated_at`);
+> the adapter owns `deleted_at`.**
+
+| Concern | Single writer | Detail |
+| --- | --- | --- |
+| **Creates** | Domain entity | The use case builds the entity; the entity's constructor sets `createdAt`/`updatedAt` (or they default to `new Date()`); the adapter only persists those values (`save`/`savePost`/`saveThread`). |
+| **Updates / approved deltas** | Domain method | `Node.changeStatus` / `Node.updateAttributes` (and the equivalent methods on other entities) bump `updatedAt`. The adapter persists `entity.updatedAt` verbatim — it must **never** call `new Date()` in an `UPDATE`. |
+| **Soft-deletes** | Adapter | `deleted_at` is a pure persistence concern. `softDelete` / `softDeletePost` stamp it; use cases never touch it. The domain entity exposes `deletedAt` as a **read-only** projection (mapping a row back), not as mutable state, and carries no `softDelete()` method. |
+| **Reads** | Adapter | Adapters filter `deleted_at IS NULL`; use cases enforce workspace/authorization on the entity they receive. |
+
+Consequences worth calling out:
+
+- `DrizzleNodeRepository.update` persists `node.updatedAt` (no `new Date()`),
+  so the domain and the row can never disagree.
+- `DrizzleNodeRepository.applyDelta` receives only `proposedChanges`, not an
+  entity. It already loads the row, so it rebuilds the entity with `toDomain`,
+  routes the delta through `updateAttributes`, and persists the resulting
+  `node.updatedAt` — still a single `UPDATE`. There is **no** documented
+  `new Date()` exception in the node adapter.
+- `savePost` does not pass `deletedAt` in its `INSERT`; a fresh post is always
+  active and the column takes its `NULL` default. `softDeletePost` is the only
+  writer of `deleted_at`.
+
+Verified with:
+
+```bash
+grep -rn "updatedAt: new Date()" apps/api/src   # → no matches
+grep -rn "softDelete()" apps/api/src/domain     # → no matches
+```
+
 ---
 
 ## 7. Implementation Status — MILESTONE-1.5 (Governance) ✅

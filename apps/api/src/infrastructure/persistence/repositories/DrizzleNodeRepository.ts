@@ -235,7 +235,10 @@ export class DrizzleNodeRepository implements INodeRepository {
         attributes: node.attributes,
         status: node.status,
         communityScore: node.communityScore,
-        updatedAt: new Date(),
+        // Timestamp ownership (TASK-38): the domain method that produced this
+        // mutation is the single writer of `updatedAt`; the adapter only
+        // persists the entity's value.
+        updatedAt: node.updatedAt,
       })
       .where(eq(nodes.id, node.id));
   }
@@ -268,15 +271,22 @@ export class DrizzleNodeRepository implements INodeRepository {
       throw new DomainError('ERR_NODE_NOT_FOUND');
     }
 
-    const existingAttributes = (existing.attributes as Record<string, any>) ?? {};
+    // Timestamp ownership (TASK-38): this projection has no caller-supplied
+    // entity, but the row is already loaded — rebuild it, route the delta
+    // through the domain method, and persist the entity's own `updatedAt`.
+    // The write stays a single UPDATE statement.
+    const node = toDomain(existing);
+    node.title = proposedChanges.title ?? node.title;
+    node.description = proposedChanges.description ?? node.description;
+    node.updateAttributes((proposedChanges.attributes as Record<string, any>) ?? {});
 
     await db
       .update(nodes)
       .set({
-        title: proposedChanges.title ?? existing.title,
-        description: proposedChanges.description ?? existing.description,
-        attributes: { ...existingAttributes, ...(proposedChanges.attributes ?? {}) },
-        updatedAt: new Date(),
+        title: node.title,
+        description: node.description,
+        attributes: node.attributes,
+        updatedAt: node.updatedAt,
       })
       .where(eq(nodes.id, targetId));
   }

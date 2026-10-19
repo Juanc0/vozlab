@@ -15,7 +15,12 @@ export class DiscussionPost {
     public downvotes: number = 0,
     public communityScore: number = 0,
     public readonly createdAt: Date = new Date(),
-    public deletedAt: Date | null = null
+    /**
+     * Read-only projection of the persisted soft-delete marker. `deleted_at`
+     * is a pure persistence concern: the adapter is its single writer
+     * (TASK-24/TASK-38) and no domain method stamps it.
+     */
+    public readonly deletedAt: Date | null = null
   ) {}
 
   /**
@@ -26,9 +31,5 @@ export class DiscussionPost {
     if (value > 0) this.upvotes += 1;
     else if (value < 0) this.downvotes += 1;
     this.communityScore = this.upvotes - this.downvotes;
-  }
-
-  softDelete(): void {
-    this.deletedAt = new Date();
   }
 }

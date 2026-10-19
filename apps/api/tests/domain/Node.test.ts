@@ -41,6 +41,15 @@ describe('Node', () => {
     expect(node.status).toBe('REJECTED');
   });
 
+  it('bumps updatedAt on changeStatus (domain is the single writer)', () => {
+    const node = makeNode('DRAFT');
+    const before = node.updatedAt;
+
+    node.changeStatus('ACTIVE');
+
+    expect(node.updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  });
+
   it('merges attribute deltas and bumps updatedAt', () => {
     const node = makeNode('ACTIVE');
     const before = node.updatedAt;
@@ -50,4 +59,8 @@ describe('Node', () => {
     expect(node.attributes).toEqual({ born: 1816, country: 'UK' });
     expect(node.updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
   });
+
+  // The adapter half of the contract — "persist `node.updatedAt` verbatim" —
+  // is asserted for real in tests/infrastructure/timestampOwnership.test.ts
+  // with a thin fake Drizzle client.
 });
