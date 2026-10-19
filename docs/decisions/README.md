@@ -34,6 +34,8 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0019](ADR-0019-global-event-codes.md) | Global event-code registry in the router database | Accepted | `router.event_codes` is the documented exception to ADR-0002; QR contains only the code and consumption is atomic. |
 | [0020](ADR-0020-dedicated-embedding-pipeline.md) | Dedicated embedding pipeline with agent-only write-back | Accepted | A separate embedder consumes `NODE_CREATED` and writes 768-dimensional vectors through `PUT /api/v1/nodes/:id/embedding`; the Relator retries until a vector exists. |
 | [0021](ADR-0021-python-worker-runtime.md) | Python 3.12 workers with a shared uv runtime and Redis Streams | Accepted | Workers share `vozlab_worker` (config, JSON logs, agent tokens, httpx client, consumer groups, `XAUTOCLAIM`, bounded retries and DLQ); Python 3.12 + uv + pytest. |
+| [0022](ADR-0022-relator-neighbour-lookup.md) | The Relator reads neighbours through the API, not the database | Accepted | `GET /api/v1/nodes/:id/neighbors` runs the workspace-scoped pgvector search; `409 ERR_NODE_NOT_EMBEDDED` is the retryable "vector not ready" state. |
+| [0023](ADR-0023-relator-edge-and-merge-semantics.md) | The Relator proposes edges; merges wait for a merge contract | Accepted | `EDGE` creates a `PENDING` edge via `POST /api/v1/edges` with an ontology relation key; `MERGE` is logged only — no merge contract exists yet. |
 
 ## How to add an ADR
 
