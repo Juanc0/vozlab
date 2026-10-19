@@ -21,8 +21,9 @@ they disagree with the code, **the code wins** — fix the doc.
   `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
 - `apps/web`, `apps/worker-extractor`, `apps/worker-relacionador`,
   `apps/worker-consolidador` — empty scaffolds; not in the build yet.
-- `apps/worker-embedder` — Python 3.12/uv scaffold with a `--check` CLI; the
-  `NODE_CREATED` handler is Phase 2.4.
+- `apps/worker-embedder` — Python 3.12/uv worker: consumes `NODE_CREATED`,
+  calls Ollama (`nomic-embed-text`, 768 dims) and writes the vector through
+  the agent-only `PUT /api/v1/nodes/:id/embedding` route.
 - `packages/worker-shared` — shared Python runtime (`vozlab_worker`): settings,
   JSON logs, agent tokens, httpx client, Redis Streams consumer groups,
   `XAUTOCLAIM`, retries and DLQ.
@@ -40,9 +41,10 @@ they disagree with the code, **the code wins** — fix the doc.
   `@typescript-eslint/no-explicit-any` errors); not in CI. Do not claim it passes.
 - `uv sync` — Python 3.12 workspace environment from `uv.lock` (uses the
   repo-root `.venv`; keep it dedicated to this workspace).
-- `uv run pytest` — 37 Python runtime/scaffold tests; `uv run ruff check
+- `uv run pytest` — 51 Python runtime/worker tests; `uv run ruff check
   packages/worker-shared apps/worker-embedder` — Python lint.
-- `uv run vozlab-worker-embedder --check` — validate embedder scaffold config.
+- `uv run vozlab-worker-embedder --check` — validate the embedder config;
+  `--once` runs a single pass over `stream:node_created`.
 - `pnpm --filter @vozlab/api dev` — `tsx watch` with `--env-file-if-exists=../../.env`.
 - `pnpm --filter @vozlab/database db:generate[:router|:tenant]`,
   `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
@@ -76,18 +78,19 @@ they disagree with the code, **the code wins** — fix the doc.
 
 ## Current state / gotchas (verified 2026-10-19)
 - Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 TypeScript
-  tests plus 37 Python worker-runtime/scaffold tests.
-- Phase 2 started: `packages/worker-shared` and `apps/worker-embedder` exist;
-  the embedder CLI is `--check` only. No worker handler consumes events, and the
-  agent-only embedding write endpoint is milestone 2.4.
+  tests plus 51 Python worker-runtime tests.
+- Phase 2 in progress: `packages/worker-shared` and `apps/worker-embedder` are
+  implemented (FR-18: `NODE_CREATED` → Ollama → `nodes.embedding` via the
+  agent-only route). Extractor/Relator/Consolidator handlers, worker
+  Dockerfiles and CI wiring are still missing.
 - `build` type-checks `src/**`; `type-check` additionally covers
   `apps/api/tests/**` and `packages/database/scripts/**` via
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
 - Thin CI at `.github/workflows/ci.yml`: install + `turbo run build type-check test`.
-- Not built: Python worker handlers/consumer groups, PWA, SSE, AGE adapter,
-  metrics/tracing, the embedding write endpoint and consumer — `NODE_CREATED`
-  is published, the shared runtime/embedder scaffold exist, but nothing writes
-  `nodes.embedding` (FR-18 Partial). Real auth endpoints exist (FR-01/02/03).
+- Not built: Extractor/Relator/Consolidator handlers, PWA, SSE, AGE adapter,
+  metrics/tracing, worker Dockerfiles/compose profiles, backfill of existing
+  nodes. The embedding pipeline (FR-18) is implemented but the worker is not
+  deployed. Real auth endpoints exist (FR-01/02/03).
 - Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
   `package.json` and `docker/`. Some archived docs describe older versions.
 - `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;

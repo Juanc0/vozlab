@@ -195,7 +195,7 @@ System agents use the same bearer contract as humans, with `type` added.
 
 | Requirement | Agent behaviour |
 | --- | --- |
-| `sub`, `tid`, `authorHash` | Required. The three AI agents use the seeded `SYSTEM_AGENT` user so audit trails resolve; the embedder is a utility and authors no graph rows, but still needs a valid 64-hex `authorHash`. |
+| `sub`, `tid`, `authorHash` | Required. The three AI agents use the seeded `SYSTEM_AGENT` user so audit trails resolve; the embedder is a utility with its own seeded `SYSTEM_AGENT` user and authors no graph rows, but still needs a valid 64-hex `authorHash`. |
 | `type` | Required; `AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR` or `AGENT_EMBEDDER`. Unknown values are rejected, never downgraded to human. |
 | `jti` | Required by contract; used for revocation when present. |
 | `X-Workspace-ID` | **Required**; the agent is scoped to that workspace like any caller. |
@@ -208,9 +208,9 @@ System agents use the same bearer contract as humans, with `type` added.
 
 There is no separate agent namespace for existing routes: a valid agent token
 can call the same endpoints as a human, subject to ontology and role rules.
-ADR-0020 reserves one narrower future route, `PUT /api/v1/nodes/:id/embedding`,
-which will additionally require `type=AGENT_EMBEDDER`; it is not implemented
-yet.
+One route is narrower: `PUT /api/v1/nodes/:id/embedding` additionally requires
+`type=AGENT_EMBEDDER` and rejects every other caller with
+`403 ERR_AUTHORIZATION_FAILED` (ADR-0020).
 
 ## 9. Event-code join (FR-03)
 

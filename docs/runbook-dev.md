@@ -69,8 +69,13 @@ The first boot initializes extensions, creates `vozlab_router` and
 `vozlab_tenant_dev`, and bootstraps the AGE graph. These initdb scripts run
 **only on a fresh volume**.
 
-Ollama is started but no model is pulled. Nothing in the current API calls it;
-Phase 2 workers will need `nomic-embed-text` and a reasoning model.
+Ollama is started but no model is pulled. The embedder worker needs
+`nomic-embed-text` (768 dims); the reasoning models for the other agents are
+not used yet:
+
+```bash
+docker compose exec ollama ollama pull nomic-embed-text
+```
 
 ### 4. Apply migrations
 
@@ -105,8 +110,10 @@ TOKEN=$(pnpm --filter @vozlab/database db:mint-token -- --as maintainer | awk '/
 echo "$TOKEN"
 ```
 
-Available identities: `maintainer`, `moderator`, `member`, `agent`. Tokens are
-HS256, valid for 12 hours, and signed with the `JWT_SECRET` the API boots with.
+Available identities: `maintainer`, `moderator`, `member`, `agent`, `embedder`.
+The `embedder` identity carries the agent type `AGENT_EMBEDDER` and may only
+call `PUT /api/v1/nodes/:id/embedding`. Tokens are HS256, valid for 12 hours,
+and signed with the `JWT_SECRET` the API boots with.
 `db:mint-token` remains the no-IdP development path. The real flow is
 `GET /api/v1/auth/login` → IdP → `GET /api/v1/auth/callback`; it needs a
 registered OIDC client and a configured `WEB_ORIGIN`. The callback sets the
@@ -141,27 +148,49 @@ The response is an `AuthSessionDto`; the refresh cookie is written to
 `/tmp/vozlab-cookies.txt`. Existing anonymous users keep their refresh session
 after the code expires or is revoked; only new joins are blocked.
 
-### 8. Worker runtime scaffold (optional)
+### 8. Run the embedder worker (optional)
 
-Phase 2 has a shared Python runtime and an embedder scaffold, but no worker
-handler consumes events yet. Python 3.12 and uv are required; run from the repo
-root so the root `.env` is visible.
+Phase 2 has a shared Python runtime and the dedicated embedder: it consumes
+`stream:node_created`, asks Ollama for the 768-dimensional `nomic-embed-text`
+vector and stores it through the agent-only API route. Python 3.12 and uv are
+required; run from the repo root so the root `.env` is visible.
 
 ```bash
 uv sync
 uv run pytest
 uv run ruff check packages/worker-shared apps/worker-embedder
 
-# Validate the embedder scaffold with any valid agent token
-AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as agent | awk '/^eyJ/')" \
+# Validate configuration and the credential source, then exit
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as embedder | awk '/^eyJ/')" \
   uv run vozlab-worker-embedder --check
 ```
 
-`--check` only loads configuration, validates the token source and prints the
-resolved stream/consumer/model settings; it exits `2` without `--check` because
-the Ollama handler and embedding write endpoint are milestone 2.4. `uv sync`
-uses the repo-root `.venv`; do not keep unrelated Python packages in that
-environment.
+Run it (foreground) against the local stack:
+
+```bash
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as embedder | awk '/^eyJ/')" \
+API_BASE_URL=http://localhost:3000 \
+REDIS_URL=redis://localhost:6379/0 \
+OLLAMA_BASE_URL=http://localhost:11434 \
+WORKSPACE_ID=33333333-3333-4333-8333-333333333333 \
+  uv run vozlab-worker-embedder
+```
+
+`--once` processes the current batch (plus stale pending entries) and exits —
+useful for smoke tests and for re-embedding after a model change. `SIGTERM` /
+`SIGINT` stop the consumer gracefully.
+
+The worker needs the Ollama model (`docker compose exec ollama ollama pull
+nomic-embed-text`) and the API running. Check the result:
+
+```bash
+docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
+  -c "select id, embedding_model, embedded_at, embedding is not null as embedded
+      from public.nodes order by created_at desc limit 5;"
+```
+
+`uv sync` uses the repo-root `.venv`; do not keep unrelated Python packages in
+that environment.
 
 ### 9. Start the API
 
@@ -207,14 +236,14 @@ increases because `NODE_CREATED` is published after the transaction commits.
 ## Tests and checks
 
 ```bash
-pnpm test                                # unit suite, 24 files / 114 tests
+pnpm test                                # unit suite, 25 files / 120 tests
 pnpm turbo run build type-check          # src, tests and DB scripts
 pnpm lint                                # known red: 26 pre-existing no-explicit-any errors
 
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
 
-# Python worker runtime (37 tests; no live Redis/Ollama/API)
+# Python worker runtime (51 tests; no live Redis/Ollama/API)
 uv sync
 uv run pytest
 ```
@@ -245,10 +274,13 @@ deletes its own users and event codes; never point it at production. See
 | Pretty logs despite JSON expectations | `LOG_PRETTY` uses `z.coerce.boolean()`, so the string `false` is truthy. | Leave `LOG_PRETTY` unset for JSON output. |
 | `pnpm lint` fails on `no-explicit-any` | Known debt (26 errors), not a regression. | Treat build/type-check/tests as the gate until the debt is paid. |
 | Worker `--check` says `missing agent identity` | `JWT_SECRET` is set but no static token and no `AGENT_*` identity is configured. | Set `AGENT_TOKEN`/`AGENT_TOKEN_FILE`, or set `AGENT_TENANT_KEY`, `AGENT_USER_ID` and `AGENT_AUTHOR_HASH` for development minting. |
+| Embedder logs `401 ERR_INVALID_TOKEN` | The token was minted with a different `JWT_SECRET` than the running API, or the API is running an older build without `AGENT_EMBEDDER` in the allow-list. | Re-mint with the API's `JWT_SECRET` and restart the API after changing `packages/shared-types`. |
+| Embedder logs `403 ERR_AUTHORIZATION_FAILED` | The token is not an `AGENT_EMBEDDER` token. | Mint with `--as embedder` (not `--as agent`). |
+| Embedder dead-letters a node | The node was deleted, the model did not match `EMBEDDING_MODEL`, or the API rejected the vector. | Inspect `stream:node_created:dead`; the entry carries the original payload, the error and the attempt count. |
 | `uv sync` replaced an unrelated `.venv` | uv uses the repo-root `.venv` as the workspace environment. | Keep the root `.venv` dedicated to this workspace; use a separate checkout/environment for unrelated Python projects. |
 
-The three AI worker apps are still empty scaffolds; the shared runtime and
-embedder scaffold exist but no handler consumes events, and no embedding is
-computed today (`nodes.embedding` stays `NULL`). See [testing.md](testing.md)
-for scope and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
+The three AI worker apps are still empty scaffolds; the embedder exists and
+computes vectors for new nodes, but there is no backfill for older ones and
+nothing queries `nodes.embedding` yet. See [testing.md](testing.md) for scope
+and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
 [ADR-0021](decisions/ADR-0021-python-worker-runtime.md) for the design.

@@ -120,10 +120,10 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
-  (pgvector). *(Partial: the event is published; [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md)
-  fixes the dedicated embedder plus agent-only write-back contract, and the
-  shared runtime/embedder scaffold exist. No consumer, write endpoint or vector
-  production is implemented yet.)*
+  (pgvector). *(Implemented: [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md)
+  — a dedicated embedder consumes `NODE_CREATED`, calls Ollama and writes the
+  vector through the agent-only `PUT /api/v1/nodes/:id/embedding` route. The
+  worker is not in Compose/CI yet and pre-existing nodes are not backfilled.)*
 - **FR-19 — Agent 2, non-deterministic relationship evaluator.** The Relator
   must compare a new node against the closest active nodes and clusters returned
   by pgvector, and decide whether it merges, needs an edge, or stays
@@ -143,8 +143,9 @@ The identity model, guard chain and pseudonym rules are in
   nodes) must serve p95 < 30 ms. *(Unverified: the endpoint and indexes exist,
   but no load test measures it.)*
 - **NFR-02 — HNSW vector search.** Cosine similarity over 100,000 vectors must
-  serve p95 < 20 ms with an HNSW index. *(Partial: column/index exist; no
-  vectors are produced yet.)*
+  serve p95 < 20 ms with an HNSW index. *(Partial: vectors are produced and
+  the planner uses `idx_nodes_embedding_hnsw` for
+  `ORDER BY embedding <=> $1`; the 100k-vector p95 is not measured.)*
 - **NFR-03 — HTTP response times.** Mutations (votes, node creation) must serve
   p95 < 15 ms by delegating heavy work to asynchronous workers via Redis
   Streams. *(Unverified.)*
@@ -178,9 +179,9 @@ The identity model, guard chain and pseudonym rules are in
 - **NFR-10 — AI-decoupled resilience.** If Ollama or embeddings are offline,
   the API and PWA must keep operating; AI tasks accumulate in Redis Streams and
   are processed when the service returns. *(Partial: publication is
-  fire-and-forget with no outbox/retry. The shared runtime implements consumer
-  groups, `XAUTOCLAIM`, bounded attempts and a DLQ, but no worker handler is
-  running yet.)*
+  fire-and-forget with no outbox/retry. The embedder keeps entries pending
+  while Ollama is down and recovers them with `XAUTOCLAIM`, but a Redis outage
+  still drops events.)*
 - **NFR-11 — Strict hexagonal architecture.** Domain, use cases and
   infrastructure must stay decoupled through ports and adapters so databases or
   AI adapters can be swapped without touching business logic.
@@ -295,9 +296,9 @@ sequenceDiagram
 5. Consolidator runs on a schedule and drafts opportunities; publication in the
    PWA closes the loop.
 
-The embedding handler is the missing link: `NODE_CREATED` is published today and
-the runtime/embedder scaffold exists, but nothing consumes the stream or writes
-vectors, so step 4 cannot run yet.
+Step 3 works today: `NODE_CREATED` is published, the embedder computes the
+vector and the API stores it. Step 4 still has no implementation — the Relator
+does not exist yet.
 
 ## 6. Traceability
 
@@ -315,6 +316,6 @@ vectors, so step 4 cannot run yet.
 | FR-14, FR-15 | US-04 | `CastVoteUseCase.ts` | `public.interactions_log`, counters |
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
 | FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `packages/worker-shared` (runtime) | API only |
-| FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), ADR-0020, `apps/worker-embedder` (scaffold) | `public.nodes.embedding` |
+| FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), `SetNodeEmbeddingUseCase.ts`, ADR-0020, `apps/worker-embedder` | `public.nodes.embedding` |
 | FR-19 | US-08 | *(planned)* `apps/worker-relacionador`; `packages/worker-shared` (runtime) | `public.edges`, `edit_proposals` |
 | FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

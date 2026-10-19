@@ -10,12 +10,12 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 24 files / 114 TypeScript unit tests green (`pnpm test`); opt-in auth integration suite (5 tests); Python runtime 37 tests (`uv run pytest`) |
+| Tests | 25 files / 120 TypeScript unit tests green (`pnpm test`); opt-in integration suite (2 files / 12 tests); Python runtime 51 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: install + `build type-check test` (TypeScript only; Python tests are not wired yet) |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
-| Python workers | Shared `vozlab_worker` runtime + embedder scaffold; no handler consumes events yet |
-| PWA, Apache AGE adapter, embeddings, SSE, metrics | Not built; `nodes.embedding` stays `NULL` |
+| Embedding pipeline | Done — `NODE_CREATED` → Ollama (768) → `nodes.embedding` via the agent-only API route; the worker is not in Compose/CI yet |
+| Extractor / Relator / Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
@@ -28,7 +28,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | `apps/worker-extractor` | Python 3.12 ingestion worker | Empty scaffold (Phase 2) |
 | `apps/worker-relacionador` | Python 3.12 relationship evaluator | Empty scaffold (Phase 2) |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |
-| `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Python package + `--check`; handler is Phase 2.4 |
+| `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Implemented (Ollama → agent-only API write-back); not in Compose/CI yet |
 | `packages/worker-shared` | Shared Python runtime: config, JSON logs, agent tokens, HTTP client, Redis Streams consumer | Implemented and tested |
 | `packages/database` | Drizzle schemas, migrations, dev seed/token/event-code scripts | Implemented |
 | `packages/shared-types` | Zod DTOs, agent/role/ingestion contracts, `ERROR_CODES` | Implemented |
@@ -64,7 +64,7 @@ curl -s http://localhost:3000/api/v1/nodes \
   -H "X-Workspace-ID: 33333333-3333-4333-8333-333333333333"
 ```
 
-`--as` accepts `maintainer`, `moderator`, `member`, or `agent`. Replace `JWT_SECRET` in `.env` before sharing an environment; the example value is for local development only.
+`--as` accepts `maintainer`, `moderator`, `member`, `agent`, or `embedder`. Replace `JWT_SECRET` in `.env` before sharing an environment; the example value is for local development only.
 
 ## Commands
 
@@ -82,9 +82,10 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
 | `uv sync` | Creates the Python 3.12 workspace environment from `uv.lock` |
-| `uv run pytest` | Runs the shared worker runtime and embedder scaffold tests (37) |
+| `uv run pytest` | Runs the shared worker runtime and embedder tests (51) |
 | `uv run ruff check packages/worker-shared apps/worker-embedder` | Lints the Python worker code |
-| `uv run vozlab-worker-embedder --check` | Validates the embedder scaffold configuration and agent credential source |
+| `uv run vozlab-worker-embedder --check` | Validates the embedder configuration and agent credential source |
+| `uv run vozlab-worker-embedder [--once]` | Runs the embedder consumer (once = single pass) |
 
 The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-only, so there is no `dist/` to run.
 

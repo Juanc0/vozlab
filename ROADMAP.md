@@ -17,12 +17,13 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 24 test files / 114 TypeScript unit tests green; opt-in auth integration suite
-  (1 file / 5 tests) green against local PostgreSQL/Redis; Python worker runtime
-  scaffold has 37 green tests (`uv run pytest`); `build` + `type-check` green;
+- 25 test files / 120 TypeScript unit tests green; opt-in integration suite
+  (2 files / 12 tests) green against local PostgreSQL/Redis; Python worker
+  runtime has 51 green tests (`uv run pytest`); `build` + `type-check` green;
   thin CI runs install + `build type-check test` (TypeScript only).
-- Phase 2 started: shared `vozlab_worker` runtime + embedder scaffold, no
-  handler consumes events yet. PWA (including its login/QR UI), observability,
+- Phase 2 in progress: shared `vozlab_worker` runtime and the dedicated
+  embedder (FR-18 implemented end to end). Extractor, Relator and
+  Consolidator handlers, PWA (including its login/QR UI), observability and
   broad integration/E2E/load tests are not started.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
@@ -97,14 +98,18 @@ Milestones:
       `x-correlation-id`, JWT minting/refresh for agent identities, API client,
       Redis Streams consumer with consumer groups and retries, tests). Result:
       uv workspace, `packages/worker-shared` + `apps/worker-embedder` scaffold,
-      37 Python tests; no handler consumes events yet.
+      51 Python tests (the embedder handler landed with 2.4).
 - [ ] 2.2 `meta.data_sources` registry + `GET /api/v1/ingestion/resolve-source`
       (ADR-0009).
 - [ ] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
       ([spec](docs/spec/extractor.md)).
-- [ ] 2.4 Embedding computation: `NODE_CREATED` → `nomic-embed-text` (768) →
+- [x] 2.4 Embedding computation: `NODE_CREATED` → `nomic-embed-text` (768) →
       `public.nodes.embedding` + HNSW index verified
-      ([FR-18](docs/requirements.md)).
+      ([FR-18](docs/requirements.md)). Result: dedicated embedder worker
+      (ADR-0020) + agent-only `PUT /api/v1/nodes/:id/embedding`, `embedding_model`
+      /`embedded_at` columns, HNSW index exercised, verified end to end against
+      the local stack; the worker is not in Compose/CI yet (2.7) and there is no
+      backfill for pre-existing nodes.
 - [ ] 2.5 Relator: vector top-5 → LLM evaluation → merge/edge proposals
       ([spec](docs/spec/relator.md)).
 - [ ] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via

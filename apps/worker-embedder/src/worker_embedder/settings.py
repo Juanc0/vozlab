@@ -15,6 +15,7 @@ class EmbedderSettings(WorkerSettings):
     agent_type: AgentType = "AGENT_EMBEDDER"
 
     ollama_base_url: str = "http://localhost:11434"
+    ollama_timeout_seconds: float = Field(default=30.0, gt=0)
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = Field(default=768, ge=1)
 

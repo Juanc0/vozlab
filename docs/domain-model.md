@@ -83,15 +83,16 @@ soft deletion. `display_names` and `descriptions` are JSONB locale maps, e.g.
 
 | Table | Key columns | Constraints / notes |
 | --- | --- | --- |
-| `public.nodes` | `id`, `workspace_id`, `type_key`, `title`, `description`, `attributes`, `embedding`, `author_hash`, `status`, `community_score`, `created_at`, `updated_at`, `deleted_at` | `type_key` logically references `meta.ontology_classes.system_key`; no FK. `embedding` is `vector(768)`, nullable, HNSW cosine index. Partial (`deleted_at IS NULL`) workspace/status index; GIN on `attributes`. |
+| `public.nodes` | `id`, `workspace_id`, `type_key`, `title`, `description`, `attributes`, `embedding`, `embedding_model`, `embedded_at`, `author_hash`, `status`, `community_score`, `created_at`, `updated_at`, `deleted_at` | `type_key` logically references `meta.ontology_classes.system_key`; no FK. `embedding` is `vector(768)`, nullable, HNSW cosine index. `embedding_model`/`embedded_at` record which model produced the vector and when (ADR-0020). Partial (`deleted_at IS NULL`) workspace/status index; GIN on `attributes`. |
 | `public.edges` | `id`, `workspace_id`, `source_node_id`, `target_node_id`, `relation_key`, `attributes`, `status`, `community_score`, `author_hash`, `created_at`, `deleted_at` | Source/target FKs → `nodes.id` ON DELETE CASCADE (hard delete only). `relation_key` logically references `object_properties.system_key`; no FK. Partial workspace/source and workspace/target indexes. |
 | `public.edit_proposals` | `id`, `workspace_id`, `target_id`, `target_type`, `proposer_hash`, `proposed_changes`, `justification`, `community_score`, `status`, `resolved_by`, `resolved_at`, `created_at` | `target_type`: `NODE`, `EDGE`, `ONTOLOGY`. `target_id` is **polymorphic and has no FK** (decision M-12). No `deleted_at`, no `updated_at`. |
 | `public.interactions_log` | `id`, `workspace_id`, `user_hash`, `target_id`, `target_type`, `interaction_type`, `value`, `created_at` | `target_type`: `NODE`, `EDGE`, `PROPOSAL`, `POST`. UNIQUE(`user_hash`, `target_id`, `target_type`) — one vote per user/target. `value` is server-derived. Immutable: no update/delete path. |
 
-`nodes.embedding` is currently always `NULL`: nothing computes embeddings.
-`NODE_CREATED` is published, but no worker handler consumes it yet. ADR-0020
-defines the dedicated embedder and the future agent-only write endpoint; the
-shared runtime and embedder scaffold exist, but the handler is milestone 2.4.
+`nodes.embedding` is written by the embedder worker (FR-18, ADR-0020): it
+consumes `NODE_CREATED`, calls Ollama and stores the 768-dimensional vector
+through the agent-only `PUT /api/v1/nodes/:id/embedding` route, together with
+`embedding_model` and `embedded_at`. Nodes created before the worker ran keep
+a `NULL` embedding until they are re-embedded; there is no backfill tool yet.
 
 ### 3.4 `social` — discussions
 

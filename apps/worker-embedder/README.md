@@ -1,17 +1,19 @@
 # VozLab Embedder Worker
 
-Dedicated consumer for `stream:node_created` (ADR-0020). It computes the
-768-dimensional `nomic-embed-text` vector and writes it through the agent-only
-API endpoint; it never writes tenant PostgreSQL.
+Dedicated consumer for `stream:node_created` (ADR-0020). It reads the node
+through the API, asks the local Ollama model for the 768-dimensional
+`nomic-embed-text` vector and writes it back through the agent-only
+`PUT /api/v1/nodes/:id/embedding`; it never writes tenant PostgreSQL.
 
-**Status: scaffold (milestone 2.1).** The Python package, configuration and
-shared runtime are wired. The Ollama handler and API write-back land in
-milestone 2.4.
+**Status: implemented (milestone 2.4).** Not in Compose/CI yet (milestone
+2.7), and there is no backfill for nodes created before the worker ran.
 
 ```bash
 # from the repository root, with uv installed
 uv sync
-uv run vozlab-worker-embedder --check
+uv run vozlab-worker-embedder --check    # validate config and credentials
+uv run vozlab-worker-embedder            # run until SIGTERM/SIGINT
+uv run vozlab-worker-embedder --once     # single pass, then exit
 ```
 
 Required environment (see [ADR-0021](../../docs/decisions/ADR-0021-python-worker-runtime.md)):
@@ -28,10 +30,21 @@ EMBEDDING_DIMENSIONS=768
 
 For local development `JWT_SECRET` plus `AGENT_TENANT_KEY`, `AGENT_USER_ID` and
 `AGENT_AUTHOR_HASH` can replace `AGENT_TOKEN`; the runtime mints and refreshes a
-token exactly like `db:mint-token`. The future write endpoint requires
-`type=AGENT_EMBEDDER`; `db:mint-token --as agent` still emits
-`AGENT_EXTRACTOR`, so use the dev-minting path with `AGENT_TYPE=AGENT_EMBEDDER`
-for milestone 2.4.
+token exactly like `db:mint-token`. The write endpoint requires
+`type=AGENT_EMBEDDER`; `pnpm --filter @vozlab/database db:mint-token -- --as
+embedder` mints one.
 
-`--check` validates configuration only. There is no `--consume` mode yet; a
-running process without `--check` exits `2`.
+## Behaviour
+
+| Failure | Outcome |
+| --- | --- |
+| Ollama unreachable, timeout, 5xx, malformed vector | Retryable — the entry stays pending and is recovered with `XAUTOCLAIM` |
+| Ollama rejects the request (4xx, e.g. model not pulled) | Permanent — dead-lettered immediately |
+| API `404` (node deleted/foreign) | Permanent — dead-lettered |
+| API `422` (bad vector/model) | Permanent — dead-lettered |
+| API `401`/`403` (wrong credentials or agent type) | Permanent — dead-lettered |
+| API `429`/`5xx` | Retryable — the client retries the idempotent `PUT` with backoff |
+
+After `STREAM_MAX_ATTEMPTS` deliveries a message is copied to
+`stream:node_created:dead` (original payload, error, attempt count) and
+acknowledged.

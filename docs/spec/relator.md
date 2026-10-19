@@ -45,16 +45,16 @@ the vector query.
 | --- | --- |
 | `stream:node_created` producer | Implemented |
 | Consumer runtime (groups, `XAUTOCLAIM`, DLQ) | Implemented in `packages/worker-shared`; no Relator handler |
-| Embedding computation (FR-18) | **Missing**: ADR-0020 defines the dedicated embedder, but no consumer/endpoint exists; `nodes.embedding` stays `NULL` |
-| HNSW index | Present on `public.nodes.embedding` |
+| Embedding computation (FR-18) | **Implemented**: the dedicated embedder stores the vector through `PUT /api/v1/nodes/:id/embedding`; nodes created before it ran keep a `NULL` embedding |
+| HNSW index | Present on `public.nodes.embedding` and used by the planner for `ORDER BY embedding <=> $1` |
 | Proposal API for new edges | Partial: `POST /api/v1/proposals` is edit-only today |
 | Active cluster centroids | Not modelled; not part of the Phase 2 scope below |
 
-Because no embedding is produced, the vector query currently returns zero rows.
 ADR-0020 requires the Relator to **leave the entry pending and retry** when
-`embedding IS NULL`; it must not acknowledge and silently skip the node. After
-the bounded attempts the shared runtime moves it to `stream:node_created:dead`
-for inspection. FR-18 is **Partial**, not done.
+`embedding IS NULL` (a node embedded before the worker existed, or a failed
+embedding); it must not acknowledge and silently skip the node. After the
+bounded attempts the shared runtime moves it to `stream:node_created:dead` for
+inspection.
 
 ## Evaluation flow
 
@@ -168,6 +168,8 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
 ## Phase 2 acceptance criteria
 
 - [ ] Consumes `stream:node_created` with a consumer group and recovers the PEL.
+      The group name must differ from the embedder's (`relator` vs
+      `embedder`) so both workers see every event.
 - [ ] Runs `<=>` search filtered by `workspace_id`, `deleted_at IS NULL`,
   status allow-list and `embedding IS NOT NULL`; limit 5.
 - [ ] Queues/retries nodes without an embedding (leaves them pending); never

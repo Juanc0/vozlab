@@ -84,7 +84,7 @@ valid `X-Workspace-ID` and a provisioned `tid`.
 
 ADR-0020 reserves `PUT /api/v1/nodes/{id}/embedding` for the Phase 2 embedder
 (agent type `AGENT_EMBEDDER`, body `{ embedding: number[768], model }`). It is
-**not implemented yet**; do not call it.
+implemented; see [Nodes](#3-nodes).
 
 Local development without an IdP still uses the seeded identities and a
 minted token:
@@ -149,6 +149,7 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
+| `PUT` | `/api/v1/nodes/:id/embedding` | `embedding` 768 finite numbers; `model` string | `204`, empty body | `403 ERR_AUTHORIZATION_FAILED` (not `AGENT_EMBEDDER`); `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `422 ERR_VALIDATION_FAILED` bad vector or unknown model |
 
 Notes:
 
@@ -159,6 +160,14 @@ Notes:
   workspace-scoped, `depth <= 3`, `limit <= 200`, and uses the bounded
   recursive SQL CTE (not Apache AGE).
 - Delete is soft (author only) and does not delete edges.
+- `PUT /nodes/:id/embedding` is the **agent-only** embedding write-back
+  (FR-18, [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md)).
+  Only a token whose `type` claim is `AGENT_EMBEDDER` may call it; the vector
+  must have exactly 768 finite dimensions and `model` must equal the
+  deployment's `EMBEDDING_MODEL` (`nomic-embed-text` by default). The write is
+  an idempotent overwrite that also stamps `embedding_model` and
+  `embedded_at`; it never changes the node status and does not create a
+  proposal.
 
 ## 4. Edges
 
@@ -291,13 +300,11 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
 ## 10. Not implemented
 
 No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a
-contract only); SSE; metrics; Apache AGE/Cypher; embedding computation; the
-`NODE_CREATED` consumer; the `PUT /api/v1/nodes/{id}/embedding` write endpoint
-reserved by ADR-0020; node or edge status transitions; datatype/object-property
+contract only); SSE; metrics; Apache AGE/Cypher; vector/semantic search over
+`nodes.embedding`; node or edge status transitions; datatype/object-property
 activation; interaction reads or vote retraction. The PWA (including its OIDC
 login screen and event QR scanner) and the Extractor/Relator/Consolidator apps
-are still empty scaffolds. The shared Python runtime and embedder scaffold
-exist, but no worker handler runs.
+are still empty scaffolds; the embedder exists but is not in Compose or CI.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·
 [Errors](errors.md).

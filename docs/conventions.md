@@ -146,9 +146,10 @@ boolean predicate is `existsInWorkspace`, not `find…`. See
 - Format and lint with `uv run ruff format` / `uv run ruff check`; test with
   `uv run pytest`. Python is not yet in the Turbo task graph or CI.
 - Workers call the API with an agent JWT and `X-Workspace-ID`; they never open
-  a tenant PostgreSQL connection or write graph tables directly. Read-only
-  vector queries are the future Relator exception and must still enforce
-  `workspace_id`, `deleted_at IS NULL` and a status allow-list.
+  a tenant PostgreSQL connection or write graph tables directly. The embedder
+  writes vectors through the agent-only `PUT /api/v1/nodes/:id/embedding`
+  route. Read-only vector queries are the future Relator exception and must
+  still enforce `workspace_id`, `deleted_at IS NULL` and a status allow-list.
 - Stream handlers acknowledge only after success, are idempotent, and carry the
   event's `reqId` as the `x-correlation-id`. Retryable failures stay in the PEL;
   permanent failures go to `<stream>:dead`.

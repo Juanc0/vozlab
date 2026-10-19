@@ -6,12 +6,12 @@ is green today, what is deliberately missing, and the Phase 4 plan.
 
 ## Current suites
 
-| Item | Unit suite | Auth integration suite |
+| Item | Unit suite | Integration suite |
 | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
-| Size | 24 files / 114 tests | 1 file / 5 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join |
+| Size | 25 files / 120 tests | 2 files / 12 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
 | Coverage | Not measured; no coverage provider installed | Not measured |
@@ -39,18 +39,28 @@ revocation, logout/blacklist, unknown-tenant and unverified-email rejection,
 event-code capacity, and anonymous membership. The mock provider is test-only
 and signs ephemeral RS256 tokens; no external IdP is required.
 
+The embedding integration suite (`embedding.integration.test.ts`) drives the
+same server in-process with `app.inject()` and locally signed tokens: it
+verifies that `AGENT_EMBEDDER` stores the vector (checking
+`embedding_model`, `embedded_at` and `vector_dims` in PostgreSQL) and that
+human callers, other agent types, foreign workspaces, malformed vectors and
+unknown models are rejected.
+
 ### Python worker runtime
 
-The Phase 2 scaffold has **37 Python tests** in
+The Phase 2 runtime has **51 Python tests** in
 `packages/worker-shared/tests` and `apps/worker-embedder/tests`. They cover
 environment validation, JSON logging and correlation context, agent-token
 minting/static/file/dev providers, the `httpx` API client (auth/workspace/
-correlation headers, typed errors, opt-in 5xx retries), retry backoff, and the
+correlation headers, typed errors, opt-in 5xx retries), retry backoff, the
 Redis Streams consumer (`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
-delivery-count-based dead-lettering and `PermanentError`). Redis is simulated
-with `fakeredis`; HTTP with `httpx.MockTransport`. No live Redis, Ollama, API or
-IdP is contacted. The embedder app test only validates configuration and the
-`--check` CLI; the embedding handler is milestone 2.4.
+delivery-count-based dead-lettering and `PermanentError`), the Ollama client
+(current and legacy endpoints, dimension checks, retryable vs permanent
+failures) and the `NODE_CREATED` handler (read node → embed → write back, plus
+the permanent/retryable classification). Redis is simulated with `fakeredis`;
+HTTP with `httpx.MockTransport`. No live Redis, Ollama, API or IdP is
+contacted. The embedder app test drives a full `--once` pass over a fake
+stream.
 
 ## Running tests
 
@@ -127,9 +137,10 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
 - Python tests in CI/Turbo. The runtime suite runs locally (`uv run pytest`),
   but CI does not install uv or run it yet; that is Phase 2.7.
-- Worker handler and end-to-end pipeline tests: no Extractor/Relator/
-  Consolidator/embedder handler exists, and nothing has been tested against a
-  live Redis stream, Ollama or the embedding write endpoint.
+- Worker handler and end-to-end pipeline tests: the embedder is covered by
+  unit tests and by a manual end-to-end run, but no Extractor/Relator/
+  Consolidator handler exists and no test drives a live Ollama or a live
+  Redis stream.
 - Contract tests between Zod DTOs and Python/Pydantic models.
 - Mutation, accessibility, visual-regression and PWA offline tests.
 - A `test:ci` package script. `turbo.json` declares the task, but no package
