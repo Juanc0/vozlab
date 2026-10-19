@@ -36,6 +36,8 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0021](ADR-0021-python-worker-runtime.md) | Python 3.12 workers with a shared uv runtime and Redis Streams | Accepted | Workers share `vozlab_worker` (config, JSON logs, agent tokens, httpx client, consumer groups, `XAUTOCLAIM`, bounded retries and DLQ); Python 3.12 + uv + pytest. |
 | [0022](ADR-0022-relator-neighbour-lookup.md) | The Relator reads neighbours through the API, not the database | Accepted | `GET /api/v1/nodes/:id/neighbors` runs the workspace-scoped pgvector search; `409 ERR_NODE_NOT_EMBEDDED` is the retryable "vector not ready" state. |
 | [0023](ADR-0023-relator-edge-and-merge-semantics.md) | The Relator proposes edges; merges wait for a merge contract | Accepted | `EDGE` creates a `PENDING` edge via `POST /api/v1/edges` with an ontology relation key; `MERGE` is logged only — no merge contract exists yet. |
+| [0024](ADR-0024-no-batch-node-endpoint.md) | Node ingestion stays one node per request | Accepted | No `POST /nodes/batch`: the rate limiter counts requests, so a bulk route would bypass the write budget; `BatchCreateNodeSchema` stays a contract. |
+| [0025](ADR-0025-source-resolution-route.md) | Source resolution is an agent-only, tenant-scoped API route | Accepted | `GET /api/v1/ingestion/resolve-source` maps a `sourceId` to its workspace; agent-only, tenant-scoped, no `X-Workspace-ID`. |
 
 ## How to add an ADR
 
