@@ -15,7 +15,8 @@ export class OntologyClass {
     public descriptions: Record<string, string> = {},
     public parentClassKey: string | null = null,
     public status: OntologyStatus = 'PROPOSED',
-    public readonly proposedBy: string = 'unknown',
+    // no maintainer: an empty hash can never equal a resolved pseudonym
+    public readonly proposedBy: string = '',
     public readonly createdAt: Date = new Date()
   ) {}
 

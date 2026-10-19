@@ -23,9 +23,13 @@
  *                     carry no membership.
  */
 import { createHash } from 'node:crypto';
-import type { AgentType } from '@vozlab/shared-types';
+import type {
+  AgentType,
+  SystemRole,
+  WorkspaceRole,
+} from '@vozlab/shared-types';
 
-export type { AgentType };
+export type { AgentType, SystemRole, WorkspaceRole };
 
 /** Fixed router/tenant identifiers — deterministic so seeds can re-run safely. */
 export const TENANT_ID = '11111111-1111-4111-8111-111111111111';
@@ -38,8 +42,6 @@ export const OIDC_TENANT_ID = 'sabana';
 export const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
 export const WORKSPACE_SLUG = 'general';
 
-export type SystemRole = 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT';
-export type WorkspaceRole = 'ADMIN' | 'MODERATOR' | 'MEMBER';
 export type DevIdentityName = 'maintainer' | 'moderator' | 'member' | 'agent';
 
 export interface DevMembershipFixture {
