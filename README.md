@@ -10,7 +10,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA and three Pyth
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 24 files / 114 tests green (`pnpm test`) |
+| Tests | 24 files / 114 unit tests green (`pnpm test`); opt-in auth integration suite (5 tests) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: install + `build type-check test` |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |

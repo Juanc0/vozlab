@@ -10,7 +10,8 @@
     "start": "tsx --env-file-if-exists=../../.env src/index.ts",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit -p tsconfig.tests.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^9.4.0",

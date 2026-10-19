@@ -1,33 +1,43 @@
 # Testing Strategy
 
-Current automated tests are **unit tests only**. This page records what is
-green today, what is deliberately missing, and the Phase 4 plan.
+Current automated tests are **unit tests by default plus an opt-in auth
+integration suite**. This page records what is green today, what is deliberately
+missing, and the Phase 4 plan.
 
-## Current suite
+## Current suites
 
-| Item | Value |
-| --- | --- |
-| Runner | Vitest 2.1.9 |
-| Location | `apps/api/tests/**/*.test.ts` |
-| Size | 24 files / 114 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, pure infrastructure helpers |
-| Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama |
-| Coverage | Not measured; no coverage provider installed |
+| Item | Unit suite | Auth integration suite |
+| --- | --- | --- |
+| Runner | Vitest 2.1.9 | Vitest 2.1.9 |
+| Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
+| Size | 24 files / 114 tests | 1 file / 5 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join |
+| Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
+| Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
+| Coverage | Not measured; no coverage provider installed | Not measured |
 
-The suite uses `tests/support/fakes.ts`, `tests/support/authFakes.ts` and
+The unit suite uses `tests/support/fakes.ts`, `tests/support/authFakes.ts` and
 `tests/support/hash.ts` to exercise use cases without adapters.
 `apps/api/vitest.config.ts` adds a Vite plugin that resolves NodeNext `./x.js`
 specifiers to `./x.ts` sources, so tests can import application code unchanged.
 A setup file (`tests/setup/env.ts`) fills the required environment variables;
 `LOG_LEVEL=fatal` keeps expected negative-path logs out of the output.
 
-Covered areas include node/edge/proposal state machines, authorization rules,
-vote casting, thread closure, keyset pagination, timestamp ownership, the
+Covered unit areas include node/edge/proposal state machines, authorization
+rules, vote casting, thread closure, keyset pagination, timestamp ownership, the
 connection pool manager, `AuthorHash` validation, PKCE/state construction,
 OIDC ID-token verification (locally generated JWKS, nonce/audience/issuer
 failures), JWT claim issuance, refresh rotation/reuse, logout, JIT user upsert,
 `/auth/me`, event-code joins, and token/duration utilities. All network calls
 use injected `fetch`; no IdP, PostgreSQL or Redis is contacted.
+
+The auth integration suite starts the real `buildServer()` on an isolated port
+(`13000` by default), uses the migrated/seeded `vozlab_router` and
+`vozlab_tenant_dev` databases, Redis, and a mock OIDC provider on port `18080`.
+It verifies JIT login, hashed refresh storage, rotation, reuse-family
+revocation, logout/blacklist, unknown-tenant and unverified-email rejection,
+event-code capacity, and anonymous membership. The mock provider is test-only
+and signs ephemeral RS256 tokens; no external IdP is required.
 
 ## Running tests
 
@@ -48,6 +58,20 @@ pnpm --filter @vozlab/api exec vitest run -t "rejects an invalid transition"
 
 `pnpm test` depends on `^build`, so dependencies are type-checked first. Tests
 are not emitted or bundled.
+
+The auth integration suite is opt-in and expects the local services plus
+migrations and the dev seed:
+
+```bash
+docker compose up -d postgres redis
+pnpm --filter @vozlab/database db:migrate
+pnpm --filter @vozlab/database db:seed:dev
+pnpm --filter @vozlab/api test:integration
+```
+
+It listens on `13000` (API) and `18080` (mock OIDC) by default; override with
+`INTEGRATION_API_PORT` and `MOCK_OIDC_PORT`. It must not point at a production
+database: the tests create and delete users and event codes.
 
 ## Type checking
 
@@ -72,7 +96,10 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
 
 - Coverage thresholds. `@vitest/coverage-v8` is not installed, so
   `vitest --coverage` is not part of the gate.
-- Integration tests against real PostgreSQL/AGE/pgvector or Redis.
+- Broad repository integration tests (nodes/edges/proposals, AGE/pgvector,
+  transaction rollback, stream publication); only the auth flow is integrated.
+- Integration tests in CI. They currently require a developer-managed
+  docker-compose pair; Testcontainers or service containers are Phase 4.
 - End-to-end tests (Playwright) for the PWA.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
 - Python worker tests; the workers do not exist yet.
@@ -81,8 +108,9 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
 - A `test:ci` package script. `turbo.json` declares the task, but no package
   implements it, so `pnpm turbo run test:ci` is currently a no-op.
 
-CI runs `pnpm turbo run build type-check test` and nothing else. It does not run
-integration, E2E, coverage, Docker builds or deployments.
+CI runs `pnpm turbo run build type-check test` and nothing else. It runs the
+unit suite only; it does not run integration, E2E, coverage, Docker builds or
+deployments.
 
 ## Known lint debt
 
@@ -96,7 +124,7 @@ lint. Build, type-check and unit tests are green.
 | Level | Tooling | Scope | Acceptance target |
 | --- | --- | --- | --- |
 | Unit | Vitest + in-memory fakes | Domain, use cases, validation | Coverage > 85% in `domain/` and `application/`; invalid transitions assert domain errors |
-| Integration | Vitest + ephemeral Postgres 18/AGE/pgvector (Testcontainers or the repo image) + Redis 7 | Drizzle repos, `UnitOfWork` rollback, tenant isolation, stream publication, HNSW queries | Rollback verified on throw; workspace isolation enforced; HNSW p95 < 20 ms over 100k vectors (NFR-02) |
+| Integration | Vitest + ephemeral Postgres 18/AGE/pgvector (Testcontainers or the repo image) + Redis 7 | Auth suite exists against local Compose; broaden to Drizzle repos, `UnitOfWork` rollback, tenant isolation, stream publication and HNSW queries | Rollback verified on throw; workspace isolation enforced; HNSW p95 < 20 ms over 100k vectors (NFR-02) |
 | Contract | Zod ↔ Pydantic fixtures | Extractor/Relator/Consolidator payloads | Shared fixtures for `RawSourceRecord`, node creation and proposals |
 | E2E | Playwright against API + PWA + seeded DB | Login/mint → create node → suggest edge → approve | Critical flow completes with no browser console errors |
 | Load | k6 + `db:seed:stress` | Subgraph reads, mutations, votes, HNSW | Subgraph (<200 nodes) p95 < 30 ms (NFR-01); mutations p95 < 15 ms (NFR-03) |

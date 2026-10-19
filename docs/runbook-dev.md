@@ -185,12 +185,18 @@ increases because `NODE_CREATED` is published after the transaction commits.
 ## Tests and checks
 
 ```bash
-pnpm test                                # Vitest, 24 files / 114 tests
+pnpm test                                # unit suite, 24 files / 114 tests
 pnpm turbo run build type-check          # src, tests and DB scripts
 pnpm lint                                # known red: 26 pre-existing no-explicit-any errors
+
+# Opt-in auth integration suite (requires the running DB, migrations and seed)
+pnpm --filter @vozlab/api test:integration
 ```
 
-See [testing.md](testing.md) for scope, configuration and planned levels.
+The integration suite starts the API on `13000`, a mock OIDC provider on
+`18080`, and uses the local PostgreSQL/Redis from Compose. It creates and
+deletes its own users and event codes; never point it at production. See
+[testing.md](testing.md) for scope, configuration and planned levels.
 
 ## Troubleshooting
 
@@ -208,6 +214,7 @@ See [testing.md](testing.md) for scope, configuration and planned levels.
 | `ERR_EMAIL_NOT_VERIFIED` after login | The IdP explicitly marks the email unverified. | Use an account with a verified institutional email. |
 | `/auth/refresh` returns `401 ERR_REFRESH_TOKEN_INVALID` | Cookie absent (wrong origin/credentials), token expired, or an old token was replayed after rotation. | Call `/auth/refresh` from the PWA origin; on replay the whole family is revoked, so log in again. |
 | `ERR_EVENT_EXPIRED` on a fresh code | Code expired/revoked, `ROUTER_DB_NAME` differs from the one used by `db:event-code`, or the code was mistyped. | Recreate with `db:event-code` against the API's router DB and check `expires_at`. |
+| `test:integration` fails to connect or boot | Compose services are down, migrations/seed are missing, or ports `13000`/`18080` are taken. | Start Postgres/Redis, run `db:migrate` + `db:seed:dev`, free the ports or override `INTEGRATION_API_PORT`/`MOCK_OIDC_PORT`. |
 | `429 ERR_RATE_LIMIT_EXCEEDED` | Write cap is 30/min per actor, or the workspace ceiling was hit. | Wait for the window or clear `vozlab:ratelimit:*` keys in dev. |
 | Pretty logs despite JSON expectations | `LOG_PRETTY` uses `z.coerce.boolean()`, so the string `false` is truthy. | Leave `LOG_PRETTY` unset for JSON output. |
 | `pnpm lint` fails on `no-explicit-any` | Known debt (26 errors), not a regression. | Treat build/type-check/tests as the gate until the debt is paid. |

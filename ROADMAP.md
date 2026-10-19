@@ -17,10 +17,11 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 24 test files / 114 tests green; `build` + `type-check` green; thin CI runs
-  install + `build type-check test`.
+- 24 test files / 114 unit tests green; opt-in auth integration suite (1 file /
+  5 tests) green against local PostgreSQL/Redis; `build` + `type-check` green;
+  thin CI runs install + `build type-check test`.
 - Not started: Python workers, PWA (including its login/QR UI), observability,
-  integration/E2E/load tests.
+  broad integration/E2E/load tests.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
@@ -121,7 +122,9 @@ Milestones:
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's
-      PG18+AGE+pgvector image or Testcontainers) + Redis.
+      PG18+AGE+pgvector image or Testcontainers) + Redis. Auth flow suite exists
+      against local Compose (`test:integration`); Testcontainers/CI and the
+      remaining repositories are pending.
 - [ ] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`).
 - [ ] 4.3 E2E suite in CI (Playwright).
 - [ ] 4.4 Load tests (k6) proving NFR-01/02/03 or revising the targets.

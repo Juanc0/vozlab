@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 24 files / 114 tests; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 24 files / 114 unit tests; the opt-in auth integration suite adds 1 file / 5 tests against local Postgres/Redis; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
 
 ## Live documents
 
