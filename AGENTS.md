@@ -11,42 +11,87 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 
 # VozLab — Agent Notes
 
-Multi-tenant knowledge-graph platform: Fastify API + SvelteKit 5 PWA + Python 3.12 AI workers, backed by PostgreSQL (Apache AGE graph + pgvector) and Redis Streams. The `/docs` tree is the approved specification (English); code, comments, and identifiers are English.
+Multi-tenant knowledge-graph platform: Fastify API + SvelteKit 5 PWA + Python 3.12
+AI workers, backed by PostgreSQL 18 (Apache AGE + pgvector) and Redis Streams.
+Code, comments and identifiers are English. The docs are the approved spec; when
+they disagree with the code, **the code wins** — fix the doc.
 
 ## Layout
-- `apps/api` — the only app with real code. Hexagonal: `domain/` (pure), `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
-- `apps/web`, `apps/worker-extractor`, `apps/worker-relacionador`, `apps/worker-consolidador` — empty scaffolds (directories only, no `package.json`). They are not part of the build yet.
-- `packages/database` — Drizzle schemas + migrations; `packages/shared-types` — Zod DTOs + central `ERROR_CODES`; `packages/ts-config` — shared tsconfig.
-- Spec entry point: `docs/00_ARCHITECTURE_OVERVIEW.md`, then `docs/system|modules|devops/`.
+- `apps/api` — the only app with code. Hexagonal: `domain/` (pure),
+  `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
+- `apps/web`, `apps/worker-extractor`, `apps/worker-relacionador`,
+  `apps/worker-consolidador` — empty scaffolds; not in the build yet.
+- `packages/database` — Drizzle schemas + migrations (router and tenant);
+  `packages/shared-types` — Zod DTOs + `ERROR_CODES`; `packages/ts-config`.
+- Docs entry point: `docs/README.md`. Roadmap: `ROADMAP.md`. Decisions:
+  `docs/decisions/`. Unbuilt specs: `docs/spec/`. History: `docs/archive/`.
 
-## Commands (pnpm only — no npm/yarn setup)
-- `pnpm turbo run build` — type-checks every TS package (`tsc --noEmit`). Run after any code change; it does **not** emit JS.
-- `pnpm --filter @vozlab/api dev` — API via `tsx watch` (requires env vars, see below).
-- `pnpm --filter @vozlab/database db:generate[:router|:tenant]`, `db:migrate[...]`, `db:push[...]` — two DBs, two drizzle-kit configs. `db:studio` uses the tenant config.
-- `pnpm lint` / `pnpm format` at the root, or `pnpm --filter <pkg> lint`.
-- `pnpm --filter @vozlab/api test` — Vitest is configured but no test files exist yet (`apps/api/tests/` is absent).
+## Commands (pnpm only)
+- `pnpm install` — workspace install.
+- `pnpm turbo run build` — `tsc --noEmit` for every TS package (no JS emitted).
+- `pnpm type-check` — build + type-check tests and DB scripts (see below).
+- `pnpm test` — Turbo test task; `pnpm --filter @vozlab/api test` for one package.
+- `pnpm lint` — repo ESLint. **Currently red** (26 pre-existing
+  `@typescript-eslint/no-explicit-any` errors); not in CI. Do not claim it passes.
+- `pnpm --filter @vozlab/api dev` — `tsx watch` with `--env-file-if-exists=../../.env`.
+- `pnpm --filter @vozlab/database db:generate[:router|:tenant]`,
+  `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
+  `db:mint-token -- --as maintainer|moderator|member|agent`.
+- `docker compose up -d --build` — Postgres 18 (`vozlab/postgres:18-age-pgvector`),
+  Redis 7, Ollama. Init SQL runs only on a fresh volume.
 
 ## Hard-to-miss conventions
-- **NodeNext**: every relative import in `.ts` must end in `.js` (`./server.js`), even though the source file is `.ts`. Applies to all packages.
-- `build` is `tsc --noEmit`; the API `start` script points at `dist/index.js`, which is never produced. Use `dev`/`tsx`, not `start`.
-- `domain/` must not import Fastify, Drizzle, or `pg`. Dependencies are wired manually in the Composition Root (`infrastructure/http/server.ts` + `routes.ts`); there is no IoC container.
-- **Two physical DBs, never mixed**: global `vozlab_router` (tenant registry) and a per-tenant DB (dev: `vozlab_tenant_dev`; schemas `auth`, `meta`, `public`, `social`). Router and tenant tables live in separate drizzle configs/migrations.
-- Multi-tenant isolation is physical: repository methods take `tid` (internal tenant UUID), and `UnitOfWork.runInTransaction(tid, cb)` passes the `tx` handle to reuse across repositories.
-- Every protected request needs `Authorization: Bearer <jwt>` **and** an `X-Workspace-ID` UUID header; guard order is `authGuard -> tenantWorkspaceGuard -> rateLimit` (`routes.ts`).
-- Redis Streams: event `NODE_CREATED` is published to `stream:node_created`, post-commit and best-effort — a broker failure never rolls back persisted data.
-- Env is Zod-validated at startup (`apps/api/src/shared/config/env.ts`); a missing/invalid var calls `process.exit(1)`. Required: `ROUTER_DB_HOST/USER/PASSWORD/NAME`, `REDIS_HOST`, `JWT_SECRET` (≥32 chars), all `OIDC_*` URLs. No `.env` is committed — you must supply these to run the API.
+- **NodeNext**: every relative import in `.ts` ends in `.js` (`./server.js`),
+  even though the source file is `.ts`. Applies to all packages.
+- `domain/` must not import Fastify, Drizzle or `pg`. Dependencies are wired
+  manually in the Composition Root (`infrastructure/http/server.ts` + `routes.ts`);
+  no IoC container.
+- **Two physical DBs, never mixed**: router `vozlab_router` (`public.tenants`,
+  `tenant_connections`) and one DB per tenant (`vozlab_tenant_dev`; schemas
+  `auth`, `meta`, `public`, `social`). Separate drizzle configs/migrations.
+- Isolation is physical: repositories take `tid` (internal tenant UUID);
+  `UnitOfWork.runInTransaction(tid, cb)` shares the `tx` handle.
+- Protected requests need `Authorization: Bearer <jwt>` **and** an
+  `X-Workspace-ID` UUID. Guard order: `authGuard -> tenantWorkspaceGuard -> rateLimit`.
+- `author_hash` is an **opaque per-user pseudonym** stored on `auth.users` and
+  carried as the JWT `authorHash` claim. There is no salt and the API never
+  derives it ([ADR-0013](docs/decisions/ADR-0013-random-opaque-pseudonym.md)).
+- Workspace mismatch returns **404**, never 403 (existence is not leaked).
+- Timestamps: domain owns `created_at`/`updated_at`, adapters own `deleted_at`.
+- Events are published **after commit, best-effort** (`stream:node_created`, …);
+  a broker failure never rolls back persisted data.
+- Env is Zod-validated at startup (`apps/api/src/shared/config/env.ts`); invalid
+  config exits. Required: `ROUTER_DB_*`, `REDIS_HOST`, `JWT_SECRET` (≥32 chars),
+  all `OIDC_*` URLs. No `.env` is committed.
 
-## Current state / gotchas (verified)
-- The API has domain/application/infrastructure for Edges, Discussions, Votes (interactions), and Ontology, but `routes.ts` registers only nodes/proposals/health and `server.ts` instantiates only the node/proposal adapters. Those extra controllers/repos/use-cases are unreachable until wired in.
-- No `.github/workflows` exists; CI is specified in `docs/devops/devops_01_*` but not implemented.
-- `/docs` pins describe an older stack (drizzle-orm 0.34 / drizzle-kit 0.25, PostgreSQL 16). Actual installed: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18 (custom image in `docker/postgres/Dockerfile`). Trust `package.json` + `docker/` over the docs.
-- `docker-compose.yml` builds the custom Postgres image and mounts `packages/database/scripts/` as initdb scripts; they run only on a fresh volume.
-- Root `.gitignore` ignores only `node_modules` — `.turbo/`, `dist/`, and `.env` are **not** ignored.
-- `turbo.json` declares `.next/**` outputs (stale Next.js leftover); produces harmless warnings on build. The Turbo managed block above is auto-added — keep it.
-- Repo ships curated agent skills under `.agents/skills/` (drizzle, vitest, zod, turborepo, …), tracked by `skills-lock.json`.
+## Current state / gotchas (verified 2026-10-19)
+- Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 tests.
+- `build` type-checks `src/**`; `type-check` additionally covers
+  `apps/api/tests/**` and `packages/database/scripts/**` via
+  `tsconfig.tests.json` / `tsconfig.scripts.json`.
+- Thin CI at `.github/workflows/ci.yml`: install + `turbo run build type-check test`.
+- Not built: real auth endpoints (FR-01/02/03; dev minting interim), Python
+  workers, PWA, SSE, AGE adapter, metrics/tracing, and the embedding consumer —
+  `NODE_CREATED` is published but nothing writes `nodes.embedding` (FR-18 Partial).
+- Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
+  `package.json` and `docker/`. Some archived docs describe older versions.
+- `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;
+  they run only on a fresh volume.
+- `.gitignore` covers `node_modules`, `.turbo`, `dist`, `build`, `coverage`,
+  `.env`, `.venv`. Not every artifact is ignored (check before committing).
+- `turbo.json` has `outputs: []` for `build`/`lint`/`type-check`/`test` (no JS or
+  coverage emitted today). Keep the Turbo managed block above untouched.
+- Repo ships curated agent skills under `.agents/skills/`, tracked by
+  `skills-lock.json`.
 
-## Working conventions from existing instruction files
-- `CLAUDE.md`: act as a senior engineering committee; when requirements are ambiguous, stop and ask with structured options + trade-offs before coding. Change one component at a time.
-- `EXECUTION_PLAN.md` = milestone spec; `TODO.md` = live task panel.
-  - `/next-task` (`.claude/commands/next-task.md`): take the next `[ ]` task, implement, run `pnpm turbo run build`, then mark it `[x]` in `TODO.md` with a result note.
-  - `/review-arch` (`.claude/commands/review-arch.md`): audit `/docs` vs `EXECUTION_PLAN.md` vs `TODO.md` vs code, and report gaps.
+## Working conventions
+- Act as a senior engineering committee. When requirements are ambiguous, stop
+  and ask with structured options + trade-offs before coding; change one
+  component at a time.
+- `ROADMAP.md` is the only live task board. Completed work is archived — do not
+  re-open `TODO.md` or `EXECUTION_PLAN.md`.
+- `/next-task` (`.claude/commands/next-task.md`): take the next open item,
+  implement it, run `pnpm turbo run build type-check test`, mark it `[x]` with a
+  one-line result, and update `docs/README.md` if a requirement changed.
+- `/review-arch` (`.claude/commands/review-arch.md`): audit code vs `docs/` vs
+  `ROADMAP.md` and report gaps.

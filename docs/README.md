@@ -1,0 +1,104 @@
+# VozLab documentation
+
+This is the entry point for the current documentation set. It replaces the v1
+specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
+here conflicts with code, **the code is authoritative** — please fix the
+document.
+
+Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S and 1T are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 15 files / 60 tests; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+
+## Live documents
+
+| Document | Contents |
+| --- | --- |
+| [../README.md](../README.md) | Project overview, status, quickstart, commands |
+| [architecture.md](architecture.md) | Context/container view, request path, two-DB topology, runtime facts |
+| [requirements.md](requirements.md) | Normative FR-01…FR-20 and NFR-01…NFR-11 text and acceptance criteria |
+| [domain-model.md](domain-model.md) | Entities, schemas, state machines, soft-delete and vote rules |
+| [auth-and-tenancy.md](auth-and-tenancy.md) | Bearer JWT contract, guard chain, workspace isolation, pseudonymity |
+| [conventions.md](conventions.md) | Layering, NodeNext imports, naming, errors, events, pagination |
+| [api-reference.md](api-reference.md) | Endpoint catalogue, headers, payloads, status codes |
+| [errors.md](errors.md) | Canonical `ERR_*` catalogue and HTTP mapping |
+| [runbook-dev.md](runbook-dev.md) | Local bootstrap, migrations, seed, tokens, troubleshooting |
+| [runbook-ops.md](runbook-ops.md) | Runtime topology, health checks, shutdown, deployment gaps |
+| [testing.md](testing.md) | Test layering, current coverage, CI, known gaps |
+| [spec/](spec/) | Phase 2/3 component specs — **not implemented** (workers, PWA, CI/CD) |
+| [decisions/](decisions/) | Architecture Decision Records (`ADR-*.md`) |
+| [../ROADMAP.md](../ROADMAP.md) | Open work, deferred items, known debt |
+| [archive/](archive/) | **Frozen history** — v1 spec, task prompts, reviews, old plan/TODO. Not maintained. |
+
+## Requirements status
+
+Status reflects the code on 2026-10-19. Normative text lives in [requirements.md](requirements.md); “Doc” points at the page that explains the implementation.
+
+Legend: **Implemented** = end-to-end path exists and is tested or verified; **Partial** = a meaningful subset exists but a stated behaviour is missing; **Deferred** = not built; **Unverified** = built but no measurement/proof.
+
+### Functional requirements
+
+| ID | Status | Code evidence | Doc | Notes |
+| --- | --- | --- | --- | --- |
+| FR-01 | Deferred | — | [auth](auth-and-tenancy.md) | No `/auth/login` or `/auth/callback`; `OIDC_*` is validated but unused. Dev tokens are minted by script. |
+| FR-02 | Partial | `TenantWorkspaceGuard.ts`, `RouterDatabaseClient.ts` | [auth](auth-and-tenancy.md) | `tid` → router tenant → tenant DB works; IdP code/ID-token exchange and `iss` fallback do not exist. |
+| FR-03 | Deferred | — | [auth](auth-and-tenancy.md) | No `event_codes` table or event-join endpoint. `ERR_EVENT_EXPIRED/FULL` are reserved only. |
+| FR-04 | Deferred | `apps/web/` (empty) | [requirements](requirements.md) | PWA, clean URLs and per-tab `sessionStorage` are not built. |
+| FR-05 | Implemented | `TenantWorkspaceGuard.ts`, `DrizzleMembershipRepository.ts` | [auth](auth-and-tenancy.md) | `X-Workspace-ID` + membership check on every protected request; only agents skip membership. |
+| FR-06 | Implemented | `CreateNodeUseCase.ts`, `tenant.meta.schema.ts` | [domain](domain-model.md) | `typeKey` must be an ACTIVE class; attributes are persisted as JSONB. The dynamic PWA form and attribute validation are part of FR-04. |
+| FR-07 | Implemented | `Node.ts`, `Edge.ts`, `EditProposal.ts` | [domain](domain-model.md) | `author_hash` is stored on graph objects; maintainer rights are enforced on approve/reject and author-only deletes. |
+| FR-08 | Implemented | `CreateEdgeUseCase.ts`, `DrizzleEdgeRepository.ts` | [api](api-reference.md) | Domain/range is checked when `relationKey` resolves to a workspace object property; both endpoints must be in the workspace. Unknown relation keys are currently accepted. |
+| FR-09 | Implemented | `ProposeOntologyClassUseCase.ts`, `ProposeDatatypePropertyUseCase.ts`, `ProposeObjectPropertyUseCase.ts`, `ActivateOntologyClassUseCase.ts` | [api](api-reference.md) | Classes, datatype properties and object properties can be proposed; classes can be activated (`PROPOSED` → `ACTIVE`). Class `system_key` is unique per workspace. There is no property-activation endpoint. |
+| FR-10 | Implemented | `CreateProposalUseCase.ts`, `ApproveProposalUseCase.ts` | [domain](domain-model.md) | JSONB delta in `PENDING`; NODE, EDGE and ONTOLOGY targets apply polymorphically. Node/edge `applyDelta` only matches rows with `deleted_at IS NULL`. |
+| FR-11 | Partial | `CreateThreadUseCase.ts`, `DrizzleDiscussionRepository.ts` | [domain](domain-model.md) | Threads/posts/votes exist; creating a proposal does **not** auto-open or link a thread. |
+| FR-12 | Implemented | `proposalAuthorization.ts`, `Approve/RejectProposalUseCase.ts` | [domain](domain-model.md) | Only the target's `authorHash` may approve/reject; delta + status commit in one `UnitOfWork`. |
+| FR-13 | Implemented | `AutoApplyProposalUseCase.ts`, `EditProposal.autoApply` | [domain](domain-model.md) | `MODERATOR`/`ADMIN` only; requires `community_score >= 10` and age `>= 14 days`. |
+| FR-14 | Implemented | `CastVoteUseCase.ts`, `interactions_log` unique index | [domain](domain-model.md) | Immutable log; `UNIQUE(user_hash, target_id, target_type)` enforces one vote per user/target. |
+| FR-15 | Implemented | `DrizzleInteractionRepository.applyScoreDelta`, `VoteValue.ts` | [domain](domain-model.md) | Synchronous atomic counter update in the same transaction; no CQRS buffer. |
+| FR-16 | Implemented | `social.discussion_posts`, discussion use cases | [api](api-reference.md) | Nested replies (`parent_post_id`), close thread, author-only soft delete. |
+| FR-17 | Deferred | `apps/worker-extractor` (empty) | [architecture](architecture.md) | Only the ingestion contract (`ingestion.schema.ts`) exists. |
+| FR-18 | Partial | `CreateNodeUseCase.ts` publishes `NODE_CREATED` | [architecture](architecture.md) | No worker consumes the stream and nothing writes `nodes.embedding`; vectors stay NULL. |
+| FR-19 | Deferred | `apps/worker-relacionador` (empty) | [architecture](architecture.md) | No pgvector query path or LLM evaluation. |
+| FR-20 | Deferred | `apps/worker-consolidador` (empty) | [architecture](architecture.md) | No opportunity entity, endpoint or scheduled synthesis. |
+
+### Non-functional requirements
+
+| ID | Status | Code evidence | Doc | Notes |
+| --- | --- | --- | --- | --- |
+| NFR-01 | Partial | `GetSubgraphUseCase.ts`, recursive CTE + edge indexes | [architecture](architecture.md) | Endpoint is bounded (`depth ≤ 3`, `limit ≤ 200`) and indexed; no p95 measurement. |
+| NFR-02 | Partial | `nodes.embedding vector(768)`, HNSW index | [domain](domain-model.md) | Schema/index exist; without an embedding writer or search endpoint the target is unexercised. |
+| NFR-03 | Unverified | synchronous use cases | [testing](testing.md) | No load test; `p95 < 15 ms` has not been proven. |
+| NFR-04 | Implemented | `keyset.ts`, list repositories | [architecture](architecture.md) | Opaque keyset pagination on nodes, edges, proposals, threads and posts. |
+| NFR-05 | Implemented | `auth.users` schema, no password column | [auth](auth-and-tenancy.md) | No local passwords or hashes. OIDC is planned; the API currently only verifies bearer tokens. |
+| NFR-06 | Deferred | `apps/worker-extractor` (empty) | [architecture](architecture.md) | PII masking at ingestion is not implemented. |
+| NFR-07 | Implemented | `AuthorHash.ts`, `auth.users.author_hash` | [auth](auth-and-tenancy.md) | Opaque 64-hex pseudonym per user, carried verbatim; no salt. Requirement wording about “SHA-256 + salt” is superseded. |
+| NFR-08 | Implemented | `RateLimitingMiddleware.ts` | [auth](auth-and-tenancy.md) | Per-actor and per-workspace fixed windows in Redis; fail-open on Redis errors. |
+| NFR-09 | Unverified | — | [runbook-ops](runbook-ops.md) | No SLA evidence, metrics or load profile; not deployed. |
+| NFR-10 | Partial | `RedisEventPublisher.ts` | [architecture](architecture.md) | Publication is post-commit and best-effort; Redis outages drop events and no consumer groups exist. |
+| NFR-11 | Implemented | `apps/api/src/domain`, manual Composition Root | [conventions](conventions.md) | `domain/` imports no Fastify/Drizzle/pg; adapters are wired explicitly in `server.ts`. |
+
+## Reading paths
+
+| If you are… | Start with |
+| --- | --- |
+| A new contributor | [README](../README.md) → [architecture](architecture.md) → [conventions](conventions.md) → [runbook-dev](runbook-dev.md) → [testing](testing.md) |
+| An API consumer | [api-reference](api-reference.md) → [errors](errors.md) → [auth-and-tenancy](auth-and-tenancy.md) |
+| Operating the API | [runbook-ops](runbook-ops.md) → [architecture](architecture.md) → [testing](testing.md) |
+| Reviewing the design | [requirements](requirements.md) → [domain-model](domain-model.md) → [decisions/](decisions/) → [ROADMAP](../ROADMAP.md) |
+
+## Documentation rules
+
+- Code is authoritative. When a document and the implementation disagree, fix the document in the same change.
+- Mark planned work explicitly (“planned”, “deferred”, “not built”); never describe it in the present tense.
+- Update the status matrix when a requirement moves between Implemented / Partial / Deferred / Unverified.
+- Link to the final pages in this set, not to the frozen tree under
+  `docs/archive/spec-v1/`.
+
+## Known gaps and debt
+
+- **Auth is an integration seam, not a product flow.** FR-01/02/03 endpoints, `event_codes`, refresh and logout are deferred. See [auth-and-tenancy.md](auth-and-tenancy.md).
+- **Lint is red.** 26 pre-existing `@typescript-eslint/no-explicit-any` errors; CI does not run lint. Do not claim `pnpm lint` passes.
+- **M-12:** `public.edit_proposals.target_id` is polymorphic and has no foreign key. The target is validated at creation and before resolution; this is the accepted interim decision.
+- **No async pipeline.** `NODE_CREATED` is published but no worker consumes it; no embedding is computed.
+- **No load/availability proof.** NFR-01/02/03/09 remain unverified.
+- **No Apache AGE adapter.** The bounded SQL CTE is the read path; AGE mirroring/backfill is a separate milestone.
+- **No observability stack.** Pino logs + `x-correlation-id` only; no metrics, tracing or dashboards.
+
+When changing a requirement’s status, update this matrix and the corresponding doc in the same change.

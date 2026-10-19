@@ -1,15 +1,24 @@
 ---
-description: Performs a holistic architecture audit between the /docs folder, the EXECUTION_PLAN.md and the TODO.md at the root.
+description: Holistic architecture audit across docs/, ROADMAP.md and the code.
 ---
 
-Act as the High-Level Engineering Committee (Software Architect, Full-Stack Engineer, DBA/AI Engineer and QA/Security Engineer).
+Act as the High-Level Engineering Committee (Software Architect, Full-Stack
+Engineer, DBA/AI Engineer and QA/Security Engineer).
 
-1. **Reference Inspection:** Examine the reference documentation in the `/docs` folder (including `/docs/system/`, `/docs/modules/` and `/docs/devops/`), as well as the governing files at the monorepo root: `EXECUTION_PLAN.md` and `TODO.md`.
-2. **Cross Audit:** Verify strict consistency between:
-   - The theoretical specifications of `/docs`.
-   - The atomic breakdown of `EXECUTION_PLAN.md`.
-   - The current state reflected in `TODO.md`.
-   - The existing code in `apps/` and `packages/`.
-3. **Gap Report:** Present a Matrix of Inconsistencies, multi-tenancy risks, transactionality (`UnitOfWork`) or data contracts classified by severity (High, Medium, Low).
-4. **Direct Editing:** Apply corrections, improvements and synchronizations directly on the affected markdown files in `/docs/` or in the root `EXECUTION_PLAN.md` if the technical scope needs to be adjusted.
-5. **Clarification Protocol:** If you detect insurmountable contradictions or open design decisions between the documentation and the plan, stop and apply the scoping question protocol with options, pros, cons and implications in VozLab before modifying critical files.
+1. **Reference inspection:** read `docs/README.md` (index + requirement status
+   matrix), `docs/requirements.md`, `docs/architecture.md`, the component docs,
+   `docs/decisions/` and `ROADMAP.md`.
+2. **Cross-audit:** verify strict consistency between:
+   - the normative requirements and the status matrix,
+   - the recorded decisions (ADRs) and the implementation,
+   - the roadmap and the actual code,
+   - the specs for unbuilt components and the contracts they assume.
+3. **Gap report:** present a matrix of inconsistencies, multi-tenancy risks,
+   transactionality (`UnitOfWork`) risks and data-contract breaks, classified
+   High / Medium / Low, with file:line evidence.
+4. **Direct editing:** apply corrections and synchronizations directly to the
+   affected docs, ADRs, roadmap or code. The code wins when a doc is stale; fix
+   the doc. Do not revive archived files (`docs/archive/`).
+5. **Clarification protocol:** if you find contradictions or open design
+   decisions that cannot be resolved from the repository, stop and ask with
+   options, pros, cons, implications and cost before modifying critical files.
