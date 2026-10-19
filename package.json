@@ -8,6 +8,7 @@
     "build": "turbo run build",
     "type-check": "turbo run build",
     "lint": "eslint . --ext .ts,.tsx",
+    "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },
   "devDependencies": {
