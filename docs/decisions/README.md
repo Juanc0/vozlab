@@ -32,6 +32,8 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0017](ADR-0017-thin-ci.md) | Thin CI now; full Phase 4 pipeline planned | Accepted | CI runs install + build/type-check/test; lint is red and excluded; integration/E2E/load/coverage are planned. |
 | [0018](ADR-0018-oidc-jit-hybrid-sessions.md) | OIDC login, JIT accounts and hybrid access/refresh sessions | Accepted | PKCE + JWKS validation, JIT users with no implicit membership, 15 min JSON JWT + rotating `HttpOnly` refresh cookie. |
 | [0019](ADR-0019-global-event-codes.md) | Global event-code registry in the router database | Accepted | `router.event_codes` is the documented exception to ADR-0002; QR contains only the code and consumption is atomic. |
+| [0020](ADR-0020-dedicated-embedding-pipeline.md) | Dedicated embedding pipeline with agent-only write-back | Accepted | A separate embedder consumes `NODE_CREATED` and writes 768-dimensional vectors through `PUT /api/v1/nodes/:id/embedding`; the Relator retries until a vector exists. |
+| [0021](ADR-0021-python-worker-runtime.md) | Python 3.12 workers with a shared uv runtime and Redis Streams | Accepted | Workers share `vozlab_worker` (config, JSON logs, agent tokens, httpx client, consumer groups, `XAUTOCLAIM`, bounded retries and DLQ); Python 3.12 + uv + pytest. |
 
 ## How to add an ADR
 

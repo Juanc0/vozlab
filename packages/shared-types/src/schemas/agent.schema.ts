@@ -18,5 +18,7 @@ export const AgentTypeSchema = z.enum([
   'AGENT_EXTRACTOR',
   'AGENT_RELACIONADOR',
   'AGENT_CONSOLIDADOR',
+  // Dedicated embedding utility (ADR-0020); not one of the three AI agents.
+  'AGENT_EMBEDDER',
 ]);
 export type AgentType = z.infer<typeof AgentTypeSchema>;
