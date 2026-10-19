@@ -4,6 +4,7 @@ import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
+import { SetNodeEmbeddingUseCase } from '../../application/use_cases/SetNodeEmbeddingUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -37,6 +38,7 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
+import { requireAgentType } from './middlewares/agentGuard.js';
 import { tenantGuard } from './middlewares/TenantGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
 import {
@@ -61,6 +63,7 @@ export interface RouteDependencies {
   getNodeUseCase: GetNodeUseCase;
   listNodesUseCase: ListNodesUseCase;
   deleteNodeUseCase: DeleteNodeUseCase;
+  setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase;
   getSubgraphUseCase: GetSubgraphUseCase;
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
@@ -114,6 +117,7 @@ export async function registerRoutes(
     getNodeUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
+    setNodeEmbeddingUseCase,
     getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,
@@ -155,7 +159,8 @@ export async function registerRoutes(
     getNodeUseCase,
     listNodesUseCase,
     getSubgraphUseCase,
-    deleteNodeUseCase
+    deleteNodeUseCase,
+    setNodeEmbeddingUseCase
   );
   const edgeController = new EdgeController(
     createEdgeUseCase,
@@ -273,6 +278,15 @@ export async function registerRoutes(
 
   app.delete('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>
     nodeController.delete(req, reply)
+  );
+
+  // Embedding write-back (FR-18, ADR-0020): the dedicated embedder worker
+  // is the only caller. `requireAgentType` runs after the normal guard chain
+  // so a human or another agent type gets 403 ERR_AUTHORIZATION_FAILED.
+  app.put(
+    '/api/v1/nodes/:id/embedding',
+    { preHandler: [...guard, requireAgentType('AGENT_EMBEDDER')] },
+    (req, reply) => nodeController.setEmbedding(req, reply)
   );
 
   // --- Edges (RF-08) ---

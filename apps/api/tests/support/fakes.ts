@@ -42,10 +42,19 @@ export function makeUnitOfWork(): { uow: IUnitOfWork; ran: { count: number } } {
   return { uow, ran };
 }
 
+export interface EmbeddingWrite {
+  id: string;
+  workspaceId: string;
+  embedding: number[];
+  model: string;
+}
+
+/** Records every write the fake performed, for assertions. */
 export interface FakeNodeRepository {
   repo: INodeRepository;
   softDeleted: string[];
   appliedDeltas: Array<{ targetId: string; workspaceId: string; tx: DbTransaction | undefined }>;
+  embeddings: EmbeddingWrite[];
 }
 
 /** In-memory `INodeRepository` backed by the supplied nodes. */
@@ -53,6 +62,7 @@ export function makeNodeRepository(nodes: Node[] = []): FakeNodeRepository {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const softDeleted: string[] = [];
   const appliedDeltas: FakeNodeRepository['appliedDeltas'] = [];
+  const embeddings: EmbeddingWrite[] = [];
   const repo: INodeRepository = {
     async findById(id) {
       return byId.get(id) ?? null;
@@ -75,8 +85,16 @@ export function makeNodeRepository(nodes: Node[] = []): FakeNodeRepository {
     async applyDelta(targetId, _changes, workspaceId, _tid, tx) {
       appliedDeltas.push({ targetId, workspaceId, tx });
     },
+    // Mirrors the adapter: a missing node, a foreign workspace or a
+    // soft-deleted row is never updated.
+    async setEmbedding(id, workspaceId, embedding, model) {
+      const node = byId.get(id);
+      if (!node || node.workspaceId !== workspaceId) return false;
+      embeddings.push({ id, workspaceId, embedding, model });
+      return true;
+    },
   };
-  return { repo, softDeleted, appliedDeltas };
+  return { repo, softDeleted, appliedDeltas, embeddings };
 }
 
 export interface FakeEdgeRepository {

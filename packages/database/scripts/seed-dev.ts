@@ -16,8 +16,8 @@
  *     - tenant_connections : physical config of the dev tenant DB
  *   Tenant DB  (`vozlab_tenant_dev`)
  *     - auth.workspaces            : slug `general`
- *     - auth.users                 : 4 dev identities (stable authorHash each)
- *     - auth.workspace_memberships : 3 of them (agent has none)
+ *     - auth.users                 : 5 dev identities (stable authorHash each)
+ *     - auth.workspace_memberships : 3 of them (the two agents have none)
  *     - meta.ontology_classes      : Problem, Idea, Resource (ACTIVE)
  *     - meta.datatype_properties   : title, description
  *     - meta.object_properties     : RELATES_TO (Problem -> Idea)

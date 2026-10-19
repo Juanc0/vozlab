@@ -24,6 +24,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     update: vi.fn(),
     softDelete: vi.fn(),
     applyDelta: vi.fn(),
+    setEmbedding: vi.fn(),
   };
 
   const edgeRepo: IEdgeRepository = {

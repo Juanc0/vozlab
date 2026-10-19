@@ -1,10 +1,16 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateNodeSchema, ListNodeQuerySchema, SubgraphQuerySchema } from '@vozlab/shared-types';
+import {
+  CreateNodeSchema,
+  ListNodeQuerySchema,
+  SetNodeEmbeddingSchema,
+  SubgraphQuerySchema,
+} from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
+import { SetNodeEmbeddingUseCase } from '../../../application/use_cases/SetNodeEmbeddingUseCase.js';
 import { Node } from '../../../domain/entities/Node.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
@@ -55,7 +61,8 @@ export class NodeController {
     private readonly getNodeUseCase: GetNodeUseCase,
     private readonly listNodesUseCase: ListNodesUseCase,
     private readonly getSubgraphUseCase: GetSubgraphUseCase,
-    private readonly deleteNodeUseCase: DeleteNodeUseCase
+    private readonly deleteNodeUseCase: DeleteNodeUseCase,
+    private readonly setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase
   ) {}
 
   /**
@@ -209,6 +216,40 @@ export class NodeController {
       return reply.status(204).send();
     } catch (error) {
       return this.handleError(req, reply, error, 'deleteNode failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/nodes/:id/embedding
+   * Agent-only embedding write-back (FR-18, ADR-0020). The route is guarded
+   * by `requireAgentType('AGENT_EMBEDDER')`; this handler validates the
+   * payload and delegates to the use case.
+   *
+   * 204 on success (idempotent overwrite), 422 for a malformed vector or an
+   * unknown model, 404 for a missing/foreign/deleted node.
+   */
+  async setEmbedding(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = SetNodeEmbeddingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      await this.setNodeEmbeddingUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        embedding: parsed.data.embedding,
+        model: parsed.data.model,
+        tid: ctx.tid,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return this.handleError(req, reply, error, 'setNodeEmbedding failed');
     }
   }
 

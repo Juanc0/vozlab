@@ -258,6 +258,40 @@ export class DrizzleNodeRepository implements INodeRepository {
     await db.update(nodes).set({ deletedAt: new Date() }).where(eq(nodes.id, id));
   }
 
+  /**
+   * FR-18 / ADR-0020: store the embedding vector, the model that produced it
+   * and the write time.
+   *
+   * The predicate keeps the write inside the workspace and skips
+   * soft-deleted rows, so a foreign or deleted node is reported as "not
+   * updated" instead of being resurrected. The adapter is the single writer
+   * of `embeddedAt`.
+   */
+  async setEmbedding(
+    id: string,
+    workspaceId: string,
+    embedding: number[],
+    model: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<boolean> {
+    const db = await this.client(tid, tx);
+
+    const updated = await db
+      .update(nodes)
+      .set({ embedding, embeddingModel: model, embeddedAt: new Date() })
+      .where(
+        and(
+          eq(nodes.id, id),
+          eq(nodes.workspaceId, workspaceId),
+          isNull(nodes.deletedAt)
+        )
+      )
+      .returning({ id: nodes.id });
+
+    return updated.length > 0;
+  }
+
   async applyDelta(
     targetId: string,
     proposedChanges: Record<string, any>,

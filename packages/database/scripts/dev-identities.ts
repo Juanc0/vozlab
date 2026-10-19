@@ -42,7 +42,12 @@ export const OIDC_TENANT_ID = 'sabana';
 export const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
 export const WORKSPACE_SLUG = 'general';
 
-export type DevIdentityName = 'maintainer' | 'moderator' | 'member' | 'agent';
+export type DevIdentityName =
+  | 'maintainer'
+  | 'moderator'
+  | 'member'
+  | 'agent'
+  | 'embedder';
 
 export interface DevMembershipFixture {
   /** Fixed `auth.workspace_memberships.id`. */
@@ -78,7 +83,7 @@ export function authorHashFor(name: string): string {
 }
 
 /**
- * The four dev identities, keyed by the `--as` selector understood by
+ * The dev identities, keyed by the `--as` selector understood by
  * `mint-dev-token.ts`. Frozen so a consumer cannot mutate shared state.
  */
 export const DEV_IDENTITIES: Readonly<
@@ -138,6 +143,19 @@ export const DEV_IDENTITIES: Readonly<
     membership: null,
     agentType: 'AGENT_EXTRACTOR',
   }),
+  // Embedding worker stand-in (ADR-0020): a utility agent, not one of the
+  // three AI agents. It only writes `nodes.embedding` through the API.
+  embedder: Object.freeze({
+    id: '44444444-4444-4444-8444-444444444448',
+    sub: '44444444-4444-4444-8444-444444444448',
+    providerUserId: 'dev-embedder',
+    authorHash: authorHashFor('embedder'),
+    fullName: 'Dev Embedder Worker',
+    email: 'dev-embedder@example.edu',
+    systemRole: 'SYSTEM_AGENT',
+    membership: null,
+    agentType: 'AGENT_EMBEDDER',
+  }),
 });
 
 /** Ordered identity names — stable iteration for seeding and printing. */
@@ -146,4 +164,5 @@ export const DEV_IDENTITY_NAMES: readonly DevIdentityName[] = [
   'moderator',
   'member',
   'agent',
+  'embedder',
 ];

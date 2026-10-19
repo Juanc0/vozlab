@@ -35,3 +35,27 @@ export const UpdateNodeSchema = z.object({
 });
 
 export type UpdateNodeInput = z.infer<typeof UpdateNodeSchema>;
+
+/**
+ * Dimensionality of the embedding vector (FR-18, ADR-0020).
+ * `public.nodes.embedding` is `vector(768)` and the only accepted model in
+ * Phase 2 is `nomic-embed-text`, which produces exactly 768 dimensions.
+ */
+export const EMBEDDING_DIMENSIONS = 768;
+
+/**
+ * Zod schema for the agent-only embedding write-back
+ * (`PUT /api/v1/nodes/:id/embedding`, ADR-0020).
+ *
+ * The vector must contain exactly `EMBEDDING_DIMENSIONS` finite numbers; the
+ * model identifies the embedding space the vector belongs to and is checked
+ * against the deployment's `EMBEDDING_MODEL` by the API.
+ */
+export const SetNodeEmbeddingSchema = z.object({
+  embedding: z
+    .array(z.number().finite('embedding values must be finite numbers'))
+    .length(EMBEDDING_DIMENSIONS, `embedding must have exactly ${EMBEDDING_DIMENSIONS} dimensions`),
+  model: z.string().min(1, 'model is required').max(100, 'model must be at most 100 chars'),
+});
+
+export type SetNodeEmbeddingInput = z.infer<typeof SetNodeEmbeddingSchema>;

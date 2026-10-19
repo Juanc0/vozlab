@@ -27,6 +27,7 @@ import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
+import { SetNodeEmbeddingUseCase } from '../../application/use_cases/SetNodeEmbeddingUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -127,6 +128,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
+  const setNodeEmbeddingUseCase = new SetNodeEmbeddingUseCase(
+    nodeRepo,
+    env.EMBEDDING_MODEL
+  );
   const createProposalUseCase = new CreateProposalUseCase(
     proposalRepo,
     interactionRepo,
@@ -238,6 +243,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     getNodeUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
+    setNodeEmbeddingUseCase,
     getSubgraphUseCase,
     createProposalUseCase,
     approveProposalUseCase,

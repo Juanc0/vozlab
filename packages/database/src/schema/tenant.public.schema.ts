@@ -13,10 +13,22 @@ import {
 import { sql } from 'drizzle-orm';
 import { workspaces } from './tenant.auth.schema.js';
 
-// Custom type for 768D vector (pgvector)
-const vector768 = customType<{ data: number[] }>({
+// Custom type for 768D vector (pgvector).
+// `toDriver` renders the JS array as a pgvector literal (`[0.1,0.2]`) and
+// `fromDriver` parses the text form PostgreSQL returns, so the column is
+// always sent/received in the format the extension understands.
+const vector768 = customType<{ data: number[]; driverData: string }>({
   dataType() {
     return 'vector(768)';
+  },
+  fromDriver(value: string | null): number[] {
+    if (!value) return [];
+    const trimmed = value.trim().replace(/^\[/, '').replace(/\]$/, '');
+    if (!trimmed) return [];
+    return trimmed.split(',').map((part) => Number(part));
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(',')}]`;
   },
 });
 
@@ -37,6 +49,11 @@ export const nodes = pgTable(
     description: text('description'),
     attributes: jsonb('attributes').default({}),
     embedding: vector768('embedding'),
+    // ADR-0020: a vector is only meaningful for the model that produced it,
+    // so the model and the write time are stored next to it. Both stay NULL
+    // until an embedding is written.
+    embeddingModel: text('embedding_model'),
+    embeddedAt: timestamp('embedded_at', { withTimezone: true }),
     authorHash: varchar('author_hash', { length: 64 }).notNull(),
     status: varchar('status', { length: 20 }).default('PENDING').notNull(), // DRAFT | PENDING | ACTIVE | MERGED | DEPRECATED | REJECTED
     communityScore: integer('community_score').default(0).notNull(),

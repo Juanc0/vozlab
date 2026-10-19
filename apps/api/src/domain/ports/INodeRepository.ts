@@ -61,6 +61,26 @@ export interface INodeRepository {
    * (`findById`, `listByWorkspace`, `getSubgraph`).
    */
   softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void>;
+  /**
+   * Persist the embedding vector computed by the embedder worker
+   * (FR-18, ADR-0020).
+   *
+   * The write is scoped to the workspace and to non-deleted rows: a node
+   * that is missing, soft-deleted or owned by another workspace is NOT
+   * updated and the adapter reports `false`, which the use case maps to
+   * `404 ERR_NODE_NOT_FOUND` (ADR-0008 — existence is never leaked).
+   *
+   * The adapter is the single writer of `embeddedAt`; `embeddingModel` records
+   * the model that produced the vector so a later model change is auditable.
+   */
+  setEmbedding(
+    id: string,
+    workspaceId: string,
+    embedding: number[],
+    model: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<boolean>;
   applyDelta(
     targetId: string,
     proposedChanges: Record<string, any>,
