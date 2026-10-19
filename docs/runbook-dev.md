@@ -192,7 +192,48 @@ docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
 `uv sync` uses the repo-root `.venv`; do not keep unrelated Python packages in
 that environment.
 
-### 9. Start the API
+### 9. Run the Relator worker (optional)
+
+The Relator (Agent 2) consumes the same stream with its own group (`relator`),
+asks the API for the closest nodes, asks the local LLM for a verdict and
+proposes a `PENDING` edge.
+
+```bash
+# Validate configuration and the credential source, then exit
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as agent | awk '/^eyJ/')" \
+  uv run vozlab-worker-relacionador --check
+```
+
+Run it (foreground) against the local stack:
+
+```bash
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as agent | awk '/^eyJ/')" \
+API_BASE_URL=http://localhost:3000 \
+REDIS_URL=redis://localhost:6379/0 \
+OLLAMA_BASE_URL=http://localhost:11434 \
+OLLAMA_CHAT_MODEL=llama3.1:8b \
+WORKSPACE_ID=33333333-3333-4333-8333-333333333333 \
+  uv run vozlab-worker-relacionador
+```
+
+The dev seed's `agent` identity carries `type=AGENT_EXTRACTOR`; the API accepts
+it for the Relator's reads and edge creation, but a dedicated
+`AGENT_RELACIONADOR` token is the production shape.
+
+`--once` processes the current batch and exits. Check the result:
+
+```bash
+docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
+  -c "select relation_key, status, s.title as source, t.title as target
+      from public.edges e
+      join public.nodes s on s.id = e.source_node_id
+      join public.nodes t on t.id = e.target_node_id;"
+```
+
+A `MERGE` verdict is logged but never applied — there is no merge contract
+([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+
+### 10. Start the API
 
 ```bash
 pnpm --filter @vozlab/api dev
@@ -236,14 +277,14 @@ increases because `NODE_CREATED` is published after the transaction commits.
 ## Tests and checks
 
 ```bash
-pnpm test                                # unit suite, 25 files / 120 tests
+pnpm test                                # unit suite, 26 files / 125 tests
 pnpm turbo run build type-check          # src, tests and DB scripts
 pnpm lint                                # known red: 26 pre-existing no-explicit-any errors
 
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
 
-# Python worker runtime (51 tests; no live Redis/Ollama/API)
+# Python worker runtime (72 tests; no live Redis/Ollama/API)
 uv sync
 uv run pytest
 ```

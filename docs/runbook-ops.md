@@ -92,12 +92,13 @@ never throws and a broker failure only produces an error log.
 | `stream:interaction_cast` | Votes |
 | `stream:ontology_class_proposed`, `stream:ontology_class_activated`, `stream:ontology_property_proposed` | Ontology |
 
-There is **one consumer group** today: `embedder` on `stream:node_created`
-(owned by the embedder worker). The shared Python runtime also implements
-`XAUTOCLAIM` recovery, bounded attempts and a dead-letter stream
-(`stream:node_created:dead`), which the embedder uses. The other three
-workers have no handler. Streams are never trimmed (`MAXLEN` is not set), so
-they grow without bound. There is no replay or backfill tool.
+There are **two consumer groups** today on `stream:node_created`: `embedder`
+(the embedder worker) and `relator` (the Relator worker). The shared Python
+runtime also implements `XAUTOCLAIM` recovery, bounded attempts and a
+dead-letter stream (`stream:node_created:dead`), which both workers use. The
+Extractor and Consolidator have no handler. Streams are never trimmed
+(`MAXLEN` is not set), so they grow without bound. There is no replay or
+backfill tool.
 
 ## Graceful shutdown
 
@@ -116,8 +117,8 @@ longer than the slowest in-flight request.
 
 `docker compose ps`, `curl /health/ready`, `redis-cli XLEN stream:node_created`,
 `redis-cli XINFO GROUPS stream:node_created` (pending/lag of the `embedder`
-group), `redis-cli XLEN stream:node_created:dead` (dead-lettered entries),
-`redis-cli --scan --pattern 'vozlab:ratelimit:*'` and
+and `relator` groups), `redis-cli XLEN stream:node_created:dead`
+(dead-lettered entries), `redis-cli --scan --pattern 'vozlab:ratelimit:*'` and
 `redis-cli --scan --pattern 'vozlab:oidc:state:*'` are the only current
 signals. A leftover OIDC state key simply expires after 10 minutes.
 
@@ -133,11 +134,11 @@ these alerts **cannot** be implemented with the current code:
 | AGE/Cypher query latency > 50 ms | No query instrumentation. |
 | Readiness failures over time | Only point-in-time HTTP responses; no scrape/history. |
 | Rate-limit spikes or abusive actors | Only per-request warning logs. |
-| Stream depth / consumer lag | The embedder group exists but there is no lag metric. |
+| Stream depth / consumer lag | Two consumer groups exist but there is no lag metric. |
 | Dropped event publications | Only an error log line; no counter. |
 | Tenant pool saturation | No pool metrics. |
 | Ollama latency/errors | The embedder calls Ollama, but nothing is instrumented. |
-| Worker failures/heartbeats | The embedder logs JSON, but there is no heartbeat or metric. |
+| Worker failures/heartbeats | The embedder and the Relator log JSON, but there is no heartbeat or metric. |
 
 ## Planned observability (Phase 4 — not implemented)
 

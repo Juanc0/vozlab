@@ -148,6 +148,7 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | `GET` | `/api/v1/nodes` | `limit`, `cursor` | `200 { nodes, nextCursor }` | `422` cursor/query |
 | `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
+| `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
 | `PUT` | `/api/v1/nodes/:id/embedding` | `embedding` 768 finite numbers; `model` string | `204`, empty body | `403 ERR_AUTHORIZATION_FAILED` (not `AGENT_EMBEDDER`); `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `422 ERR_VALIDATION_FAILED` bad vector or unknown model |
 
@@ -168,6 +169,13 @@ Notes:
   an idempotent overwrite that also stamps `embedding_model` and
   `embedded_at`; it never changes the node status and does not create a
   proposal.
+- `GET /nodes/:id/neighbors` is the **vector search** read path
+  (FR-19, [ADR-0022](decisions/ADR-0022-relator-neighbour-lookup.md)). It is
+  a normal protected read: any member of the workspace may call it. The
+  search is workspace-scoped and excludes soft-deleted rows, rows without a
+  vector and rows whose status is not `ACTIVE`/`PENDING`. `similarity` is
+  `1 - cosine_distance`. A node without a vector answers
+  `409 ERR_NODE_NOT_EMBEDDED` — the retryable state the Relator waits for.
 
 ## 4. Edges
 
@@ -300,11 +308,12 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
 ## 10. Not implemented
 
 No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a
-contract only); SSE; metrics; Apache AGE/Cypher; vector/semantic search over
-`nodes.embedding`; node or edge status transitions; datatype/object-property
-activation; interaction reads or vote retraction. The PWA (including its OIDC
-login screen and event QR scanner) and the Extractor/Relator/Consolidator apps
-are still empty scaffolds; the embedder exists but is not in Compose or CI.
+contract only); SSE; metrics; Apache AGE/Cypher; a merge proposal (the Relator
+can judge a merge but has nothing to submit); node or edge status transitions;
+datatype/object-property activation; interaction reads or vote retraction. The
+PWA (including its OIDC login screen and event QR scanner) and the
+Extractor/Consolidator apps are still empty scaffolds; the embedder and the
+Relator exist but are not in Compose or CI.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·
 [Errors](errors.md).

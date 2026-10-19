@@ -21,6 +21,7 @@ are in [docs/decisions/](decisions/); unbuilt components are specified in
 | **Committee / Moderator / Champions** | Elevated role that can unblock proposals and run co-creation workshops. | Workspace / tenant | Pseudonym + moderator/admin role |
 | **Agent 1 — Extractor** | Atomic multi-source ingestion worker. | System service | Bot JWT (`AGENT_EXTRACTOR`) |
 | **Agent 2 — Relator** | Event-driven semantic evaluator of new nodes. | System service | Bot JWT (`AGENT_RELACIONADOR`) |
+| **Relator verdict** | An LLM verdict (`MERGE`/`EDGE`/`INDEPENDENT`) about a new node. | Workspace | Recorded by the Relator; only `EDGE` is applied |
 | **Agent 3 — Consolidator** | Scheduled synthesis of dense clusters into opportunities. | System service | Bot JWT (`AGENT_CONSOLIDADOR`) |
 | **Embedding utility worker** | Dedicated consumer that turns `NODE_CREATED` into a 768-dimensional vector (not an LLM agent). | System service | Bot JWT (`AGENT_EMBEDDER`, ADR-0020) |
 
@@ -127,8 +128,12 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-19 — Agent 2, non-deterministic relationship evaluator.** The Relator
   must compare a new node against the closest active nodes and clusters returned
   by pgvector, and decide whether it merges, needs an edge, or stays
-  independent. *(Worker not built; contract in
-  [spec/relator.md](spec/relator.md).)*
+  independent. *(Partial: the worker exists
+  ([ADR-0022](decisions/ADR-0022-relator-neighbour-lookup.md),
+  [ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)). It reads
+  the top-5 neighbours through the API, asks the local LLM and creates `PENDING`
+  edges; a `MERGE` verdict is logged, not applied, because no merge contract
+  exists.)*
 - **FR-20 — Agent 3, opportunity consolidator.** The Consolidator must run
   scheduled analysis of subgraph density and community interactions and publish
   a "Consolidated Improvement Opportunity" for co-creation. *(Worker and
@@ -291,14 +296,16 @@ sequenceDiagram
    `NODE_CREATED` → `stream:node_created`.
 3. The dedicated embedder (ADR-0020) computes and stores the vector through the
    agent-only write endpoint.
-4. Relator consumes the event, queries the top-5 nearest active nodes, asks the
-   LLM, and proposes a merge/edge through the API.
+4. Relator consumes the event, reads the top-5 nearest active nodes through the
+   API, asks the LLM, and proposes an edge through the API (a merge verdict is
+   recorded, not applied — no merge contract yet).
 5. Consolidator runs on a schedule and drafts opportunities; publication in the
    PWA closes the loop.
 
-Step 3 works today: `NODE_CREATED` is published, the embedder computes the
-vector and the API stores it. Step 4 still has no implementation — the Relator
-does not exist yet.
+Steps 3 and 4 work today: `NODE_CREATED` is published, the embedder computes
+the vector, the API stores it and the Relator proposes a `PENDING` edge. A
+`MERGE` verdict is logged but not applied, and step 5 (Consolidator) has no
+implementation yet.
 
 ## 6. Traceability
 
@@ -317,5 +324,5 @@ does not exist yet.
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
 | FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `packages/worker-shared` (runtime) | API only |
 | FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), `SetNodeEmbeddingUseCase.ts`, ADR-0020, `apps/worker-embedder` | `public.nodes.embedding` |
-| FR-19 | US-08 | *(planned)* `apps/worker-relacionador`; `packages/worker-shared` (runtime) | `public.edges`, `edit_proposals` |
+| FR-19 | US-08 | `apps/worker-relacionador`; `GetNodeNeighborsUseCase.ts`; ADR-0022, ADR-0023 | `public.edges`, `edit_proposals` |
 | FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

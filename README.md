@@ -10,12 +10,13 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 25 files / 120 TypeScript unit tests green (`pnpm test`); opt-in integration suite (2 files / 12 tests); Python runtime 51 tests (`uv run pytest`) |
+| Tests | 26 files / 125 TypeScript unit tests green (`pnpm test`); opt-in integration suite (3 files / 18 tests); Python runtime 72 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: install + `build type-check test` (TypeScript only; Python tests are not wired yet) |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
 | Embedding pipeline | Done — `NODE_CREATED` → Ollama (768) → `nodes.embedding` via the agent-only API route; the worker is not in Compose/CI yet |
-| Extractor / Relator / Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
+| Relator (Agent 2) | Partial — reads the top-5 neighbours, asks the LLM and creates `PENDING` edges; a merge verdict is logged, not applied |
+| Extractor / Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
@@ -26,7 +27,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | `apps/api` | Fastify API (hexagonal: `domain`, `application`, `infrastructure`, `shared`) | Implemented |
 | `apps/web` | SvelteKit 5 PWA | Empty scaffold (Phase 3) |
 | `apps/worker-extractor` | Python 3.12 ingestion worker | Empty scaffold (Phase 2) |
-| `apps/worker-relacionador` | Python 3.12 relationship evaluator | Empty scaffold (Phase 2) |
+| `apps/worker-relacionador` | Python 3.12 relationship evaluator | Implemented (neighbours → LLM → `PENDING` edge); merges deferred |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |
 | `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Implemented (Ollama → agent-only API write-back); not in Compose/CI yet |
 | `packages/worker-shared` | Shared Python runtime: config, JSON logs, agent tokens, HTTP client, Redis Streams consumer | Implemented and tested |
@@ -82,10 +83,11 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
 | `uv sync` | Creates the Python 3.12 workspace environment from `uv.lock` |
-| `uv run pytest` | Runs the shared worker runtime and embedder tests (51) |
-| `uv run ruff check packages/worker-shared apps/worker-embedder` | Lints the Python worker code |
+| `uv run pytest` | Runs the shared worker runtime, embedder and Relator tests (72) |
+| `uv run ruff check packages/worker-shared apps/worker-embedder apps/worker-relacionador` | Lints the Python worker code |
 | `uv run vozlab-worker-embedder --check` | Validates the embedder configuration and agent credential source |
 | `uv run vozlab-worker-embedder [--once]` | Runs the embedder consumer (once = single pass) |
+| `uv run vozlab-worker-relacionador [--once]` | Runs the Relator consumer |
 
 The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-only, so there is no `dist/` to run.
 

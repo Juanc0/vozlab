@@ -23,8 +23,8 @@ flowchart LR
 | Tenant DB | PostgreSQL 18.6 + pgvector; one physical DB per institution | Implemented |
 | Broker/cache | Redis 7 (Streams, fixed-window counters, token blacklist, OIDC state) | Implemented |
 | PWA | SvelteKit 5 + Cytoscape.js | Empty scaffold |
-| Workers | Python 3.12 + uv; shared `vozlab_worker` runtime (ADR-0021) | Embedder implemented; other agents are scaffolds |
-| AI workers | Extractor, Relacionador, Consolidador | Empty scaffolds |
+| Workers | Python 3.12 + uv; shared `vozlab_worker` runtime (ADR-0021) | Embedder and Relator implemented; other agents are scaffolds |
+| AI workers | Extractor, Consolidador | Empty scaffolds |
 | LLM | Ollama (`nomic-embed-text`, 768 dims) | Used by the embedder |
 
 ## Request path
@@ -87,7 +87,14 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | `EDGE_CREATED`, `EDGE_UPDATED`, `EDGE_DELETED` | `stream:edge_created`, `stream:edge_updated`, `stream:edge_deleted` |
 | Ontology, discussion, interaction and deletion events | `stream:<event-lowercase>` |
 
-`NODE_CREATED` carries `reqId`, `nodeId`, `workspaceId`, `typeKey` and `title`. ADR-0020 assigns it to a dedicated embedder and the Relator, each with its own consumer group. The embedder (`apps/worker-embedder`, group `embedder`) reads the node through the API, calls Ollama and stores the 768-dimensional vector through the agent-only `PUT /api/v1/nodes/:id/embedding`; the Relator does not exist yet. The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream (`stream:node_created:dead`). Publication is fire-and-forget: if Redis is disconnected, the event is dropped with a warning (there is no outbox or retry).
+`NODE_CREATED` carries `reqId`, `nodeId`, `workspaceId`, `typeKey` and `title`. Two workers consume it, each with its own consumer group so both see every event:
+
+| Group | Worker | What it does |
+| --- | --- | --- |
+| `embedder` | `apps/worker-embedder` | Reads the node through the API, calls Ollama and stores the 768-dimensional vector through the agent-only `PUT /api/v1/nodes/:id/embedding` (ADR-0020). |
+| `relator` | `apps/worker-relacionador` | Reads the top-5 neighbours through `GET /api/v1/nodes/:id/neighbors` (ADR-0022), asks the local LLM for a verdict and creates a `PENDING` edge (ADR-0023). A `MERGE` verdict is logged, not applied. |
+
+The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream (`stream:node_created:dead`). Publication is fire-and-forget: if Redis is disconnected, the event is dropped with a warning (there is no outbox or retry).
 
 ## Runtime and deployment facts
 
@@ -95,6 +102,7 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | --- | --- | --- | --- |
 | API | `tsx` on Node 22 | 3000 | `HOST`, `PORT` from env; graceful `SIGTERM`/`SIGINT` |
 | Embedder worker | Python 3.12 (`vozlab-worker-embedder`) | — | Not in Compose yet; consumes `stream:node_created` (group `embedder`) |
+| Relator worker | Python 3.12 (`vozlab-worker-relacionador`) | — | Not in Compose yet; consumes `stream:node_created` (group `relator`) |
 | PostgreSQL | `vozlab/postgres:18-age-pgvector` (PG 18.6, AGE 1.8, pgvector) | 5432 | Built from `docker/postgres/Dockerfile`; init scripts only on a fresh volume |
 | Redis | `redis:7-alpine` | 6379 | No auth locally; password optional |
 | Ollama | `ollama/ollama:latest` | 11434 | Not called by the API today |
@@ -106,8 +114,8 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 - PWA OIDC login screen, session restore UI and event QR scanner (the API half of FR-01/02/03 exists).
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SvelteKit PWA, SSE, GraphQL.
-- Python Extractor/Relacionador/Consolidador handlers. The embedder is implemented but is not in Compose or CI yet (Phase 2.7) and pre-existing nodes are not backfilled.
-- Vector search endpoints: nothing queries `nodes.embedding` yet — the Relator and the semantic-search API are still missing.
+- Python Extractor/Consolidador handlers. The embedder and the Relator are implemented but are not in Compose or CI yet (Phase 2.7), and pre-existing nodes are not backfilled.
+- A merge contract: the Relator can judge that two nodes should be merged but has nothing to submit ([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.
 - Data-source registry (`meta.data_sources`) and ingestion resolution route (Phase 2).
 - Metrics, tracing, dashboards and load tests.

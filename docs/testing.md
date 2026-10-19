@@ -10,8 +10,8 @@ is green today, what is deliberately missing, and the Phase 4 plan.
 | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
-| Size | 25 files / 120 tests | 2 files / 12 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back |
+| Size | 26 files / 125 tests | 3 files / 18 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
 | Coverage | Not measured; no coverage provider installed | Not measured |
@@ -46,21 +46,33 @@ verifies that `AGENT_EMBEDDER` stores the vector (checking
 human callers, other agent types, foreign workspaces, malformed vectors and
 unknown models are rejected.
 
+The neighbour integration suite (`neighbors.integration.test.ts`) writes two
+vectors through the same route and checks that
+`GET /api/v1/nodes/:id/neighbors` returns the closest node with a similarity
+above 0.99, never returns the source node, answers `409` while the node has no
+vector, `404` for an unknown or foreign node and `422` for an out-of-range
+limit.
+
 ### Python worker runtime
 
-The Phase 2 runtime has **51 Python tests** in
-`packages/worker-shared/tests` and `apps/worker-embedder/tests`. They cover
-environment validation, JSON logging and correlation context, agent-token
-minting/static/file/dev providers, the `httpx` API client (auth/workspace/
-correlation headers, typed errors, opt-in 5xx retries), retry backoff, the
-Redis Streams consumer (`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
-delivery-count-based dead-lettering and `PermanentError`), the Ollama client
-(current and legacy endpoints, dimension checks, retryable vs permanent
-failures) and the `NODE_CREATED` handler (read node → embed → write back, plus
-the permanent/retryable classification). Redis is simulated with `fakeredis`;
-HTTP with `httpx.MockTransport`. No live Redis, Ollama, API or IdP is
-contacted. The embedder app test drives a full `--once` pass over a fake
-stream.
+The Phase 2 runtime has **72 Python tests** in
+`packages/worker-shared/tests`, `apps/worker-embedder/tests` and
+`apps/worker-relacionador/tests`. They cover environment validation, JSON
+logging and correlation context, agent-token minting/static/file/dev providers,
+the `httpx` API client (auth/workspace/correlation headers, typed errors,
+opt-in 5xx retries), retry backoff, the Redis Streams consumer
+(`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
+delivery-count-based dead-lettering and `PermanentError`), the Ollama embedding
+client (current and legacy endpoints, dimension checks, retryable vs permanent
+failures), the embedder's `NODE_CREATED` handler (read node → embed → write
+back) and the Relator's handler and LLM client (neighbours → verdict →
+relation key → edge, hallucinated targets, merge verdicts, duplicate guard).
+Redis is simulated with `fakeredis`; HTTP with `httpx.MockTransport`. No live
+Redis, Ollama, API or IdP is contacted. The app tests drive a full `--once`
+pass over a fake stream.
+
+`pytest` runs with `--import-mode=importlib` so two worker packages can use
+the same test file names without a module-name collision.
 
 ## Running tests
 
@@ -137,10 +149,10 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
 - Python tests in CI/Turbo. The runtime suite runs locally (`uv run pytest`),
   but CI does not install uv or run it yet; that is Phase 2.7.
-- Worker handler and end-to-end pipeline tests: the embedder is covered by
-  unit tests and by a manual end-to-end run, but no Extractor/Relator/
-  Consolidator handler exists and no test drives a live Ollama or a live
-  Redis stream.
+- Worker handler and end-to-end pipeline tests: the embedder and the Relator
+  are covered by unit tests and by manual end-to-end runs, but no
+  Extractor/Consolidator handler exists and no test drives a live Ollama or a
+  live Redis stream.
 - Contract tests between Zod DTOs and Python/Pydantic models.
 - Mutation, accessibility, visual-regression and PWA offline tests.
 - A `test:ci` package script. `turbo.json` declares the task, but no package

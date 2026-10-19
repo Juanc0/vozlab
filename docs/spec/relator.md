@@ -1,10 +1,13 @@
 # Relator Worker (`worker-relacionador`)
 
-> **Not implemented (Phase 2).** `apps/worker-relacionador/` is still an empty
-> scaffold: no Python package, handler, Dockerfile or tests. The shared runtime
-> in `packages/worker-shared` (ADR-0021) already provides config, logging, agent
-> tokens, the API client and the consumer group/`XAUTOCLAIM`/DLQ machinery. This
-> page defines the intended behavior; no Relator process runs today.
+> **Implemented (milestone 2.5), with two documented deviations.** The worker
+> lives in `apps/worker-relacionador/` and runs against the shared runtime
+> (`packages/worker-shared`, ADR-0021). It reads its neighbours through the
+> API instead of the tenant database ([ADR-0022](../decisions/ADR-0022-relator-neighbour-lookup.md))
+> and creates `PENDING` edges through `POST /api/v1/edges` instead of the
+> edit-only proposal API; a `MERGE` verdict is logged, not applied
+> ([ADR-0023](../decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+> The worker is not in Compose or CI yet (milestone 2.7).
 
 The Relator is Agent 2: when a node is created, it finds semantically close
 nodes in the same workspace, asks a local LLM whether the new node should be
@@ -35,45 +38,58 @@ publisher maps it to **`stream:node_created`** (not `node:created`).
 | `typeKey` | Ontology key, e.g. `Problem`. |
 | `title` | Node title (context only). |
 
-The event is intentionally small. The worker loads description, status and
-embedding from the tenant database, then uses the tenant DB **read-only** for
-the vector query.
+The event is intentionally small. The worker asks the API for the node and
+its neighbours (`GET /api/v1/nodes/:id/neighbors`); the API owns the tenant
+database and the vector query (ADR-0022).
 
 ## Current blockers
 
 | Dependency | Status |
 | --- | --- |
 | `stream:node_created` producer | Implemented |
-| Consumer runtime (groups, `XAUTOCLAIM`, DLQ) | Implemented in `packages/worker-shared`; no Relator handler |
+| Consumer runtime (groups, `XAUTOCLAIM`, DLQ) | Implemented in `packages/worker-shared`; the Relator uses group `relator` |
 | Embedding computation (FR-18) | **Implemented**: the dedicated embedder stores the vector through `PUT /api/v1/nodes/:id/embedding`; nodes created before it ran keep a `NULL` embedding |
+| Neighbour lookup | **Implemented**: `GET /api/v1/nodes/:id/neighbors` (ADR-0022) |
 | HNSW index | Present on `public.nodes.embedding` and used by the planner for `ORDER BY embedding <=> $1` |
-| Proposal API for new edges | Partial: `POST /api/v1/proposals` is edit-only today |
+| Edge proposal | **Implemented**: `POST /api/v1/edges` creates a `PENDING` edge (ADR-0023) |
+| Merge proposal | **Missing**: there is no merge contract; the verdict is logged (ADR-0023) |
 | Active cluster centroids | Not modelled; not part of the Phase 2 scope below |
 
 ADR-0020 requires the Relator to **leave the entry pending and retry** when
-`embedding IS NULL` (a node embedded before the worker existed, or a failed
-embedding); it must not acknowledge and silently skip the node. After the
-bounded attempts the shared runtime moves it to `stream:node_created:dead` for
-inspection.
+the vector is not ready. The API makes that explicit: the neighbour lookup
+answers `409 ERR_NODE_NOT_EMBEDDED`, the worker treats it as retryable and
+the entry stays in the PEL until the embedder has written the vector. After
+the bounded attempts the shared runtime moves it to `stream:node_created:dead`
+for inspection.
 
 ## Evaluation flow
 
 ```mermaid
 flowchart LR
     A[stream:node_created] --> B[XREADGROUP]
-    B --> C[Load node from tenant DB]
-    C --> D{embedding NULL?}
+    B --> C[GET /api/v1/nodes/:id/neighbors]
+    C --> D{409 not embedded?}
     D -->|yes| E[Retryable error; leave pending for XAUTOCLAIM]
-    D -->|no| F[pgvector top-5]
+    D -->|no| F[pgvector top-5 in the API]
     F --> G[Ollama evaluation]
-    G --> H[POST /api/v1/proposals]
-    H --> I[XACK]
+    G --> H{MERGE?}
+    H -->|yes| H2[Log the verdict; no merge contract]
+    H -->|no| I[POST /api/v1/edges]
+    I --> J[XACK]
 ```
+
+The vector search itself runs inside the API (ADR-0022): the worker never
+opens a tenant database connection, so the workspace, soft-delete and status
+filters exist in exactly one place.
 
 ### 1. Vector search
 
-Use cosine distance (`<=>`) with a strict workspace filter. The HNSW index
-`idx_nodes_embedding_hnsw` uses `vector_cosine_ops`.
+The search runs **inside the API** (ADR-0022). The worker calls
+`GET /api/v1/nodes/:id/neighbors?limit=5`; the API loads the source node, uses
+its own vector as the query and returns the closest nodes of the workspace.
+
+Under the hood it is cosine distance (`<=>`) with a strict workspace filter;
+the HNSW index `idx_nodes_embedding_hnsw` uses `vector_cosine_ops`.
 
 ```sql
 SELECT id, title, description,
@@ -90,41 +106,41 @@ LIMIT 5;
 
 `deleted_at IS NULL` and a status allow-list are mandatory. Without them the
 worker proposes relationships to soft-deleted, rejected, merged or deprecated
-nodes. Whether `PENDING` nodes are eligible is an open product decision; at
-minimum exclude `REJECTED`, `MERGED` and `DEPRECATED`.
+nodes. `PENDING` nodes are eligible (a freshly created node is `PENDING`);
+`REJECTED`, `MERGED` and `DEPRECATED` are not.
 
-The query must stay workspace-scoped even though the event is trusted. Cross-
-workspace neighbors are a data leak, not a ranking detail.
+The query stays workspace-scoped even though the event is trusted. Cross-
+workspace neighbours are a data leak, not a ranking detail.
 
 ### 2. LLM evaluation
 
-Send the new node plus the five neighbors (titles, descriptions, similarity) to
-Ollama. Require strict JSON:
+Send the new node plus the neighbours (titles, descriptions, similarity) to
+Ollama with `format: "json"`. Require strict JSON:
 
 ```json
 {
   "action": "MERGE | EDGE | INDEPENDENT",
-  "target_id": "uuid or null",
-  "relation_key": "RELATES_TO or null",
+  "targetId": "uuid or null",
   "reason": "short explanation"
 }
 ```
 
-Reject malformed or hallucinated targets before calling the API: `target_id`
-must be one of the retrieved neighbor ids. `relation_key` must exist in the
-workspace ontology; `RELATES_TO` is seeded from `Problem` to `Idea`.
+Reject malformed or hallucinated targets before calling the API: `targetId`
+must be one of the retrieved neighbour ids. A hallucinated target is a
+retryable model failure (the entry stays pending and ends in the dead-letter
+stream), never a write.
 
 ### 3. Action dispatch
 
-| LLM action | Intended effect |
+| LLM action | Effect |
 | --- | --- |
-| `EDGE` | Create a `PENDING` edge proposal between the two nodes. |
-| `MERGE` | Propose that the new node be merged into the target. |
-| `INDEPENDENT` | No write; optionally record the evaluation for tuning. |
+| `EDGE` | Create a `PENDING` edge through `POST /api/v1/edges` (ADR-0023). The `relationKey` is taken from the workspace ontology: an active object property whose domain matches the source class and whose range matches the target class (or the reverse for a symmetric property). No match → no edge. |
+| `MERGE` | Log the verdict, the target and the reason. **Not applied**: there is no merge contract yet (ADR-0023). |
+| `INDEPENDENT` | No write; the verdict is logged. |
 
-Always use `POST /api/v1/proposals`; never insert into `public.edges`,
-`public.nodes` or `public.edit_proposals`. The API applies governance, ontology
-validation, workspace checks and the `PENDING` state.
+The worker never inserts into `public.edges`, `public.nodes` or
+`public.edit_proposals`. The API applies governance, ontology validation,
+workspace checks and the `PENDING` state.
 
 > **API gap:** the current `CreateProposalSchema` is an *edit* proposal:
 > `targetId` must identify an existing node/edge/ontology class and
@@ -159,25 +175,31 @@ Content-Type: application/json
   (`stream:node_created:dead` by default). The runtime implements this; the
   Relator handler selects the retryable/permanent classification.
 - Deduplicate retries: the same `nodeId` + `targetId` + action must not create
-  duplicate proposals after a timed-out response. No server-side idempotency
-  key exists yet.
+  duplicate edges after a timed-out response. The worker checks the existing
+  edges of the workspace before creating one — a best-effort guard, because
+  there is no server-side idempotency key yet. The `POST` itself is never
+  retried at the HTTP level, because a POST is not idempotent.
 
 Keep the LLM context bounded (top 5, short descriptions) to control latency and
 cost. The old target was under ~1.2 s per node, excluding queueing.
 
 ## Phase 2 acceptance criteria
 
-- [ ] Consumes `stream:node_created` with a consumer group and recovers the PEL.
+- [x] Consumes `stream:node_created` with a consumer group and recovers the PEL.
       The group name must differ from the embedder's (`relator` vs
       `embedder`) so both workers see every event.
-- [ ] Runs `<=>` search filtered by `workspace_id`, `deleted_at IS NULL`,
-  status allow-list and `embedding IS NOT NULL`; limit 5.
-- [ ] Queues/retries nodes without an embedding (leaves them pending); never
+- [x] Runs the `<=>` search filtered by `workspace_id`, `deleted_at IS NULL`,
+  status allow-list and `embedding IS NOT NULL`; limit 5 — inside the API
+  (ADR-0022).
+- [x] Queues/retries nodes without an embedding (leaves them pending); never
   acknowledges and silently skips them.
-- [ ] Validates LLM JSON and target ids.
-- [ ] Submits only through `POST /api/v1/proposals`; no direct writes.
-- [ ] Carries agent JWT, `X-Workspace-ID` and `x-correlation-id`.
-- [ ] `XACK`s only after success and deduplicates retries.
+- [x] Validates LLM JSON and target ids.
+- [x] Submits only through the public API (`GET /neighbors`, `GET /ontology`,
+  `GET /edges`, `POST /edges`); no direct writes.
+- [x] Carries agent JWT, `X-Workspace-ID` and `x-correlation-id`.
+- [x] `XACK`s only after success and deduplicates retries.
+- [ ] Submits a merge. There is no merge contract (ADR-0023): the verdict is
+  logged, not applied.
 
 ## Related
 
@@ -190,3 +212,7 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
   handoff and write-back.
 - [ADR-0021](../decisions/ADR-0021-python-worker-runtime.md) — shared consumer
   runtime.
+- [ADR-0022](../decisions/ADR-0022-relator-neighbour-lookup.md) — why the
+  vector search lives in the API.
+- [ADR-0023](../decisions/ADR-0023-relator-edge-and-merge-semantics.md) — edge
+  proposals and the deferred merge.

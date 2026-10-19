@@ -14,7 +14,7 @@ request and on pushes to `main`; a concurrency group cancels superseded runs.
 | Verify | `pnpm turbo run build type-check test` |
 
 That is the whole file. `build` type-checks `src`; `type-check` covers API tests
-and database scripts; `test` runs the Vitest unit suite (25 files / 120 tests).
+and database scripts; `test` runs the Vitest unit suite (26 files / 125 tests).
 Turborepo caching is enabled for all tasks.
 
 What it does **not** do:
