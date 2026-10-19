@@ -5,6 +5,7 @@ import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 import type { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
 import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
 import type { INodeRepository } from '../../src/domain/ports/INodeRepository.js';
+import type { NearestNeighborsResult } from '../../src/domain/ports/INodeRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
 
@@ -55,14 +56,28 @@ export interface FakeNodeRepository {
   softDeleted: string[];
   appliedDeltas: Array<{ targetId: string; workspaceId: string; tx: DbTransaction | undefined }>;
   embeddings: EmbeddingWrite[];
+  nearestCalls: Array<{
+    sourceId: string;
+    workspaceId: string;
+    limit: number;
+  }>;
 }
 
-/** In-memory `INodeRepository` backed by the supplied nodes. */
-export function makeNodeRepository(nodes: Node[] = []): FakeNodeRepository {
+/**
+ * In-memory `INodeRepository` backed by the supplied nodes.
+ *
+ * `nearest` is the canned answer of the vector search (ADR-0022); it defaults
+ * to `NOT_FOUND` so a test that does not care never sees a neighbour.
+ */
+export function makeNodeRepository(
+  nodes: Node[] = [],
+  nearest: NearestNeighborsResult = { status: 'NOT_FOUND' }
+): FakeNodeRepository {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const softDeleted: string[] = [];
   const appliedDeltas: FakeNodeRepository['appliedDeltas'] = [];
   const embeddings: EmbeddingWrite[] = [];
+  const nearestCalls: FakeNodeRepository['nearestCalls'] = [];
   const repo: INodeRepository = {
     async findById(id) {
       return byId.get(id) ?? null;
@@ -93,8 +108,12 @@ export function makeNodeRepository(nodes: Node[] = []): FakeNodeRepository {
       embeddings.push({ id, workspaceId, embedding, model });
       return true;
     },
+    async findNearestInWorkspace(sourceId, workspaceId, opts) {
+      nearestCalls.push({ sourceId, workspaceId, limit: opts.limit });
+      return nearest;
+    },
   };
-  return { repo, softDeleted, appliedDeltas, embeddings };
+  return { repo, softDeleted, appliedDeltas, embeddings, nearestCalls };
 }
 
 export interface FakeEdgeRepository {

@@ -19,6 +19,41 @@ export interface SubgraphResult {
 }
 
 /**
+ * A candidate returned by the vector search (ADR-0022).
+ */
+export interface NodeNeighbor {
+  id: string;
+  typeKey: string;
+  title: string;
+  description: string | null;
+  status: string;
+  /** Cosine similarity in [0, 1]; 1 means identical direction. */
+  similarity: number;
+}
+
+/**
+ * Result of the neighbour lookup.
+ *
+ * The three states are explicit because they map to three different HTTP
+ * answers: `NOT_FOUND` → 404, `NOT_EMBEDDED` → 409 (the vector is not ready
+ * yet — the caller should retry), `OK` → 200.
+ */
+export type NearestNeighborsResult =
+  | { status: 'NOT_FOUND' }
+  | { status: 'NOT_EMBEDDED' }
+  | {
+      status: 'OK';
+      source: {
+        id: string;
+        typeKey: string;
+        title: string;
+        description: string | null;
+        status: string;
+      };
+      neighbors: NodeNeighbor[];
+    };
+
+/**
  * Port: Node persistence contract.
  * Implementations live in infrastructure/ (e.g. DrizzleNodeRepository).
  *
@@ -53,6 +88,20 @@ export interface INodeRepository {
     opts: { depth: number; limit: number },
     tid: string
   ): Promise<SubgraphResult>;
+  /**
+   * Vector search: the closest nodes of the workspace to `sourceId`
+   * (ADR-0022).
+   *
+   * The search is workspace-scoped and excludes soft-deleted rows, rows
+   * without a vector and rows whose status is outside the allow-list
+   * `('ACTIVE','PENDING')`. The source node is excluded.
+   */
+  findNearestInWorkspace(
+    sourceId: string,
+    workspaceId: string,
+    opts: { limit: number },
+    tid: string
+  ): Promise<NearestNeighborsResult>;
   save(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
   update(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
   /**

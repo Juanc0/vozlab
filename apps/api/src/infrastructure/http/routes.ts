@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
@@ -61,6 +62,7 @@ import { AuthController } from './controllers/AuthController.js';
 export interface RouteDependencies {
   createNodeUseCase: CreateNodeUseCase;
   getNodeUseCase: GetNodeUseCase;
+  getNodeNeighborsUseCase: GetNodeNeighborsUseCase;
   listNodesUseCase: ListNodesUseCase;
   deleteNodeUseCase: DeleteNodeUseCase;
   setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase;
@@ -115,6 +117,7 @@ export async function registerRoutes(
   const {
     createNodeUseCase,
     getNodeUseCase,
+    getNodeNeighborsUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
@@ -157,6 +160,7 @@ export async function registerRoutes(
   const nodeController = new NodeController(
     createNodeUseCase,
     getNodeUseCase,
+    getNodeNeighborsUseCase,
     listNodesUseCase,
     getSubgraphUseCase,
     deleteNodeUseCase,
@@ -270,6 +274,12 @@ export async function registerRoutes(
   // Static route MUST be declared before the parameterised `/nodes/:id`.
   app.get('/api/v1/nodes/subgraph', { preHandler: guard }, (req, reply) =>
     nodeController.getSubgraphHandler(req, reply)
+  );
+
+  // Vector search (FR-19, ADR-0022) — registered before `/nodes/:id` so the
+  // more specific path wins.
+  app.get('/api/v1/nodes/:id/neighbors', { preHandler: guard }, (req, reply) =>
+    nodeController.getNeighborsHandler(req, reply)
   );
 
   app.get('/api/v1/nodes/:id', { preHandler: guard }, (req, reply) =>

@@ -25,6 +25,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     softDelete: vi.fn(),
     applyDelta: vi.fn(),
     setEmbedding: vi.fn(),
+    findNearestInWorkspace: vi.fn(),
   };
 
   const edgeRepo: IEdgeRepository = {

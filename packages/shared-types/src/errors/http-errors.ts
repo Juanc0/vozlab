@@ -78,6 +78,10 @@ export const ERROR_CODES = {
     status: 404,
     message: 'Node not found',
   },
+  ERR_NODE_NOT_EMBEDDED: {
+    status: 409,
+    message: 'Node has no embedding yet',
+  },
   ERR_EDGE_NOT_FOUND: {
     status: 404,
     message: 'Edge not found',

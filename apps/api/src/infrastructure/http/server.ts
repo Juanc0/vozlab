@@ -24,6 +24,7 @@ import { RedisOidcStateStore } from '../identity/RedisOidcStateStore.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
+import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
@@ -125,6 +126,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // --- Use cases (application) ---
   const createNodeUseCase = new CreateNodeUseCase(nodeRepo, ontologyRepo, eventPublisher);
   const getNodeUseCase = new GetNodeUseCase(nodeRepo);
+  const getNodeNeighborsUseCase = new GetNodeNeighborsUseCase(nodeRepo);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
@@ -241,6 +243,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerRoutes(app, {
     createNodeUseCase,
     getNodeUseCase,
+    getNodeNeighborsUseCase,
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,

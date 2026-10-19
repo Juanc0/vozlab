@@ -2,11 +2,13 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import {
   CreateNodeSchema,
   ListNodeQuerySchema,
+  NeighborsQuerySchema,
   SetNodeEmbeddingSchema,
   SubgraphQuerySchema,
 } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
+import { GetNodeNeighborsUseCase } from '../../../application/use_cases/GetNodeNeighborsUseCase.js';
 import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
@@ -59,6 +61,7 @@ export class NodeController {
   constructor(
     private readonly createNodeUseCase: CreateNodeUseCase,
     private readonly getNodeUseCase: GetNodeUseCase,
+    private readonly getNodeNeighborsUseCase: GetNodeNeighborsUseCase,
     private readonly listNodesUseCase: ListNodesUseCase,
     private readonly getSubgraphUseCase: GetSubgraphUseCase,
     private readonly deleteNodeUseCase: DeleteNodeUseCase,
@@ -216,6 +219,42 @@ export class NodeController {
       return reply.status(204).send();
     } catch (error) {
       return this.handleError(req, reply, error, 'deleteNode failed');
+    }
+  }
+
+  /**
+   * GET /api/v1/nodes/:id/neighbors
+   * Vector search: the closest nodes of the workspace (FR-19, ADR-0022).
+   *
+   * 200 with the source node and its neighbours; 404 for a missing/foreign
+   * node; 409 `ERR_NODE_NOT_EMBEDDED` when the node has no vector yet (the
+   * Relator retries in that case).
+   */
+  async getNeighborsHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = NeighborsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      const result = await this.getNodeNeighborsUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        limit: parsed.data.limit,
+      });
+
+      return reply.status(200).send({
+        node: result.source,
+        neighbors: result.neighbors,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'getNodeNeighbors failed');
     }
   }
 

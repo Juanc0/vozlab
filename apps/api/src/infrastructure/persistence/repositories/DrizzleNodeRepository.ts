@@ -5,6 +5,8 @@ import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import {
   INodeRepository,
+  NearestNeighborsResult,
+  NodeNeighbor,
   SubgraphResult,
 } from '../../../domain/ports/INodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
@@ -19,6 +21,9 @@ type Tx = Parameters<
 /** NFR-01 hard bounds, enforced here so a pathological graph cannot blow up. */
 const MAX_SUBGRAPH_DEPTH = 3;
 const MAX_SUBGRAPH_NODES = 200;
+
+/** ADR-0022: hard cap for the neighbour lookup (the use case clamps to 10). */
+const MAX_NEIGHBORS = 10;
 
 /**
  * DrizzleNodeRepository: adapter that persists Nodes to `public.nodes`
@@ -212,6 +217,110 @@ export class DrizzleNodeRepository implements INodeRepository {
       );
 
     return { nodes: orderedNodes, edges: edgeRows };
+  }
+
+  /**
+   * FR-19 / ADR-0022: vector search for the Relator.
+   *
+   * The source node is loaded first so the caller can distinguish "no such
+   * node" (`NOT_FOUND`) from "the node has no vector yet"
+   * (`NOT_EMBEDDED`) — the second one is a retryable state, the first one is
+   * a 404.
+   *
+   * The neighbour query is workspace-scoped and excludes soft-deleted rows,
+   * rows without a vector and rows whose status is outside the allow-list
+   * `('ACTIVE','PENDING')`, so a Relator can never be handed a rejected,
+   * merged or deprecated node. The query vector is bound as a parameter, which
+   * lets PostgreSQL use the HNSW index (`idx_nodes_embedding_hnsw`).
+   */
+  async findNearestInWorkspace(
+    sourceId: string,
+    workspaceId: string,
+    opts: { limit: number },
+    tid: string
+  ): Promise<NearestNeighborsResult> {
+    const db = await this.client(tid);
+    const limit = Math.min(Math.max(Math.trunc(opts.limit), 1), MAX_NEIGHBORS);
+
+    const sourceResult = await db.execute(sql`
+      SELECT n.id::text AS id,
+             n.type_key,
+             n.title,
+             n.description,
+             n.status,
+             n.embedding::text AS embedding
+      FROM public.nodes n
+      WHERE n.id = ${sourceId}
+        AND n.workspace_id = ${workspaceId}
+        AND n.deleted_at IS NULL
+      LIMIT 1
+    `);
+
+    const source = sourceResult.rows[0] as
+      | {
+          id: string;
+          type_key: string;
+          title: string;
+          description: string | null;
+          status: string;
+          embedding: string | null;
+        }
+      | undefined;
+
+    if (!source) {
+      return { status: 'NOT_FOUND' };
+    }
+    if (!source.embedding) {
+      return { status: 'NOT_EMBEDDED' };
+    }
+
+    const neighborsResult = await db.execute(sql`
+      SELECT n.id::text AS id,
+             n.type_key,
+             n.title,
+             n.description,
+             n.status,
+             (1 - (n.embedding <=> ${source.embedding}::vector))::float8 AS similarity
+      FROM public.nodes n
+      WHERE n.workspace_id = ${workspaceId}
+        AND n.id <> ${sourceId}
+        AND n.embedding IS NOT NULL
+        AND n.deleted_at IS NULL
+        AND n.status IN ('ACTIVE', 'PENDING')
+      ORDER BY n.embedding <=> ${source.embedding}::vector
+      LIMIT ${limit}
+    `);
+
+    const neighbors: NodeNeighbor[] = neighborsResult.rows.map((row) => {
+      const r = row as {
+        id: string;
+        type_key: string;
+        title: string;
+        description: string | null;
+        status: string;
+        similarity: number | string;
+      };
+      return {
+        id: r.id,
+        typeKey: r.type_key,
+        title: r.title,
+        description: r.description,
+        status: r.status,
+        similarity: Number(r.similarity),
+      };
+    });
+
+    return {
+      status: 'OK',
+      source: {
+        id: source.id,
+        typeKey: source.type_key,
+        title: source.title,
+        description: source.description,
+        status: source.status,
+      },
+      neighbors,
+    };
   }
 
   async save(node: Node, tid: string, tx?: DbTransaction): Promise<void> {

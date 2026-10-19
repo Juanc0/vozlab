@@ -26,6 +26,18 @@ export const ListNodeQuerySchema = z.object({
 export type ListNodeQueryInput = z.infer<typeof ListNodeQuerySchema>;
 
 /**
+ * Zod schema for the neighbour lookup query string
+ * (`GET /api/v1/nodes/:id/neighbors`, ADR-0022).
+ *
+ * `limit` is clamped to 1..10 (default 5 — the Relator's top-5).
+ */
+export const NeighborsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(10).default(5),
+});
+
+export type NeighborsQueryInput = z.infer<typeof NeighborsQuerySchema>;
+
+/**
  * Zod schema for updating an existing Node (partial update via edit proposals).
  */
 export const UpdateNodeSchema = z.object({
