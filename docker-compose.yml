@@ -45,6 +45,98 @@ services:
     networks:
       - vozlab-net
 
+  # --- Python workers (profile: workers) --------------------------------
+  # The API still runs on the host (`pnpm --filter @vozlab/api dev`), so the
+  # workers reach it through `host.docker.internal`. The API image lands in
+  # Phase 4 (4.6); until then this is the local topology.
+  #
+  #   docker compose --profile workers up -d worker-embedder worker-relacionador
+  #
+  # Credentials: the dev profile lets a worker mint its own agent token with
+  # the same JWT_SECRET the API uses (ADR-0021). The identity values are the
+  # dev fixtures from `packages/database/scripts/dev-identities.ts`; set
+  # AGENT_TOKEN / AGENT_TOKEN_FILE instead for anything else.
+  worker-embedder:
+    build:
+      context: .
+      dockerfile: apps/worker-embedder/Dockerfile
+    image: vozlab/worker-embedder:dev
+    container_name: vozlab-worker-embedder
+    profiles: ["workers"]
+    depends_on:
+      - redis
+      - ollama
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      API_BASE_URL: http://host.docker.internal:3000
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_DIMENSIONS: "768"
+      WORKSPACE_ID: 33333333-3333-4333-8333-333333333333
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AGENT_TENANT_KEY: ${AGENT_TENANT_KEY:-sabana}
+      AGENT_USER_ID: ${AGENT_USER_ID:-44444444-4444-4444-8444-444444444448}
+      AGENT_AUTHOR_HASH: ${AGENT_AUTHOR_HASH:-3909e5bbd80f2f103337546c552c3cca60be32c2d47f9be64d641ea001c3250b}
+    networks:
+      - vozlab-net
+
+  worker-relacionador:
+    build:
+      context: .
+      dockerfile: apps/worker-relacionador/Dockerfile
+    image: vozlab/worker-relacionador:dev
+    container_name: vozlab-worker-relacionador
+    profiles: ["workers"]
+    depends_on:
+      - redis
+      - ollama
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      API_BASE_URL: http://host.docker.internal:3000
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.1:8b}
+      NEIGHBORS_LIMIT: "5"
+      WORKSPACE_ID: 33333333-3333-4333-8333-333333333333
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AGENT_TENANT_KEY: ${AGENT_TENANT_KEY:-sabana}
+      AGENT_USER_ID: ${AGENT_USER_ID:-44444444-4444-4444-8444-444444444447}
+      AGENT_AUTHOR_HASH: ${AGENT_AUTHOR_HASH:-7e542874dafc353f457e15db9d96910462164284b71e73ea6d64ac83d3b7405f}
+    networks:
+      - vozlab-net
+
+  worker-extractor:
+    build:
+      context: .
+      dockerfile: apps/worker-extractor/Dockerfile
+    image: vozlab/worker-extractor:dev
+    container_name: vozlab-worker-extractor
+    profiles: ["workers"]
+    depends_on:
+      - redis
+      - ollama
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      API_BASE_URL: http://host.docker.internal:3000
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.1:8b}
+      DEFAULT_TYPE_KEY: Problem
+      WORKSPACE_ID: 33333333-3333-4333-8333-333333333333
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AGENT_TENANT_KEY: ${AGENT_TENANT_KEY:-sabana}
+      AGENT_USER_ID: ${AGENT_USER_ID:-44444444-4444-4444-8444-444444444447}
+      AGENT_AUTHOR_HASH: ${AGENT_AUTHOR_HASH:-7e542874dafc353f457e15db9d96910462164284b71e73ea6d64ac83d3b7405f}
+    networks:
+      - vozlab-net
+
 volumes:
   postgres_data:
   redis_data:

@@ -26,3 +26,37 @@ jobs:
 
       # Type-checks src (build), tests + scripts (type-check), and runs the suite.
       - run: pnpm turbo run build type-check test
+
+  python:
+    name: Python worker runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.11.8"
+          enable-cache: true
+
+      # `--frozen` fails when uv.lock is out of date: the lockfile is the
+      # contract, never a fresh resolution.
+      - run: uv sync --frozen --all-packages --all-groups
+
+      - run: uv run pytest
+
+      - run: uv run ruff check packages/worker-shared apps/worker-embedder apps/worker-relacionador
+
+      - run: uv run ruff format --check packages/worker-shared apps/worker-embedder apps/worker-relacionador
+
+  images:
+    name: Worker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The worker images build from the repository root (uv workspace).
+      - name: Build the embedder image
+        run: docker build -f apps/worker-embedder/Dockerfile -t vozlab/worker-embedder:ci .
+
+      - name: Build the Relator image
+        run: docker build -f apps/worker-relacionador/Dockerfile -t vozlab/worker-relacionador:ci .
