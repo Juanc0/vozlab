@@ -1,0 +1,2 @@
+DROP INDEX "meta"."idx_ontology_classes_workspace_key";--> statement-breakpoint
+CREATE UNIQUE INDEX "uniq_ontology_classes_workspace_key" ON "meta"."ontology_classes" USING btree ("workspace_id","system_key");

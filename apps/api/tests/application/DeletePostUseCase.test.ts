@@ -1,3 +1,4 @@
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { DeletePostUseCase } from '../../src/application/use_cases/DeletePostUseCase.js';
 import { DiscussionPost } from '../../src/domain/entities/DiscussionPost.js';
@@ -8,8 +9,8 @@ import { makeEventPublisher } from '../support/fakes.js';
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
-const otherHash = AuthorHash.fromIdentity('someone-else', 'salt');
+const authorHash = testHash('author-1');
+const otherHash = testHash('someone-else');
 
 function thread(id: string, workspaceId: string): DiscussionThread {
   return new DiscussionThread(id, workspaceId, 'node-1', 'NODE', 'A title', authorHash);

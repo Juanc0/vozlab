@@ -1,10 +1,9 @@
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { EditProposal } from '../../src/domain/entities/EditProposal.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
-import { DomainError } from '../../src/domain/errors/DomainError.js';
 
-const proposer = AuthorHash.fromIdentity('proposer-1', 'salt');
-const moderator = AuthorHash.fromIdentity('moderator-1', 'salt');
+const proposer = testHash('proposer-1');
+const moderator = testHash('moderator-1');
 
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);

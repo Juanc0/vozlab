@@ -1,3 +1,4 @@
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { CloseThreadUseCase } from '../../src/application/use_cases/CloseThreadUseCase.js';
 import { DiscussionThread } from '../../src/domain/entities/DiscussionThread.js';
@@ -6,7 +7,7 @@ import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import type { IDiscussionRepository } from '../../src/domain/ports/IDiscussionRepository.js';
 import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
 
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
+const authorHash = testHash('author-1');
 
 function makeThread(overrides: Partial<{
   id: string;
@@ -92,7 +93,7 @@ describe('CloseThreadUseCase', () => {
         threadId: thread.id,
         workspaceId: thread.workspaceId,
         tid: 'tenant-1',
-        authorHash: AuthorHash.fromIdentity('someone-else', 'salt').toString(),
+        authorHash: testHash('someone-else').toString(),
       })
     ).rejects.toMatchObject({ code: 'ERR_AUTHORIZATION_FAILED' });
     expect(thread.status).toBe('OPEN');

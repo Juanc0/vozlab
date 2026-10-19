@@ -1,12 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../src/shared/config/env.js', () => ({
-  env: { AUTHOR_HASH_SALT: 'test-author-hash-salt-12345' },
-}));
+import { testHash } from '../support/hash.js';
+import { describe, expect, it } from 'vitest';
 
 import { AutoApplyProposalUseCase } from '../../src/application/use_cases/AutoApplyProposalUseCase.js';
 import { EditProposal } from '../../src/domain/entities/EditProposal.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import type { WorkspaceRole } from '../../src/domain/ports/IMembershipRepository.js';
 import type { IProposalRepository } from '../../src/domain/ports/IProposalRepository.js';
 import {
@@ -19,7 +15,7 @@ import {
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
-const proposerHash = AuthorHash.fromIdentity('proposer-1', 'salt');
+const proposerHash = testHash('proposer-1');
 
 function proposal(workspaceId: string, overrides: Partial<{ status: string; score: number }> = {}): EditProposal {
   return new EditProposal(
@@ -85,7 +81,7 @@ function build(existing: EditProposal | null, role: WorkspaceRole | null) {
 const input = {
   proposalId: 'proposal-1',
   resolverUserId: 'user-1',
-  resolverHash: AuthorHash.fromIdentity('moderator-1', 'salt').toString(),
+  resolverHash: testHash('moderator-1').toString(),
   workspaceId: WS,
   tid,
 };

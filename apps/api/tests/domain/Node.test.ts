@@ -1,9 +1,9 @@
+import { DomainError } from '../../src/domain/errors/DomainError.js';
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { Node } from '../../src/domain/entities/Node.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
-import { DomainError } from '../../src/domain/errors/DomainError.js';
 
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
+const authorHash = testHash('author-1');
 
 function makeNode(status: Node['status'] = 'DRAFT'): Node {
   return new Node(

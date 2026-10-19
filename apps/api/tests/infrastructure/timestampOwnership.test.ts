@@ -1,9 +1,9 @@
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { Node } from '../../src/domain/entities/Node.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import { DrizzleNodeRepository } from '../../src/infrastructure/persistence/repositories/DrizzleNodeRepository.js';
 
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
+const authorHash = testHash('author-1');
 
 /**
  * Thin fake Drizzle client: captures the argument of `.set(...)` on the last

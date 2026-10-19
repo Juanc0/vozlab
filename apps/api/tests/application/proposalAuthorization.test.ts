@@ -1,10 +1,10 @@
+import { testHash } from '../support/hash.js';
 import { describe, it, expect, vi } from 'vitest';
 import { resolveTargetAuthorHash } from '../../src/application/use_cases/proposalAuthorization.js';
+import { DomainError } from '../../src/domain/errors/DomainError.js';
 import { EditProposal, TargetType } from '../../src/domain/entities/EditProposal.js';
 import { Node } from '../../src/domain/entities/Node.js';
 import { Edge } from '../../src/domain/entities/Edge.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
-import { DomainError } from '../../src/domain/errors/DomainError.js';
 import { INodeRepository } from '../../src/domain/ports/INodeRepository.js';
 import { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
 import { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
@@ -12,8 +12,8 @@ import { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.
 describe('proposalAuthorization.resolveTargetAuthorHash', () => {
   const tid = 'tenant-1';
   const workspaceId = 'workspace-1';
-  const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
-  const proposerHash = AuthorHash.fromIdentity('proposer-1', 'salt');
+  const authorHash = testHash('author-1');
+  const proposerHash = testHash('proposer-1');
 
   const nodeRepo: INodeRepository = {
     findById: vi.fn(),
@@ -39,6 +39,16 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
 
   const ontologyRepo: IOntologyRepository = {
     findClassById: vi.fn(),
+    findClassByKey: vi.fn(),
+    findActiveClasses: vi.fn(),
+    findDatatypeProperties: vi.fn(),
+    findObjectProperty: vi.fn(),
+    findActiveObjectProperties: vi.fn(),
+    saveClass: vi.fn(),
+    saveDatatypeProperty: vi.fn(),
+    saveObjectProperty: vi.fn(),
+    applyClassDelta: vi.fn(),
+    activateClass: vi.fn(),
   };
 
   const repos = { nodeRepo, edgeRepo, ontologyRepo };

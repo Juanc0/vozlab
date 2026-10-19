@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { workspaces } from './tenant.auth.schema.js';
 
@@ -38,7 +39,9 @@ export const ontologyClasses = metaSchema.table(
   },
   (table) => [
     // One class key per workspace; classes are resolved by `system_key`.
-    index('idx_ontology_classes_workspace_key').on(
+    // UNIQUE (not just an index): duplicate keys would make `findClassByKey`
+    // ambiguous and allow a second class to shadow the active one (M-12).
+    uniqueIndex('uniq_ontology_classes_workspace_key').on(
       table.workspaceId,
       table.systemKey
     ),

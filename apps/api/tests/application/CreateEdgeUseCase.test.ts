@@ -1,12 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../src/shared/config/env.js', () => ({
-  env: { AUTHOR_HASH_SALT: 'test-author-hash-salt-12345' },
-}));
+import { testHash } from '../support/hash.js';
+import { describe, expect, it } from 'vitest';
 
 import { CreateEdgeUseCase } from '../../src/application/use_cases/CreateEdgeUseCase.js';
 import { Node } from '../../src/domain/entities/Node.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import {
   makeEdgeRepository,
   makeEventPublisher,
@@ -16,10 +12,10 @@ import {
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt').toString();
+const authorHash = testHash('author-1').toString();
 
 function node(id: string, workspaceId: string): Node {
-  return new Node(id, workspaceId, 'Problem', 'A title', null, {}, AuthorHash.fromIdentity('author-1', 'salt'), 'ACTIVE');
+  return new Node(id, workspaceId, 'Problem', 'A title', null, {}, testHash('author-1'), 'ACTIVE');
 }
 
 function makeUseCase(source: Node | null, target: Node | null) {

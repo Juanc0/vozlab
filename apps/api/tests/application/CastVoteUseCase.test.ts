@@ -1,22 +1,18 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../src/shared/config/env.js', () => ({
-  env: { AUTHOR_HASH_SALT: 'test-author-hash-salt-12345' },
-}));
+import { testHash } from '../support/hash.js';
+import { describe, expect, it } from 'vitest';
 
 import { CastVoteUseCase } from '../../src/application/use_cases/CastVoteUseCase.js';
 import {
   Interaction,
   InteractionType,
 } from '../../src/domain/entities/Interaction.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 import type { IInteractionRepository } from '../../src/domain/ports/IInteractionRepository.js';
 import { makeEventPublisher, makeUnitOfWork, TX_SENTINEL } from '../support/fakes.js';
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
-const userHash = AuthorHash.fromIdentity('user-1', 'salt').toString();
+const userHash = testHash('user-1').toString();
 
 interface InteractionFake {
   repo: IInteractionRepository;
@@ -53,7 +49,7 @@ function vote(type: InteractionType) {
 }
 
 function existingVote(type: InteractionType): Interaction {
-  return new Interaction('ix-1', WS, AuthorHash.fromIdentity('user-1', 'salt'), 'node-1', 'NODE', type, 1);
+  return new Interaction('ix-1', WS, testHash('user-1'), 'node-1', 'NODE', type, 1);
 }
 
 describe('CastVoteUseCase', () => {

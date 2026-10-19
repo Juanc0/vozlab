@@ -270,7 +270,13 @@ export class DrizzleNodeRepository implements INodeRepository {
     const [existing] = await db
       .select()
       .from(nodes)
-      .where(and(eq(nodes.id, targetId), eq(nodes.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(nodes.id, targetId),
+          eq(nodes.workspaceId, workspaceId),
+          isNull(nodes.deletedAt)
+        )
+      )
       .limit(1);
 
     if (!existing) {

@@ -14,6 +14,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "type-check": "tsc --noEmit -p tsconfig.scripts.json",
     "db:generate": "pnpm db:generate:router && pnpm db:generate:tenant",
     "db:generate:router": "drizzle-kit generate --config=drizzle.router.config.ts",
     "db:generate:tenant": "drizzle-kit generate --config=drizzle.tenant.config.ts",

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { CreateThreadInput as CreateThreadDto } from '@vozlab/shared-types';
 import { DiscussionThread } from '../../domain/entities/DiscussionThread.js';
-import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
+import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 
@@ -28,7 +28,7 @@ export class CreateThreadUseCase {
       input.targetId,
       input.targetType,
       input.title,
-      resolveAuthorHash(input.authorHash, input.authorHash)
+      AuthorHash.fromString(input.authorHash)
     );
 
     await this.discussionRepo.saveThread(thread, input.tid);

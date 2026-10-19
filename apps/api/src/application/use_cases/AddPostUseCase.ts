@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CreatePostInput as CreatePostDto } from '@vozlab/shared-types';
 import { DiscussionPost } from '../../domain/entities/DiscussionPost.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
-import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
+import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 
@@ -39,7 +39,7 @@ export class AddPostUseCase {
       randomUUID(),
       input.threadId,
       input.parentPostId ?? null,
-      resolveAuthorHash(input.authorHash, input.authorHash),
+      AuthorHash.fromString(input.authorHash),
       input.body
     );
 

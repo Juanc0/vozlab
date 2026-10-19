@@ -1,12 +1,14 @@
-import { createHash } from 'node:crypto';
-
 /**
  * Value Object: AuthorHash
  *
- * Implements pseudonymity (RF-07, RNF-07).
- * Wraps a SHA-256 hash derived from the user's institutional identity
- * or anonymous device token + salt. Ensures personal data is never
- * directly visible in the knowledge graph.
+ * Implements pseudonymity (RF-07, RNF-07). Wraps the opaque 64-hex
+ * pseudonym assigned to a user at account creation and stored on
+ * `auth.users.author_hash`; the token carries it verbatim (the API never
+ * derives it from the identity, and no salt exists). Personal data is
+ * therefore never directly visible in the knowledge graph.
+ *
+ * Fixtures (dev seed / tests) mint these values deterministically; the
+ * production auth flow will generate a random one per user.
  */
 export class AuthorHash {
   private readonly value: string;
@@ -23,33 +25,6 @@ export class AuthorHash {
    */
   public static fromString(hash: string): AuthorHash {
     return new AuthorHash(hash);
-  }
-
-  /**
-   * Derive an AuthorHash from a user identifier and an institutional salt.
-   */
-  public static fromIdentity(userId: string, salt: string): AuthorHash {
-    if (!userId || !salt) {
-      throw new Error('userId and salt are required to derive an AuthorHash');
-    }
-    const hash = createHash('sha256')
-      .update(`${userId}:${salt}`)
-      .digest('hex');
-    return new AuthorHash(hash);
-  }
-
-  /**
-   * Build an AuthorHash from a raw value that may be either an already
-   * hashed identity or a plain identifier (e.g. an OIDC subject).
-   * Falls back to deterministic derivation with the given salt.
-   *
-   * Centralizes the "valid hash or derive" rule so use cases don't
-   * duplicate it (pseudonymity: RF-07, RNF-07).
-   */
-  public static fromRawOrIdentity(value: string, salt: string): AuthorHash {
-    return AuthorHash.isValid(value)
-      ? AuthorHash.fromString(value)
-      : AuthorHash.fromIdentity(value, salt);
   }
 
   /**

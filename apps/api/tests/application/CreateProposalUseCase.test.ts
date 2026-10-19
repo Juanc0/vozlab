@@ -1,11 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-
-// Mock env.ts before importing any module that imports it
-vi.mock('../../src/shared/config/env.js', () => ({
-  env: {
-    AUTHOR_HASH_SALT: 'test-author-hash-salt-12345',
-  },
-}));
+import { testHash } from '../support/hash.js';
+import { describe, expect, it } from 'vitest';
 
 import { CreateProposalUseCase } from '../../src/application/use_cases/CreateProposalUseCase.js';
 import { EditProposal } from '../../src/domain/entities/EditProposal.js';
@@ -21,11 +15,17 @@ function makeProposalRepo(): {
 } {
   const saved: EditProposal[] = [];
   const repo: IProposalRepository = {
+    async findById() {
+      return null;
+    },
     async findByIdInWorkspace() {
       return null;
     },
     async listByWorkspace() {
       return { items: [], nextCursor: null };
+    },
+    async findPendingByTarget() {
+      return [];
     },
     async save(proposal) {
       saved.push(proposal);
@@ -63,6 +63,12 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
       const cls = classes.get(`${workspaceId}:${id}`);
       return cls ?? null;
     },
+    async findDatatypeProperties() {
+      return [];
+    },
+    async findObjectProperty() {
+      return null;
+    },
     async saveClass() {},
     async applyClassDelta() {},
     async activateClass() {},
@@ -97,7 +103,7 @@ describe('CreateProposalUseCase', () => {
       proposedChanges: { title: 'Updated' },
       workspaceId: 'ws-1',
       tid: 'tenant-1',
-      proposerHash: 'proposer-1',
+      proposerHash: testHash('proposer-1').toString(),
     });
 
     expect(saved).toHaveLength(1);
@@ -121,7 +127,7 @@ describe('CreateProposalUseCase', () => {
         proposedChanges: {},
         workspaceId: 'ws-1',
         tid: 'tenant-1',
-        proposerHash: 'proposer-1',
+        proposerHash: testHash('proposer-1').toString(),
       })
     ).rejects.toMatchObject({ code: 'ERR_NODE_NOT_FOUND' });
 
@@ -146,7 +152,7 @@ describe('CreateProposalUseCase', () => {
         proposedChanges: {},
         workspaceId: 'ws-1',
         tid: 'tenant-1',
-        proposerHash: 'proposer-1',
+        proposerHash: testHash('proposer-1').toString(),
       })
     ).rejects.toMatchObject({ code: 'ERR_NODE_NOT_FOUND' });
 
@@ -169,7 +175,7 @@ describe('CreateProposalUseCase', () => {
         proposedChanges: {},
         workspaceId: 'ws-1',
         tid: 'tenant-1',
-        proposerHash: 'proposer-1',
+        proposerHash: testHash('proposer-1').toString(),
       })
     ).rejects.toMatchObject({ code: 'ERR_EDGE_NOT_FOUND' });
 
@@ -191,7 +197,7 @@ describe('CreateProposalUseCase', () => {
         proposedChanges: {},
         workspaceId: 'ws-1',
         tid: 'tenant-1',
-        proposerHash: 'proposer-1',
+        proposerHash: testHash('proposer-1').toString(),
       })
     ).rejects.toMatchObject({
       code: 'ERR_VALIDATION_FAILED',

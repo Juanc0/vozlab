@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EditProposal, TargetType } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
-import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
+import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
@@ -40,7 +40,7 @@ export class CreateProposalUseCase {
       input.targetId,
       input.targetType,
       input.proposedChanges,
-      resolveAuthorHash(input.proposerHash, input.proposerHash),
+      AuthorHash.fromString(input.proposerHash),
       'PENDING',
       input.justification ?? null
     );

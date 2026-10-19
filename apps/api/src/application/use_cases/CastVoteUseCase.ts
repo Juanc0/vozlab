@@ -6,7 +6,7 @@ import {
 } from '../../domain/entities/Interaction.js';
 import { VoteValue } from '../../domain/value_objects/VoteValue.js';
 import { DomainError, DomainErrorCode } from '../../domain/errors/DomainError.js';
-import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
+import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
@@ -66,7 +66,7 @@ export class CastVoteUseCase {
     const interaction = new Interaction(
       randomUUID(),
       input.workspaceId,
-      resolveAuthorHash(input.userHash, input.userHash),
+      AuthorHash.fromString(input.userHash),
       input.targetId,
       input.targetType,
       input.interactionType,

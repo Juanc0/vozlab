@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { env } from '../../../shared/config/env.js';
 import { AgentTypeSchema, buildError, type AgentType } from '@vozlab/shared-types';
-import { resolveAuthorHash } from '../../../application/services/resolveAuthorHash.js';
+import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import { RedisTokenBlacklist } from '../../events/RedisTokenBlacklist.js';
 
 /**
@@ -77,20 +77,20 @@ export function authGuard(blacklist: RedisTokenBlacklist) {
       return reply.status(e.status).send({ code: e.code, message: e.message });
     }
 
-    // A subject is mandatory: without it identity cannot be resolved
-    // deterministically, so we refuse the token instead of collapsing every
-    // caller onto a shared placeholder (NFR-07).
-    if (!payload.sub) {
+    // `sub` identifies the caller and `authorHash` is the opaque pseudonym
+    // assigned at account creation (auth flow / dev minting) and stored on
+    // `auth.users.author_hash`. The API never derives it from the identity
+    // and no salt exists, so a token missing either claim is invalid
+    // (RF-07, NFR-07).
+    if (!payload.sub || !payload.authorHash || !AuthorHash.isValid(payload.authorHash)) {
       const e = buildError('ERR_INVALID_TOKEN');
       return reply.status(e.status).send({ code: e.code, message: e.message });
     }
 
     // Attach identity to the request for downstream guards/use cases.
-    // The author hash is derived from the configured institutional salt when
-    // the token does not already carry one (RF-07, NFR-07).
     req.user = {
       userId: payload.sub,
-      authorHash: resolveAuthorHash(payload.authorHash, payload.sub).toString(),
+      authorHash: AuthorHash.fromString(payload.authorHash).toString(),
     };
     req.oidcTenantId = payload.tid;
     req.jti = payload.jti;
@@ -100,9 +100,8 @@ export function authGuard(blacklist: RedisTokenBlacklist) {
     //     skipped downstream (TenantWorkspaceGuard).
     //   - Any other `type` is rejected outright with 401 ERR_INVALID_TOKEN: an
     //     unknown bot is never silently downgraded to a human caller.
-    // Agents must resolve a deterministic `authorHash`. The resolver above
-    // preserves a valid claim verbatim and otherwise derives it from `sub`
-    // (which is mandatory), so an agent always gets a stable per-agent hash.
+    // Agents carry the `authorHash` minted for their SYSTEM_AGENT user, so an
+    // agent always gets a stable per-agent pseudonym.
     if (payload.type !== undefined) {
       if (!isAgentType(payload.type)) {
         const e = buildError('ERR_INVALID_TOKEN');

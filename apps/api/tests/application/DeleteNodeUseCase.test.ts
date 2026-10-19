@@ -1,3 +1,4 @@
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { DeleteNodeUseCase } from '../../src/application/use_cases/DeleteNodeUseCase.js';
 import { Node } from '../../src/domain/entities/Node.js';
@@ -6,7 +7,7 @@ import { makeEventPublisher, makeNodeRepository } from '../support/fakes.js';
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
+const authorHash = testHash('author-1');
 
 function node(id: string, workspaceId: string, author: AuthorHash): Node {
   return new Node(id, workspaceId, 'Problem', 'A title', null, {}, author, 'ACTIVE');
@@ -45,7 +46,7 @@ describe('DeleteNodeUseCase', () => {
   });
 
   it('rejects a non-author with ERR_AUTHORIZATION_FAILED and does not delete', async () => {
-    const other = AuthorHash.fromIdentity('someone-else', 'salt');
+    const other = testHash('someone-else');
     const { useCase, softDeleted } = makeUseCase([node('node-1', WS, other)]);
 
     await expect(useCase.execute(input)).rejects.toMatchObject({ code: 'ERR_AUTHORIZATION_FAILED' });

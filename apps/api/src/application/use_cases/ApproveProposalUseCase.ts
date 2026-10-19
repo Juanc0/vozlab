@@ -1,4 +1,4 @@
-import { resolveAuthorHash } from '../services/resolveAuthorHash.js';
+import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
 import { EditProposal } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
@@ -113,7 +113,7 @@ export class ApproveProposalUseCase {
       throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
     }
 
-    const resolver = resolveAuthorHash(input.resolverHash, input.resolverUserId);
+    const resolver = AuthorHash.fromString(input.resolverHash);
 
     // Maintainer-only (FR-12): resolve the target author and compare.
     const targetAuthorHash = await resolveTargetAuthorHash(

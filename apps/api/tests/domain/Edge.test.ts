@@ -1,9 +1,9 @@
+import { DomainError } from '../../src/domain/errors/DomainError.js';
+import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { Edge } from '../../src/domain/entities/Edge.js';
-import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
-import { DomainError } from '../../src/domain/errors/DomainError.js';
 
-const authorHash = AuthorHash.fromIdentity('author-1', 'salt');
+const authorHash = testHash('author-1');
 
 function makeEdge(status: Edge['status'] = 'PENDING'): Edge {
   return new Edge(

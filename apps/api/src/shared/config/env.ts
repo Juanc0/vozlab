@@ -5,15 +5,6 @@ import { z } from 'zod';
  * Fails fast at startup if any required variable is missing.
  */
 
-/**
- * Known placeholder shipped in `.env.example`. It must never reach
- * production, where it would make every tenant's pseudonyms guessable.
- */
-const PLACEHOLDER_AUTHOR_HASH_SALT = 'dev-institutional-salt-change-me';
-
-/** Minimum salt length required in production (>= 16 elsewhere). */
-const PRODUCTION_AUTHOR_HASH_SALT_MIN_LENGTH = 32;
-
 const EnvSchema = z
   .object({
     // --- Server ---
@@ -42,12 +33,6 @@ const EnvSchema = z
     JWT_EXPIRES_IN: z.string().default('8h'),
     JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
-    // Institutional salt for pseudonymous author hashes (RF-07, NFR-07).
-    // Rotating it re-keys every derived pseudonym.
-    AUTHOR_HASH_SALT: z
-      .string()
-      .min(16, 'AUTHOR_HASH_SALT must be at least 16 chars'),
-
     // --- OIDC (delegated identity) ---
     OIDC_CLIENT_ID: z.string().min(1, 'OIDC_CLIENT_ID is required'),
     OIDC_CLIENT_SECRET: z.string().min(1, 'OIDC_CLIENT_SECRET is required'),
@@ -74,27 +59,6 @@ const EnvSchema = z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
       .default('info'),
     LOG_PRETTY: z.coerce.boolean().default(false),
-  })
-  .superRefine((data, ctx) => {
-    // Production guard: the example placeholder or a short salt would make
-    // every derived pseudonym guessable. Fail exactly like any other env error.
-    if (data.NODE_ENV !== 'production') return;
-    if (data.AUTHOR_HASH_SALT === PLACEHOLDER_AUTHOR_HASH_SALT) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['AUTHOR_HASH_SALT'],
-        message:
-          'AUTHOR_HASH_SALT must not be the example placeholder in production',
-      });
-    } else if (
-      data.AUTHOR_HASH_SALT.length < PRODUCTION_AUTHOR_HASH_SALT_MIN_LENGTH
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['AUTHOR_HASH_SALT'],
-        message: `AUTHOR_HASH_SALT must be at least ${PRODUCTION_AUTHOR_HASH_SALT_MIN_LENGTH} chars in production`,
-      });
-    }
   });
 
 export type Env = z.infer<typeof EnvSchema>;
