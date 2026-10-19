@@ -177,7 +177,8 @@
 ### 1T.4 — Ingestion Contract (Phase 2 prep)
 - [x] TASK-41 — Data-source → workspace mapping: decision + shared-types contract
       → Result: added ingestion schema (`RawSourceRecord`, `ConnectorType`, `BehaviorProfile`) to `@vozlab/shared-types`, documented API-owned source registry decision in `modules_05`, and scheduled `meta.data_sources` table + resolution route for Phase 2 in `EXECUTION_PLAN.md`. pnpm turbo run build = 3/3 ✓
-- [ ] TASK-42 — Fix the Extractor spec drift (`modules_05`)
+- [x] TASK-42 — Fix the Extractor spec drift (`modules_05`)
+      → Result: rewrote the sample to the TASK-41 contract (`RawSourceRecord` = `source_id`/`connector_type`/`channel_name`/`raw_content`, no `workspace_id`; `type_key` default `"Problem"` with an alias to `typeKey` and a FR-06 note); `_send_to_fastify` now uses the agent JWT (`Bearer` bot JWT, `X-Workspace-ID`, `x-correlation-id`) per `modules_02` §3.2 instead of `api_key`; §1 Redis cache/dedup marked **Phase-2 planned**; §4 Write Isolation references the agent identity + `BatchCreateNodeSchema` (1..1000, no such endpoint today). `pnpm turbo run build` = 3/3 ✓
 
 ### 1T.5 — Type Safety & Quality
 - [ ] TASK-43 — Type the transaction handle (`tx?: any` → `DbTransaction`)
