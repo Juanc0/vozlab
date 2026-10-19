@@ -1,12 +1,14 @@
 import { Edge } from '../entities/Edge.js';
 
+// Naming follows `modules_02 §6.8`.
 /**
  * Port: Edge persistence contract. Scoped by `tid` (physical tenant DB).
  */
 export interface IEdgeRepository {
   findById(id: string, tid: string): Promise<Edge | null>;
   findByIdInWorkspace(id: string, workspaceId: string, tid: string): Promise<Edge | null>;
-  findByWorkspace(workspaceId: string, tid: string): Promise<Edge[]>;
+  /** List (unpaginated) non-deleted edges of a workspace. */
+  listAllByWorkspace(workspaceId: string, tid: string): Promise<Edge[]>;
   /**
    * List non-deleted edges of a workspace using keyset (cursor) pagination
    * ordered by `createdAt DESC, id DESC` (NFR-04, O(1) — never OFFSET).

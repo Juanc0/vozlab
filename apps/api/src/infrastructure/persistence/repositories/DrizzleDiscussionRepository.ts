@@ -99,7 +99,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
     });
   }
 
-  async updateThreadStatus(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
+  async update(thread: DiscussionThread, tid: string, tx?: any): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .update(discussionThreads)
@@ -161,7 +161,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
       createdAt: post.createdAt,
       // `deleted_at` is never supplied by the domain (TASK-38): a fresh post
       // is always active, so the column is left to its NULL default. The
-      // adapter's `softDeletePost` is the single writer.
+      // adapter's `softDelete` is the single writer.
     });
   }
 
@@ -183,7 +183,7 @@ export class DrizzleDiscussionRepository implements IDiscussionRepository {
    * Soft-delete a post by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt` (the use case never stamps it).
    */
-  async softDeletePost(id: string, tid: string, tx?: any): Promise<void> {
+  async softDelete(id: string, tid: string, tx?: any): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .update(discussionPosts)

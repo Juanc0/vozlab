@@ -28,7 +28,7 @@ export class ListProposalsUseCase {
   constructor(private readonly proposalRepo: IProposalRepository) {}
 
   async execute(input: ListProposalsInput): Promise<ListProposalsResult> {
-    return this.proposalRepo.findByWorkspace(
+    return this.proposalRepo.listByWorkspace(
       input.workspaceId,
       {
         status: input.status,

@@ -29,7 +29,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
   const edgeRepo: IEdgeRepository = {
     findById: vi.fn(),
     findByIdInWorkspace: vi.fn(),
-    findByWorkspace: vi.fn(),
+    listAllByWorkspace: vi.fn(),
     listByWorkspace: vi.fn(),
     save: vi.fn(),
     update: vi.fn(),

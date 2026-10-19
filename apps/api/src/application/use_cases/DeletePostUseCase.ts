@@ -64,7 +64,7 @@ export class DeletePostUseCase {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 
-    await this.discussionRepo.softDeletePost(post.id, input.tid);
+    await this.discussionRepo.softDelete(post.id, input.tid);
 
     await this.eventPublisher.publish('POST_DELETED', {
       reqId: input.reqId ?? '',

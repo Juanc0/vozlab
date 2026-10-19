@@ -1,6 +1,7 @@
 import { DiscussionThread } from '../entities/DiscussionThread.js';
 import { DiscussionPost } from '../entities/DiscussionPost.js';
 
+// Naming follows `modules_02 §6.8`.
 /**
  * Port: discussion threads + threaded comments persistence (RF-11, RF-16).
  * Scoped by `tid` (physical tenant DB).
@@ -21,7 +22,7 @@ export interface IDiscussionRepository {
   ): Promise<{ items: DiscussionThread[]; nextCursor: string | null }>;
   saveThread(thread: DiscussionThread, tid: string, tx?: any): Promise<void>;
   /** Persist a thread's mutated state (status/updatedAt) after a transition. */
-  updateThreadStatus(thread: DiscussionThread, tid: string, tx?: any): Promise<void>;
+  update(thread: DiscussionThread, tid: string, tx?: any): Promise<void>;
   /**
    * List a thread's posts using keyset (cursor) pagination ordered by
    * `createdAt ASC, id ASC` — chronological, for a stable conversation read
@@ -39,5 +40,5 @@ export interface IDiscussionRepository {
    * Soft-delete a post by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt`.
    */
-  softDeletePost(id: string, tid: string, tx?: any): Promise<void>;
+  softDelete(id: string, tid: string, tx?: any): Promise<void>;
 }

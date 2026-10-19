@@ -42,7 +42,7 @@ export class CloseThreadUseCase {
     }
 
     thread.close();
-    await this.discussionRepo.updateThreadStatus(thread, input.tid);
+    await this.discussionRepo.update(thread, input.tid);
 
     await this.eventPublisher.publish('THREAD_CLOSED', {
       reqId: input.reqId ?? '',

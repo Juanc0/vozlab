@@ -24,7 +24,7 @@ function makeProposalRepo(): {
     async findByIdInWorkspace() {
       return null;
     },
-    async findByWorkspace() {
+    async listByWorkspace() {
       return { items: [], nextCursor: null };
     },
     async save(proposal) {

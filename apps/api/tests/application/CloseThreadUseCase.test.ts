@@ -37,7 +37,7 @@ function makeDiscussionRepo(thread: DiscussionThread | null): {
       return { items: [], nextCursor: null };
     },
     async saveThread() {},
-    async updateThreadStatus(t) {
+    async update(t) {
       updated.push(t);
     },
     async listPosts() {
@@ -47,7 +47,7 @@ function makeDiscussionRepo(thread: DiscussionThread | null): {
       return null;
     },
     async savePost() {},
-    async softDeletePost() {},
+    async softDelete() {},
   };
   return { repo, updated };
 }

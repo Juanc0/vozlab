@@ -374,6 +374,57 @@ grep -rn "updatedAt: new Date()" apps/api/src   # → no matches
 grep -rn "softDelete()" apps/api/src/domain     # → no matches
 ```
 
+### 6.8. Port vocabulary (TASK-39)
+
+Repository ports (`domain/ports/*.ts`) use one shared set of method-name
+prefixes so a new adapter never invents its own wording. The grammar is:
+
+| Verb | Meaning | Return shape |
+| --- | --- | --- |
+| `find…` | Load **one** object; absent → `null`. | `T \| null` |
+| `list…` | Load a **collection** (paginated or not). | `T[]` or `{ items, nextCursor }` |
+| `save` | Insert a **new** entity. | `void` |
+| `update` | Persist a **mutated** entity (or its changed fields). | `void` |
+| `softDelete` | Stamp `deleted_at` on the port's aggregate. | `void` |
+| `apply…Delta` | Merge an approved proposal's delta into an aggregate. | `void` |
+
+Disambiguation suffixes, appended only when the scope is **not** the
+signature's first argument:
+
+- `…ById` — addressed by primary key (`findById`, `findPostById`,
+  `findThreadById`, `findClassById`).
+- `…ByKey` — addressed by a natural/business key (`findClassByKey`).
+- `…InWorkspace` — **security scope**: the object must belong to the request
+  workspace or it reads as missing (`findByIdInWorkspace`). Applied *before*
+  authorization checks.
+- `…ByWorkspace` — a **plain filter** over the caller's own workspace
+  (`listByWorkspace`), not a security boundary.
+
+Two invariants:
+
+1. **One soft-delete verb per port.** The port implies the aggregate, so the
+   member is always `softDelete` — never `softDeletePost`, `softDeleteThread`, ….
+2. A name is only `find…` when it returns a single nullable object; a boolean
+   predicate stays `existsInWorkspace` (`find…` would be misleading).
+
+TASK-39 applied the convention as a bounded, behaviour-preserving rename:
+
+| Port | Before | After |
+| --- | --- | --- |
+| `IDiscussionRepository` | `softDeletePost` | `softDelete` |
+| `IDiscussionRepository` | `updateThreadStatus` | `update` |
+| `IProposalRepository` | `findByWorkspace` (paginated list) | `listByWorkspace` |
+| `IEdgeRepository` | `findByWorkspace` (unpaginated list) | `listAllByWorkspace` |
+
+`applyDelta` / `applyClassDelta` / `applyScoreDelta` already conformed and were
+left unchanged; `softDelete` on node/edge was already canonical.
+
+Verified with:
+
+```bash
+grep -rn "softDeletePost\|updateThreadStatus\|findByWorkspace" apps/api/src   # → renamed
+```
+
 ---
 
 ## 7. Implementation Status — MILESTONE-1.5 (Governance) ✅

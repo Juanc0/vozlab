@@ -64,7 +64,7 @@ export class DrizzleProposalRepository implements IProposalRepository {
    * the shared opaque base64 token; a malformed token is a client error
    * (`ERR_VALIDATION_FAILED`) rather than a silent first page.
    */
-  async findByWorkspace(
+  async listByWorkspace(
     workspaceId: string,
     opts: {
       status?: ProposalStatus;

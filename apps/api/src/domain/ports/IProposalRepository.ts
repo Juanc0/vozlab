@@ -1,5 +1,6 @@
 import { EditProposal, ProposalStatus, TargetType } from '../entities/EditProposal.js';
 
+// Naming follows `modules_02 §6.8`.
 /**
  * Port: EditProposal repository interface.
  *
@@ -22,7 +23,7 @@ export interface IProposalRepository {
    * List a workspace's proposals using keyset (cursor) pagination ordered by
    * `createdAt DESC, id DESC`, optionally filtered by `status`/`targetType`.
    */
-  findByWorkspace(
+  listByWorkspace(
     workspaceId: string,
     opts: {
       status?: ProposalStatus;
