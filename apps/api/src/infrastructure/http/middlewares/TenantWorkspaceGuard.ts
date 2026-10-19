@@ -3,17 +3,17 @@ import { buildError } from '@vozlab/shared-types';
 import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
 import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
+import { tenantGuard } from './TenantGuard.js';
 
 /**
  * TenantWorkspaceGuard: Zero-Trust isolation middleware.
  *
  * Responsibilities:
  *   1. Enforce the presence of the `X-Workspace-ID` header (UUID v4).
- *   2. Resolve the tenant `tid` from the OIDC claim / header.
- *   3. Verify the tenant is provisioned in the global router DB.
- *   4. Verify the authenticated user is a member of the header workspace
+ *   2. Resolve the tenant from the verified `tid` claim (via `tenantGuard`).
+ *   3. Verify the authenticated user is a member of the header workspace
  *      (FR-05), in the tenant's physical database.
- *   5. Attach `tid` and `workspaceId` to the request object for downstream use.
+ *   4. Attach `workspaceId` to the request object for downstream use.
  *
  * This guard runs BEFORE any tenant-scoped persistence code, guaranteeing
  * physical multi-tenant isolation (each tenant has its own database).
@@ -44,31 +44,15 @@ export async function tenantWorkspaceGuard(
     });
   }
 
-  // The tenant id is derived from the OIDC claim `tid` (set by the IdP / AuthGuard).
-  const oidcTenantId = req.oidcTenantId;
-  if (!oidcTenantId) {
-    const err = buildError('ERR_UNAUTHORIZED_WORKSPACE_ACCESS');
-    return reply.status(err.status).send({
-      code: err.code,
-      message: err.message,
-    });
-  }
+  // Resolve the tenant from the verified JWT `tid` claim.
+  const tenantResolved = await tenantGuard(req, reply, {
+    routerDb: deps.routerDb,
+  });
+  if (!tenantResolved) return;
 
-  // Verify the tenant is provisioned in the global router DB.
-  let tenant: { id: string; slug: string } | null;
-  try {
-    tenant = await deps.routerDb.findTenantByOidcId(oidcTenantId);
-  } catch (e) {
-    const err = buildError(
-      e instanceof InfrastructureError ? e.code : 'ERR_INTERNAL_SERVER_ERROR'
-    );
-    return reply.status(err.status).send({
-      code: err.code,
-      message: err.message,
-    });
-  }
-  if (!tenant) {
-    const err = buildError('ERR_TENANT_NOT_PROVISIONED');
+  const tid = req.tid;
+  if (!tid) {
+    const err = buildError('ERR_INTERNAL_SERVER_ERROR');
     return reply.status(err.status).send({
       code: err.code,
       message: err.message,
@@ -98,7 +82,7 @@ export async function tenantWorkspaceGuard(
       isMember = await deps.membershipRepo.isMember(
         req.user.userId,
         workspaceId,
-        tenant.id
+        tid
       );
     } catch (e) {
       const err = buildError(
@@ -118,8 +102,7 @@ export async function tenantWorkspaceGuard(
     }
   }
 
-  // Attach resolved identifiers to the request for downstream layers.
-  req.tid = tenant.id;
+  // Attach the resolved workspace to the request for downstream layers.
+  // (`tid` and `tenantSlug` were attached by tenantGuard.)
   req.workspaceId = workspaceId;
-  req.tenantSlug = tenant.slug;
 }

@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S and 1T are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 15 files / 60 tests; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Workers (Phase 2), the PWA (Phase 3) and the operational hardening in Phase 4 are not started. `pnpm test` = 24 files / 114 tests; `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
 
 ## Live documents
 
@@ -15,7 +15,7 @@ Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S and 1T are complete; the AP
 | [architecture.md](architecture.md) | Context/container view, request path, two-DB topology, runtime facts |
 | [requirements.md](requirements.md) | Normative FR-01…FR-20 and NFR-01…NFR-11 text and acceptance criteria |
 | [domain-model.md](domain-model.md) | Entities, schemas, state machines, soft-delete and vote rules |
-| [auth-and-tenancy.md](auth-and-tenancy.md) | Bearer JWT contract, guard chain, workspace isolation, pseudonymity |
+| [auth-and-tenancy.md](auth-and-tenancy.md) | OIDC flow, access/refresh sessions, guards, workspace isolation, pseudonymity |
 | [conventions.md](conventions.md) | Layering, NodeNext imports, naming, errors, events, pagination |
 | [api-reference.md](api-reference.md) | Endpoint catalogue, headers, payloads, status codes |
 | [errors.md](errors.md) | Canonical `ERR_*` catalogue and HTTP mapping |
@@ -37,9 +37,9 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 
 | ID | Status | Code evidence | Doc | Notes |
 | --- | --- | --- | --- | --- |
-| FR-01 | Deferred | — | [auth](auth-and-tenancy.md) | No `/auth/login` or `/auth/callback`; `OIDC_*` is validated but unused. Dev tokens are minted by script. |
-| FR-02 | Partial | `TenantWorkspaceGuard.ts`, `RouterDatabaseClient.ts` | [auth](auth-and-tenancy.md) | `tid` → router tenant → tenant DB works; IdP code/ID-token exchange and `iss` fallback do not exist. |
-| FR-03 | Deferred | — | [auth](auth-and-tenancy.md) | No `event_codes` table or event-join endpoint. `ERR_EVENT_EXPIRED/FULL` are reserved only. |
+| FR-01 | Implemented | `AuthController.ts`, `OidcProviderClient.ts`, `CompleteOidcLoginUseCase.ts` | [auth](auth-and-tenancy.md) | Authorization code + PKCE, JWKS/issuer/audience/nonce validation, JIT user, 15 min access token + rotating refresh cookie. Requires a configured IdP; `db:mint-token` remains a local tool. |
+| FR-02 | Implemented | `OidcProviderClient.ts`, `TenantGuard.ts`, `RouterDatabaseClient.ts` | [auth](auth-and-tenancy.md) | Validated `tid` (Entra) or `hd` (Google) → router tenant → tenant DB, on login and every resource request. `iss`-only resolution remains unbuilt. |
+| FR-03 | Implemented | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts`, `router.event_codes` | [auth](auth-and-tenancy.md) | Global event code (SHA-256 stored), atomic expiry/capacity/revocation, anonymous user + membership + session. The PWA QR scanner is Phase 3. |
 | FR-04 | Deferred | `apps/web/` (empty) | [requirements](requirements.md) | PWA, clean URLs and per-tab `sessionStorage` are not built. |
 | FR-05 | Implemented | `TenantWorkspaceGuard.ts`, `DrizzleMembershipRepository.ts` | [auth](auth-and-tenancy.md) | `X-Workspace-ID` + membership check on every protected request; only agents skip membership. |
 | FR-06 | Implemented | `CreateNodeUseCase.ts`, `tenant.meta.schema.ts` | [domain](domain-model.md) | `typeKey` must be an ACTIVE class; attributes are persisted as JSONB. The dynamic PWA form and attribute validation are part of FR-04. |
@@ -66,7 +66,7 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 | NFR-02 | Partial | `nodes.embedding vector(768)`, HNSW index | [domain](domain-model.md) | Schema/index exist; without an embedding writer or search endpoint the target is unexercised. |
 | NFR-03 | Unverified | synchronous use cases | [testing](testing.md) | No load test; `p95 < 15 ms` has not been proven. |
 | NFR-04 | Implemented | `keyset.ts`, list repositories | [architecture](architecture.md) | Opaque keyset pagination on nodes, edges, proposals, threads and posts. |
-| NFR-05 | Implemented | `auth.users` schema, no password column | [auth](auth-and-tenancy.md) | No local passwords or hashes. OIDC is planned; the API currently only verifies bearer tokens. |
+| NFR-05 | Implemented | `auth.users` schema, OIDC flow, no password column | [auth](auth-and-tenancy.md) | No local passwords or hashes. Institutional users authenticate at the IdP; the API validates the ID token and issues its own bearer session. |
 | NFR-06 | Deferred | `apps/worker-extractor` (empty) | [architecture](architecture.md) | PII masking at ingestion is not implemented. |
 | NFR-07 | Implemented | `AuthorHash.ts`, `auth.users.author_hash` | [auth](auth-and-tenancy.md) | Opaque 64-hex pseudonym per user, carried verbatim; no salt. Requirement wording about “SHA-256 + salt” is superseded. |
 | NFR-08 | Implemented | `RateLimitingMiddleware.ts` | [auth](auth-and-tenancy.md) | Per-actor and per-workspace fixed windows in Redis; fail-open on Redis errors. |
@@ -93,7 +93,7 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 
 ## Known gaps and debt
 
-- **Auth is an integration seam, not a product flow.** FR-01/02/03 endpoints, `event_codes`, refresh and logout are deferred. See [auth-and-tenancy.md](auth-and-tenancy.md).
+- **Auth works but needs an IdP.** FR-01/02/03 endpoints, refresh and logout exist and are unit-tested; no IdP runs in Compose, so local development still uses `db:mint-token`. The PWA login/QR UI is Phase 3. Event codes live in the router DB by explicit exception ([ADR-0019](decisions/ADR-0019-global-event-codes.md)).
 - **Lint is red.** 26 pre-existing `@typescript-eslint/no-explicit-any` errors; CI does not run lint. Do not claim `pnpm lint` passes.
 - **M-12:** `public.edit_proposals.target_id` is polymorphic and has no foreign key. The target is validated at creation and before resolution; this is the accepted interim decision.
 - **No async pipeline.** `NODE_CREATED` is published but no worker consumes it; no embedding is computed.

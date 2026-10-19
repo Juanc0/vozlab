@@ -12,7 +12,61 @@ response projections are defined by the controllers. Errors are catalogued in
 
 ## 1. Authentication and common headers
 
-Every route except health requires:
+### Public auth routes
+
+These routes do not take `Authorization` or `X-Workspace-ID`. Login, callback,
+refresh and event join share a per-IP rate limit; logout is Bearer-protected.
+
+| Method | Path | Input | Success |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/auth/login` | `redirect?` same-origin path (default `/`) | `302` to the IdP |
+| `GET` | `/api/v1/auth/callback` | `code`, `state` (query) | `302` to `WEB_ORIGIN + redirect` and `Set-Cookie: vozlab_refresh` |
+| `POST` | `/api/v1/auth/refresh` | refresh cookie; no body | `200 AuthSessionDto` and a rotated cookie |
+| `POST` | `/api/v1/auth/event-join` | `{ code: string(16–128), alias?: string(1–100) }` | `200 AuthSessionDto` and a refresh cookie |
+| `POST` | `/api/v1/auth/logout` | Bearer; refresh cookie optional | `204`, cookie cleared |
+| `GET` | `/api/v1/auth/me` | Bearer; **no** workspace header | `200 AuthMeDto` |
+
+`AuthSessionDto`:
+
+```json
+{
+  "accessToken": "eyJ...",
+  "expiresAt": "2026-10-19T12:15:00.000Z",
+  "user": {
+    "id": "uuid",
+    "email": "ada@example.edu",
+    "fullName": "Ada Lovelace",
+    "anonymousAlias": null,
+    "provider": "OIDC_INSTITUTIONAL",
+    "systemRole": "USER",
+    "authorHash": "64-hex"
+  }
+}
+```
+
+`AuthMeDto` is the same `user` object plus
+`workspaces: [{ id, slug, name, role }]`. The list may be empty for a valid
+institutional login that has no membership yet.
+
+- The access token is a 15-minute HS256 JWT returned in JSON; the future PWA
+  keeps it in memory. The refresh cookie is `HttpOnly`, `SameSite=Lax`, scoped
+  to `/api/v1/auth`, and rotated on every refresh. Send
+  `credentials: 'include'` to auth routes.
+- `/auth/callback` failures redirect to
+  `${WEB_ORIGIN}/auth/callback?error=<CODE>`; it never returns a token in the
+  URL. Invalid `state` → `ERR_INVALID_OIDC_STATE`; IdP/ID-token failure →
+  `ERR_OIDC_EXCHANGE_FAILED`; unverified email → `ERR_EMAIL_NOT_VERIFIED`.
+- Event join returns `ERR_EVENT_EXPIRED` for unknown/revoked/expired codes and
+  `ERR_EVENT_FULL` at capacity. The QR contains only the code; see the
+  [runbook](runbook-dev.md) for `db:event-code`.
+- Refresh reuse revokes the whole family and returns
+  `401 ERR_REFRESH_TOKEN_INVALID`. Agents never receive a refresh session.
+- The full contract is in [auth-and-tenancy.md](auth-and-tenancy.md).
+
+### Protected resource headers
+
+Every resource route (nodes, edges, proposals, ontology, discussions,
+interactions) requires:
 
 | Header | Value |
 | --- | --- |
@@ -28,8 +82,8 @@ send `type` (`AGENT_EXTRACTOR`, `AGENT_RELACIONADOR`, `AGENT_CONSOLIDADOR`);
 agent requests skip workspace membership but still need a valid
 `X-Workspace-ID` and a provisioned `tid`.
 
-There are **no `/auth/*` endpoints yet** (no login, callback, refresh, logout
-or event join). Mint a local token:
+Local development without an IdP still uses the seeded identities and a
+minted token:
 
 ```bash
 pnpm --filter @vozlab/database db:seed:dev
@@ -38,7 +92,9 @@ TOKEN=$(pnpm --filter @vozlab/database db:mint-token -- --as maintainer \
 WS=33333333-3333-4333-8333-333333333333
 ```
 
-`db:seed:dev` assumes migrations have run. The token lasts 12 hours.
+`db:seed:dev` assumes migrations have run. The dev token lasts 12 hours and
+has no refresh cookie; it cannot be refreshed, but it can be blacklisted with
+`/auth/logout`.
 
 ### Global errors
 
@@ -230,12 +286,12 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
 
 ## 10. Not implemented
 
-No route exists today for: `/auth/*` (OIDC and anonymous event join); batched
-node ingestion (`BatchCreateNodeSchema` is a contract only); SSE; metrics;
-Apache AGE/Cypher; embedding computation or a `NODE_CREATED` consumer; node or
-edge status transitions; datatype/object-property activation; interaction
-reads or vote retraction. The PWA and Python worker apps are still empty
-scaffolds.
+No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a
+contract only); SSE; metrics; Apache AGE/Cypher; embedding computation or a
+`NODE_CREATED` consumer; node or edge status transitions; datatype/object-
+property activation; interaction reads or vote retraction. The PWA (including
+its OIDC login screen and event QR scanner) and Python worker apps are still
+empty scaffolds.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·
 [Errors](errors.md).

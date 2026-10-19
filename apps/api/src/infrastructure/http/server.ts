@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import Fastify, { FastifyInstance, FastifyBaseLogger } from 'fastify';
+import cookie from '@fastify/cookie';
+import cors from '@fastify/cors';
 import { env } from '../../shared/config/env.js';
+import { durationToMs } from '../../shared/time/duration.js';
 import { logger } from '../../shared/logger/index.js';
 import { registerRoutes } from './routes.js';
 import { correlationGuard, sendCorrelationHeader } from './middlewares/CorrelationGuard.js';
@@ -11,8 +14,13 @@ import { DrizzleProposalRepository } from '../persistence/repositories/DrizzlePr
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
 import { DrizzleDiscussionRepository } from '../persistence/repositories/DrizzleDiscussionRepository.js';
 import { DrizzleInteractionRepository } from '../persistence/repositories/DrizzleInteractionRepository.js';
+import { DrizzleUserRepository } from '../persistence/repositories/DrizzleUserRepository.js';
+import { DrizzleRefreshTokenRepository } from '../persistence/repositories/DrizzleRefreshTokenRepository.js';
 import { RedisEventPublisher } from '../events/RedisEventPublisher.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
+import { JwtTokenIssuer } from '../identity/JwtTokenIssuer.js';
+import { OidcProviderClient } from '../identity/OidcProviderClient.js';
+import { RedisOidcStateStore } from '../identity/RedisOidcStateStore.js';
 import { RateLimitingMiddleware } from './middlewares/RateLimitingMiddleware.js';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
@@ -42,6 +50,12 @@ import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.j
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
 import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase.js';
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
+import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
+import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
+import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
+import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
+import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -61,6 +75,22 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.addHook('onRequest', correlationGuard);
   app.addHook('onSend', sendCorrelationHeader);
 
+  // --- HTTP plugins ---
+  // `credentials: true` is required for the refresh cookie; the origin is an
+  // exact match (no wildcard) so the browser can send credentials.
+  await app.register(cors, {
+    origin: new URL(env.WEB_ORIGIN).origin,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'X-Workspace-ID',
+      'x-correlation-id',
+    ],
+  });
+  await app.register(cookie);
+
   // --- Adapters (infrastructure) ---
   const routerDb = new RouterDatabaseClient();
   const poolManager = new ConnectionPoolManager(routerDb);
@@ -75,11 +105,18 @@ export async function buildServer(): Promise<FastifyInstance> {
   const eventPublisher = new RedisEventPublisher();
   const tokenBlacklist = new RedisTokenBlacklist();
   const rateLimiter = new RateLimitingMiddleware();
+  const userRepo = new DrizzleUserRepository(poolManager);
+  const refreshTokenRepo = new DrizzleRefreshTokenRepository(poolManager);
+  const identityProvider = new OidcProviderClient();
+  const oidcStateStore = new RedisOidcStateStore();
+  const tokenIssuer = new JwtTokenIssuer();
+  const refreshTtlMs = durationToMs(env.JWT_REFRESH_EXPIRES_IN);
 
   // Connect Redis-backed services.
   await tokenBlacklist.connect();
   await eventPublisher.connect();
   await rateLimiter.connect();
+  await oidcStateStore.connect();
 
   // Start TTL-based eviction of idle tenant pools.
   poolManager.startCleanupInterval();
@@ -159,6 +196,41 @@ export async function buildServer(): Promise<FastifyInstance> {
   const closeThreadUseCase = new CloseThreadUseCase(discussionRepo, eventPublisher);
   const deletePostUseCase = new DeletePostUseCase(discussionRepo, eventPublisher);
   const castVoteUseCase = new CastVoteUseCase(interactionRepo, uow, eventPublisher);
+  const startOidcLoginUseCase = new StartOidcLoginUseCase(
+    identityProvider,
+    oidcStateStore
+  );
+  const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
+    oidcStateStore,
+    identityProvider,
+    routerDb,
+    userRepo,
+    refreshTokenRepo,
+    refreshTtlMs
+  );
+  const refreshSessionUseCase = new RefreshSessionUseCase(
+    routerDb,
+    userRepo,
+    refreshTokenRepo,
+    tokenIssuer,
+    refreshTtlMs
+  );
+  const logoutUseCase = new LogoutUseCase(
+    tokenBlacklist,
+    routerDb,
+    refreshTokenRepo
+  );
+  const getMeUseCase = new GetMeUseCase(userRepo);
+  const joinEventUseCase = new JoinEventUseCase(
+    routerDb,
+    routerDb,
+    userRepo,
+    membershipRepo,
+    refreshTokenRepo,
+    tokenIssuer,
+    uow,
+    refreshTtlMs
+  );
 
   // --- Routes ---
   await registerRoutes(app, {
@@ -190,6 +262,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     closeThreadUseCase,
     deletePostUseCase,
     castVoteUseCase,
+    startOidcLoginUseCase,
+    completeOidcLoginUseCase,
+    refreshSessionUseCase,
+    logoutUseCase,
+    getMeUseCase,
+    joinEventUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -201,6 +279,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     await tokenBlacklist.disconnect();
     await eventPublisher.disconnect();
     await rateLimiter.disconnect();
+    await oidcStateStore.disconnect();
     poolManager.stopCleanupInterval();
     await poolManager.destroyAll();
     logger.info('Adapter connections closed');

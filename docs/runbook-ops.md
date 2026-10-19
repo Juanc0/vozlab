@@ -66,12 +66,16 @@ Collection (Loki, CloudWatch, etc.) is an environment concern.
 | `vozlab:blacklist:<jti>` | Revoked JWTs (value `1`) | Remaining token lifetime |
 | `vozlab:ratelimit:<tenant>:<workspace>:<METHOD>:<actor>` | Per-actor fixed window | `ceil(RATE_LIMIT_WINDOW_MS / 1000)` |
 | `vozlab:ratelimit:<tenant>:<workspace>:<METHOD>` | Coarse workspace ceiling | Same window |
+| `vozlab:oidc:state:<state>` | Single-use OIDC state, nonce and PKCE verifier | 10 min |
 
 Both Redis-backed guards fail open when their client is **not connected**:
 tokens are treated as valid and rate limits are allowed. The rate limiter also
 fails open on command errors; a blacklist command error is not caught and can
 surface as a request failure. A Redis outage therefore weakens revocation and
-abuse protection.
+abuse protection. The OIDC state store is different: login/callback fail with
+`503 ERR_REDIS_CONNECTION_FAILED` rather than skipping state validation.
+Refresh sessions live in the tenant DB, so a Redis outage does not invalidate
+them.
 
 ### Published streams
 
@@ -97,8 +101,8 @@ grow without bound. There is also no replay or dead-letter mechanism.
 `SIGTERM` and `SIGINT` trigger Fastify `app.close()`, which:
 
 1. Stops accepting new requests and drains in-flight handlers.
-2. Disconnects the token blacklist, event publisher and rate limiter Redis
-   clients.
+2. Disconnects the token blacklist, event publisher, rate limiter and OIDC
+   state Redis clients.
 3. Stops the tenant-pool cleanup interval and destroys all tenant pools.
 4. Exits `0` on success, `1` on failure.
 
@@ -107,9 +111,11 @@ longer than the slowest in-flight request.
 
 ## Manual checks
 
-`docker compose ps`, `curl /health/ready`, `redis-cli XLEN stream:node_created`
-and `redis-cli --scan --pattern 'vozlab:ratelimit:*'` are the only current
-signals. A growing stream with no consumer is expected today.
+`docker compose ps`, `curl /health/ready`, `redis-cli XLEN stream:node_created`,
+`redis-cli --scan --pattern 'vozlab:ratelimit:*'` and
+`redis-cli --scan --pattern 'vozlab:oidc:state:*'` are the only current
+signals. A growing stream with no consumer is expected today; a leftover OIDC
+state key simply expires after 10 minutes.
 
 ## Not observable today
 

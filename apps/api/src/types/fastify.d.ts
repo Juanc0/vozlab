@@ -21,6 +21,8 @@ declare module 'fastify' {
     oidcTenantId?: string;
     /** JWT id, used for the Redis blacklist check. */
     jti?: string;
+    /** JWT `exp` in seconds since the epoch; used to size blacklist TTLs. */
+    tokenExpiresAt?: number;
     /** Internal tenant UUID resolved from the router DB (physical isolation). */
     tid?: string;
     /** Workspace UUID from the X-Workspace-ID header. */

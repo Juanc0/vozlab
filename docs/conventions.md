@@ -48,7 +48,11 @@ is emitted, so `start` must use `tsx`.
   declared workspace (`ERR_UNAUTHORIZED_WORKSPACE_ACCESS`), is not the
   author/maintainer (`ERR_AUTHORIZATION_FAILED`), or lacks a moderator/admin
   role. See [ADR-0008](decisions/ADR-0008-cross-workspace-404.md).
-- Guards run in the fixed order `authGuard → tenantWorkspaceGuard → rateLimit`.
+- Protected resource guards run in the fixed order
+  `authGuard → tenantGuard → tenantWorkspaceGuard → rateLimit`. Public auth
+  routes (`/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/event-join`)
+  run only the per-IP rate limiter; `/auth/logout` runs `authGuard`, and
+  `/auth/me` runs `authGuard → tenantGuard` without a workspace header.
   Do not register protected routes without the full chain; health routes are
   public by design.
 

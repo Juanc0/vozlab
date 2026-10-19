@@ -21,6 +21,9 @@ describe('ConnectionPoolManager', () => {
       async findTenantByOidcId() {
         return null;
       },
+      async findTenantById() {
+        return null;
+      },
       async getTenantDatabaseConfig(tenantId: string): Promise<TenantConnectionConfig | null> {
         queryCount++;
         return {
@@ -56,6 +59,9 @@ describe('ConnectionPoolManager', () => {
       async findTenantByOidcId() {
         return null;
       },
+      async findTenantById() {
+        return null;
+      },
       async getTenantDatabaseConfig(): Promise<TenantConnectionConfig | null> {
         return null;
       },
@@ -74,6 +80,9 @@ describe('ConnectionPoolManager', () => {
     const infraError = new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     const fakeRouterDb: IRouterDatabase = {
       async findTenantByOidcId() {
+        return null;
+      },
+      async findTenantById() {
         return null;
       },
       async getTenantDatabaseConfig(): Promise<TenantConnectionConfig | null> {

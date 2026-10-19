@@ -15,14 +15,16 @@ trade-offs before coding.
 - API core complete: nodes, edges, proposals/governance, ontology, discussions,
   interactions/votes, subgraph, multi-tenancy, rate limiting, soft delete,
   keyset pagination, event publication.
-- 15 test files / 60 tests green; `build` + `type-check` green; thin CI runs
+- Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
+  rotating refresh sessions, logout, `/auth/me` and event-code join.
+- 24 test files / 114 tests green; `build` + `type-check` green; thin CI runs
   install + `build type-check test`.
-- Not started: real auth endpoints, Python workers, PWA, observability,
+- Not started: Python workers, PWA (including its login/QR UI), observability,
   integration/E2E/load tests.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
-## Batch 1U — Close-out (done in this change set)
+## Batch 1U — Close-out (done)
 
 - [x] B1: `DrizzleNodeRepository.applyDelta` filters `deleted_at`, so an
       auto-applied proposal cannot mutate a soft-deleted node.
@@ -40,27 +42,37 @@ trade-offs before coding.
 - [x] Documentation restructure + archive; `TODO.md`/`EXECUTION_PLAN.md`
       replaced by this file.
 
-## Batch 1V — Auth flow (next)
+## Batch 1V — Auth flow (done)
 
 Goal: close the last API-core gap (FR-01/02/03) and make the pseudonym model
-real. Decisions to settle at kickoff: refresh-token strategy (rotating refresh
-JWT vs. opaque token), PWA token storage, and whether `iss` resolution is
-needed in addition to `tid`.
+real. Decisions: rotating **opaque** refresh token in an `HttpOnly` cookie
+(access JWT stays in memory), and tenant resolution from `tid` (Entra) or `hd`
+(Google Workspace); `iss`-only resolution stays unscheduled.
+Result: 114 tests green; `build` + `type-check` green.
 
-- [ ] `event_codes` table (tenant DB) + migration: code, workspace, expiry,
-      revocation, created_by.
-- [ ] `POST /api/v1/auth/login` — build the OIDC authorization URL (state +
-      nonce, PKCE), redirect to the IdP.
-- [ ] `GET /api/v1/auth/callback` — exchange the code, validate the ID token,
-      upsert `auth.users`, assign a **random** `author_hash` on first login,
-      resolve membership, issue the internal JWT (+ refresh).
-- [ ] `POST /api/v1/auth/event-join` — validate an `event_code`, create or
-      reuse an `ANONYMOUS_EVENT` user with a random pseudonym, issue a device
-      token; refuse new joins after the event closes.
-- [ ] `POST /api/v1/auth/logout` — revoke `jti` via `RedisTokenBlacklist`.
-- [ ] Refresh endpoint + rotation/revocation semantics; tests (mocked IdP
-      discovery/token/userinfo; no network); update `auth-and-tenancy.md`,
-      `runbook-dev.md`, the status matrix and `.env.example` if needed.
+- [x] `router.event_codes` registry + migration (global exception to ADR-0002,
+      [ADR-0019](docs/decisions/ADR-0019-global-event-codes.md)): hashed code,
+      tenant/workspace, expiry, revocation, capacity, created_by.
+- [x] `GET /api/v1/auth/login` — OIDC authorization URL with state + nonce and
+      PKCE S256; state stored single-use in Redis for 10 minutes.
+- [x] `GET /api/v1/auth/callback` — exchange the code, validate the ID token
+      with JWKS/issuer/audience/nonce, resolve `tid`/`hd`, JIT-upsert
+      `auth.users` with a **random** `author_hash`, and set the refresh cookie
+      (the PWA obtains the access token via `/auth/refresh`). JIT grants **no**
+      workspace membership.
+- [x] `POST /api/v1/auth/event-join` — atomically consume the event code,
+      create an `ANONYMOUS_EVENT` user with a random pseudonym, add the
+      workspace membership and issue a session; expired/revoked codes block
+      new joins only.
+- [x] `POST /api/v1/auth/logout` — blacklist `jti`, revoke the refresh family,
+      clear the cookie.
+- [x] `POST /api/v1/auth/refresh` — rotate the opaque token; reuse revokes the
+      whole family. Refresh sessions are stored hashed in the tenant DB.
+- [x] `GET /api/v1/auth/me` — profile plus workspace memberships, no
+      `X-Workspace-ID` required.
+- [x] Operator CLI `db:event-code`, tests (mocked IdP/JWKS, no network) and
+      docs (ADR-0018, auth guide, API/errors/domain, runbooks, status matrix,
+      `.env.example`).
 
 ## Phase 2 — AI pipeline (workers)
 
@@ -125,7 +137,7 @@ Milestones:
 - Redis-buffered CQRS vote scoring ([ADR-0005](docs/decisions/ADR-0005-synchronous-vote-scoring.md)).
 - SSE notifications ([ADR-0015](docs/decisions/ADR-0015-sse-deferred.md)).
 - GraphQL facade ([ADR-0016](docs/decisions/ADR-0016-graphql-rejected.md)).
-- `iss`-based tenant resolution (currently `tid` only).
+- `iss`-based tenant resolution (currently `tid`/`hd` only).
 - Multi-region / HA topology (not designed).
 
 ## How to take a task

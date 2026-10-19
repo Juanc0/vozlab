@@ -27,12 +27,23 @@ import { ListPostsUseCase } from '../../application/use_cases/ListPostsUseCase.j
 import { CloseThreadUseCase } from '../../application/use_cases/CloseThreadUseCase.js';
 import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase.js';
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
+import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
+import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
+import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
+import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
+import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
+import { tenantGuard } from './middlewares/TenantGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
-import { RateLimitingMiddleware, rateLimitMiddleware } from './middlewares/RateLimitingMiddleware.js';
+import {
+  RateLimitingMiddleware,
+  publicAuthRateLimitMiddleware,
+  rateLimitMiddleware,
+} from './middlewares/RateLimitingMiddleware.js';
 import { NodeController } from './controllers/NodeController.js';
 import { EdgeController } from './controllers/EdgeController.js';
 import { ProposalController } from './controllers/ProposalController.js';
@@ -40,6 +51,7 @@ import { OntologyController } from './controllers/OntologyController.js';
 import { HealthController } from './controllers/HealthController.js';
 import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
+import { AuthController } from './controllers/AuthController.js';
 
 /**
  * Dependencies required to register routes (manual Composition Root).
@@ -73,6 +85,12 @@ export interface RouteDependencies {
   closeThreadUseCase: CloseThreadUseCase;
   deletePostUseCase: DeletePostUseCase;
   castVoteUseCase: CastVoteUseCase;
+  startOidcLoginUseCase: StartOidcLoginUseCase;
+  completeOidcLoginUseCase: CompleteOidcLoginUseCase;
+  refreshSessionUseCase: RefreshSessionUseCase;
+  logoutUseCase: LogoutUseCase;
+  getMeUseCase: GetMeUseCase;
+  joinEventUseCase: JoinEventUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
   tokenBlacklist: RedisTokenBlacklist;
@@ -120,6 +138,12 @@ export async function registerRoutes(
     closeThreadUseCase,
     deletePostUseCase,
     castVoteUseCase,
+    startOidcLoginUseCase,
+    completeOidcLoginUseCase,
+    refreshSessionUseCase,
+    logoutUseCase,
+    getMeUseCase,
+    joinEventUseCase,
     routerDb,
     membershipRepo,
     tokenBlacklist,
@@ -165,18 +189,69 @@ export async function registerRoutes(
     deletePostUseCase
   );
   const interactionController = new InteractionController(castVoteUseCase);
+  const authController = new AuthController(
+    startOidcLoginUseCase,
+    completeOidcLoginUseCase,
+    refreshSessionUseCase,
+    logoutUseCase,
+    getMeUseCase,
+    joinEventUseCase
+  );
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
   app.get('/health/live', (req, reply) => healthController.live(req, reply));
   app.get('/health/ready', (req, reply) => healthController.ready(req, reply));
 
+  // --- Public: Authentication (FR-01/FR-02/FR-03) ---
+  const publicAuthLimit = publicAuthRateLimitMiddleware(rateLimiter);
+
+  app.get(
+    '/api/v1/auth/login',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.login(req, reply)
+  );
+
+  app.get(
+    '/api/v1/auth/callback',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.callback(req, reply)
+  );
+
+  app.post(
+    '/api/v1/auth/refresh',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.refresh(req, reply)
+  );
+
+  app.post(
+    '/api/v1/auth/event-join',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.eventJoin(req, reply)
+  );
+
   // --- Protected chain ---
   const auth = authGuard(tokenBlacklist);
+  const tenant = async (req: FastifyRequest, reply: FastifyReply) => {
+    await tenantGuard(req, reply, { routerDb });
+  };
   const workspace = (req: FastifyRequest, reply: FastifyReply) =>
     tenantWorkspaceGuard(req, reply, { routerDb, membershipRepo });
   const limit = rateLimitMiddleware(rateLimiter);
   const guard = [auth, workspace, limit];
+
+  // --- Auth session (Bearer; no workspace required) ---
+  app.post(
+    '/api/v1/auth/logout',
+    { preHandler: [auth] },
+    (req, reply) => authController.logoutHandler(req, reply)
+  );
+
+  app.get(
+    '/api/v1/auth/me',
+    { preHandler: [auth, tenant] },
+    (req, reply) => authController.me(req, reply)
+  );
 
   // --- Nodes (Gobernanza) ---
   app.post('/api/v1/nodes', { preHandler: guard }, (req, reply) =>

@@ -1,6 +1,7 @@
 import { createClient, RedisClientType } from 'redis';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
+import { ITokenBlacklist } from '../../domain/ports/ITokenBlacklist.js';
 
 /**
  * RedisTokenBlacklist: O(1) revocation check for JWT access tokens.
@@ -9,7 +10,7 @@ import { log } from '../../shared/logger/index.js';
  * of the JWT. This guarantees the blacklist is self-cleaning and the
  * check is a single Redis GET — O(1) latency.
  */
-export class RedisTokenBlacklist {
+export class RedisTokenBlacklist implements ITokenBlacklist {
   private client: RedisClientType;
   private connected = false;
 

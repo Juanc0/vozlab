@@ -1,4 +1,5 @@
 import type { WorkspaceRole } from '@vozlab/shared-types';
+import type { DbTransaction } from './Transaction.js';
 
 /**
  * Roles a user can hold inside a workspace (`auth.workspace_memberships.role`).
@@ -18,4 +19,15 @@ export type { WorkspaceRole };
 export interface IMembershipRepository {
   isMember(userId: string, workspaceId: string, tid: string): Promise<boolean>;
   getRole(userId: string, workspaceId: string, tid: string): Promise<WorkspaceRole | null>;
+  /**
+   * Add a membership (event join). Idempotent: a duplicate membership is a
+   * no-op thanks to `uniq_memberships_workspace_user`.
+   */
+  add(
+    userId: string,
+    workspaceId: string,
+    role: WorkspaceRole,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
 }

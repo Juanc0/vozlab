@@ -5,6 +5,7 @@ This directory is the **canonical decision record** for VozLab. An ADR states a 
 - `Accepted` — the decision is implemented or is the binding contract for new work.
 - `Deferred` — the decision is to postpone the work; the ADR states the interim behavior.
 - `Rejected` — the option was considered and will not be used without a new ADR.
+- `Superseded` — a later ADR replaced the decision; the old ADR stays as history.
 
 When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conflicts with an ADR, the ADR wins. Those documents are archived as history. Specifications for components that are not built yet live under `docs/spec/`; the ADR log records decisions, not designs.
 
@@ -12,8 +13,8 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 
 | # | Title | Status | Decision in one line |
 | --- | --- | --- | --- |
-| [0001](ADR-0001-bearer-jwt-auth-transport.md) | Bearer JWT as the authentication transport | Accepted | Authenticate with `Authorization: Bearer <jwt>`; no session cookie. |
-| [0002](ADR-0002-two-physical-databases.md) | Two physical PostgreSQL databases with `tid` routing | Accepted | A global router DB plus one physical DB per tenant; every repository is scoped by `tid`. |
+| [0001](ADR-0001-bearer-jwt-auth-transport.md) | Bearer JWT as the authentication transport | Accepted | Authenticate graph requests with `Authorization: Bearer <jwt>`; the refresh credential is a separate `HttpOnly` cookie (0018). |
+| [0002](ADR-0002-two-physical-databases.md) | Two physical PostgreSQL databases with `tid` routing | Accepted | A global router DB plus one physical DB per tenant; every repository is scoped by `tid`. `event_codes` is the documented router exception (0019). |
 | [0003](ADR-0003-drizzle-schema-source-of-truth.md) | Drizzle schema is the single source of truth for migrations | Accepted | Migrations are generated from the Drizzle schema, never hand-edited; local configs force `ssl: false`. |
 | [0004](ADR-0004-bounded-sql-cte-age-deferred.md) | Bounded recursive SQL CTE for subgraphs; Apache AGE deferred | Accepted | The read path is a bounded CTE (`depth <= 3`, `limit <= 200`); AGE needs its own mirroring milestone. |
 | [0005](ADR-0005-synchronous-vote-scoring.md) | Vote scoring is a synchronous atomic DB increment | Accepted | Counters update in the same transaction as the vote; the Redis-buffered CQRS design is deferred. |
@@ -25,10 +26,12 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0011](ADR-0011-timestamp-ownership.md) | Timestamp ownership | Accepted | Domain owns `created_at`/`updated_at`; adapter owns `deleted_at` and persists the entity's `updatedAt`. |
 | [0012](ADR-0012-env-file-loading.md) | `.env` loading via `tsx --env-file-if-exists` | Accepted | Dev and DB scripts load the repo-root `.env`; production uses the orchestrator environment. |
 | [0013](ADR-0013-random-opaque-pseudonym.md) | Pseudonymity uses a random opaque per-user pseudonym, not a salt | Accepted | `author_hash` is a random 64-hex value carried verbatim in the token; no salt. |
-| [0014](ADR-0014-real-auth-endpoints-deferred.md) | Real auth endpoints deferred; dev JWT minting is the interim | Deferred | OIDC login/callback/logout, event-QR join and `event_codes` are future work; `tid`-only routing today. |
+| [0014](ADR-0014-real-auth-endpoints-deferred.md) | Real auth endpoints deferred; dev JWT minting is the interim | Superseded by 0018 | OIDC login/callback/logout, event-QR join and `event_codes` were future work at the time. |
 | [0015](ADR-0015-sse-deferred.md) | SSE notifications deferred; REST polling is the interim | Deferred | No push channel yet; clients read or poll the REST API. |
 | [0016](ADR-0016-graphql-rejected.md) | GraphQL rejected; REST + Zod + `X-Workspace-ID` is the contract | Rejected | REST is the contract; a read-only facade may be added later without redesign. |
 | [0017](ADR-0017-thin-ci.md) | Thin CI now; full Phase 4 pipeline planned | Accepted | CI runs install + build/type-check/test; lint is red and excluded; integration/E2E/load/coverage are planned. |
+| [0018](ADR-0018-oidc-jit-hybrid-sessions.md) | OIDC login, JIT accounts and hybrid access/refresh sessions | Accepted | PKCE + JWKS validation, JIT users with no implicit membership, 15 min JSON JWT + rotating `HttpOnly` refresh cookie. |
+| [0019](ADR-0019-global-event-codes.md) | Global event-code registry in the router database | Accepted | `router.event_codes` is the documented exception to ADR-0002; QR contains only the code and consumption is atomic. |
 
 ## How to add an ADR
 

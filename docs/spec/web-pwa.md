@@ -171,7 +171,9 @@ Minimal manifest:
 
 ## Open questions
 
-- Token storage/refresh once real auth endpoints exist.
+- Token storage/refresh: keep the access token in memory and call
+  `/api/v1/auth/refresh` on load (the API half exists; the PWA client is not
+  built).
 - SSE/event notification design (deferred) and offline cache scope.
 - i18n/branding per tenant; graph performance beyond 200 nodes.
 

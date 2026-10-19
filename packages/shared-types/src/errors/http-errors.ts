@@ -26,6 +26,30 @@ export const ERROR_CODES = {
     status: 401,
     message: 'Token has been revoked (blacklisted)',
   },
+  ERR_REFRESH_TOKEN_INVALID: {
+    status: 401,
+    message: 'Refresh token is invalid, expired or already rotated',
+  },
+  ERR_INVALID_OIDC_STATE: {
+    status: 400,
+    message: 'OIDC state is missing, invalid or expired',
+  },
+  ERR_OIDC_EXCHANGE_FAILED: {
+    status: 502,
+    message: 'Identity provider token exchange failed',
+  },
+  ERR_OIDC_UNAVAILABLE: {
+    status: 503,
+    message: 'Identity provider is unavailable',
+  },
+  ERR_EMAIL_NOT_VERIFIED: {
+    status: 403,
+    message: 'The identity provider has not verified this email address',
+  },
+  ERR_ACCOUNT_LINK_CONFLICT: {
+    status: 409,
+    message: 'An account with this email belongs to a different identity provider',
+  },
   ERR_UNAUTHORIZED_WORKSPACE_ACCESS: {
     status: 403,
     message: 'User does not belong to the requested workspace',

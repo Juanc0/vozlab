@@ -33,19 +33,24 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-01 — Delegated OIDC/SSO authentication.** The system must authenticate
   institutional users exclusively through external identity providers
   (Microsoft Entra ID / Azure AD, Google Workspace) using OpenID Connect. No
-  local passwords are stored. *(Not implemented; dev JWT minting is the interim —
-  see [ADR-0014](decisions/ADR-0014-real-auth-endpoints-deferred.md).)*
+  local passwords are stored. *(Implemented: authorization code + PKCE,
+  JWKS/issuer/audience/nonce validation, JIT user upsert; see
+  [ADR-0018](decisions/ADR-0018-oidc-jit-hybrid-sessions.md). `db:mint-token`
+  remains a local development tool.)*
 - **FR-02 — Tenant isolation by OIDC claim.** The backend must determine the
   user's tenant from the signed JWT (`tid`; the docs also allow `iss` as a
   fallback) and validate it against the tenant registry. The registry lives in
   `public.tenants` in the router DB; the internal tenant UUID (`tid`) drives
-  physical routing. *(`tid`-only is implemented in
-  `TenantWorkspaceGuard`; the IdP exchange itself is FR-01.)*
+  physical routing. *(Implemented with the validated `tid` (Entra) or `hd`
+  (Google Workspace) claim on login and on every resource request. `iss`-only
+  resolution remains unbuilt.)*
 - **FR-03 — Anonymous access via event QR code.** The system must allow
   ephemeral sessions for in-person events through an `event_code`, assigning a
   random pseudonym and a signed device token. After the event, new anonymous
   users are blocked, while existing users keep access to follow up on their
-  contributions. *(Not implemented; `event_codes` table absent.)*
+  contributions. *(Implemented: global `router.event_codes` registry, atomic
+  expiry/capacity/revocation, anonymous user + membership + rotating session.
+  The QR scanner UI is part of the PWA.)*
 - **FR-04 — Multi-workspace management in a clean URL.** The PWA must keep the
   public URL clean (`app.vozlab.io/`) and keep the workspace context
   (`workspace_id`) isolated in each tab's `sessionStorage`. *(PWA not built.)*
@@ -292,8 +297,8 @@ nothing computes vectors, so step 4 cannot run yet.
 
 | Requirement | Stories | Code (current) | Tables |
 | --- | --- | --- | --- |
-| FR-01, FR-02 | US-00, US-05 | `infrastructure/http/middlewares/AuthGuard.ts`, `TenantWorkspaceGuard.ts` | router `public.tenants`; tenant `auth.*` |
-| FR-03 | — | *(planned)* | `auth.users` (`ANONYMOUS_EVENT`), `event_codes` (absent) |
+| FR-01, FR-02 | US-00, US-05 | `AuthController.ts`, `OidcProviderClient.ts`, `TenantGuard.ts`, `TenantWorkspaceGuard.ts` | router `public.tenants`; tenant `auth.users`, `auth.refresh_tokens` |
+| FR-03 | — | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts` | router `public.event_codes`; tenant `auth.users` (`ANONYMOUS_EVENT`), `auth.workspace_memberships` |
 | FR-05 | US-01..06 | `TenantWorkspaceGuard.ts` | `auth.workspace_memberships` |
 | FR-06, FR-07 | US-01 | `CreateNodeUseCase.ts` | `public.nodes`, `meta.*` |
 | FR-08 | US-01 | `CreateEdgeUseCase.ts` | `public.edges`, `meta.object_properties` |

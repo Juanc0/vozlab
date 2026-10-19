@@ -15,7 +15,9 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 ## Mapping
 
 - Guards and controllers send dictionary codes directly for request,
-  authentication, authorization and validation failures.
+  authentication, authorization and validation failures. `/auth/callback` is a
+  browser redirect: it encodes the same code in
+  `${WEB_ORIGIN}/auth/callback?error=<CODE>` instead of sending a JSON body.
 - Use cases throw `DomainError`; `mapDomainError` forwards a code only when it
   is a known `ErrorCode`.
 - Infrastructure adapters throw `InfrastructureError`; the HTTP layer preserves
@@ -30,6 +32,7 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | 400, 401, 403, 404, 409, 422 | No | Fix the request, credentials, scope or state. Repeating unchanged is terminal. |
 | 429 | Yes | Wait for the fixed window to reset; no `Retry-After` header is sent. |
 | 500 | Maybe | Retry with backoff; if persistent, report it. |
+| 502 | Maybe | The IdP rejected the code/token; retry only after a fresh login. |
 | 503 | Yes | Dependency unavailable; retry with backoff. |
 
 ## 4xx — client and request errors
@@ -38,14 +41,18 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | --- | --- | --- |
 | `ERR_MISSING_WORKSPACE_HEADER` | 400 | `X-Workspace-ID` is absent on a protected route. |
 | `ERR_INVALID_WORKSPACE_HEADER` | 400 | `X-Workspace-ID` is not a valid UUID. |
-| `ERR_EVENT_EXPIRED` | 400 | **Reserved.** No route returns it; anonymous event join is deferred. |
-| `ERR_EVENT_FULL` | 400 | **Reserved.** No route returns it; anonymous event join is deferred. |
+| `ERR_EVENT_EXPIRED` | 400 | Event code not found, revoked or past `expires_at` on `POST /auth/event-join`. |
+| `ERR_EVENT_FULL` | 400 | Event code reached `max_uses`. |
+| `ERR_INVALID_OIDC_STATE` | 400 | OIDC state is missing, expired or already consumed (callback). |
 | `ERR_INVALID_TOKEN` | 401 | Missing/malformed `Authorization: Bearer`, bad signature, missing `sub`/`authorHash`, non-64-hex `authorHash`, or an unknown agent `type`. |
 | `ERR_TOKEN_EXPIRED` | 401 | JWT verification failed with `TokenExpiredError`. |
 | `ERR_TOKEN_BLACKLISTED` | 401 | The token `jti` exists in the Redis revocation list. |
+| `ERR_REFRESH_TOKEN_INVALID` | 401 | Malformed/unknown/expired/reused refresh token, unprovisioned tenant, vanished user, or a `SYSTEM_AGENT` session. Reuse also revokes the family. |
+| `ERR_EMAIL_NOT_VERIFIED` | 403 | The IdP explicitly reports `email_verified: false`. |
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No `tid` claim, or the caller is not a member of the declared `X-Workspace-ID` workspace. System agents skip the membership check. |
 | `ERR_AUTHORIZATION_FAILED` | 403 | Authenticated but not allowed: not the node/edge/post author, not the thread creator, not the proposal target maintainer, or not `MODERATOR`/`ADMIN` for auto-apply or class activation. |
-| `ERR_TENANT_NOT_PROVISIONED` | 403 | The JWT `tid` has no router tenant row, or the tenant has no `tenant_connections` row. |
+| `ERR_TENANT_NOT_PROVISIONED` | 403 | The JWT `tid`/identity claim has no router tenant row, the tenant has no `tenant_connections` row, or an event code points at a vanished tenant. |
+| `ERR_ACCOUNT_LINK_CONFLICT` | 409 | A verified email belongs to an `ANONYMOUS_EVENT` account, or a concurrent OIDC upsert conflicts. |
 | `ERR_NODE_NOT_FOUND` | 404 | Missing, soft-deleted or foreign-workspace node: get/delete node, subgraph root, edge endpoint, proposal/vote target. |
 | `ERR_EDGE_NOT_FOUND` | 404 | Missing, soft-deleted or foreign-workspace edge: get/update/delete edge, proposal/vote target, or a vanished target when resolving a proposal. |
 | `ERR_PROPOSAL_NOT_FOUND` | 404 | Missing or foreign-workspace proposal: get, approve, reject, auto-apply, or vote target. |
@@ -63,8 +70,10 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | Code | Status | Returned when |
 | --- | --- | --- |
 | `ERR_INTERNAL_SERVER_ERROR` | 500 | Unexpected error, including an unwrapped driver failure or an unknown error code. |
-| `ERR_DATABASE_CONNECTION_FAILED` | 503 | The router database cannot be queried, or tenant connection config cannot be resolved. Raised as `InfrastructureError` by `RouterDatabaseClient`. |
-| `ERR_REDIS_CONNECTION_FAILED` | 503 | **Reserved.** Redis clients currently fail open or log instead of returning this. |
+| `ERR_OIDC_EXCHANGE_FAILED` | 502 | Token-endpoint rejection or an invalid ID token (signature, issuer, audience, nonce). |
+| `ERR_DATABASE_CONNECTION_FAILED` | 503 | The router/tenant database cannot be queried, or tenant connection config cannot be resolved. Raised as `InfrastructureError`. |
+| `ERR_OIDC_UNAVAILABLE` | 503 | The IdP token endpoint is unreachable or times out. |
+| `ERR_REDIS_CONNECTION_FAILED` | 503 | The OIDC state store cannot read/write. The blacklist and rate limiter fail open instead of returning this. |
 | `ERR_LLM_UNAVAILABLE` | 503 | **Reserved.** No LLM integration exists. |
 | `ERR_SERVICE_UNAVAILABLE` | 503 | **Reserved.** `/health/ready` returns its own body when a dependency is down, not this envelope. |
 

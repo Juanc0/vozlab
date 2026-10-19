@@ -14,6 +14,17 @@
 
 The API accepts authentication only through `Authorization: Bearer <jwt>`. It does not set or read a session cookie. The client stores the token and attaches it to every request together with `X-Workspace-ID`; the workspace is never inferred from the token.
 
+## Amendment: refresh credential (2026-10-19)
+
+The bearer decision still holds for **access** tokens. Batch 1V added one
+cookie, but it is not a session cookie and is not accepted as authentication:
+`vozlab_refresh` carries an opaque rotating refresh credential on
+`/api/v1/auth`, and `/auth/refresh` exchanges it for a new JSON access token
+([ADR-0018](ADR-0018-oidc-jit-hybrid-sessions.md)). Graph requests still require
+`Authorization: Bearer <jwt>`. The original "no cookie/CSRF surface" positive is
+therefore narrowed to the graph surface; refresh has a `SameSite=Lax`
+cookie-CSRF consideration.
+
 ## Consequences
 
 ### Positive

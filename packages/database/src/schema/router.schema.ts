@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  index,
+} from 'drizzle-orm/pg-core';
 
 /**
  * Router schema: global tenant registry.
@@ -18,6 +27,44 @@ export const tenants = pgTable('tenants', {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type NewTenant = typeof tenants.$inferInsert;
+
+/**
+ * Global event-code registry (FR-03).
+ *
+ * Explicit exception to the "router DB only holds tenants and connections"
+ * rule (ADR-0002): event codes are looked up before the tenant is known, so a
+ * single global registry is the only way to resolve a scanned QR without
+ * putting the tenant slug in the URL. The row points at a workspace inside the
+ * tenant's physical DB; there is deliberately no cross-DB foreign key.
+ */
+export const eventCodes = pgTable(
+  'event_codes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').notNull(),
+    /** SHA-256 of the raw code; the raw value is only printed at creation. */
+    codeHash: varchar('code_hash', { length: 64 }).notNull().unique(),
+    label: varchar('label', { length: 255 }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    /** `null` means unlimited joins. */
+    maxUses: integer('max_uses'),
+    usedCount: integer('used_count').default(0).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    /** Pseudonym of the creator; the user lives in a tenant DB. */
+    createdByHash: varchar('created_by_hash', { length: 64 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_event_codes_tenant_workspace').on(table.tenantId, table.workspaceId),
+    index('idx_event_codes_expires_at').on(table.expiresAt),
+  ],
+);
+
+export type EventCode = typeof eventCodes.$inferSelect;
+export type NewEventCode = typeof eventCodes.$inferInsert;
 
 /**
  * Physical connection configuration for each tenant's database.

@@ -1,7 +1,8 @@
 # ADR-0014: Real auth endpoints deferred; dev JWT minting is the interim
 
-- Status: Deferred
+- Status: Superseded
 - Date: 2026-10-19
+- Superseded by: [ADR-0018](ADR-0018-oidc-jit-hybrid-sessions.md) (auth flow implemented)
 
 ## Context
 

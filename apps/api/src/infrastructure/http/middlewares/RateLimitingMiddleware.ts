@@ -195,3 +195,36 @@ export function rateLimitMiddleware(limiter: RateLimitingMiddleware) {
     }
   };
 }
+
+/**
+ * Rate limit for public auth endpoints (`/auth/login`, `/auth/callback`,
+ * `/auth/refresh`, `/auth/event-join`).
+ *
+ * There is no tenant or workspace yet, so both buckets are keyed by the remote
+ * address. Brute-forcing a login or event code costs at most
+ * `RATE_LIMIT_WRITE_MAX` requests/minute per IP (GET login/callback use the
+ * read cap). Fail-open on Redis errors matches the authenticated limiter.
+ */
+export function publicAuthRateLimitMiddleware(
+  limiter: RateLimitingMiddleware
+) {
+  return async function publicAuthRateLimitHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const limited = await limiter.isRateLimited(
+      'auth',
+      req.ip,
+      req.method,
+      req.ip
+    );
+
+    if (limited) {
+      const err = buildError('ERR_RATE_LIMIT_EXCEEDED');
+      return reply.status(err.status).send({
+        code: err.code,
+        message: err.message,
+      });
+    }
+  };
+}

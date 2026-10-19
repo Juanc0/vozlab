@@ -16,6 +16,14 @@ There are two database roles, never mixed:
 
 The JWT `tid` claim is the OIDC tenant id. `TenantWorkspaceGuard` resolves it through `tenants.oidc_tenant_id` and verifies provisioning; the resulting internal tenant UUID is carried as `req.tid`. `ConnectionPoolManager` reads `tenant_connections`, caches one pool per `tid` (30-minute TTL) and returns the tenant Drizzle client. Every repository method takes `tid`, and `UnitOfWork.runInTransaction(tid, cb)` passes the transaction handle to repositories. No query joins router and tenant tables.
 
+## Amendment: global event codes (2026-10-19)
+
+`public.event_codes` is the **only** exception to "router = tenants and
+connections". An event QR is scanned before the tenant is known, so the code
+registry must be global; each row points at a tenant and workspace without a
+cross-database FK. See [ADR-0019](ADR-0019-global-event-codes.md). All other
+tenant content stays in the tenant database.
+
 ## Consequences
 
 ### Positive

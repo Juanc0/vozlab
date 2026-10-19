@@ -13,10 +13,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.4.0",
+    "@fastify/cors": "^9.0.1",
     "@vozlab/database": "workspace:*",
     "@vozlab/shared-types": "workspace:*",
-    "fastify": "^4.27.0",
     "drizzle-orm": "^0.45.4",
+    "fastify": "^4.27.0",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.0",
     "pino": "^9.0.0",
@@ -25,10 +28,10 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@vozlab/ts-config": "workspace:*",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.0.0",
     "@types/pg": "^8.11.0",
+    "@vozlab/ts-config": "workspace:*",
     "tsx": "^4.19.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"

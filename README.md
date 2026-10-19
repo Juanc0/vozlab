@@ -9,14 +9,14 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA and three Pyth
 | Area | State |
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
-| Tests | 15 files / 60 tests green (`pnpm test`) |
+| Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
+| Tests | 24 files / 114 tests green (`pnpm test`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: install + `build type-check test` |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
-| Real auth endpoints (OIDC login/callback, event QR, logout) | Not built |
 | Python workers, PWA, Apache AGE adapter, embeddings, SSE, metrics | Not built |
 
-Dev tokens are minted out-of-band by a script; there is no login UI or IdP exchange yet. See [docs/README.md](docs/README.md) for the requirement-by-requirement status.
+The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
 ## Repository layout
 
@@ -27,7 +27,7 @@ Dev tokens are minted out-of-band by a script; there is no login UI or IdP excha
 | `apps/worker-extractor` | Python 3.12 ingestion worker | Empty scaffold (Phase 2) |
 | `apps/worker-relacionador` | Python 3.12 relationship evaluator | Empty scaffold (Phase 2) |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |
-| `packages/database` | Drizzle schemas, migrations, dev seed/token scripts | Implemented |
+| `packages/database` | Drizzle schemas, migrations, dev seed/token/event-code scripts | Implemented |
 | `packages/shared-types` | Zod DTOs, agent/role/ingestion contracts, `ERROR_CODES` | Implemented |
 | `packages/ts-config` | Shared TypeScript configuration | Implemented |
 | `docker/postgres` | Custom PostgreSQL 18.6 + Apache AGE 1.8 + pgvector image | Implemented |
@@ -75,6 +75,7 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:migrate` | Applies router + tenant migrations |
 | `pnpm --filter @vozlab/database db:seed:dev` | Idempotent dev tenant/workspace/ontology seed |
 | `pnpm --filter @vozlab/database db:mint-token -- --as <name>` | Mints a 12 h HS256 dev JWT |
+| `pnpm --filter @vozlab/database db:event-code -- --workspace <uuid>` | Creates a global event code for QR join; prints the raw code once |
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
 
@@ -86,7 +87,7 @@ The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-
 | --- | --- |
 | [docs/README.md](docs/README.md) | Documentation index and FR/NFR status matrix |
 | [docs/architecture.md](docs/architecture.md) | Context, request path, two-DB topology, runtime facts |
-| [docs/auth-and-tenancy.md](docs/auth-and-tenancy.md) | Bearer JWT, guards, workspace isolation, pseudonymity |
+| [docs/auth-and-tenancy.md](docs/auth-and-tenancy.md) | OIDC flow, access/refresh sessions, guards, workspace isolation, pseudonymity |
 | [docs/api-reference.md](docs/api-reference.md) | Endpoints, headers, payloads |
 | [docs/runbook-dev.md](docs/runbook-dev.md) | Local setup and troubleshooting |
 | [ROADMAP.md](ROADMAP.md) | Phases, deferred work, known gaps |

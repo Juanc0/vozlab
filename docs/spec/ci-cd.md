@@ -14,7 +14,7 @@ request and on pushes to `main`; a concurrency group cancels superseded runs.
 | Verify | `pnpm turbo run build type-check test` |
 
 That is the whole file. `build` type-checks `src`; `type-check` covers API tests
-and database scripts; `test` runs the Vitest unit suite (15 files / 60 tests).
+and database scripts; `test` runs the Vitest unit suite (24 files / 114 tests).
 Turborepo caching is enabled for all tasks.
 
 What it does **not** do:
@@ -112,7 +112,7 @@ Never point CI at a shared database. Each job gets its own throwaway instance.
 | `JWT_SECRET` | API, integration, E2E | Generate per CI run; ≥ 32 chars; never reuse production. |
 | `ROUTER_DB_*`, `TENANT_DB_*` | Migrations, integration | Point at the ephemeral instance. |
 | `REDIS_HOST/PORT/PASSWORD` | API, workers, integration | Ephemeral Redis. |
-| `OIDC_*` | API boot | URLs are validated even though auth endpoints are not built; use placeholders. |
+| `OIDC_*`, `WEB_ORIGIN` | API boot | All URLs are required; use syntactically valid placeholders when no IdP is under test. Auth endpoints exist but are not exercised by the unit suite. |
 | `CODECOV_TOKEN` (optional) | Coverage upload | Or use the GitHub-native uploader. |
 | `GITHUB_TOKEN` | GHCR push | Built-in; grant `packages: write`. |
 | Registry credentials | GHCR/other | Only if not using `GITHUB_TOKEN`. |

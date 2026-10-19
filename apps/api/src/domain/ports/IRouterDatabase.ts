@@ -19,6 +19,17 @@ export interface IRouterDatabase {
   findTenantByOidcId(oidcTenantId: string): Promise<{ id: string; slug: string } | null>;
 
   /**
+   * Resolve a tenant by its internal UUID.
+   *
+   * Used by the event-join flow, where the global code registry yields the
+   * tenant UUID before any JWT exists and the internal JWT still needs the
+   * tenant key (`oidc_tenant_id`) used by the tenant guard.
+   */
+  findTenantById(
+    tenantId: string
+  ): Promise<{ id: string; slug: string; oidcTenantId: string } | null>;
+
+  /**
    * Resolve physical database connection config for a tenant.
    * Returns `null` only when no `tenant_connections` row exists (tenant unprovisioned).
    * Throws `InfrastructureError('ERR_DATABASE_CONNECTION_FAILED')` on driver/connection failure.

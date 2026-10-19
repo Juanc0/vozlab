@@ -1,10 +1,15 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
+import {
+  ConsumeEventCodeResult,
+  CreateEventCodeInput,
+  IEventCodeRepository,
+} from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { tenants, tenantConnections } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -13,7 +18,9 @@ import { tenants, tenantConnections } from '@vozlab/database';
  * metadata and physical connection configuration. This is the ONLY place
  * that knows about the router schema — all other layers go through the port.
  */
-export class RouterDatabaseClient implements IRouterDatabase {
+export class RouterDatabaseClient
+  implements IRouterDatabase, IEventCodeRepository
+{
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
 
@@ -48,6 +55,109 @@ export class RouterDatabaseClient implements IRouterDatabase {
       return { id: row.id, slug: row.slug };
     } catch (err) {
       log.error({ err, oidcTenantId }, 'failed to find tenant by OIDC id');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * Resolve a tenant by its internal UUID (event-join path).
+   */
+  async findTenantById(
+    tenantId: string
+  ): Promise<{ id: string; slug: string; oidcTenantId: string } | null> {
+    try {
+      const [row] = await this.db
+        .select({
+          id: tenants.id,
+          slug: tenants.slug,
+          oidcTenantId: tenants.oidcTenantId,
+        })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+
+      return row ?? null;
+    } catch (err) {
+      log.error({ err, tenantId }, 'failed to find tenant by id');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * Atomically consume one use of an event code.
+   *
+   * The conditional UPDATE enforces revocation, expiry and capacity in one
+   * statement; a concurrent join cannot exceed `max_uses`.
+   */
+  async consume(codeHash: string): Promise<ConsumeEventCodeResult> {
+    const now = new Date();
+    try {
+      const [row] = await this.db
+        .update(eventCodes)
+        .set({ usedCount: sql`${eventCodes.usedCount} + 1` })
+        .where(
+          and(
+            eq(eventCodes.codeHash, codeHash),
+            isNull(eventCodes.revokedAt),
+            gt(eventCodes.expiresAt, now),
+            or(
+              isNull(eventCodes.maxUses),
+              sql`${eventCodes.usedCount} < ${eventCodes.maxUses}`
+            )
+          )
+        )
+        .returning();
+
+      if (row) {
+        return {
+          status: 'OK',
+          code: {
+            codeId: row.id,
+            tenantId: row.tenantId,
+            workspaceId: row.workspaceId,
+            label: row.label,
+          },
+        };
+      }
+
+      const [existing] = await this.db
+        .select()
+        .from(eventCodes)
+        .where(eq(eventCodes.codeHash, codeHash))
+        .limit(1);
+
+      if (!existing) return { status: 'NOT_FOUND' };
+      if (existing.revokedAt) return { status: 'REVOKED' };
+      if (existing.expiresAt <= now) return { status: 'EXPIRED' };
+      return { status: 'FULL' };
+    } catch (err) {
+      log.error({ err }, 'failed to consume event code');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async create(input: CreateEventCodeInput): Promise<{ id: string }> {
+    try {
+      const [row] = await this.db
+        .insert(eventCodes)
+        .values({
+          tenantId: input.tenantId,
+          workspaceId: input.workspaceId,
+          codeHash: input.codeHash,
+          label: input.label ?? null,
+          expiresAt: input.expiresAt,
+          maxUses: input.maxUses ?? null,
+          createdByHash: input.createdByHash ?? null,
+        })
+        .returning({ id: eventCodes.id });
+
+      if (!row) {
+        throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+      }
+      return row;
+    } catch (err) {
+      if (err instanceof InfrastructureError) throw err;
+      log.error({ err }, 'failed to create event code');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

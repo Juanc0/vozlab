@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidDuration } from '../time/duration.js';
 
 /**
  * Strongly-typed environment validation for the Fastify API.
@@ -30,17 +31,32 @@ const EnvSchema = z
 
     // --- Identity / JWT ---
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 chars'),
-    JWT_EXPIRES_IN: z.string().default('8h'),
-    JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+    JWT_EXPIRES_IN: z
+      .string()
+      .refine(isValidDuration, 'JWT_EXPIRES_IN must look like 15m, 12h or 30d')
+      .default('15m'),
+    JWT_REFRESH_EXPIRES_IN: z
+      .string()
+      .refine(
+        isValidDuration,
+        'JWT_REFRESH_EXPIRES_IN must look like 15m, 12h or 30d'
+      )
+      .default('30d'),
 
     // --- OIDC (delegated identity) ---
     OIDC_CLIENT_ID: z.string().min(1, 'OIDC_CLIENT_ID is required'),
     OIDC_CLIENT_SECRET: z.string().min(1, 'OIDC_CLIENT_SECRET is required'),
     OIDC_REDIRECT_URI: z.string().url('OIDC_REDIRECT_URI must be a valid URL'),
+    OIDC_ISSUER: z.string().url('OIDC_ISSUER must be a valid URL'),
     OIDC_AUTH_URL: z.string().url('OIDC_AUTH_URL must be a valid URL'),
     OIDC_TOKEN_URL: z.string().url('OIDC_TOKEN_URL must be a valid URL'),
     OIDC_USERINFO_URL: z.string().url('OIDC_USERINFO_URL must be a valid URL'),
+    OIDC_JWKS_URL: z.string().url('OIDC_JWKS_URL must be a valid URL'),
     OIDC_SCOPES: z.string().default('openid profile email'),
+
+    // --- Web client ---
+    // PWA origin used for CORS and as the post-login redirect base.
+    WEB_ORIGIN: z.string().url('WEB_ORIGIN must be a valid URL'),
 
     // --- LLM / Embeddings ---
     OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),

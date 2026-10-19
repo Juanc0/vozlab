@@ -51,4 +51,18 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
 
     return row ? (row.role as WorkspaceRole) : null;
   }
+
+  async add(
+    userId: string,
+    workspaceId: string,
+    role: WorkspaceRole,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db
+      .insert(workspaceMemberships)
+      .values({ userId, workspaceId, role })
+      .onConflictDoNothing();
+  }
 }

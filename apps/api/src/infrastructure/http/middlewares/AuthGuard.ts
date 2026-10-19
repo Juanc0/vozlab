@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../../../shared/config/env.js';
 import { AgentTypeSchema, buildError, type AgentType } from '@vozlab/shared-types';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
-import { RedisTokenBlacklist } from '../../events/RedisTokenBlacklist.js';
+import { ITokenBlacklist } from '../../../domain/ports/ITokenBlacklist.js';
 
 /**
  * System agent identifiers allowed to act on the graph as bots.
@@ -22,7 +22,8 @@ function isAgentType(value: string): value is AgentType {
  */
 interface VozLabJwtPayload {
   sub: string;
-  tid: string;
+  /** Tenant key (`tenants.oidc_tenant_id`); optional so tenantGuard can 403. */
+  tid?: string;
   jti: string;
   workspaceId?: string;
   authorHash?: string;
@@ -40,7 +41,7 @@ interface VozLabJwtPayload {
  *   3. Check the token `jti` against the Redis blacklist (O(1)).
  *   4. Attach the decoded identity (`user`, `oidcTenantId`) to the request.
  */
-export function authGuard(blacklist: RedisTokenBlacklist) {
+export function authGuard(blacklist: ITokenBlacklist) {
   return async function authGuardHandler(
     req: FastifyRequest,
     reply: FastifyReply
@@ -94,6 +95,7 @@ export function authGuard(blacklist: RedisTokenBlacklist) {
     };
     req.oidcTenantId = payload.tid;
     req.jti = payload.jti;
+    req.tokenExpiresAt = payload.exp;
 
     // System AI agents are identified by the `type` claim (FR-17, US-07).
     //   - An allow-listed `type` marks the request as a bot; membership is

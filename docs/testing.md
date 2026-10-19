@@ -9,19 +9,25 @@ green today, what is deliberately missing, and the Phase 4 plan.
 | --- | --- |
 | Runner | Vitest 2.1.9 |
 | Location | `apps/api/tests/**/*.test.ts` |
-| Size | 15 files / 60 tests |
-| Scope | Domain entities, value objects, use cases, pure infrastructure helpers |
+| Size | 24 files / 114 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, pure infrastructure helpers |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama |
 | Coverage | Not measured; no coverage provider installed |
 
-The suite uses `tests/support/fakes.ts` and `tests/support/hash.ts` to exercise
-use cases without adapters. `apps/api/vitest.config.ts` adds a Vite plugin that
-resolves NodeNext `./x.js` specifiers to `./x.ts` sources, so tests can import
-application code unchanged.
+The suite uses `tests/support/fakes.ts`, `tests/support/authFakes.ts` and
+`tests/support/hash.ts` to exercise use cases without adapters.
+`apps/api/vitest.config.ts` adds a Vite plugin that resolves NodeNext `./x.js`
+specifiers to `./x.ts` sources, so tests can import application code unchanged.
+A setup file (`tests/setup/env.ts`) fills the required environment variables;
+`LOG_LEVEL=fatal` keeps expected negative-path logs out of the output.
 
 Covered areas include node/edge/proposal state machines, authorization rules,
 vote casting, thread closure, keyset pagination, timestamp ownership, the
-connection pool manager, and `AuthorHash` validation.
+connection pool manager, `AuthorHash` validation, PKCE/state construction,
+OIDC ID-token verification (locally generated JWKS, nonce/audience/issuer
+failures), JWT claim issuance, refresh rotation/reuse, logout, JIT user upsert,
+`/auth/me`, event-code joins, and token/duration utilities. All network calls
+use injected `fetch`; no IdP, PostgreSQL or Redis is contacted.
 
 ## Running tests
 

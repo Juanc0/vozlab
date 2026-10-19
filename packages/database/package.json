@@ -26,6 +26,7 @@
     "db:migrate:tenant": "drizzle-kit migrate --config=drizzle.tenant.config.ts",
     "db:seed:dev": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/seed-dev.ts",
     "db:mint-token": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/mint-dev-token.ts",
+    "db:event-code": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/event-code.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
   },
   "dependencies": {
