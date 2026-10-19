@@ -60,24 +60,30 @@ a missing `sourceId` gets `422` and an unauthenticated call gets `401`.
 
 ### Python worker runtime
 
-The Phase 2 runtime has **72 Python tests** in
-`packages/worker-shared/tests`, `apps/worker-embedder/tests` and
-`apps/worker-relacionador/tests`. They cover environment validation, JSON
-logging and correlation context, agent-token minting/static/file/dev providers,
-the `httpx` API client (auth/workspace/correlation headers, typed errors,
-opt-in 5xx retries), retry backoff, the Redis Streams consumer
-(`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
-delivery-count-based dead-lettering and `PermanentError`), the Ollama embedding
-client (current and legacy endpoints, dimension checks, retryable vs permanent
+The Phase 2 runtime has **103 Python tests** in
+`packages/worker-shared/tests`, `apps/worker-embedder/tests`,
+`apps/worker-relacionador/tests` and `apps/worker-extractor/tests`. They
+cover environment validation, JSON logging and correlation context, agent-token
+minting/static/file/dev providers, the `httpx` API client (auth/workspace/
+correlation headers, typed errors, opt-in 5xx retries), retry backoff, the
+Redis Streams consumer (`XREADGROUP`, idempotent group creation, `XAUTOCLAIM`,
+delivery-count-based dead-lettering and `PermanentError`), the Ollama clients
+(embedding and chat: endpoints, dimension checks, retryable vs permanent
 failures), the embedder's `NODE_CREATED` handler (read node → embed → write
-back) and the Relator's handler and LLM client (neighbours → verdict →
-relation key → edge, hallucinated targets, merge verdicts, duplicate guard).
+back), the Relator's handler and LLM client (neighbours → verdict → relation
+key → edge, hallucinated targets, merge verdicts, duplicate guard) and the
+Extractor's PII masker, extraction client and handler (masking before the
+model call, ontology fallback, duplicate guard, dead-letter classification).
 Redis is simulated with `fakeredis`; HTTP with `httpx.MockTransport`. No live
 Redis, Ollama, API or IdP is contacted. The app tests drive a full `--once`
 pass over a fake stream.
 
 `pytest` runs with `--import-mode=importlib` so two worker packages can use
 the same test file names without a module-name collision.
+
+**The Python suite is a CI job** (`astral-sh/setup-uv`, `uv sync --frozen`,
+`uv run pytest`, `uv run ruff check` and `uv run ruff format --check`) and
+the worker images are built on every pull request.
 
 ## Running tests
 
@@ -152,20 +158,20 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
   docker-compose pair; Testcontainers or service containers are Phase 4.
 - End-to-end tests (Playwright) for the PWA.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
-- Python tests in CI/Turbo. The runtime suite runs locally (`uv run pytest`),
-  but CI does not install uv or run it yet; that is Phase 2.7.
-- Worker handler and end-to-end pipeline tests: the embedder and the Relator
-  are covered by unit tests and by manual end-to-end runs, but no
-  Extractor/Consolidator handler exists and no test drives a live Ollama or a
-  live Redis stream.
+- Python tests in Turbo. The runtime suite runs in CI (`uv run pytest`) and
+  locally, but it is not part of the Turbo task graph.
+- Worker handler and end-to-end pipeline tests: the three workers are covered
+  by unit tests and by manual end-to-end runs, but the Consolidator does not
+  exist and no test drives a live Ollama or a live Redis stream.
 - Contract tests between Zod DTOs and Python/Pydantic models.
 - Mutation, accessibility, visual-regression and PWA offline tests.
 - A `test:ci` package script. `turbo.json` declares the task, but no package
   implements it, so `pnpm turbo run test:ci` is currently a no-op.
 
-CI runs `pnpm turbo run build type-check test` and nothing else. It runs the
-TypeScript unit suite only; it does not run integration, Python, E2E, coverage,
-Docker builds or deployments.
+CI runs three jobs: the TypeScript gate (`pnpm turbo run build type-check
+test`), the Python gate (`uv sync --frozen`, `uv run pytest`, ruff check and
+format) and the worker image builds. It does not run the integration suite,
+E2E, coverage or deployments.
 
 ## Known lint debt
 

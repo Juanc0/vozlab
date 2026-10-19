@@ -10,14 +10,15 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 27 files / 127 TypeScript unit tests green (`pnpm test`); opt-in integration suite (4 files / 23 tests); Python runtime 72 tests (`uv run pytest`) |
+| Tests | 27 files / 127 TypeScript unit tests green (`pnpm test`); opt-in integration suite (4 files / 23 tests); Python runtime 103 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
-| CI | Thin GitHub Actions: install + `build type-check test` (TypeScript only; Python tests are not wired yet) |
+| CI | Thin GitHub Actions: TypeScript gate + Python gate (uv/pytest/ruff) + worker image builds |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
 | Embedding pipeline | Done — `NODE_CREATED` → Ollama (768) → `nodes.embedding` via the agent-only API route; the worker is not in Compose/CI yet |
 | Relator (Agent 2) | Partial — reads the top-5 neighbours, asks the LLM and creates `PENDING` edges; a merge verdict is logged, not applied |
 | Source registry | Done — `meta.data_sources` + agent-only `GET /api/v1/ingestion/resolve-source`; no management route yet |
-| Extractor / Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
+| Extractor (Agent 1) | Partial — masks PII, extracts a draft and creates a `PENDING` node; nothing publishes `stream:source_raw` yet |
+| Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
@@ -27,7 +28,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | --- | --- | --- |
 | `apps/api` | Fastify API (hexagonal: `domain`, `application`, `infrastructure`, `shared`) | Implemented |
 | `apps/web` | SvelteKit 5 PWA | Empty scaffold (Phase 3) |
-| `apps/worker-extractor` | Python 3.12 ingestion worker | Empty scaffold (Phase 2) |
+| `apps/worker-extractor` | Python 3.12 ingestion worker | Implemented (PII masking → LLM draft → `PENDING` node); the ingestion producer is missing |
 | `apps/worker-relacionador` | Python 3.12 relationship evaluator | Implemented (neighbours → LLM → `PENDING` edge); merges deferred |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |
 | `apps/worker-embedder` | Dedicated `NODE_CREATED` embedding worker (ADR-0020) | Implemented (Ollama → agent-only API write-back); not in Compose/CI yet |
@@ -85,11 +86,13 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
 | `uv sync` | Creates the Python 3.12 workspace environment from `uv.lock` |
-| `uv run pytest` | Runs the shared worker runtime, embedder and Relator tests (72) |
-| `uv run ruff check packages/worker-shared apps/worker-embedder apps/worker-relacionador` | Lints the Python worker code |
+| `uv run pytest` | Runs the shared worker runtime, embedder, Relator and Extractor tests (103) |
+| `uv run ruff check packages/worker-shared apps/worker-embedder apps/worker-relacionador apps/worker-extractor` | Lints the Python worker code |
 | `uv run vozlab-worker-embedder --check` | Validates the embedder configuration and agent credential source |
 | `uv run vozlab-worker-embedder [--once]` | Runs the embedder consumer (once = single pass) |
 | `uv run vozlab-worker-relacionador [--once]` | Runs the Relator consumer |
+| `uv run vozlab-worker-extractor [--once]` | Runs the Extractor consumer |
+| `docker compose --profile workers up -d` | Runs the three workers as containers (the API stays on the host) |
 
 The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-only, so there is no `dist/` to run.
 

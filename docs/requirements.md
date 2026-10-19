@@ -116,10 +116,10 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-17 — Agent 1, atomized multi-source ingestion.** The Extractor must
   connect institutional listening channels (surveys, suggestion boxes, meeting
   minutes), homogenize non-confidential records one by one, and create node/edge
-  drafts by calling the API. *(Deferred: the worker is not built. Its
-  prerequisites are — the API-owned `meta.data_sources` registry and the
-  agent-only resolution route ([ADR-0025](decisions/ADR-0025-source-resolution-route.md));
-  contract in [spec/extractor.md](spec/extractor.md).)*
+  drafts by calling the API. *(Partial: the worker exists — it consumes
+  `stream:source_raw`, masks the PII locally, extracts a draft and creates a
+  `PENDING` node. **Nothing publishes `stream:source_raw` yet**: the ingestion
+  gateway is missing. Contract in [spec/extractor.md](spec/extractor.md).)*
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
@@ -165,7 +165,9 @@ The identity model, guard chain and pseudonym rules are in
   passwords. *(Implemented: delegated identity only.)*
 - **NFR-06 — PII anonymization at ingestion.** The Extractor must filter and
   anonymize personally identifiable information before records enter the
-  system. *(Deferred with the worker.)*
+  system. *(Partial: the worker masks identifiers locally, before any text
+  reaches the model. The name detection is heuristic, and the ingestion
+  producer does not exist yet.)*
 - **NFR-07 — Pseudonymous traceability.** A user's visible identity in the
   graph is always an opaque `author_hash`, never their name, email or subject
   identifier. The pseudonym is generated randomly per user, stored on
@@ -324,7 +326,7 @@ implementation yet.
 | FR-13 | US-06 | `AutoApplyProposalUseCase.ts` | `public.edit_proposals` |
 | FR-14, FR-15 | US-04 | `CastVoteUseCase.ts` | `public.interactions_log`, counters |
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
-| FR-17 | US-07 | *(planned)* `apps/worker-extractor`; `ResolveSourceUseCase.ts`; ADR-0025 | `meta.data_sources` |
+| FR-17 | US-07 | `apps/worker-extractor`; `ResolveSourceUseCase.ts`; ADR-0024, ADR-0025 | `meta.data_sources` |
 | FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), `SetNodeEmbeddingUseCase.ts`, ADR-0020, `apps/worker-embedder` | `public.nodes.embedding` |
 | FR-19 | US-08 | `apps/worker-relacionador`; `GetNodeNeighborsUseCase.ts`; ADR-0022, ADR-0023 | `public.edges`, `edit_proposals` |
 | FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

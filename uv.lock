@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "vozlab-worker",
     "vozlab-worker-embedder",
+    "vozlab-worker-extractor",
     "vozlab-worker-relacionador",
 ]
 
@@ -334,6 +335,23 @@ requires-dist = [
 name = "vozlab-worker-embedder"
 version = "0.1.0"
 source = { editable = "apps/worker-embedder" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "vozlab-worker" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.8,<3" },
+    { name = "pydantic-settings", specifier = ">=2.4,<3" },
+    { name = "vozlab-worker", editable = "packages/worker-shared" },
+]
+
+[[package]]
+name = "vozlab-worker-extractor"
+version = "0.1.0"
+source = { editable = "apps/worker-extractor" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },

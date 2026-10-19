@@ -234,7 +234,43 @@ docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
 A `MERGE` verdict is logged but never applied — there is no merge contract
 ([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
 
-### 10. Start the API
+### 10. Run the Extractor worker (optional)
+
+The Extractor (Agent 1) consumes `stream:source_raw`, masks the PII locally,
+asks the local LLM for a draft node and creates it through the API. **Nothing
+publishes `stream:source_raw` yet** — the ingestion gateway is missing — so
+publish a record by hand to try it:
+
+```bash
+docker exec vozlab-redis redis-cli XADD stream:source_raw '*' \
+  sourceId dev-minutes-2026 connectorType MINUTES channelName meeting-minutes \
+  rawContent "Ana Torres (ana.torres@example.edu) reported that the campus shuttle leaves every hour."
+
+AGENT_TOKEN="$(pnpm --filter @vozlab/database db:mint-token -- --as agent | awk '/^eyJ/')" \
+API_BASE_URL=http://localhost:3000 REDIS_URL=redis://localhost:6379/0 \
+OLLAMA_BASE_URL=http://localhost:11434 OLLAMA_CHAT_MODEL=llama3.1:8b \
+  uv run vozlab-worker-extractor --once
+```
+
+The created node is `PENDING` and its text contains `[MASKED]` instead of the
+identifiers.
+
+### 11. Run the workers in containers (optional)
+
+Each worker has a Dockerfile and a compose profile. The API still runs on the
+host, so the containers reach it through `host.docker.internal`:
+
+```bash
+docker compose --profile workers up -d --build worker-embedder worker-relacionador worker-extractor
+docker compose --profile workers logs -f worker-embedder
+```
+
+The images are built with `uv sync --frozen` from the repository root, so an
+outdated `uv.lock` fails the build instead of resolving something new. In
+production the workers get `AGENT_TOKEN`/`AGENT_TOKEN_FILE` instead of the
+development minting path.
+
+### 12. Start the API
 
 ```bash
 pnpm --filter @vozlab/api dev
@@ -285,7 +321,7 @@ pnpm lint                                # known red: 26 pre-existing no-explici
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
 
-# Python worker runtime (72 tests; no live Redis/Ollama/API)
+# Python worker runtime (103 tests; no live Redis/Ollama/API)
 uv sync
 uv run pytest
 ```

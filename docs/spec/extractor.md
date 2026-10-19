@@ -1,12 +1,13 @@
 # Extractor Worker (`worker-extractor`)
 
-> **Not implemented (Phase 2).** `apps/worker-extractor/` is still an empty
-> scaffold: no `pyproject.toml`, handler, Dockerfile or tests. The shared
-> runtime in `packages/worker-shared` (ADR-0021) is available for the future
-> package, and the API side the worker depends on now exists: the
-> `meta.data_sources` registry and the agent-only resolution route
-> `GET /api/v1/ingestion/resolve-source` ([ADR-0025](../decisions/ADR-0025-source-resolution-route.md)).
-> This page defines the intended contract; nothing here runs today.
+> **Implemented (milestone 2.3), with one documented gap.** The worker lives in
+> `apps/worker-extractor/`: it consumes `stream:source_raw` with its own group
+> `extractor`, masks the PII locally, asks the local LLM for a draft node and
+> creates it through the API. The **producer** of `stream:source_raw` — the
+> ingestion gateway — does not exist yet: records are published by an external
+> connector or by hand. The worker also resolves the source *before* the
+> extraction, so an unknown source is dead-lettered without paying for an LLM
+> call.
 
 The Extractor is Agent 1: it turns heterogeneous institutional records
 (surveys, suggestion boxes, meeting minutes, open comments) into draft nodes
@@ -25,13 +26,14 @@ through the Fastify API. It never writes to PostgreSQL directly.
 
 | Component | Status |
 | --- | --- |
-| Worker process / Python package | Not implemented; shared `vozlab_worker` runtime exists |
-| `stream:source_raw` producer and consumer | Not implemented |
-| PII sanitizer | Not implemented |
-| Ollama extraction | Not implemented |
+| Worker process / Python package | **Implemented** (`apps/worker-extractor`) |
+| `stream:source_raw` consumer | Implemented (group `extractor`) |
+| `stream:source_raw` producer (ingestion gateway) | **Missing**: nothing publishes records yet; a connector or an operator does |
+| PII sanitizer | **Implemented** (rule-based, local; heuristic on personal names) |
+| Ollama extraction | Implemented (strict JSON, validated) |
 | `meta.data_sources` registry + resolution route | **Implemented** (registry + agent-only route, ADR-0025); no management route yet |
 | Batch node endpoint | Does not exist, and will not: one node per request ([ADR-0024](../decisions/ADR-0024-no-batch-node-endpoint.md)) |
-| Root-entity cache / dedup | Phase 2 planned, not part of the contract |
+| Root-entity cache / dedup | Best-effort title guard only; the real dedup is Phase 2 |
 | API `POST /api/v1/nodes` | Implemented and usable |
 
 ## Input: `RawSourceRecord`
@@ -80,12 +82,21 @@ flowchart LR
    node has been accepted by the API. Unacknowledged entries stay in the PEL.
 2. **Sanitize.** Replace names, emails, national IDs and similar identifiers
    with `[MASKED]`. Masking must happen locally, before the Ollama request.
+   The implementation is rule-based: emails, phone numbers, long digit runs
+   and id-like groups are masked reliably; personal names are detected
+   heuristically (two or more capitalised words that are not institutional
+   terms), so a name that looks like a common noun survives. Over-masking
+   costs a little context, under-masking would leak personal data.
 3. **Extract.** Ask the LLM for strict structured output: `title`,
    `description`, `attributes`, `typeKey`. The default ontology key is
    `Problem`; `typeKey` must exist and be `ACTIVE` in the target workspace or
-   the API returns `422 ERR_VALIDATION_FAILED` (FR-06).
+   the API returns `422 ERR_VALIDATION_FAILED` (FR-06). A title the model did
+   not produce falls back to the masked text; a `typeKey` the workspace does
+   not have falls back to the default class.
 4. **Resolve workspace.** Obtain the target workspace and authorization
-   context from the API registry. The payload does not carry it.
+   context from the API registry. The payload does not carry it. The worker
+   resolves the source **before** the extraction, so an unknown source is
+   dead-lettered without an LLM call.
 5. **Publish.** Call `POST /api/v1/nodes`; the node is born `PENDING`.
 6. **Acknowledge.** `XACK` only after a `201` response. Retry transient API or
    Ollama failures with backoff.
@@ -124,10 +135,11 @@ There is no API key and no author salt.
 ### Batch ingestion is not available
 
 `BatchCreateNodeSchema` exists as a contract only: `{ nodes: [1..1000] }`.
-There is no batch route. Whether the worker should post one node per request or
-a batch endpoint should be added is an **open decision**; until then, use the
-single-node endpoint and respect its rate limit (30 writes/minute per actor by
-default; agents are actors too).
+There is no batch route, and that is a decision: the rate limiter counts
+requests, so a bulk route would bypass the per-actor write budget
+([ADR-0024](../decisions/ADR-0024-no-batch-node-endpoint.md)). The worker
+posts one node per request and respects the write limit (30 writes/minute per
+actor by default; agents are actors too).
 
 ## Minimal Python shape
 

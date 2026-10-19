@@ -92,13 +92,36 @@ never throws and a broker failure only produces an error log.
 | `stream:interaction_cast` | Votes |
 | `stream:ontology_class_proposed`, `stream:ontology_class_activated`, `stream:ontology_property_proposed` | Ontology |
 
-There are **two consumer groups** today on `stream:node_created`: `embedder`
-(the embedder worker) and `relator` (the Relator worker). The shared Python
-runtime also implements `XAUTOCLAIM` recovery, bounded attempts and a
-dead-letter stream (`stream:node_created:dead`), which both workers use. The
-Extractor and Consolidator have no handler. Streams are never trimmed
-(`MAXLEN` is not set), so they grow without bound. There is no replay or
-backfill tool.
+There are **three consumer groups** today: `embedder` and `relator` on
+`stream:node_created`, and `extractor` on `stream:source_raw`. The shared
+Python runtime also implements `XAUTOCLAIM` recovery, bounded attempts and a
+dead-letter stream (`<stream>:dead`), which the workers use. The Consolidator
+has no handler, and **nothing publishes `stream:source_raw` yet**. Streams are
+never trimmed (`MAXLEN` is not set), so they grow without bound. There is no
+replay or backfill tool.
+
+## Worker containers
+
+Each Python worker has a Dockerfile (`apps/worker-<name>/Dockerfile`) and a
+compose service behind the `workers` profile:
+
+| Service | Image | Stream / group |
+| --- | --- | --- |
+| `worker-embedder` | `vozlab/worker-embedder:dev` | `stream:node_created` / `embedder` |
+| `worker-relacionador` | `vozlab/worker-relacionador:dev` | `stream:node_created` / `relator` |
+| `worker-extractor` | `vozlab/worker-extractor:dev` | `stream:source_raw` / `extractor` |
+
+```bash
+docker compose --profile workers up -d --build worker-embedder
+docker compose --profile workers ps
+docker compose --profile workers logs -f worker-embedder
+```
+
+The images are Python 3.12 + uv, built with `uv sync --frozen` from the
+repository root, and run as a non-root user. The API is **not** containerised
+yet: the workers reach the host API through `host.docker.internal`, and the
+API image lands in Phase 4 (4.6). There is no health endpoint, so
+`docker compose ps` and the JSON logs are the only signals.
 
 ## Graceful shutdown
 
@@ -134,11 +157,11 @@ these alerts **cannot** be implemented with the current code:
 | AGE/Cypher query latency > 50 ms | No query instrumentation. |
 | Readiness failures over time | Only point-in-time HTTP responses; no scrape/history. |
 | Rate-limit spikes or abusive actors | Only per-request warning logs. |
-| Stream depth / consumer lag | Two consumer groups exist but there is no lag metric. |
+| Stream depth / consumer lag | Three consumer groups exist but there is no lag metric. |
 | Dropped event publications | Only an error log line; no counter. |
 | Tenant pool saturation | No pool metrics. |
 | Ollama latency/errors | The embedder calls Ollama, but nothing is instrumented. |
-| Worker failures/heartbeats | The embedder and the Relator log JSON, but there is no heartbeat or metric. |
+| Worker failures/heartbeats | The three workers log JSON, but there is no heartbeat or metric. |
 
 ## Planned observability (Phase 4 — not implemented)
 

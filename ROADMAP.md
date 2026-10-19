@@ -19,14 +19,13 @@ trade-offs before coding.
   rotating refresh sessions, logout, `/auth/me` and event-code join.
 - 27 test files / 127 TypeScript unit tests green; opt-in integration suite
   (4 files / 23 tests) green against local PostgreSQL/Redis; Python worker
-  runtime has 72 green tests (`uv run pytest`); `build` + `type-check` green;
-  thin CI runs install + `build type-check test` (TypeScript only).
-- Phase 2 in progress: shared `vozlab_worker` runtime, the dedicated embedder
-  (FR-18 implemented end to end), the Relator (FR-19 partial — merges are
-  logged, not applied) and the source registry + resolution route (FR-17
-  prerequisite). Extractor and Consolidator handlers, PWA (including its
-  login/QR UI), observability and broad integration/E2E/load tests are not
-  started.
+  runtime has 103 green tests (`uv run pytest`); `build` + `type-check` green;
+  CI runs the TypeScript gate, the Python gate and the worker image builds.
+- Phase 2 in progress: shared `vozlab_worker` runtime, the embedder (FR-18),
+  the Relator (FR-19 partial), the Extractor (FR-17 partial) and the source
+  registry (FR-17 prerequisite). The Consolidator handler, the ingestion
+  producer, the merge contract, the PWA (including its login/QR UI),
+  observability and broad integration/E2E/load tests are not started.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
@@ -108,15 +107,17 @@ Milestones:
       (ADR-0009). Result: registry + agent-only, tenant-scoped resolution route
       ([ADR-0025](docs/decisions/ADR-0025-source-resolution-route.md)); no
       management route for the registry yet.
-- [ ] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
-      ([spec](docs/spec/extractor.md)).
+- [x] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
+      ([spec](docs/spec/extractor.md)). Result: `apps/worker-extractor` masks
+      the PII locally, resolves the workspace through the registry, extracts a
+      draft and creates a `PENDING` node; **nothing publishes
+      `stream:source_raw` yet** (the ingestion gateway is still missing).
 - [x] 2.4 Embedding computation: `NODE_CREATED` → `nomic-embed-text` (768) →
       `public.nodes.embedding` + HNSW index verified
       ([FR-18](docs/requirements.md)). Result: dedicated embedder worker
       (ADR-0020) + agent-only `PUT /api/v1/nodes/:id/embedding`, `embedding_model`
       /`embedded_at` columns, HNSW index exercised, verified end to end against
-      the local stack; the worker is not in Compose/CI yet (2.7) and there is no
-      backfill for pre-existing nodes.
+      the local stack; there is no backfill for pre-existing nodes.
 - [x] 2.5 Relator: vector top-5 → LLM evaluation → merge/edge proposals
       ([spec](docs/spec/relator.md)). Result: `apps/worker-relacionador` reads
       the neighbours through the API (ADR-0022), asks the local LLM and creates
@@ -124,8 +125,11 @@ Milestones:
       contract exists yet (ADR-0023).
 - [ ] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
       the API ([spec](docs/spec/consolidator.md)); add the opportunity endpoint.
-- [ ] 2.7 Worker Dockerfiles + compose profiles + worker tests; update
-      `runbook-ops.md`.
+- [x] 2.7 Worker Dockerfiles + compose profiles + worker tests; update
+      `runbook-ops.md`. Result: a Dockerfile per worker (uv, non-root,
+      `--frozen`), a `workers` compose profile, the Python suite and the image
+      builds in CI, and the runbook updated. The API image and the deployment
+      pipeline remain Phase 4 (4.6).
 
 ## Phase 3 — PWA
 

@@ -4,27 +4,31 @@
 
 `.github/workflows/ci.yml` is intentionally minimal. It runs on every pull
 request and on pushes to `main`; a concurrency group cancels superseded runs.
+It has **three jobs**.
 
-| Step | Detail |
+| Job | Steps |
 | --- | --- |
-| Checkout | `actions/checkout@v4` |
-| pnpm | `pnpm/action-setup@v4`, version read from `packageManager` (12.11.2) |
-| Node | `actions/setup-node@v4`, Node 22, pnpm cache enabled |
-| Install | `pnpm install --frozen-lockfile` |
-| Verify | `pnpm turbo run build type-check test` |
+| `verify` (TypeScript) | `actions/checkout@v4` → `pnpm/action-setup@v4` (version from `packageManager`) → `actions/setup-node@v4` (Node 22, pnpm cache) → `pnpm install --frozen-lockfile` → `pnpm turbo run build type-check test` |
+| `python` (worker runtime) | `actions/checkout@v4` → `astral-sh/setup-uv@v10` (uv 0.11.8, cache) → `uv sync --frozen --all-packages --all-groups` → `uv run pytest` → `uv run ruff check …` → `uv run ruff format --check …` |
+| `images` (worker images) | `actions/checkout@v4` → `docker build` of the embedder, Relator and Extractor images |
 
-That is the whole file. `build` type-checks `src`; `type-check` covers API tests
-and database scripts; `test` runs the Vitest unit suite (26 files / 125 tests).
-Turborepo caching is enabled for all tasks.
+`build` type-checks `src`; `type-check` covers API tests and database scripts;
+`test` runs the Vitest unit suite (27 files / 127 tests). The Python job runs
+the worker runtime suite (103 tests) and the format/lint gate for the Python
+code. The image job proves the worker Dockerfiles still build — the images
+are not pushed anywhere.
+
+Turborepo caching is enabled for all tasks; the uv job uses the setup action's
+cache.
 
 What it does **not** do:
 
 - No lint. `pnpm lint` is known red (26 `no-explicit-any` errors), so adding it
-  now would block every merge.
-- No PostgreSQL, Redis or Ollama services; the suite is unit-only.
+  now would block every merge. (The Python `ruff` gate *is* enforced.)
+- No PostgreSQL, Redis or Ollama services; the suites are unit-only.
 - No migrations, seed or integration tests.
 - No Playwright, k6 or coverage.
-- No Docker image build, registry push, SBOM or vulnerability scan.
+- No registry push, SBOM or vulnerability scan.
 - No deployment or migration job.
 - No `develop` branch trigger (the old spec claimed one; it does not exist).
 - No `test:ci` execution: the Turbo task is declared, but no package defines

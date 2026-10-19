@@ -23,8 +23,8 @@ flowchart LR
 | Tenant DB | PostgreSQL 18.6 + pgvector; one physical DB per institution | Implemented |
 | Broker/cache | Redis 7 (Streams, fixed-window counters, token blacklist, OIDC state) | Implemented |
 | PWA | SvelteKit 5 + Cytoscape.js | Empty scaffold |
-| Workers | Python 3.12 + uv; shared `vozlab_worker` runtime (ADR-0021) | Embedder and Relator implemented; other agents are scaffolds |
-| AI workers | Extractor, Consolidador | Empty scaffolds |
+| Workers | Python 3.12 + uv; shared `vozlab_worker` runtime (ADR-0021) | Embedder, Relator and Extractor implemented; the Consolidator is a scaffold |
+| AI workers | Consolidador | Empty scaffold |
 | LLM | Ollama (`nomic-embed-text`, 768 dims) | Used by the embedder |
 
 ## Request path
@@ -101,8 +101,9 @@ The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded at
 | Service | Image / runtime | Port | Notes |
 | --- | --- | --- | --- |
 | API | `tsx` on Node 22 | 3000 | `HOST`, `PORT` from env; graceful `SIGTERM`/`SIGINT` |
-| Embedder worker | Python 3.12 (`vozlab-worker-embedder`) | — | Not in Compose yet; consumes `stream:node_created` (group `embedder`) |
-| Relator worker | Python 3.12 (`vozlab-worker-relacionador`) | — | Not in Compose yet; consumes `stream:node_created` (group `relator`) |
+| Embedder worker | Python 3.12 (`vozlab-worker-embedder`) | — | Compose profile `workers`; consumes `stream:node_created` (group `embedder`) |
+| Relator worker | Python 3.12 (`vozlab-worker-relacionador`) | — | Compose profile `workers`; consumes `stream:node_created` (group `relator`) |
+| Extractor worker | Python 3.12 (`vozlab-worker-extractor`) | — | Compose profile `workers`; consumes `stream:source_raw` (group `extractor`) |
 | PostgreSQL | `vozlab/postgres:18-age-pgvector` (PG 18.6, AGE 1.8, pgvector) | 5432 | Built from `docker/postgres/Dockerfile`; init scripts only on a fresh volume |
 | Redis | `redis:7-alpine` | 6379 | No auth locally; password optional |
 | Ollama | `ollama/ollama:latest` | 11434 | Not called by the API today |
@@ -114,7 +115,8 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 - PWA OIDC login screen, session restore UI and event QR scanner (the API half of FR-01/02/03 exists).
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SvelteKit PWA, SSE, GraphQL.
-- Python Extractor/Consolidador handlers. The embedder and the Relator are implemented but are not in Compose or CI yet (Phase 2.7), and pre-existing nodes are not backfilled.
+- Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).
+- An ingestion producer: nothing publishes `stream:source_raw` yet, so the Extractor has no input (the gateway is an open option in the spec).
 - A merge contract: the Relator can judge that two nodes should be merged but has nothing to submit ([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
 - Management of the source registry: `meta.data_sources` exists and the resolution route reads it, but there is no route to create or deactivate a source ([ADR-0025](decisions/ADR-0025-source-resolution-route.md)).
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.

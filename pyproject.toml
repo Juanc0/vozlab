@@ -3,6 +3,7 @@ members = [
   "packages/worker-shared",
   "apps/worker-embedder",
   "apps/worker-relacionador",
+  "apps/worker-extractor",
 ]
 
 [dependency-groups]
@@ -17,6 +18,7 @@ testpaths = [
   "packages/worker-shared/tests",
   "apps/worker-embedder/tests",
   "apps/worker-relacionador/tests",
+  "apps/worker-extractor/tests",
 ]
 # `--import-mode=importlib` lets two worker packages use the same test file
 # names (e.g. `test_handler.py`) without a module-name collision.
@@ -29,6 +31,7 @@ src = [
   "packages/worker-shared/src",
   "apps/worker-embedder/src",
   "apps/worker-relacionador/src",
+  "apps/worker-extractor/src",
 ]
 extend-exclude = [".agents", ".venv", "node_modules"]
 

@@ -1,0 +1,23 @@
+[project]
+name = "vozlab-worker-extractor"
+version = "0.1.0"
+description = "VozLab Extractor worker (Phase 2): atomic multi-source ingestion"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "vozlab-worker",
+  "pydantic>=2.8,<3",
+  "pydantic-settings>=2.4,<3",
+]
+
+[project.scripts]
+vozlab-worker-extractor = "worker_extractor.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+vozlab-worker = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/worker_extractor"]

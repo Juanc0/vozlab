@@ -19,8 +19,7 @@ they disagree with the code, **the code wins** — fix the doc.
 ## Layout
 - `apps/api` — the only app with code. Hexagonal: `domain/` (pure),
   `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
-- `apps/web`, `apps/worker-extractor`, `apps/worker-consolidador` — empty
-  scaffolds; not in the build yet.
+- `apps/web`, `apps/worker-consolidador` — empty scaffolds; not in the build yet.
 - `apps/worker-embedder` — Python 3.12/uv worker: consumes `NODE_CREATED`,
   calls Ollama (`nomic-embed-text`, 768 dims) and writes the vector through
   the agent-only `PUT /api/v1/nodes/:id/embedding` route.
@@ -28,6 +27,9 @@ they disagree with the code, **the code wins** — fix the doc.
   (group `relator`), reads the top-5 neighbours through
   `GET /api/v1/nodes/:id/neighbors`, asks the local LLM and creates a
   `PENDING` edge. A `MERGE` verdict is logged, not applied (ADR-0023).
+- `apps/worker-extractor` — Python 3.12/uv worker: consumes `stream:source_raw`
+  (group `extractor`), masks the PII locally, asks the local LLM for a draft
+  and creates a `PENDING` node. Nothing publishes that stream yet.
 - `packages/worker-shared` — shared Python runtime (`vozlab_worker`): settings,
   JSON logs, agent tokens, httpx client, Redis Streams consumer groups,
   `XAUTOCLAIM`, retries and DLQ.
@@ -45,12 +47,15 @@ they disagree with the code, **the code wins** — fix the doc.
   `@typescript-eslint/no-explicit-any` errors); not in CI. Do not claim it passes.
 - `uv sync` — Python 3.12 workspace environment from `uv.lock` (uses the
   repo-root `.venv`; keep it dedicated to this workspace).
-- `uv run pytest` — 72 Python runtime/worker tests; `uv run ruff check
-  packages/worker-shared apps/worker-embedder apps/worker-relacionador` —
-  Python lint.
+- `uv run pytest` — 103 Python runtime/worker tests; `uv run ruff check
+  packages/worker-shared apps/worker-embedder apps/worker-relacionador
+  apps/worker-extractor` — Python lint.
 - `uv run vozlab-worker-embedder --check` — validate the embedder config;
   `--once` runs a single pass over `stream:node_created`.
-  `uv run vozlab-worker-relacionador --check` does the same for the Relator.
+  `uv run vozlab-worker-relacionador --check` and
+  `uv run vozlab-worker-extractor --check` do the same for the other workers.
+- `docker compose --profile workers up -d` — run the three workers as
+  containers (the API stays on the host).
 - `pnpm --filter @vozlab/api dev` — `tsx watch` with `--env-file-if-exists=../../.env`.
 - `pnpm --filter @vozlab/database db:generate[:router|:tenant]`,
   `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
@@ -84,25 +89,26 @@ they disagree with the code, **the code wins** — fix the doc.
 
 ## Current state / gotchas (verified 2026-10-19)
 - Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 TypeScript
-  tests plus 72 Python worker-runtime tests.
+  tests plus 103 Python worker-runtime tests.
 - `GET /api/v1/ingestion/resolve-source` is the one protected route without
   `X-Workspace-ID` (the workspace is the answer); it is agent-only and
   tenant-scoped (ADR-0025).
-- Phase 2 in progress: `packages/worker-shared`, `apps/worker-embedder` (FR-18)
-  and `apps/worker-relacionador` (FR-19, partial) are implemented, and the
-  source registry + resolution route exist (FR-17 prerequisite).
-  Extractor/Consolidator handlers, worker Dockerfiles and CI wiring are still
-  missing.
+- Phase 2 in progress: `packages/worker-shared`, `apps/worker-embedder` (FR-18),
+  `apps/worker-relacionador` (FR-19, partial) and `apps/worker-extractor`
+  (FR-17, partial) are implemented, and the source registry + resolution route
+  exist. The Consolidator handler, the ingestion producer and the merge
+  contract are still missing.
 - `build` type-checks `src/**`; `type-check` additionally covers
   `apps/api/tests/**` and `packages/database/scripts/**` via
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
-- Thin CI at `.github/workflows/ci.yml`: install + `turbo run build type-check test`.
-- Not built: Extractor/Consolidator handlers, a merge proposal contract, a
-  management route for `meta.data_sources`, PWA, SSE, AGE adapter,
-  metrics/tracing, worker Dockerfiles/compose profiles, backfill of existing
-  nodes. The embedding pipeline (FR-18) and the Relator (FR-19, except merges)
-  are implemented but the workers are not deployed. Real auth endpoints exist
-  (FR-01/02/03).
+- CI at `.github/workflows/ci.yml` has three jobs: the TypeScript gate, the
+  Python gate (uv/pytest/ruff) and the worker image builds.
+- Not built: the Consolidator handler, an ingestion producer for
+  `stream:source_raw`, a merge proposal contract, a management route for
+  `meta.data_sources`, PWA, SSE, AGE adapter, metrics/tracing, the API image
+  and the deployment pipeline, backfill of existing nodes. The embedding
+  pipeline (FR-18) and the Relator (FR-19, except merges) are implemented but
+  the workers are not deployed. Real auth endpoints exist (FR-01/02/03).
 - Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
   `package.json` and `docker/`. Some archived docs describe older versions.
 - `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;
