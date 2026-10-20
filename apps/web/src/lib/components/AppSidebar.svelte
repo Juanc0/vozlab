@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { logout } from '$lib/api/auth';
+  import { forgetDevelopmentToken } from '$lib/auth/dev-sign-in';
   import { getApiClient, getSessionState } from '$lib/state/context';
   import WorkspaceSelector from './WorkspaceSelector.svelte';
 
@@ -36,6 +37,9 @@
     }
 
     session.clear();
+    // A development token is kept in the tab so a reload does not cost the
+    // role; signing out has to take it away as well.
+    forgetDevelopmentToken();
     await goto('/login');
   }
 </script>

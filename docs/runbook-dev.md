@@ -370,6 +370,39 @@ it and lands in the app with the workspace selected.
 The `/login` page starts the real OIDC flow, which needs an identity
 provider. None runs in Compose, so locally it is the event-code path above.
 
+### 15. Present as a dev identity
+
+The event code grants the `MEMBER` role, and a member can neither approve a
+proposal nor auto-apply one: the approval belongs to the **author of the
+target** and the auto-apply to a moderator. The seeded graph is authored by
+the maintainer, so a presenter who signs in with an event code can look at
+the governance screens but not act on them.
+
+The login page of a **development build** therefore offers a development
+sign-in: paste a token minted locally and the app adopts it as the session.
+
+```bash
+pnpm --filter @vozlab/database db:mint-token -- --as maintainer
+# paste the token into the login page
+```
+
+The identities and what each of them can do:
+
+| Identity | Workspace role | Can do |
+| --- | --- | --- |
+| `maintainer` | `ADMIN` | approve and reject the proposals of the seeded nodes; auto-apply |
+| `moderator` | `MODERATOR` | auto-apply the proposals that are old and scored enough |
+| `member` | `MEMBER` | propose corrections, discuss, vote |
+
+The token is verified by the API, not by the browser: an expired or revoked
+one is rejected with a `401` and the panel says so. It is kept in
+`sessionStorage` so a reload does not cost the presenter the role, and that
+path exists only in a development build — a production bundle has no such
+code. The sign-out takes it away.
+
+> The demonstration runs against the **development server**
+> (`pnpm --filter @vozlab/web dev`). The panel is not in a production build.
+
 The API half can be exercised without any of this:
 
 ```bash

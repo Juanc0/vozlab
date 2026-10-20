@@ -3,6 +3,11 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { restoreSession } from '$lib/auth/restore';
+  import {
+    forgetDevelopmentToken,
+    readRememberedDevelopmentToken,
+    signInWithDevelopmentToken
+  } from '$lib/auth/dev-sign-in';
   import AppSidebar from '$lib/components/AppSidebar.svelte';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
@@ -33,6 +38,26 @@
   async function restore(): Promise<void> {
     status = 'restoring';
     failure = null;
+
+    // A development token comes first: it is the identity the presenter
+    // chose, and the refresh cookie of another session must not take it
+    // away.
+    const remembered = readRememberedDevelopmentToken();
+    if (remembered !== null) {
+      const devOutcome = await signInWithDevelopmentToken(
+        { client: api, session, workspace },
+        remembered
+      );
+
+      if (devOutcome.status === 'signed-in') {
+        status = devOutcome.workspaces.length === 0 ? 'no-membership' : 'ready';
+        return;
+      }
+
+      // The remembered token no longer works: forget it and fall through to
+      // the ordinary restore.
+      forgetDevelopmentToken();
+    }
 
     const outcome = await restoreSession({ client: api, session, workspace });
 

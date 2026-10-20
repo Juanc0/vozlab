@@ -223,9 +223,14 @@ Requested after 3.7, to present the product to the university community.
       prints the report the presenter reads from the terminal. The nodes are
       authored by the maintainer and the proposals are put forward by the
       member, so the presenter is the one who can approve them.
-- [ ] 3.9 A development sign-in, so the presenter can act as the maintainer:
+- [x] 3.9 A development sign-in, so the presenter can act as the maintainer:
       the event-code join grants `MEMBER`, and a member can neither approve
-      nor auto-apply. The token is minted locally and never persisted.
+      nor auto-apply. Result: a panel on the login page — **only in a
+      development build** — that adopts a token minted by `db:mint-token`.
+      The token is verified by the API, not by the browser; it is kept in
+      `sessionStorage` so a reload does not cost the presenter the role, and
+      that path is dead in a production bundle. The sign-out takes it away.
+      The maintainer can now approve the seeded proposals in the app.
 - [ ] 3.10 i18n: the interface in Spanish (the default) and English, with a
       language selector and the preference kept in a cookie so the server
       renders the right language.

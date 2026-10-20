@@ -102,7 +102,7 @@ export async function adoptSession(
  * membership gets the explicit `no-membership` state instead of a redirect
  * loop.
  */
-async function loadMemberships(deps: SessionRestoreDeps): Promise<SessionRestoreOutcome> {
+export async function loadMemberships(deps: SessionRestoreDeps): Promise<SessionRestoreOutcome> {
   const { client, session, workspace } = deps;
 
   let me;
@@ -114,6 +114,21 @@ async function loadMemberships(deps: SessionRestoreDeps): Promise<SessionRestore
       session.clear();
     }
     return { status: statusOf(error), workspaces: [], error: errorOf(error) };
+  }
+
+  // The development sign-in adopts a bare bearer token: there is no session
+  // payload with a user, so the one `/auth/me` answers with fills the gap.
+  // A restored session already carries its user.
+  if (session.user === null) {
+    session.setUser({
+      id: me.id,
+      email: me.email,
+      fullName: me.fullName,
+      anonymousAlias: me.anonymousAlias,
+      provider: me.provider,
+      systemRole: me.systemRole,
+      authorHash: me.authorHash
+    });
   }
 
   workspace.hydrate(me.workspaces);

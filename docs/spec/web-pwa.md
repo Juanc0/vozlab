@@ -134,6 +134,13 @@ refresh, so JavaScript never sees it. Neither credential is written to
 `localStorage` or `sessionStorage`. The only persisted value is the active
 workspace id.
 
+The one exception is the **development sign-in**: a locally minted token has
+no refresh cookie behind it, so without a way to keep it a reload would
+silently fall back to whatever session the cookie holds. It is kept in
+`sessionStorage`, per tab, and only in a development build — the check that
+keeps it out of a production bundle is `isDevelopmentBuild()`. Nothing about
+the production path changes.
+
 ### The refresh must be serialised
 
 The refresh cookie is shared by every tab of the origin, while the access

@@ -34,6 +34,11 @@ export class SessionState {
     this.user = session.user;
   }
 
+  /** Adopts a user without touching the token (the development sign-in). */
+  setUser(user: AuthUserDto): void {
+    this.user = user;
+  }
+
   /** Drops the session (logout, or a `401` from the API). */
   clear(): void {
     this.accessToken = null;
