@@ -130,12 +130,13 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-19 — Agent 2, non-deterministic relationship evaluator.** The Relator
   must compare a new node against the closest active nodes and clusters returned
   by pgvector, and decide whether it merges, needs an edge, or stays
-  independent. *(Partial: the worker exists
+  independent. *(Implemented: the worker exists
   ([ADR-0022](decisions/ADR-0022-relator-neighbour-lookup.md),
   [ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)). It reads
   the top-5 neighbours through the API, asks the local LLM and creates `PENDING`
-  edges; a `MERGE` verdict is logged, not applied, because no merge contract
-  exists.)*
+  edges; a `MERGE` verdict is submitted as a merge proposal
+  ([ADR-0026](decisions/ADR-0026-merge-contract.md)) that the community
+  reviews — the API applies the merge when the proposal is approved.)*
 - **FR-20 — Agent 3, opportunity consolidator.** The Consolidator must run
   scheduled analysis of subgraph density and community interactions and publish
   a "Consolidated Improvement Opportunity" for co-creation. *(Worker and
@@ -328,5 +329,5 @@ implementation yet.
 | FR-16 | US-04 | `discussions` vertical | `social.discussion_posts` |
 | FR-17 | US-07 | `apps/worker-extractor`; `ResolveSourceUseCase.ts`; ADR-0024, ADR-0025 | `meta.data_sources` |
 | FR-18 | US-01, US-08 | `CreateNodeUseCase.ts` (publishes), `SetNodeEmbeddingUseCase.ts`, ADR-0020, `apps/worker-embedder` | `public.nodes.embedding` |
-| FR-19 | US-08 | `apps/worker-relacionador`; `GetNodeNeighborsUseCase.ts`; ADR-0022, ADR-0023 | `public.edges`, `edit_proposals` |
+| FR-19 | US-08 | `apps/worker-relacionador`; `GetNodeNeighborsUseCase.ts`; ADR-0022, ADR-0023, ADR-0026 | `public.edges`, `edit_proposals` |
 | FR-20 | US-09 | *(planned)* `apps/worker-consolidador`; `packages/worker-shared` (runtime) | `public.nodes`, `social.*` |

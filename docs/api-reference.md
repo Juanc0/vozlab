@@ -197,15 +197,15 @@ non-deleted edges, regardless of status.
 
 ## 5. Proposals
 
-`ProposalDto`: `id`, `workspaceId`, `targetId`, `targetType`, `status`,
+`ProposalDto`: `id`, `workspaceId`, `targetId`, `targetType`, `kind`, `status`,
 `communityScore`, `justification`, `proposerHash`, `resolvedBy`,
 `resolvedAt`, `proposedChanges`, `createdAt` (`resolvedBy`/`resolvedAt` may be
 null).
 
 | Method | Path | Input | Success | Route errors |
 | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/proposals` | `targetId` UUID; `targetType` `NODE\|EDGE\|ONTOLOGY`; `proposedChanges` object; `justification?` | `201 { id, targetId, targetType, status, communityScore }`, `PENDING` | NODE/EDGE missing/foreign → `404`; ONTOLOGY missing/foreign → `422 ERR_VALIDATION_FAILED` |
-| `GET` | `/api/v1/proposals` | `status?`, `targetType?`, `limit`, `cursor` | `200 { proposals, nextCursor }` | `422` query/cursor |
+| `POST` | `/api/v1/proposals` | `kind?` (`EDIT`\|`MERGE`, default `EDIT`); `targetId` UUID; `targetType` `NODE\|EDGE\|ONTOLOGY`; `proposedChanges` object; `justification?` | `201 { id, targetId, targetType, kind, status, communityScore }`, `PENDING` | NODE/EDGE missing/foreign → `404`; ONTOLOGY missing/foreign → `422 ERR_VALIDATION_FAILED`; merge → `409 ERR_DUPLICATE_PROPOSAL`, `422 ERR_INVALID_STATE_TRANSITION` |
+| `GET` | `/api/v1/proposals` | `status?`, `targetType?`, `kind?`, `limit`, `cursor` | `200 { proposals, nextCursor }` | `422` query/cursor |
 | `GET` | `/api/v1/proposals/:id` | path UUID | `200 { "proposal": ProposalDto }` | `404 ERR_PROPOSAL_NOT_FOUND` |
 | `PUT` | `/api/v1/proposals/:id/approve` | no body | `200 { id, status: "APPROVED_BY_AUTHOR" }` | `403` not maintainer; `404`; `422 ERR_INVALID_STATE_TRANSITION`; target gone → `404`/`422` |
 | `PUT` | `/api/v1/proposals/:id/reject` | no body | `200 { id, status: "REJECTED_BY_AUTHOR" }` | `403` not maintainer; `404`; `422` invalid state |
@@ -215,11 +215,31 @@ Notes:
 
 - `status` filter values: `PENDING`, `APPROVED_BY_AUTHOR`,
   `REJECTED_BY_AUTHOR`, `AUTO_APPLIED`.
+- `kind` values: `EDIT` (an attribute delta applied to the target) and `MERGE`
+  ([ADR-0026](decisions/ADR-0026-merge-contract.md)). A request without `kind`
+  is an `EDIT` proposal.
+- A `MERGE` proposal targets the node that is merged **away** and names the
+  surviving node in `proposedChanges.mergeIntoNodeId`; `targetType` must be
+  `NODE`. It is rejected with `404 ERR_NODE_NOT_FOUND` when either node is
+  missing or belongs to another workspace, with `422
+  ERR_INVALID_STATE_TRANSITION` when the duplicate is not mergeable (`PENDING`
+  or `ACTIVE`) or the survivor was merged away, and with `409
+  ERR_DUPLICATE_PROPOSAL` when a merge proposal for that node is already
+  pending.
 - Only the target maintainer may approve/reject. Auto-apply requires a
   workspace `MODERATOR`/`ADMIN` role (resolved server-side), age ≥ 14 days and
   `communityScore >= 10`.
 - Approval/auto-apply applies the target delta and changes the proposal status
   atomically; rejection only changes the status.
+- Approving a `MERGE` proposal merges the duplicate into the survivor: the
+  duplicate becomes `MERGED` and records `merged_into_id`, the survivor adopts
+  the attributes it does not have (its own values win) and the support of the
+  duplicate, and the duplicate's edges are re-pointed to the survivor. The API
+  publishes `NODE_MERGED` after the transaction commits. The state rules are
+  checked again when the merge is applied: a merge whose duplicate or
+  survivor is no longer mergeable is refused with `422
+  ERR_INVALID_STATE_TRANSITION` (this is what keeps two nodes that each
+  proposed to absorb the other from leaving the graph without a survivor).
 - `targetId` is polymorphic with no FK (decision M-12); existence is validated
   at creation and re-checked when resolving.
 

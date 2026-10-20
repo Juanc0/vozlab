@@ -231,8 +231,19 @@ docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
       join public.nodes t on t.id = e.target_node_id;"
 ```
 
-A `MERGE` verdict is logged but never applied — there is no merge contract
-([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+A `MERGE` verdict is submitted as a **merge proposal** (`POST /api/v1/proposals`
+with `kind: "MERGE"`), not applied by the bot
+([ADR-0026](decisions/ADR-0026-merge-contract.md)). Check the proposals:
+
+```bash
+docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
+  -c "select id, kind, status, target_id, proposed_changes
+      from public.edit_proposals where kind = 'MERGE';"
+```
+
+Approving one (as the duplicate's author) applies the merge: the duplicate
+becomes `MERGED` and points at the survivor, the survivor adopts what it does
+not have and the duplicate's edges are re-pointed.
 
 ### 10. Run the Extractor worker (optional)
 

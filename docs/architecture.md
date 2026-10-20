@@ -84,6 +84,7 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | --- | --- |
 | `NODE_CREATED` | `stream:node_created` |
 | `PROPOSAL_CREATED`, `PROPOSAL_APPROVED`, `PROPOSAL_REJECTED`, `PROPOSAL_AUTO_APPLIED` | `stream:proposal_created`, `stream:proposal_approved`, `stream:proposal_rejected`, `stream:proposal_auto_applied` |
+| `NODE_MERGED` | `stream:node_merged` |
 | `EDGE_CREATED`, `EDGE_UPDATED`, `EDGE_DELETED` | `stream:edge_created`, `stream:edge_updated`, `stream:edge_deleted` |
 | Ontology, discussion, interaction and deletion events | `stream:<event-lowercase>` |
 
@@ -92,7 +93,11 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | Group | Worker | What it does |
 | --- | --- | --- |
 | `embedder` | `apps/worker-embedder` | Reads the node through the API, calls Ollama and stores the 768-dimensional vector through the agent-only `PUT /api/v1/nodes/:id/embedding` (ADR-0020). |
-| `relator` | `apps/worker-relacionador` | Reads the top-5 neighbours through `GET /api/v1/nodes/:id/neighbors` (ADR-0022), asks the local LLM for a verdict and creates a `PENDING` edge (ADR-0023). A `MERGE` verdict is logged, not applied. |
+| `relator` | `apps/worker-relacionador` | Reads the top-5 neighbours through `GET /api/v1/nodes/:id/neighbors` (ADR-0022), asks the local LLM for a verdict and creates a `PENDING` edge (ADR-0023). A `MERGE` verdict is submitted as a merge proposal (ADR-0026). |
+
+`NODE_MERGED` is published after the transaction that applied an approved merge
+proposal commits. It carries `reqId`, `mergedNodeId` (the duplicate),
+`survivingNodeId` (the node that keeps living) and `workspaceId`.
 
 The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream (`stream:node_created:dead`). Publication is fire-and-forget: if Redis is disconnected, the event is dropped with a warning (there is no outbox or retry).
 
@@ -117,7 +122,6 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 - SvelteKit PWA, SSE, GraphQL.
 - Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).
 - An ingestion producer: nothing publishes `stream:source_raw` yet, so the Extractor has no input (the gateway is an open option in the spec).
-- A merge contract: the Relator can judge that two nodes should be merged but has nothing to submit ([ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
 - Management of the source registry: `meta.data_sources` exists and the resolution route reads it, but there is no route to create or deactivate a source ([ADR-0025](decisions/ADR-0025-source-resolution-route.md)).
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.
 - Data-source registry (`meta.data_sources`) and ingestion resolution route (Phase 2).

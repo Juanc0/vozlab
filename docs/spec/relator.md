@@ -5,9 +5,12 @@
 > (`packages/worker-shared`, ADR-0021). It reads its neighbours through the
 > API instead of the tenant database ([ADR-0022](../decisions/ADR-0022-relator-neighbour-lookup.md))
 > and creates `PENDING` edges through `POST /api/v1/edges` instead of the
-> edit-only proposal API; a `MERGE` verdict is logged, not applied
-> ([ADR-0023](../decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
-> The worker is not in Compose or CI yet (milestone 2.7).
+> proposal API ([ADR-0023](../decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+> A `MERGE` verdict is submitted as a **merge proposal**
+> ([ADR-0026](../decisions/ADR-0026-merge-contract.md)), so it is reviewed by
+> the community instead of being applied by the bot.
+> The worker runs in the `workers` Compose profile and its tests are a CI job
+> (milestone 2.7).
 
 The Relator is Agent 2: when a node is created, it finds semantically close
 nodes in the same workspace, asks a local LLM whether the new node should be
@@ -52,7 +55,7 @@ database and the vector query (ADR-0022).
 | Neighbour lookup | **Implemented**: `GET /api/v1/nodes/:id/neighbors` (ADR-0022) |
 | HNSW index | Present on `public.nodes.embedding` and used by the planner for `ORDER BY embedding <=> $1` |
 | Edge proposal | **Implemented**: `POST /api/v1/edges` creates a `PENDING` edge (ADR-0023) |
-| Merge proposal | **Missing**: there is no merge contract; the verdict is logged (ADR-0023) |
+| Merge proposal | **Implemented**: `POST /api/v1/proposals` with `kind: "MERGE"` (ADR-0026); the API applies the merge when the proposal is approved |
 | Active cluster centroids | Not modelled; not part of the Phase 2 scope below |
 
 ADR-0020 requires the Relator to **leave the entry pending and retry** when
@@ -135,20 +138,19 @@ stream), never a write.
 | LLM action | Effect |
 | --- | --- |
 | `EDGE` | Create a `PENDING` edge through `POST /api/v1/edges` (ADR-0023). The `relationKey` is taken from the workspace ontology: an active object property whose domain matches the source class and whose range matches the target class (or the reverse for a symmetric property). No match → no edge. |
-| `MERGE` | Log the verdict, the target and the reason. **Not applied**: there is no merge contract yet (ADR-0023). |
+| `MERGE` | Submit a merge proposal through `POST /api/v1/proposals` with `kind: "MERGE"`, the new node as `targetId` and the neighbour as `proposedChanges.mergeIntoNodeId` (ADR-0026). The API applies the merge only when the proposal is approved; a `409` answer means a merge proposal is already pending for that node. |
 | `INDEPENDENT` | No write; the verdict is logged. |
 
 The worker never inserts into `public.edges`, `public.nodes` or
 `public.edit_proposals`. The API applies governance, ontology validation,
 workspace checks and the `PENDING` state.
 
-> **API gap:** the current `CreateProposalSchema` is an *edit* proposal:
-> `targetId` must identify an existing node/edge/ontology class and
-> `proposedChanges` is a delta. It cannot express "create a new edge A→B" or a
-> merge target without extending the contract. Phase 2 must decide between
-> adding an edge-creation proposal type or using `POST /api/v1/edges` (which
-> already creates a `PENDING` edge). The Relator must not work around this with
-> direct DB writes.
+> **API note:** the proposal contract is a union on `kind` (`EDIT` | `MERGE`,
+> ADR-0026). `EDIT` is an attribute delta applied to the target; `MERGE` names
+> the surviving node and is applied by the API when the proposal is approved
+> (the duplicate becomes `MERGED`, the survivor adopts what it can and the
+> duplicate's edges are re-pointed). The Relator must not work around this
+> with direct DB writes.
 
 ### 4. Agent identity
 
@@ -195,11 +197,11 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
   acknowledges and silently skips them.
 - [x] Validates LLM JSON and target ids.
 - [x] Submits only through the public API (`GET /neighbors`, `GET /ontology`,
-  `GET /edges`, `POST /edges`); no direct writes.
+  `GET /edges`, `POST /edges`, `POST /proposals`); no direct writes.
 - [x] Carries agent JWT, `X-Workspace-ID` and `x-correlation-id`.
 - [x] `XACK`s only after success and deduplicates retries.
-- [ ] Submits a merge. There is no merge contract (ADR-0023): the verdict is
-  logged, not applied.
+- [x] Submits a merge as a `MERGE` proposal (ADR-0026); the API applies it
+      when the community approves it.
 
 ## Related
 
@@ -216,3 +218,5 @@ cost. The old target was under ~1.2 s per node, excluding queueing.
   vector search lives in the API.
 - [ADR-0023](../decisions/ADR-0023-relator-edge-and-merge-semantics.md) — edge
   proposals and the deferred merge.
+- [ADR-0026](../decisions/ADR-0026-merge-contract.md) — the merge contract the
+  `MERGE` verdict now submits.

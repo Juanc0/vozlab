@@ -17,15 +17,15 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 27 test files / 127 TypeScript unit tests green; opt-in integration suite
-  (4 files / 23 tests) green against local PostgreSQL/Redis; Python worker
-  runtime has 103 green tests (`uv run pytest`); `build` + `type-check` green;
+- 29 test files / 156 TypeScript unit tests green; opt-in integration suite
+  (5 files / 28 tests) green against local PostgreSQL/Redis; Python worker
+  runtime has 105 green tests (`uv run pytest`); `build` + `type-check` green;
   CI runs the TypeScript gate, the Python gate and the worker image builds.
 - Phase 2 in progress: shared `vozlab_worker` runtime, the embedder (FR-18),
-  the Relator (FR-19 partial), the Extractor (FR-17 partial) and the source
-  registry (FR-17 prerequisite). The Consolidator handler, the ingestion
-  producer, the merge contract, the PWA (including its login/QR UI),
-  observability and broad integration/E2E/load tests are not started.
+  the Relator (FR-19), the Extractor (FR-17 partial) and the source registry
+  (FR-17 prerequisite). The Consolidator handler, the ingestion producer, the
+  PWA (including its login/QR UI), observability and broad
+  integration/E2E/load tests are not started.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
@@ -121,8 +121,9 @@ Milestones:
 - [x] 2.5 Relator: vector top-5 → LLM evaluation → merge/edge proposals
       ([spec](docs/spec/relator.md)). Result: `apps/worker-relacionador` reads
       the neighbours through the API (ADR-0022), asks the local LLM and creates
-      `PENDING` edges; a `MERGE` verdict is logged, not applied — no merge
-      contract exists yet (ADR-0023).
+      `PENDING` edges; a `MERGE` verdict is submitted as a merge proposal and
+      the API applies the merge when the proposal is approved
+      (ADR-0023, ADR-0026).
 - [ ] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
       the API ([spec](docs/spec/consolidator.md)); add the opportunity endpoint.
 - [x] 2.7 Worker Dockerfiles + compose profiles + worker tests; update

@@ -10,8 +10,8 @@ is green today, what is deliberately missing, and the Phase 4 plan.
 | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
-| Size | 27 files / 127 tests | 4 files / 23 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution |
+| Size | 29 files / 156 tests | 5 files / 28 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
 | Coverage | Not measured; no coverage provider installed | Not measured |
@@ -58,9 +58,18 @@ agent-only resolution route: the seeded source resolves to its workspace with
 its behavior profile, a human token gets `403`, an unknown source gets `404`,
 a missing `sourceId` gets `422` and an unauthenticated call gets `401`.
 
+The merge integration suite (`merge.integration.test.ts`) drives the whole
+proposal lifecycle against PostgreSQL: a `MERGE` proposal is created, read
+back with its kind, approved, and the graph changes accordingly — the
+duplicate becomes `MERGED` with `merged_into_id`, the survivor adopts the
+attributes it did not have and the duplicate's edge is re-pointed. A second
+pending merge proposal gets `409`, a merge into a node of another workspace
+gets `404`, a merge into itself gets `422`, and a proposal without a `kind`
+is still an edit proposal.
+
 ### Python worker runtime
 
-The Phase 2 runtime has **103 Python tests** in
+The Phase 2 runtime has **105 Python tests** in
 `packages/worker-shared/tests`, `apps/worker-embedder/tests`,
 `apps/worker-relacionador/tests` and `apps/worker-extractor/tests`. They
 cover environment validation, JSON logging and correlation context, agent-token
@@ -71,7 +80,7 @@ delivery-count-based dead-lettering and `PermanentError`), the Ollama clients
 (embedding and chat: endpoints, dimension checks, retryable vs permanent
 failures), the embedder's `NODE_CREATED` handler (read node → embed → write
 back), the Relator's handler and LLM client (neighbours → verdict → relation
-key → edge, hallucinated targets, merge verdicts, duplicate guard) and the
+key → edge, hallucinated targets, merge proposals, duplicate guard) and the
 Extractor's PII masker, extraction client and handler (masking before the
 model call, ontology fallback, duplicate guard, dead-letter classification).
 Redis is simulated with `fakeredis`; HTTP with `httpx.MockTransport`. No live

@@ -10,7 +10,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 27 files / 127 TypeScript unit tests green (`pnpm test`); opt-in integration suite (4 files / 23 tests); Python runtime 103 tests (`uv run pytest`) |
+| Tests | 29 files / 156 TypeScript unit tests green (`pnpm test`); opt-in integration suite (5 files / 28 tests); Python runtime 105 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: TypeScript gate + Python gate (uv/pytest/ruff) + worker image builds |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
@@ -86,7 +86,7 @@ curl -s http://localhost:3000/api/v1/nodes \
 | `pnpm --filter @vozlab/database db:generate` | Generates Drizzle migrations for both databases |
 | `pnpm format` | Prettier over TS/TSX/JSON/Markdown |
 | `uv sync` | Creates the Python 3.12 workspace environment from `uv.lock` |
-| `uv run pytest` | Runs the shared worker runtime, embedder, Relator and Extractor tests (103) |
+| `uv run pytest` | Runs the shared worker runtime, embedder, Relator and Extractor tests (105) |
 | `uv run ruff check packages/worker-shared apps/worker-embedder apps/worker-relacionador apps/worker-extractor` | Lints the Python worker code |
 | `uv run vozlab-worker-embedder --check` | Validates the embedder configuration and agent credential source |
 | `uv run vozlab-worker-embedder [--once]` | Runs the embedder consumer (once = single pass) |

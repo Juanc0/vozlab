@@ -89,26 +89,29 @@ they disagree with the code, **the code wins** — fix the doc.
 
 ## Current state / gotchas (verified 2026-10-19)
 - Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 TypeScript
-  tests plus 103 Python worker-runtime tests.
+  tests plus 105 Python worker-runtime tests.
 - `GET /api/v1/ingestion/resolve-source` is the one protected route without
   `X-Workspace-ID` (the workspace is the answer); it is agent-only and
   tenant-scoped (ADR-0025).
 - Phase 2 in progress: `packages/worker-shared`, `apps/worker-embedder` (FR-18),
-  `apps/worker-relacionador` (FR-19, partial) and `apps/worker-extractor`
+  `apps/worker-relacionador` (FR-19) and `apps/worker-extractor`
   (FR-17, partial) are implemented, and the source registry + resolution route
-  exist. The Consolidator handler, the ingestion producer and the merge
-  contract are still missing.
+  exist. The Consolidator handler and the ingestion producer are still missing.
+- The proposal contract is a union on `kind` (`EDIT` | `MERGE`, ADR-0026). A
+  merge proposal targets the node that is merged away and names the survivor
+  in `proposedChanges.mergeIntoNodeId`; approving it applies the merge
+  (duplicate → `MERGED`, survivor absorbs it, edges re-pointed).
 - `build` type-checks `src/**`; `type-check` additionally covers
   `apps/api/tests/**` and `packages/database/scripts/**` via
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
 - CI at `.github/workflows/ci.yml` has three jobs: the TypeScript gate, the
   Python gate (uv/pytest/ruff) and the worker image builds.
 - Not built: the Consolidator handler, an ingestion producer for
-  `stream:source_raw`, a merge proposal contract, a management route for
-  `meta.data_sources`, PWA, SSE, AGE adapter, metrics/tracing, the API image
-  and the deployment pipeline, backfill of existing nodes. The embedding
-  pipeline (FR-18) and the Relator (FR-19, except merges) are implemented but
-  the workers are not deployed. Real auth endpoints exist (FR-01/02/03).
+  `stream:source_raw`, a management route for `meta.data_sources`, PWA, SSE,
+  AGE adapter, metrics/tracing, the API image and the deployment pipeline,
+  backfill of existing nodes. The embedding pipeline (FR-18) and the Relator
+  (FR-19) are implemented but the workers are not deployed. Real auth endpoints
+  exist (FR-01/02/03).
 - Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
   `package.json` and `docker/`. Some archived docs describe older versions.
 - `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;
