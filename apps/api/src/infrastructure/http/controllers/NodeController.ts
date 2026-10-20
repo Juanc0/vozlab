@@ -3,14 +3,17 @@ import {
   CreateNodeSchema,
   ListNodeQuerySchema,
   NeighborsQuerySchema,
+  NodeWindowQuerySchema,
   SetNodeEmbeddingSchema,
   SubgraphQuerySchema,
   type NodeDto,
+  type NodeWindowResponseDto,
   type SubgraphResponseDto,
 } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../../application/use_cases/GetNodeNeighborsUseCase.js';
+import { GetNodeWindowUseCase } from '../../../application/use_cases/GetNodeWindowUseCase.js';
 import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
@@ -55,6 +58,7 @@ export class NodeController {
     private readonly getNodeNeighborsUseCase: GetNodeNeighborsUseCase,
     private readonly listNodesUseCase: ListNodesUseCase,
     private readonly getSubgraphUseCase: GetSubgraphUseCase,
+    private readonly getNodeWindowUseCase: GetNodeWindowUseCase,
     private readonly deleteNodeUseCase: DeleteNodeUseCase,
     private readonly setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase
   ) {}
@@ -185,6 +189,47 @@ export class NodeController {
       } satisfies SubgraphResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getSubgraph failed');
+    }
+  }
+
+  /**
+   * GET /api/v1/nodes/window
+   * A bounded window over the whole workspace (roadmap 3.11): the most
+   * recent nodes, newest first, and the relations among them.
+   *
+   * Unlike the subgraph there is no root: the window is the landscape and
+   * the caller chooses the focus. The answer has the subgraph's shape, so
+   * the canvas reads both the same way.
+   */
+  async getWindowHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const parsed = NodeWindowQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const { nodes, edges } = await this.getNodeWindowUseCase.execute({
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        limit: parsed.data.limit,
+      });
+
+      return reply.status(200).send({
+        nodes: nodes.map(toNodeDto),
+        edges: edges.map((edge) => ({
+          id: edge.id,
+          sourceNodeId: edge.sourceNodeId,
+          targetNodeId: edge.targetNodeId,
+          relationKey: edge.relationKey,
+          status: edge.status,
+          communityScore: edge.communityScore,
+        })),
+      } satisfies NodeWindowResponseDto);
+    } catch (error) {
+      return this.handleError(req, reply, error, 'getNodeWindow failed');
     }
   }
 

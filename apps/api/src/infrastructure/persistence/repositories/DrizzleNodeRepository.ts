@@ -8,6 +8,7 @@ import {
   INodeRepository,
   NearestNeighborsResult,
   NodeNeighbor,
+  SubgraphEdge,
   SubgraphResult,
 } from '../../../domain/ports/INodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
@@ -22,6 +23,12 @@ type Tx = Parameters<
 /** NFR-01 hard bounds, enforced here so a pathological graph cannot blow up. */
 const MAX_SUBGRAPH_DEPTH = 3;
 const MAX_SUBGRAPH_NODES = 200;
+
+/**
+ * The exploration window (roadmap 3.11) shares the subgraph's ceiling: a
+ * pathological workspace must not blow up a single render.
+ */
+const MAX_WINDOW_NODES = 200;
 
 /** ADR-0022: hard cap for the neighbour lookup (the use case clamps to 10). */
 const MAX_NEIGHBORS = 10;
@@ -220,16 +227,65 @@ export class DrizzleNodeRepository implements INodeRepository {
 
     return {
       nodes: orderedNodes,
-      edges: edgeRows.map((row) => ({
-        id: row.id,
-        sourceNodeId: row.sourceNodeId,
-        targetNodeId: row.targetNodeId,
-        relationKey: row.relationKey,
-        // The column is text; the domain vocabulary is the edge status union
-        // (the same mapping the edge repository does for a full edge).
-        status: row.status as EdgeStatus,
-        communityScore: row.communityScore,
-      })),
+      edges: edgeRows.map(toSubgraphEdge),
+    };
+  }
+
+  /**
+   * The exploration window (roadmap 3.11): the most recent nodes of the
+   * workspace and the relations among them.
+   *
+   * Two queries, like the subgraph: the nodes with the keyset ordering
+   * (`createdAt DESC, id DESC` — the same order `GET /api/v1/nodes` uses),
+   * then the edges whose **both** endpoints are in that set.
+   *
+   * The edge query is the closed-graph guarantee: `source_node_id IN (…)` AND
+   * `target_node_id IN (…)` means a relation to a node outside the window
+   * never matches, so the answer cannot carry a dangling edge.
+   */
+  async getWindowInWorkspace(
+    workspaceId: string,
+    opts: { limit: number },
+    tid: string
+  ): Promise<SubgraphResult> {
+    const db = await this.client(tid);
+    const limit = Math.min(Math.max(Math.trunc(opts.limit), 1), MAX_WINDOW_NODES);
+
+    const nodeRows = await db
+      .select()
+      .from(nodes)
+      .where(and(eq(nodes.workspaceId, workspaceId), isNull(nodes.deletedAt)))
+      .orderBy(desc(nodes.createdAt), desc(nodes.id))
+      .limit(limit);
+
+    if (nodeRows.length === 0) {
+      return { nodes: [], edges: [] };
+    }
+
+    const ids = nodeRows.map((row) => row.id);
+
+    const edgeRows = await db
+      .select({
+        id: edges.id,
+        sourceNodeId: edges.sourceNodeId,
+        targetNodeId: edges.targetNodeId,
+        relationKey: edges.relationKey,
+        status: edges.status,
+        communityScore: edges.communityScore,
+      })
+      .from(edges)
+      .where(
+        and(
+          eq(edges.workspaceId, workspaceId),
+          isNull(edges.deletedAt),
+          inArray(edges.sourceNodeId, ids),
+          inArray(edges.targetNodeId, ids)
+        )
+      );
+
+    return {
+      nodes: nodeRows.map(toDomain),
+      edges: edgeRows.map(toSubgraphEdge),
     };
   }
 
@@ -530,4 +586,28 @@ function toDomain(row: typeof nodes.$inferSelect): Node {
     row.updatedAt,
     row.mergedIntoId ?? null
   );
+}
+
+/**
+ * Map a `public.edges` row to the narrow projection the subgraph and the
+ * window share: the topology a canvas needs, nothing else.
+ */
+function toSubgraphEdge(row: {
+  id: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  relationKey: string;
+  status: string;
+  communityScore: number;
+}): SubgraphEdge {
+  return {
+    id: row.id,
+    sourceNodeId: row.sourceNodeId,
+    targetNodeId: row.targetNodeId,
+    relationKey: row.relationKey,
+    // The column is text; the domain vocabulary is the edge status union
+    // (the same mapping the edge repository does for a full edge).
+    status: row.status as EdgeStatus,
+    communityScore: row.communityScore,
+  };
 }

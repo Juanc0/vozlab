@@ -6,7 +6,7 @@ import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 import type { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
 import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
 import type { INodeRepository } from '../../src/domain/ports/INodeRepository.js';
-import type { NearestNeighborsResult } from '../../src/domain/ports/INodeRepository.js';
+import type { NearestNeighborsResult, SubgraphEdge } from '../../src/domain/ports/INodeRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
 
@@ -63,6 +63,7 @@ export interface FakeNodeRepository {
     workspaceId: string;
     limit: number;
   }>;
+  windowCalls: Array<{ workspaceId: string; limit: number; tid: string }>;
 }
 
 /**
@@ -70,10 +71,15 @@ export interface FakeNodeRepository {
  *
  * `nearest` is the canned answer of the vector search (ADR-0022); it defaults
  * to `NOT_FOUND` so a test that does not care never sees a neighbour.
+ *
+ * `edges` are the relations of the fake workspace; the window returns only
+ * the ones whose both endpoints are inside the window, exactly as the
+ * adapter does (the window is a closed graph).
  */
 export function makeNodeRepository(
   nodes: Node[] = [],
-  nearest: NearestNeighborsResult = { status: 'NOT_FOUND' }
+  nearest: NearestNeighborsResult = { status: 'NOT_FOUND' },
+  edges: SubgraphEdge[] = []
 ): FakeNodeRepository {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const softDeleted: string[] = [];
@@ -81,6 +87,7 @@ export function makeNodeRepository(
   const embeddings: EmbeddingWrite[] = [];
   const merges: FakeNodeRepository['merges'] = [];
   const nearestCalls: FakeNodeRepository['nearestCalls'] = [];
+  const windowCalls: FakeNodeRepository['windowCalls'] = [];
   const repo: INodeRepository = {
     async findById(id) {
       return byId.get(id) ?? null;
@@ -94,6 +101,26 @@ export function makeNodeRepository(
     },
     async getSubgraph() {
       return { nodes: [], edges: [] };
+    },
+    // The exploration window: the newest nodes of the workspace and the
+    // relations among them (both endpoints inside the window).
+    async getWindowInWorkspace(workspaceId, opts, tid) {
+      windowCalls.push({ workspaceId, limit: opts.limit, tid });
+      const windowed = nodes
+        .filter((node) => node.workspaceId === workspaceId)
+        .sort(
+          (a, b) =>
+            b.createdAt.getTime() - a.createdAt.getTime() ||
+            (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
+        )
+        .slice(0, opts.limit);
+      const inWindow = new Set(windowed.map((node) => node.id));
+      return {
+        nodes: windowed,
+        edges: edges.filter(
+          (edge) => inWindow.has(edge.sourceNodeId) && inWindow.has(edge.targetNodeId)
+        ),
+      };
     },
     async save() {},
     async update() {},
@@ -121,7 +148,7 @@ export function makeNodeRepository(
       return nearest;
     },
   };
-  return { repo, softDeleted, appliedDeltas, embeddings, merges, nearestCalls };
+  return { repo, softDeleted, appliedDeltas, embeddings, merges, nearestCalls, windowCalls };
 }
 
 export interface FakeEdgeRepository {

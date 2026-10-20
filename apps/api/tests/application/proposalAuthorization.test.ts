@@ -20,6 +20,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     findByIdInWorkspace: vi.fn(),
     listByWorkspace: vi.fn(),
     getSubgraph: vi.fn(),
+    getWindowInWorkspace: vi.fn(),
     save: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),

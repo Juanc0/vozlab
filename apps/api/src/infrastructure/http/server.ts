@@ -28,6 +28,7 @@ import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
 import { ResolveSourceUseCase } from '../../application/use_cases/ResolveSourceUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
+import { GetNodeWindowUseCase } from '../../application/use_cases/GetNodeWindowUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../application/use_cases/SetNodeEmbeddingUseCase.js';
@@ -133,6 +134,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const resolveSourceUseCase = new ResolveSourceUseCase(dataSourceRepo);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
+  const getNodeWindowUseCase = new GetNodeWindowUseCase(nodeRepo);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
   const setNodeEmbeddingUseCase = new SetNodeEmbeddingUseCase(
     nodeRepo,
@@ -254,6 +256,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
     getSubgraphUseCase,
+    getNodeWindowUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,

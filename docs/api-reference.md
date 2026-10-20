@@ -146,6 +146,7 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/nodes` | `typeKey` 1–100; `title` 3–255; `description?`; `attributes?` object | `201 { id, workspaceId, typeKey, title, description, status }`, `PENDING` | `422` unknown/inactive `typeKey` or schema |
 | `GET` | `/api/v1/nodes` | `limit`, `cursor` | `200 { nodes, nextCursor }` | `422` cursor/query |
+| `GET` | `/api/v1/nodes/window` | `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: SubgraphEdgeDto[] }` — the most recent nodes of the workspace and the relations **among them**; a relation whose other endpoint is outside the window is not returned |
 | `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status, communityScore }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |

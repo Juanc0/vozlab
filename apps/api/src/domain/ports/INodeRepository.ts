@@ -92,6 +92,22 @@ export interface INodeRepository {
     tid: string
   ): Promise<SubgraphResult>;
   /**
+   * A bounded window over the whole workspace (roadmap 3.11): the most
+   * recent nodes, newest first (`createdAt DESC, id DESC`), and the
+   * relations **among them**.
+   *
+   * Security-scoped (ADR-0010): a node of another workspace is never in the
+   * window. The window is a closed graph — a relation whose other endpoint
+   * falls outside the window is not returned, exactly as in the subgraph.
+   * Soft-deleted nodes and relations are excluded and the node count is
+   * bounded (the adapter caps the limit at 200).
+   */
+  getWindowInWorkspace(
+    workspaceId: string,
+    opts: { limit: number },
+    tid: string
+  ): Promise<SubgraphResult>;
+  /**
    * Vector search: the closest nodes of the workspace to `sourceId`
    * (ADR-0022).
    *

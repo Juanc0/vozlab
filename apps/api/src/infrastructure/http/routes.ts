@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
+import { GetNodeWindowUseCase } from '../../application/use_cases/GetNodeWindowUseCase.js';
 import { ResolveSourceUseCase } from '../../application/use_cases/ResolveSourceUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
@@ -71,6 +72,7 @@ export interface RouteDependencies {
   deleteNodeUseCase: DeleteNodeUseCase;
   setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase;
   getSubgraphUseCase: GetSubgraphUseCase;
+  getNodeWindowUseCase: GetNodeWindowUseCase;
   createProposalUseCase: CreateProposalUseCase;
   approveProposalUseCase: ApproveProposalUseCase;
   rejectProposalUseCase: RejectProposalUseCase;
@@ -127,6 +129,7 @@ export async function registerRoutes(
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
     getSubgraphUseCase,
+    getNodeWindowUseCase,
     createProposalUseCase,
     approveProposalUseCase,
     rejectProposalUseCase,
@@ -168,6 +171,7 @@ export async function registerRoutes(
     getNodeNeighborsUseCase,
     listNodesUseCase,
     getSubgraphUseCase,
+    getNodeWindowUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase
   );
@@ -280,6 +284,13 @@ export async function registerRoutes(
   // Static route MUST be declared before the parameterised `/nodes/:id`.
   app.get('/api/v1/nodes/subgraph', { preHandler: guard }, (req, reply) =>
     nodeController.getSubgraphHandler(req, reply)
+  );
+
+  // The exploration window (roadmap 3.11): also a static route, so it is
+  // declared before `/nodes/:id` as well — `window` would otherwise be read
+  // as a node id.
+  app.get('/api/v1/nodes/window', { preHandler: guard }, (req, reply) =>
+    nodeController.getWindowHandler(req, reply)
   );
 
   // Vector search (FR-19, ADR-0022) — registered before `/nodes/:id` so the

@@ -241,9 +241,14 @@ Requested after 3.7, to present the product to the university community.
       the server renders the right language with no flash, and changing the
       language does not reload the page (the session is in memory). Dates
       and numbers follow the locale through `Intl`.
-- [ ] 3.11 API: `GET /api/v1/nodes/window` — a bounded window of the
+- [x] 3.11 API: `GET /api/v1/nodes/window` — a bounded window of the
       workspace (the newest nodes and the relations among them) for the
-      exploration view.
+      exploration view. Result: the route answers the most recent nodes of
+      the workspace, newest first, and **only** the relations whose two
+      endpoints are both in the window — the window is a closed graph, so
+      the canvas never meets an unknown node. The limit is clamped to 1–200
+      and defaults to 100. The route is registered before `/nodes/:id`, for
+      the same reason `/nodes/subgraph` is.
 - [ ] 3.12 The exploration view, next to the subgraph view: pan, hover and
       click expansion, a selectable focus, the shape of the arrows, dragging
       a node, and a layout that rearranges when the nodes grow.
