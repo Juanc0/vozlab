@@ -16,6 +16,7 @@ import { cursorQuery, type ApiClient, type CursorPage, type QueryValue } from '.
 import type {
   CreateEdgeInput,
   CreateNodeInput,
+  EdgeDto,
   NodeDto,
   NodeStatus,
   SubgraphEdgeDto,
@@ -188,6 +189,22 @@ export async function getNode(client: ApiClient, nodeId: string): Promise<NodeDt
   });
 
   return body.node;
+}
+
+/**
+ * Reads one relation by its id — the full {@link EdgeDto}.
+ *
+ * The subgraph carries the **narrower** projection of a relation (the
+ * topology, the key, the status and the score): it has no attributes. A
+ * screen that shows the attributes of a relation — the correction form —
+ * reads the relation itself.
+ */
+export async function getEdge(client: ApiClient, edgeId: string): Promise<EdgeDto> {
+  const body = await client.request<{ edge: EdgeDto }>({
+    path: `/edges/${encodeURIComponent(edgeId)}`
+  });
+
+  return body.edge;
 }
 
 /**

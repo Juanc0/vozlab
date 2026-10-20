@@ -1,6 +1,6 @@
 # Architecture
 
-VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, with the scaffold (3.1), the state layer plus HTTP client (3.2), the route groups with the session guard (3.3), the Cytoscape canvas (3.4), the governance UI (3.5) and the offline shell with its accessibility pass (3.6) done — the E2E suite is not built yet.
+VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, with the scaffold (3.1), the state layer plus HTTP client (3.2), the route groups with the session guard (3.3), the Cytoscape canvas (3.4), the governance UI (3.5), the offline shell with its accessibility pass (3.6) and the Playwright suite (3.7) done — Phase 3 is complete.
 
 ## Context and containers
 
@@ -117,7 +117,7 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 
 ## What is not built
 
-- PWA E2E suite: everything up to 3.6 exists and reads and writes real data, offline writes are refused and the accessibility pass found and fixed 11 issues; the Playwright suite is 3.7. The event QR **scanner** is not built — the join page takes the code as text.
+- PWA: Phase 3 is complete. The event QR **scanner** is not built — the join page takes the code as text — and the ontology's proposed properties are not published, so only the active ones reach the dynamic form.
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SSE, GraphQL.
 - Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).

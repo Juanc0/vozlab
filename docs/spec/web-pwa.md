@@ -233,10 +233,28 @@ explicit; a failed fetch must not leave a blank canvas.
 
 ## Governance UI
 
+The correction form is built from the **whitelist the API applies**: a node
+accepts `title`, `description` and `attributes`; a relation accepts
+`relationKey` and `attributes`. A field the API ignores would be a proposal
+that silently does nothing, so the form does not offer one. Only the fields
+that actually change go into the delta — a proposal must not claim a change
+that is not one — and the attributes are coerced to the type the user
+declared.
+
+The attributes are **merged** into the target's own: the delta wins for the
+keys it carries (`Node.updateAttributes` is `{...attributes, ...delta}`).
+That is the rule of an edit; the rule of a *merge* is the opposite — the
+survivor's own values win ([ADR-0026](decisions/ADR-0026-merge-contract.md)).
+The API can neither remove nor rename an attribute, so the form cannot offer
+it either: the key of an existing attribute is read-only and emptying it is
+refused with an explicit message.
+
+
 | Screen | Behavior |
 | --- | --- |
 | Node details | Title, description, ontology attributes, author pseudonym, status, score. |
 | Proposals | List/filter by status; open a proposal to see the delta and discussion. |
+| Corrections | Propose a correction of a node or a relation: the delta shows the current and the proposed value, and only the fields that really change are sent. |
 | Discussions | Threaded posts, replies, close-thread action for the creator. |
 | Voting | Upvote/downvote on proposals, posts and relationships. The relations of the subgraph carry their score, so the canvas votes on a relation without a second read. |
 

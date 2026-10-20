@@ -23,6 +23,12 @@
      * and the ledger adopts it: the server stays the authority.
      */
     reconcileEdge?: (edgeId: string) => Promise<number | null>;
+    /**
+     * Called when the user wants to propose a correction of a relation.
+     *
+     * Any member of the workspace may propose one (FR-10).
+     */
+    onpropose?: (edge: SubgraphEdgeDto) => void;
   }
 
   let {
@@ -31,7 +37,8 @@
     selectedNodeId = null,
     onselect,
     ledger,
-    reconcileEdge
+    reconcileEdge,
+    onpropose
   }: Props = $props();
 
   /** The title of a node of the subgraph; the endpoints of a relation are always in it. */
@@ -141,6 +148,9 @@
             {#if ledger}
               <th scope="col" class="px-3 py-2 font-semibold">Score</th>
             {/if}
+            {#if onpropose}
+              <th scope="col" class="px-3 py-2 font-semibold">Correction</th>
+            {/if}
           </tr>
         </thead>
         <tbody>
@@ -182,10 +192,22 @@
                   />
                 </td>
               {/if}
+              {#if onpropose}
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
+                    aria-label={`Suggest a correction of the relation ${edge.relationKey}`}
+                    onclick={() => onpropose(edge)}
+                  >
+                    Suggest a correction
+                  </button>
+                </td>
+              {/if}
             </tr>
           {:else}
             <tr>
-              <td colspan={ledger ? 5 : 4} class="px-3 py-2 text-ink-muted">
+              <td colspan={4 + (ledger ? 1 : 0) + (onpropose ? 1 : 0)} class="px-3 py-2 text-ink-muted">
                 The subgraph has no relation.
               </td>
             </tr>

@@ -191,7 +191,14 @@ Milestones:
       without a table, an unassociated error, a missing required state and
       no `prefers-reduced-motion`. The screen-reader-only criteria remain
       for a human handoff.
-- [ ] 3.7 Playwright E2E for the critical journeys (see `spec/web-pwa.md`).
+- [x] 3.7 Playwright E2E for the critical journeys (see `spec/web-pwa.md`).
+      Result: 10 Playwright tests over the join, the bounded subgraph, the
+      node creation, the proposal review and resolution, the discussion with
+      its nested reply, the optimistic vote and its rollback, the offline
+      refusal and the correction proposed through the UI. The suite opens a
+      real session through the event-code join and cleans up after itself.
+      It is opt-in — `pnpm --filter @vozlab/web test:e2e` — like the API's
+      `test:integration`; the CI job is 4.3.
 
 ## Phase 4 — Platform, QA and operations
 

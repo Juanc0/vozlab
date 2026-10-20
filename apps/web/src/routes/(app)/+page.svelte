@@ -15,13 +15,16 @@
     type CreatedNode
   } from '$lib/api/graph';
   import { loadOntology } from '$lib/api/ontology';
+  import type { CreatedProposal } from '$lib/api/proposals';
   import type { NodeDto, OntologyResponseDto, SubgraphEdgeDto } from '$lib/api/types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
+  import CorrectionDialog from '$lib/components/CorrectionDialog.svelte';
   import EdgeCreateDialog from '$lib/components/EdgeCreateDialog.svelte';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
   import NodeDetailsPanel from '$lib/components/NodeDetailsPanel.svelte';
+  import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { getApiClient, getWorkspaceState } from '$lib/state/context';
   import type { PageProps } from './$types';
@@ -68,8 +71,24 @@
   let edgeDialogOpen = $state(false);
   let edgeSource = $state<NodeDto | null>(null);
 
+  /** The correction form and its target. */
+  let correctionOpen = $state(false);
+  let correctionTarget = $state<CorrectionTarget | null>(null);
+
+  /**
+   * A message for the user, with an optional link.
+   *
+   * The link of the correction notice points at the proposals screen with
+   * the new proposal selected: the proposal exists, and the author of the
+   * target has to act on it.
+   */
+  interface Notice {
+    readonly text: string;
+    readonly link?: { readonly href: string; readonly label: string };
+  }
+
   /** The outcome of the last creation — announced to the user. */
-  let notice = $state<string | null>(null);
+  let notice = $state<Notice | null>(null);
 
   /** The counters that discard the answer of a superseded request. */
   let rootsRequest = 0;
@@ -112,6 +131,8 @@
     nodeDialogOpen = false;
     edgeDialogOpen = false;
     edgeSource = null;
+    correctionOpen = false;
+    correctionTarget = null;
   });
 
   /** Reads the newest nodes of the workspace (the root picker). */
@@ -333,10 +354,10 @@
     try {
       const node = await getNode(api, created.id);
       rootNodes = [node, ...rootNodes.filter((candidate) => candidate.id !== node.id)];
-      notice = `The node “${node.title}” was created and is pending review.`;
+      notice = { text: `The node “${node.title}” was created and is pending review.` };
     } catch {
       await loadRoots(null);
-      notice = `The node “${created.title}” was created and is pending review.`;
+      notice = { text: `The node “${created.title}” was created and is pending review.` };
     }
   }
 
@@ -348,11 +369,51 @@
    * window is simply not in it.
    */
   function handleEdgeCreated(edge: SubgraphEdgeDto): void {
-    notice = `The relation “${edge.relationKey}” was created and is pending review.`;
+    notice = { text: `The relation “${edge.relationKey}” was created and is pending review.` };
 
     if (rootId !== null) {
       void loadGraph(rootId, depth, limit);
     }
+  }
+
+  /** Opens the correction form on a node. */
+  function openNodeCorrection(node: NodeDto): void {
+    notice = null;
+    correctionTarget = { kind: 'node', node };
+    correctionOpen = true;
+  }
+
+  /** Opens the correction form on a relation. */
+  function openEdgeCorrection(edge: SubgraphEdgeDto): void {
+    notice = null;
+    correctionTarget = { kind: 'edge', edge };
+    correctionOpen = true;
+  }
+
+  /**
+   * The proposal was created: the user is told what happened and where the
+   * proposal is.
+   *
+   * The proposal is `PENDING`: it changes nothing until the author of the
+   * target approves it. The link opens it in the proposals screen.
+   */
+  function handleProposalCreated(created: CreatedProposal): void {
+    const current = correctionTarget;
+
+    const subject =
+      current === null
+        ? 'The correction'
+        : current.kind === 'node'
+          ? `The correction of the node “${current.node.title}”`
+          : `The correction of the relation “${current.edge.relationKey}”`;
+
+    notice = {
+      text: `${subject} was proposed. It is pending: the author of the target decides, and nothing changes until they do.`,
+      link: {
+        href: `/proposals?proposal=${encodeURIComponent(created.id)}`,
+        label: 'Open the proposal'
+      }
+    };
   }
 
   function handleDepthChange(event: Event): void {
@@ -409,7 +470,12 @@
   </div>
 
   {#if notice !== null}
-    <p role="status" class="rounded-md border border-line bg-surface px-4 py-3 text-sm">{notice}</p>
+    <p role="status" class="rounded-md border border-line bg-surface px-4 py-3 text-sm">
+      {notice.text}
+      {#if notice.link}
+        <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
+      {/if}
+    </p>
   {/if}
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -536,6 +602,7 @@
                 onselect={selectNode}
                 {ledger}
                 reconcileEdge={reconcileEdgeScore}
+                onpropose={openEdgeCorrection}
               />
             </div>
           {/if}
@@ -547,7 +614,11 @@
       <section class="rounded-card border border-line bg-surface p-4">
         <h2 id="details-heading" class="text-base font-semibold tracking-tight">Node details</h2>
         <div class="mt-3">
-          <NodeDetailsPanel node={selectedNode} onrelate={openEdgeDialog} />
+          <NodeDetailsPanel
+            node={selectedNode}
+            onrelate={openEdgeDialog}
+            onsuggest={openNodeCorrection}
+          />
         </div>
       </section>
 
@@ -576,5 +647,15 @@
       edgeDialogOpen = false;
     }}
     oncreated={handleEdgeCreated}
+  />
+
+  <CorrectionDialog
+    open={correctionOpen}
+    target={correctionTarget}
+    {ontology}
+    onclose={() => {
+      correctionOpen = false;
+    }}
+    oncreated={handleProposalCreated}
   />
 </section>

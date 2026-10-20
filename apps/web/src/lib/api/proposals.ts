@@ -161,6 +161,76 @@ export interface ResolvedProposal {
 }
 
 /**
+ * The body of a proposal creation.
+ *
+ * The kind is not part of it: the PWA opens **edit** proposals only — a
+ * merge is another flow (ADR-0026) and it is not offered here.
+ */
+export interface CreateProposalInput {
+  /** The id of the target of the proposal. */
+  readonly targetId: string;
+  /** The kind of the target (`NODE` or `EDGE`). */
+  readonly targetType: TargetType;
+  /** The delta the proposal would apply to the target. */
+  readonly proposedChanges: Record<string, unknown>;
+  /** Why the correction is proposed. */
+  readonly justification?: string;
+}
+
+/**
+ * The answer of `POST /api/v1/proposals`.
+ *
+ * The route answers with a **projection** of the proposal: the id, the
+ * target, the kind, the status and the score. It is not the whole
+ * {@link ProposalDto} — the delta and the author pseudonym are not in it.
+ */
+export interface CreatedProposal {
+  readonly id: string;
+  readonly targetId: string;
+  readonly targetType: TargetType;
+  readonly kind: ProposalKind;
+  readonly status: ProposalStatus;
+  readonly communityScore: number;
+}
+
+/**
+ * Opens a proposal on a target (FR-10).
+ *
+ * Any member of the workspace may open one: the API checks that the target
+ * exists in the workspace and creates the proposal **pending** — only the
+ * maintainer of the target (or a moderator, through the auto-apply) may
+ * resolve it. The API re-checks everything; the form's job is to send a
+ * well-formed delta.
+ */
+export async function createProposal(
+  client: ApiClient,
+  input: CreateProposalInput
+): Promise<CreatedProposal> {
+  const body = await client.request<CreatedProposal>({
+    method: 'POST',
+    path: '/proposals',
+    body: {
+      kind: 'EDIT',
+      targetId: input.targetId,
+      targetType: input.targetType,
+      proposedChanges: input.proposedChanges,
+      ...(input.justification === undefined || input.justification.trim() === ''
+        ? {}
+        : { justification: input.justification.trim() })
+    }
+  });
+
+  return {
+    id: body.id,
+    targetId: body.targetId,
+    targetType: body.targetType,
+    kind: body.kind,
+    status: body.status,
+    communityScore: body.communityScore
+  };
+}
+
+/**
  * Approves a proposal (FR-12).
  *
  * **Only the target's maintainer may do this** — the API compares the

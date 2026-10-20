@@ -87,7 +87,10 @@ The identity model, guard chain and pseudonym rules are in
 - **FR-10 — Polymorphic edit proposals.** Any authenticated user may propose
   corrections or additions to nodes, edges or ontology classes. The suggestion
   is stored in `public.edit_proposals` as a JSONB delta with `PENDING` status.
-  *(Implemented.)*
+  *(Implemented: the API and the PWA. The PWA proposes a correction of a node
+  or a relation and shows the delta as a diff; the API applies only
+  `title`/`description`/`attributes` on a node and `relationKey`/`attributes`
+  on a relation.)*
 - **FR-11 — Social linking.** Each edit proposal should open or be linked to a
   thread in `social.discussion_threads` so the community can debate and cast
   informative votes. *(Partial: threads and posts are implemented as separate

@@ -11,7 +11,7 @@ plan.
 | --- | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 | Vitest 5.0.5 (jsdom) |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` | `apps/web/tests/**/*.test.ts` |
-| Size | 31 files / 165 tests | 5 files / 29 tests | 33 files / 243 tests |
+| Size | 31 files / 165 tests | 5 files / 29 tests | 35 files / 275 tests |
 | Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle | The app shell landmarks, the route components, the runtime API base URL resolution, the service-worker registration flow, the per-tab workspace state, the in-memory session, the HTTP client's headers and error envelope, the session guard, the workspace selector, the serialised refresh, the subgraph loading, the canvas lifecycle, the list view, the ontology-driven node form, the relation form, the proposal review, the discussions, the optimistic vote, the offline banner, the offline write block, the install prompt and the update prompt |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider | jsdom; no network, no service worker |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) | `pnpm test` (default, CI) |
@@ -95,6 +95,30 @@ the same test file names without a module-name collision.
 `uv run pytest`, `uv run ruff check` and `uv run ruff format --check`) and
 the worker images are built on every pull request.
 
+## The end-to-end suite
+
+`apps/web/tests/e2e/` holds the Playwright suite for the critical journeys
+of the PWA: the event-code join, the bounded subgraph, the ontology-driven
+node creation, the proposal review and resolution, the discussion with its
+nested reply, the optimistic vote with its rollback, the offline refusal and
+the correction proposed through the UI.
+
+| Item | Value |
+| --- | --- |
+| Runner | Playwright 1.64 (Chromium) |
+| Location | `apps/web/tests/e2e/` |
+| Size | 10 tests |
+| Command | `pnpm --filter @vozlab/web test:e2e` |
+| Needs | PostgreSQL and Redis migrated and seeded; the suite starts the API and the dev server if they are not already running |
+
+It is **opt-in**, like the API's `test:integration`: it is not part of
+`pnpm test` and not part of the Turbo gate. Each run opens a real session
+through the event-code join — the operator CLI issues a code for the run —
+and cleans up what it created. Some residue cannot be removed, because the
+API has no route for it: the closed threads, the resolved proposals, the
+votes (there is no retraction) and the anonymous users stay in the tables as
+soft-deleted or closed rows.
+
 ## Running tests
 
 ```bash
@@ -167,8 +191,9 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
   transaction rollback, stream publication); only the auth flow is integrated.
 - Integration tests in CI. They currently require a developer-managed
   docker-compose pair; Testcontainers or service containers are Phase 4.
-- End-to-end tests (Playwright) for the PWA. The dependency is installed
-  (`@playwright/test` in `apps/web`) but no spec exists yet — roadmap 3.7.
+- A **CI job** for the Playwright suite: the suite exists and runs locally
+  (`pnpm --filter @vozlab/web test:e2e`), but wiring it into GitHub Actions
+  with the PostgreSQL and Redis services is roadmap 4.3.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
 - Python tests in Turbo. The runtime suite runs in CI (`uv run pytest`) and
   locally, but it is not part of the Turbo task graph.

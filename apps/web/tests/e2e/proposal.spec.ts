@@ -1,0 +1,149 @@
+/**
+ * Journey 4 — the proposal of a correction and its review.
+ *
+ * The correction of a node is proposed **through the UI**: the form is
+ * prefilled with the state of the target, the diff shows what changes, and
+ * the proposal is created `PENDING`.
+ *
+ * The target is then read back **through the API** before and after the
+ * resolution: a pending proposal changes nothing, and the approval is not
+ * only a status on the screen.
+ */
+
+import { waitForApp } from './support/app';
+import { expect, test } from './support/fixtures';
+
+test('a correction is proposed through the UI and the target is unchanged until the maintainer approves it', async ({
+  page,
+  api
+}) => {
+  const node = await api.createNode({
+    typeKey: 'Problem',
+    title: `${api.marker} proposal target`,
+    description: 'The description of the target.'
+  });
+  const newTitle = `${api.marker} proposal target (edited)`;
+  const justification = `${api.marker} justification`;
+
+  await page.goto('/');
+  await waitForApp(page);
+
+  // The node is picked in the root picker: the details panel shows it.
+  await page
+    .getByRole('region', { name: 'Root node' })
+    .getByRole('button', { name: node.title })
+    .click();
+
+  const opener = page.getByRole('button', {
+    name: `Suggest a correction of the node ${node.title}`
+  });
+  await expect(opener).toBeVisible();
+  await opener.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Suggest a correction' });
+  await expect(dialog).toBeVisible();
+
+  // The form is prefilled with the state of the target.
+  await expect(dialog.getByLabel('Title (required)')).toHaveValue(node.title);
+  await expect(dialog.getByLabel('Description (optional)')).toHaveValue('The description of the target.');
+
+  // The proposal is a diff: the current value and the proposed one are shown,
+  // and the fields that change are marked.
+  await dialog.getByLabel('Title (required)').fill(newTitle);
+  const titleRow = dialog.getByRole('row').filter({ hasText: 'Title' }).first();
+  await expect(titleRow).toContainText('Changes');
+  await expect(titleRow).toContainText(newTitle);
+
+  // A new attribute is proposed, with the kind of value it carries.
+  await dialog.getByRole('button', { name: 'Add an attribute' }).click();
+  await dialog.getByLabel('Key of the attribute 1', { exact: true }).fill('severity');
+  await dialog.getByLabel('Type of the attribute 1', { exact: true }).selectOption('number');
+  await dialog.getByLabel('Value of the attribute 1', { exact: true }).fill('5');
+
+  await dialog.getByLabel('Justification (optional)').fill(justification);
+
+  await dialog.getByRole('button', { name: 'Propose the correction' }).click();
+
+  // The dialog is closed and the outcome is announced: the proposal is
+  // pending and the author of the target decides.
+  await expect(dialog).toBeHidden();
+  const link = page.getByRole('link', { name: 'Open the proposal' });
+  await expect(link).toBeVisible();
+
+  // The target is **not** changed: a pending proposal changes nothing.
+  const pending = await api.getNode(node.id);
+  expect(pending.title).toBe(node.title);
+  expect(pending.attributes).toEqual({});
+
+  // The proposal is in the proposals screen, selected, with its delta.
+  await link.click();
+  await expect(page.getByRole('heading', { name: 'Proposed change' })).toBeVisible();
+  await expect(page.getByText(newTitle, { exact: true })).toBeVisible();
+
+  // The maintainer of the target resolves it.
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('The proposal is now APPROVED_BY_AUTHOR.')).toBeVisible();
+
+  // The target is really changed — read back through the API.
+  const updated = await api.getNode(node.id);
+  expect(updated.title).toBe(newTitle);
+  expect(updated.attributes).toEqual({ severity: 5 });
+});
+
+test('a correction of a relation is proposed through the UI', async ({ page, api }) => {
+  const source = await api.createNode({
+    typeKey: 'Problem',
+    title: `${api.marker} relation source`
+  });
+  const target = await api.createNode({ typeKey: 'Idea', title: `${api.marker} relation target` });
+  const edge = await api.createEdge({
+    sourceNodeId: source.id,
+    targetNodeId: target.id,
+    relationKey: 'RELATES_TO',
+    attributes: { weight: 2 }
+  });
+
+  await page.goto('/');
+  await waitForApp(page);
+
+  await page
+    .getByRole('region', { name: 'Root node' })
+    .getByRole('button', { name: source.title })
+    .click();
+
+  const table = page.getByRole('region', { name: 'The relations of the subgraph' });
+  await expect(table.getByRole('rowheader', { name: 'RELATES_TO' })).toBeVisible();
+
+  await table
+    .getByRole('button', { name: 'Suggest a correction of the relation RELATES_TO' })
+    .click();
+
+  const dialog = page.getByRole('dialog', { name: 'Suggest a correction' });
+  await expect(dialog).toBeVisible();
+
+  // The relation of the subgraph carries no attribute: the form reads the
+  // relation itself and prefills what it finds.
+  await expect(dialog.getByLabel('Relation key (required)')).toHaveValue('RELATES_TO');
+  await expect(dialog.getByLabel('Key of the attribute 1', { exact: true })).toHaveValue('weight');
+  await expect(dialog.getByLabel('Value of the attribute 1', { exact: true })).toHaveValue('2');
+
+  await dialog.getByLabel('Value of the attribute 1', { exact: true }).fill('5');
+  await dialog.getByRole('button', { name: 'Propose the correction' }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Open the proposal' })).toBeVisible();
+
+  // The relation is not changed yet.
+  const pending = await api.getEdge(edge.id);
+  expect(pending.attributes).toEqual({ weight: 2 });
+
+  // The proposal is in the proposals screen and the maintainer approves it.
+  await page.getByRole('link', { name: 'Open the proposal' }).click();
+  await expect(page.getByRole('heading', { name: 'Proposed change' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('The proposal is now APPROVED_BY_AUTHOR.')).toBeVisible();
+
+  const updated = await api.getEdge(edge.id);
+  expect(updated.attributes).toEqual({ weight: 5 });
+});

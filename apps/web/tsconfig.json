@@ -22,6 +22,7 @@
     "tests/**/*.ts",
     "tests/**/*.svelte",
     "vite.config.ts",
-    "svelte.config.js"
+    "svelte.config.js",
+    "playwright.config.ts"
   ]
 }

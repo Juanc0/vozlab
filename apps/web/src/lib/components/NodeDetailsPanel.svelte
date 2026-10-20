@@ -11,9 +11,16 @@
     node?: NodeDto | null;
     /** Called when the user wants to relate this node to another one. */
     onrelate?: (node: NodeDto) => void;
+    /**
+     * Called when the user wants to propose a correction of this node.
+     *
+     * Any member of the workspace may propose one (FR-10): the control is
+     * not gated on a role, and the API re-checks everything.
+     */
+    onsuggest?: (node: NodeDto) => void;
   }
 
-  let { node = null, onrelate }: Props = $props();
+  let { node = null, onrelate, onsuggest }: Props = $props();
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
@@ -120,6 +127,21 @@
             onclick={() => onrelate(node)}
           >
             Relate to another node
+          </button>
+        {/if}
+
+        <!--
+          The correction of a node is a proposal: it changes nothing until
+          the author of the node approves it. Any member may propose one.
+        -->
+        {#if onsuggest}
+          <button
+            type="button"
+            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+            aria-label={`Suggest a correction of the node ${node.title}`}
+            onclick={() => onsuggest(node)}
+          >
+            Suggest a correction
           </button>
         {/if}
 

@@ -11,7 +11,12 @@
    */
   import { page } from '$app/state';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
-  import { listProposals, type ProposalFilters, type ResolvedProposal } from '$lib/api/proposals';
+  import {
+    getProposal,
+    listProposals,
+    type ProposalFilters,
+    type ResolvedProposal
+  } from '$lib/api/proposals';
   import type { ProposalDto, ProposalKind, ProposalStatus, TargetType } from '$lib/api/types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
   import ProposalDetail from '$lib/components/ProposalDetail.svelte';
@@ -36,8 +41,21 @@
   /** The proposal under review. */
   let selectedId = $state<string | null>(null);
 
+  /**
+   * The proposal the URL names, read back.
+   *
+   * The list is filtered by the API and paged: the proposal of a link may
+   * not be in the page that is loaded (it may be filtered out). It is then
+   * read by its id — the link must never lead to an empty panel.
+   */
+  let focused = $state.raw<ProposalDto | null>(null);
+  let focusError = $state<ApiFailure | null>(null);
+
   /** The counter that discards the answer of a superseded request. */
   let request = 0;
+
+  /** The counter that discards the answer of a superseded read. */
+  let focusRequest = 0;
 
   /** The statuses the API accepts (`ListProposalQuerySchema`). */
   const statusOptions: { value: ProposalStatus; label: string }[] = [
@@ -61,7 +79,64 @@
   ];
 
   /** The proposal under review. */
-  const selected = $derived(proposals.find((proposal) => proposal.id === selectedId) ?? null);
+  const selected = $derived(
+    proposals.find((proposal) => proposal.id === selectedId) ??
+      (focused !== null && focused.id === selectedId ? focused : null)
+  );
+
+  /**
+   * The proposal the URL names is the one under review.
+   *
+   * The workspace is **not** a path segment (FR-04), but the proposal is
+   * named in the query string: the link of a created proposal opens it.
+   */
+  $effect(() => {
+    const id = page.url.searchParams.get('proposal');
+
+    if (id === null || id === '') {
+      return;
+    }
+
+    selectedId = id;
+  });
+
+  /**
+   * Reads the proposal under review back when the list does not hold it.
+   *
+   * The list is filtered and paged by the API: the proposal of a link may
+   * be outside the page that is loaded.
+   */
+  $effect(() => {
+    const id = selectedId;
+
+    if (id === null) {
+      return;
+    }
+
+    if (proposals.some((proposal) => proposal.id === id)) {
+      focused = null;
+      focusError = null;
+      return;
+    }
+
+    const current = (focusRequest += 1);
+
+    void getProposal(api, id)
+      .then((proposal) => {
+        if (current !== focusRequest) {
+          return;
+        }
+        focused = proposal;
+        focusError = null;
+      })
+      .catch((caught: unknown) => {
+        if (current !== focusRequest) {
+          return;
+        }
+        focused = null;
+        focusError = describeFailure(caught);
+      });
+  });
 
   /**
    * Reads the proposals of the workspace.
@@ -320,7 +395,11 @@
       <section class="rounded-card border border-line bg-surface p-4">
         <h2 id="proposal-detail-heading" class="sr-only">The proposal under review</h2>
 
-        {#if selected === null}
+        {#if focusError}
+          <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
+            <span class="font-mono">{focusError.code}</span> — {focusError.message}
+          </p>
+        {:else if selected === null}
           <p class="text-sm text-ink-muted">
             Pick a proposal in the list to see its proposed change, its discussion and the controls
             of its resolution.

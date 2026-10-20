@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { eventJoin } from '$lib/api/auth';
   import { isApiError } from '$lib/api/errors';
@@ -13,6 +14,27 @@
   let alias = $state('');
   let pending = $state(false);
   let failure = $state<{ code: string | null; message: string } | null>(null);
+
+  /**
+   * Whether the client has taken over the page.
+   *
+   * The page is server-rendered, so before the hydration the form has no
+   * `submit` handler and the browser would perform a **native** submit: the
+   * event code would land in the URL, and with it in the history and in the
+   * access log. The code is the whole credential — it must never be in a
+   * URL.
+   *
+   * The button stays disabled until the handler is attached. A disabled
+   * submit button is also not the form's default button, so pressing
+   * <kbd>Enter</kbd> in the field cannot submit it either. The form needs
+   * JavaScript to work at all — the join is an API call from the browser —
+   * so nothing is lost by waiting for it.
+   */
+  let hydrated = $state(false);
+
+  onMount(() => {
+    hydrated = true;
+  });
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -130,10 +152,14 @@
     <button
       type="submit"
       class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={pending}
+      disabled={pending || !hydrated}
     >
       {pending ? 'Joining…' : 'Join the event'}
     </button>
+
+    {#if !hydrated}
+      <p class="text-xs text-ink-muted" role="status">Preparing the form…</p>
+    {/if}
   </form>
 
   <p class="text-sm text-ink-muted">

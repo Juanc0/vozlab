@@ -79,9 +79,15 @@ describe('the graph canvas', () => {
   it('creates the instance once and registers the dagre layout once', async () => {
     render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
 
-    await waitFor(() => {
-      expect(cytoscapeMock).toHaveBeenCalledTimes(1);
-    });
+    // The canvas is imported dynamically inside the effect, so the module
+    // may take longer than the default one second of `waitFor` when the
+    // machine is loaded.
+    await waitFor(
+      () => {
+        expect(cytoscapeMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 }
+    );
 
     expect(cytoscapeMock.use).toHaveBeenCalledTimes(1);
   });
@@ -89,15 +95,24 @@ describe('the graph canvas', () => {
   it('patches the elements when the data changes instead of re-creating the instance', async () => {
     const { rerender } = render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
 
-    await waitFor(() => {
-      expect(cytoscapeMock).toHaveBeenCalledTimes(1);
-    });
+    // The canvas is imported dynamically inside the effect, so the module
+    // may take longer than the default one second of `waitFor` when the
+    // machine is loaded.
+    await waitFor(
+      () => {
+        expect(cytoscapeMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 }
+    );
 
     await rerender({ nodes: [NODE_A, NODE_B], edges: [EDGE] });
 
-    await waitFor(() => {
-      expect(core.add).toHaveBeenCalled();
-    });
+    await waitFor(
+      () => {
+        expect(core.add).toHaveBeenCalled();
+      },
+      { timeout: 5000 }
+    );
 
     // The instance survived: it was not re-created.
     expect(cytoscapeMock).toHaveBeenCalledTimes(1);
@@ -107,9 +122,15 @@ describe('the graph canvas', () => {
   it('destroys the instance when the canvas is unmounted', async () => {
     const { unmount } = render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
 
-    await waitFor(() => {
-      expect(cytoscapeMock).toHaveBeenCalledTimes(1);
-    });
+    // The canvas is imported dynamically inside the effect, so the module
+    // may take longer than the default one second of `waitFor` when the
+    // machine is loaded.
+    await waitFor(
+      () => {
+        expect(cytoscapeMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 }
+    );
 
     unmount();
 
@@ -145,9 +166,15 @@ describe('the canvas and the list view', () => {
   it('selects the node in the canvas when the list selects it', async () => {
     render(GraphHarness, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
-    await waitFor(() => {
-      expect(cytoscapeMock).toHaveBeenCalledTimes(1);
-    });
+    // The canvas is imported dynamically inside the effect, so the module
+    // may take longer than the default one second of `waitFor` when the
+    // machine is loaded.
+    await waitFor(
+      () => {
+        expect(cytoscapeMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 }
+    );
 
     const [nodeTable] = screen.getAllByRole('table');
     await fireEvent.click(within(nodeTable).getByRole('button', { name: NODE_B.title }));
@@ -160,9 +187,15 @@ describe('the canvas and the list view', () => {
   it('marks the node in the list when the canvas selects it', async () => {
     render(GraphHarness, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
-    await waitFor(() => {
-      expect(cytoscapeMock).toHaveBeenCalledTimes(1);
-    });
+    // The canvas is imported dynamically inside the effect, so the module
+    // may take longer than the default one second of `waitFor` when the
+    // machine is loaded.
+    await waitFor(
+      () => {
+        expect(cytoscapeMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 }
+    );
 
     nodeTapHandler(core)({ target: { id: () => NODE_A.id } });
 

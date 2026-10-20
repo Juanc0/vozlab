@@ -361,11 +361,15 @@ contract only — [ADR-0024](decisions/ADR-0024-no-batch-node-endpoint.md) keeps
 the write path one node per request); management of the source registry; SSE;
 metrics; Apache AGE/Cypher; a merge proposal (the Relator can judge a merge
 but has nothing to submit); node or edge status transitions;
-datatype/object-property activation; interaction reads or vote retraction. The
-PWA has only its scaffold (roadmap 3.1): the OIDC login screen, the event QR
-scanner, the graph canvas and the governance UI arrive in Phase 3. The
-Extractor and Consolidator apps are still empty scaffolds; the embedder and the
-Relator exist but are not in Compose or CI.
+datatype/object-property activation; interaction reads or vote retraction.
+The PWA has been built through roadmap 3.1–3.7: the OIDC login, the event
+join, the graph canvas, the governance UI and the offline shell all exist.
+Two things are still missing from it: the event QR **scanner** (the join page
+takes the code as text) and a way to **read** the ontology's proposed
+properties — only the active ones are published, and only classes can be
+activated through the API. The Extractor and Consolidator apps are still
+empty scaffolds; the embedder and the Relator exist but are not in Compose or
+CI.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·
 [Errors](errors.md).
