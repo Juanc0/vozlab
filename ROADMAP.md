@@ -26,10 +26,16 @@ trade-offs before coding.
   the Relator (FR-19), the Extractor (FR-17 partial) and the source registry
   (FR-17 prerequisite). The Consolidator handler, the ingestion producer,
   observability and broad integration/E2E/load tests are not started.
-- Phase 3 started: `apps/web` is a working SvelteKit 5 PWA scaffold (3.1) that
-  builds, serves SSR and ships a manifest and a service worker. The state
-  layer, the route groups, the graph canvas, the governance UI, the offline
-  shell and the E2E suite are 3.2 to 3.7.
+- Phase 3 done: `apps/web` is a working SvelteKit 5 PWA. It builds, serves
+  SSR and ships a manifest and a service worker (3.1); the runes state, the
+  per-tab workspace and the HTTP client (3.2); the route groups, the session
+  guard and the workspace selector (3.3); the Cytoscape canvas with its
+  bounded subgraph (3.4); the ontology-driven creation forms, the proposal
+  review, the discussions and the optimistic voting (3.5); the offline shell,
+  the install and update prompts and the accessibility pass (3.6); and a
+  Playwright suite of 10 tests (3.7). The API grew three things for it: the
+  published response DTOs, the active `datatype_properties` and the edge
+  score in the subgraph.
 - Known debt: `pnpm lint` is red (24 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
