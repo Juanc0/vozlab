@@ -7,7 +7,7 @@
  * message of the exception — never a status line.
  */
 
-import { UNEXPECTED_RESPONSE_CODE, isApiError } from './errors';
+import { UNEXPECTED_RESPONSE_CODE, isApiError, isOfflineError } from './errors';
 
 /** The code and the message of a failed call, ready to be shown. */
 export interface ApiFailure {
@@ -20,6 +20,12 @@ export interface ApiFailure {
 /** Describes a failed call. */
 export function describeFailure(caught: unknown): ApiFailure {
   if (isApiError(caught)) {
+    return { code: caught.code, message: caught.message };
+  }
+
+  if (isOfflineError(caught)) {
+    // The request never left the app: the code says so, and the message
+    // explains what the user can and cannot do.
     return { code: caught.code, message: caught.message };
   }
 

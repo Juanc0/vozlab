@@ -57,6 +57,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Join an event — VozLab</title>
+</svelte:head>
+
 <section class="mx-auto max-w-prose space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Join an event</h1>
@@ -68,7 +72,9 @@
 
   <form class="space-y-5 rounded-card border border-line bg-surface p-6" onsubmit={submit}>
     <div>
-      <label for="event-code" class="block text-sm font-medium text-ink">Event code</label>
+      <label for="event-code" class="block text-sm font-medium text-ink">
+        Event code <span class="font-normal text-ink-muted">(required)</span>
+      </label>
       <input
         id="event-code"
         name="code"
@@ -78,8 +84,10 @@
         maxlength="128"
         autocomplete="off"
         spellcheck="false"
-        aria-describedby="event-code-help"
-        class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm"
+        aria-required="true"
+        aria-invalid={failure === null ? undefined : 'true'}
+        aria-describedby={failure === null ? 'event-code-help' : 'event-code-help event-code-error'}
+        class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 font-mono text-sm"
         bind:value={code}
       />
       <p id="event-code-help" class="mt-1 text-xs text-ink-muted">
@@ -98,7 +106,7 @@
         maxlength="100"
         autocomplete="off"
         aria-describedby="event-alias-help"
-        class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
         bind:value={alias}
       />
       <p id="event-alias-help" class="mt-1 text-xs text-ink-muted">
@@ -107,7 +115,11 @@
     </div>
 
     {#if failure}
-      <div role="alert" class="rounded-md border border-line bg-surface-muted p-3 text-sm">
+      <div
+        id="event-code-error"
+        role="alert"
+        class="rounded-md border border-line bg-surface-muted p-3 text-sm"
+      >
         {#if failure.code}
           <p class="font-mono font-semibold text-negative">{failure.code}</p>
         {/if}

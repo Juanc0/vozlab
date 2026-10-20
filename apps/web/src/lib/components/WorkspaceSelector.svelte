@@ -36,7 +36,7 @@
 
   <select
     id="workspace-select"
-    class="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-surface-muted"
+    class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-surface-muted"
     value={workspace.currentWorkspaceId}
     disabled={workspace.workspaces.length === 0}
     onchange={handleChange}

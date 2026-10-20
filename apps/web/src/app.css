@@ -24,6 +24,16 @@
   --color-ink: #0f172a;
   --color-ink-muted: #475569;
   --color-line: #e2e8f0;
+  /*
+   * The border of an **interactive control**.
+   *
+   * `--color-line` is a decorative separator: a card edge does not have to
+   * be identified. The edge of a text field or of a bordered button is the
+   * only thing that tells the user where the control is, so it must reach
+   * the 3:1 of WCAG 2.2 SC 1.4.11 (non-text contrast) against the surface
+   * it sits on. `#7d8798` is 3.6:1 on `--color-surface`.
+   */
+  --color-line-strong: #7d8798;
 
   --color-positive: #15803d;
   --color-negative: #b91c1c;
@@ -43,5 +53,21 @@
 
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  /*
+   * The motion is an enhancement, never the only way something is
+   * understood (WCAG 2.2 SC 2.3.3 / 2.2.2). A user who asked for less
+   * motion gets none of it.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

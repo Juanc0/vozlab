@@ -137,6 +137,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Discussions — VozLab</title>
+</svelte:head>
+
 <section class="space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Discussions</h1>
@@ -155,7 +159,7 @@
         <label for="target-type" class="block text-xs text-ink-muted">Kind of object</label>
         <select
           id="target-type"
-          class="mt-0.5 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           bind:value={targetTypeInput}
         >
           {#each targetTypeOptions as option (option.value)}
@@ -169,7 +173,7 @@
         <input
           id="target-id"
           type="text"
-          class="mt-0.5 w-full rounded-md border border-line bg-surface px-2 py-1 font-mono text-sm text-ink"
+          class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-mono text-sm text-ink"
           placeholder="The uuid of the object"
           bind:value={targetIdInput}
         />
@@ -192,7 +196,7 @@
         <label for="target-node" class="block text-xs text-ink-muted">Or pick a node of the workspace</label>
         <select
           id="target-node"
-          class="mt-0.5 w-full rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+          class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={targetIdInput}
           onchange={handleNodePicked}
         >

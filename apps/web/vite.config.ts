@@ -86,10 +86,57 @@ export default defineConfig(({ mode }) => {
                 // Precache the app shell, the hashed assets, the CSS and the fonts.
                 globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
                 // SvelteKit serves the app from the server: there is no
-                // `index.html` to fall back to. Offline navigation is handled
-                // by the offline shell (batch 3.6).
+                // `index.html` to fall back to.
+                //
+                // `navigateFallback` is **not** the answer either: Workbox
+                // binds it to a `NavigationRoute` that answers *every*
+                // navigation with the precached URL, which would replace the
+                // server-rendered pages. The offline navigation is handled by
+                // the runtime route below (batch 3.6).
                 navigateFallback: null,
-                cleanupOutdatedCaches: true
+                cleanupOutdatedCaches: true,
+                runtimeCaching: [
+                  {
+                    // A navigation goes to the network first: the app is
+                    // server-rendered. When the network fails, the
+                    // precached offline page answers instead — it is a real
+                    // document, not a blank screen.
+                    urlPattern: ({ request }) => request.mode === 'navigate',
+                    handler: 'NetworkFirst',
+                    options: {
+                      cacheName: 'vozlab-pages',
+                      networkTimeoutSeconds: 3,
+                      cacheableResponse: { statuses: [200] },
+                      expiration: {
+                        maxEntries: 20,
+                        maxAgeSeconds: 24 * 60 * 60
+                      },
+                      // The fallback is the offline page of `static/`. It is
+                      // in the precache manifest, so it is available even
+                      // when the network is gone.
+                      precacheFallback: { fallbackURL: '/offline.html' }
+                    }
+                  },
+                  {
+                    // A navigation **inside** the app does not fetch a
+                    // document: the SvelteKit router reads `__data.json`.
+                    // The last read is served from the cache while the
+                    // network is down — the reads may come from the cache.
+                    urlPattern: ({ url }) =>
+                      url.origin === self.location.origin &&
+                      url.pathname.endsWith('/__data.json'),
+                    handler: 'NetworkFirst',
+                    options: {
+                      cacheName: 'vozlab-data',
+                      networkTimeoutSeconds: 3,
+                      cacheableResponse: { statuses: [200] },
+                      expiration: {
+                        maxEntries: 50,
+                        maxAgeSeconds: 24 * 60 * 60
+                      }
+                    }
+                  }
+                ]
               },
               // The icons are already covered by `globPatterns`; adding them
               // again would duplicate them in the precache manifest.
@@ -102,7 +149,12 @@ export default defineConfig(({ mode }) => {
                 // and fights with HMR.
                 enabled: true,
                 type: 'module',
-                suppressWarnings: true
+                suppressWarnings: true,
+                // The runtime routes of the build (the navigation cache and
+                // the offline page) are **not** part of the dev worker: they
+                // would cache the dev documents and fight with HMR. The
+                // offline shell is exercised against the built app.
+                disableRuntimeConfig: true
               }
             })
           ])

@@ -374,6 +374,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Graph — VozLab</title>
+</svelte:head>
+
 <section class="space-y-6">
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div>
@@ -446,7 +450,7 @@
           {#if rootCursor !== null}
             <button
               type="button"
-              class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+              class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
               disabled={rootsLoading}
               onclick={() => loadRoots(rootCursor)}
             >
@@ -465,7 +469,7 @@
               <label for="subgraph-depth" class="block text-xs text-ink-muted">Depth</label>
               <select
                 id="subgraph-depth"
-                class="mt-0.5 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+                class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
                 value={depth}
                 onchange={handleDepthChange}
               >
@@ -482,7 +486,7 @@
                 type="number"
                 min="1"
                 max={SUBGRAPH_MAX_NODES}
-                class="mt-0.5 w-24 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+                class="mt-0.5 w-24 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
                 value={limit}
                 onchange={handleLimitChange}
               />

@@ -62,7 +62,22 @@
       <span class="font-normal text-ink-muted">({nodes.length})</span>
     </h3>
 
-    <div class="mt-2 overflow-x-auto rounded-card border border-line">
+    <!--
+      The table can be wider than the screen: the scroll container is a
+      region with a name, and it is focusable so that a keyboard user can
+      scroll it (WCAG 2.2 SC 2.1.1).
+
+      The `tabindex` on a non-interactive element is exactly the pattern of
+      the accessible scrollable region: the container must be reachable with
+      the keyboard, otherwise the columns that do not fit are out of reach.
+    -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="mt-2 overflow-x-auto rounded-card border border-line"
+      role="region"
+      aria-label="The nodes of the subgraph"
+      tabindex="0"
+    >
       <table class="w-full border-collapse text-left text-sm">
         <caption class="sr-only">
           The nodes of the subgraph: title, ontology class and status.
@@ -106,7 +121,13 @@
       <span class="font-normal text-ink-muted">({edges.length})</span>
     </h3>
 
-    <div class="mt-2 overflow-x-auto rounded-card border border-line">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="mt-2 overflow-x-auto rounded-card border border-line"
+      role="region"
+      aria-label="The relations of the subgraph"
+      tabindex="0"
+    >
       <table class="w-full border-collapse text-left text-sm">
         <caption class="sr-only">
           The relations of the subgraph: relation key, endpoints, status and score.

@@ -145,6 +145,18 @@ and `relator` groups), `redis-cli XLEN stream:node_created:dead`
 `redis-cli --scan --pattern 'vozlab:oidc:state:*'` are the only current
 signals. A leftover OIDC state key simply expires after 10 minutes.
 
+## Serving the service worker
+
+The PWA's service worker must **not** be cached by the layer in front of the
+app. `adapter-node` computes the static `ETag` from the file size and the
+mtime at startup, so a deploy that changes `sw.js` without changing its byte
+length produces the same `ETag`; the browser revalidates, gets a `304` and
+never sees the new worker — the update prompt never appears.
+
+Serve `/sw.js` and `/manifest.webmanifest` with `Cache-Control: no-cache`.
+In practice the hashed asset names change the length of the worker, so a
+normal deploy is detected anyway; the header makes it certain.
+
 ## Not observable today
 
 There is no `/metrics` endpoint, no Prometheus client, no OpenTelemetry SDK, no

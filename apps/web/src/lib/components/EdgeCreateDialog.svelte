@@ -203,7 +203,7 @@
         </label>
         <select
           id={relationId}
-          class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
           value={relationKey}
           onchange={(event) => {
             selectRelation(event.currentTarget.value);
@@ -230,7 +230,7 @@
         </label>
         <select
           id={targetId}
-          class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
           aria-invalid={errors['target'] === undefined ? undefined : 'true'}
           aria-describedby={errors['target'] === undefined ? undefined : `${targetId}-error`}
           value={targetNodeId}
@@ -288,7 +288,7 @@
         </button>
         <button
           type="button"
-          class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={onclose}
         >
           Cancel

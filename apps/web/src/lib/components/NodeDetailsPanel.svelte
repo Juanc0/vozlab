@@ -116,7 +116,7 @@
         {#if onrelate}
           <button
             type="button"
-            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
             onclick={() => onrelate(node)}
           >
             Relate to another node
@@ -129,7 +129,7 @@
         -->
         <a
           href="/discussions?target={node.id}&type=NODE"
-          class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
         >
           Discuss this node
         </a>
@@ -150,7 +150,9 @@
       <dd class="font-mono text-xs break-all">{node.authorHash}</dd>
 
       <dt class="text-ink-muted">Created</dt>
-      <dd>{formatDate(node.createdAt)}</dd>
+      <dd>
+        <time datetime={node.createdAt}>{formatDate(node.createdAt)}</time>
+      </dd>
     </dl>
 
     <section aria-labelledby="node-attributes-heading">

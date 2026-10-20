@@ -47,6 +47,7 @@
 
   const introId = `node-form-intro-${uid}`;
   const classId = `node-class-${uid}`;
+  const classDescriptionId = `node-class-description-${uid}`;
   const titleId = `node-title-${uid}`;
   const descriptionId = `node-description-${uid}`;
 
@@ -264,7 +265,8 @@
         <label for={classId} class="block text-sm font-medium text-ink">Ontology class</label>
         <select
           id={classId}
-          class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          aria-describedby={classDescription === null ? undefined : classDescriptionId}
           value={classKey}
           onchange={(event) => {
             classKey = event.currentTarget.value;
@@ -275,7 +277,7 @@
           {/each}
         </select>
         {#if classDescription !== null}
-          <p class="mt-1 text-xs text-ink-muted">{classDescription}</p>
+          <p id={classDescriptionId} class="mt-1 text-xs text-ink-muted">{classDescription}</p>
         {/if}
       </div>
 
@@ -293,7 +295,7 @@
           aria-required="true"
           aria-invalid={errors['title'] === undefined ? undefined : 'true'}
           aria-describedby={errors['title'] === undefined ? undefined : `${titleId}-error`}
-          class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
           value={title}
           oninput={(event) => {
             title = event.currentTarget.value;
@@ -312,7 +314,7 @@
           id={descriptionId}
           rows="3"
           aria-invalid={errors['description'] === undefined ? undefined : 'true'}
-          class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
           value={description}
           oninput={(event) => {
             description = event.currentTarget.value;
@@ -336,8 +338,9 @@
                   <input
                     id={fieldId(field)}
                     type="checkbox"
-                    class="size-4 rounded border-line"
+                    class="size-4 rounded border-line-strong"
                     checked={values[field.systemKey] === true}
+                    aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
                     onchange={(event) => {
@@ -360,7 +363,7 @@
                 {#if field.datatype === 'enum'}
                   <select
                     id={fieldId(field)}
-                    class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
@@ -382,7 +385,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -395,7 +398,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -408,7 +411,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -495,7 +498,7 @@
         </button>
         <button
           type="button"
-          class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={onclose}
         >
           Cancel

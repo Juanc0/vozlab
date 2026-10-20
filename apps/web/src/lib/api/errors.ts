@@ -124,3 +124,38 @@ export class ApiError extends Error {
 export function isApiError(value: unknown): value is ApiError {
   return value instanceof ApiError;
 }
+
+/**
+ * The code of an action the client refused because the browser is offline.
+ *
+ * It is **not** an API code: the request never left the app, so the API
+ * never answered. The code is local to the client and says exactly that —
+ * it must never be confused with a refusal of the server.
+ */
+export const OFFLINE_ERROR_CODE = 'ERR_OFFLINE';
+
+/**
+ * An action that could not be sent because the browser is offline.
+ *
+ * The offline mode of the PWA is **read-only**: a write is refused *before*
+ * the request leaves the app, and the refusal says why. It is not a network
+ * error — nothing was tried, so there is nothing to retry either.
+ */
+export class OfflineError extends Error {
+  /** The client-side code of the refusal. */
+  readonly code = OFFLINE_ERROR_CODE;
+
+  constructor(
+    message = 'The browser is offline: the request was not sent. This action needs the network.'
+  ) {
+    super(message);
+    this.name = 'OfflineError';
+    // Keeps `instanceof` working when the class is down-levelled.
+    Object.setPrototypeOf(this, OfflineError.prototype);
+  }
+}
+
+/** `true` when `value` is an {@link OfflineError}. */
+export function isOfflineError(value: unknown): value is OfflineError {
+  return value instanceof OfflineError;
+}

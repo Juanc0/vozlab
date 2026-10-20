@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <!-- The icon is in the precache: the page must not ask the network for it. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>VozLab — you are offline</title>
+    <meta
+      name="description"
+      content="VozLab could not reach the network. This page is served by the service worker while the browser is offline."
+    />
+    <style>
+      /*
+       * The offline page is served by the service worker when a navigation
+       * fails: it must render on its own, with no network and no asset of
+       * the app. The palette is the one of `src/app.css`.
+       */
+      :root {
+        --surface: #ffffff;
+        --surface-muted: #f8fafc;
+        --ink: #0f172a;
+        --ink-muted: #475569;
+        --line: #e2e8f0;
+        --line-strong: #7d8798;
+        --brand-900: #1e3a8a;
+        --brand-800: #1e40af;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--surface-muted);
+        color: var(--ink);
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+      }
+
+      .shell {
+        display: flex;
+        min-height: 100dvh;
+        flex-direction: column;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .bar {
+        margin: 0 auto;
+        width: 100%;
+        max-width: 72rem;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .mark {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border-radius: 0.375rem;
+        background: var(--brand-900);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.875rem;
+      }
+
+      .brand {
+        font-size: 1.125rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      main {
+        flex: 1;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 72rem;
+        padding: 2rem 1rem;
+      }
+
+      .card {
+        max-width: 34rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: var(--surface);
+        padding: 1.5rem;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+
+      p {
+        margin: 0 0 1rem;
+        color: var(--ink-muted);
+      }
+
+      ul {
+        margin: 0 0 1.25rem;
+        padding-left: 1.25rem;
+        color: var(--ink-muted);
+      }
+
+      li + li {
+        margin-top: 0.25rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .button {
+        display: inline-block;
+        border: 1px solid transparent;
+        border-radius: 0.375rem;
+        background: var(--brand-900);
+        color: #ffffff;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .button:hover {
+        background: var(--brand-800);
+      }
+
+      .button-secondary {
+        border-color: var(--line-strong);
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      .button-secondary:hover {
+        background: var(--surface-muted);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--brand-900);
+        outline-offset: 2px;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink-muted);
+        font-size: 0.875rem;
+      }
+
+      .footer-bar {
+        margin: 0 auto;
+        width: 100%;
+        max-width: 72rem;
+        padding: 1rem;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="bar">
+          <span class="mark" aria-hidden="true">V</span>
+          <span class="brand">VozLab</span>
+        </div>
+      </header>
+
+      <main>
+        <div class="card">
+          <h1>You are offline</h1>
+          <p>
+            VozLab could not reach the network, so this page was served by the app's own offline
+            copy. Nothing you were reading is lost — but the pages that need the server cannot be
+            loaded right now.
+          </p>
+          <ul>
+            <li>The graph, the proposals and the discussions need the network to be read.</li>
+            <li>Creating, editing, voting and resolving are blocked while you are offline.</li>
+            <li>Nothing is queued: an action refused now is simply not done.</li>
+          </ul>
+          <div class="actions">
+            <button type="button" class="button" onclick="window.location.reload()">
+              Try again
+            </button>
+            <a class="button button-secondary" href="/">Go to the start page</a>
+          </div>
+        </div>
+      </main>
+
+      <footer>
+        <div class="footer-bar">VozLab — co-creation client for the knowledge graph.</div>
+      </footer>
+    </div>
+  </body>
+</html>

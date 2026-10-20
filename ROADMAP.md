@@ -179,7 +179,18 @@ Milestones:
       **target's** maintainer, as the API decides it. The API gained the
       active `datatype_properties` and the edge score in the subgraph.
       218 web tests.
-- [ ] 3.6 PWA/offline shell, install prompt, accessibility pass.
+- [x] 3.6 PWA/offline shell, install prompt, accessibility pass. Result: the
+      writes are refused **before** the request leaves the tab when the
+      browser is offline (`ERR_OFFLINE`, nothing is queued), the service
+      worker serves a real offline document for a navigation whose network
+      failed, the install control appears only when the browser offered one
+      and the update prompt waits for the user. The accessibility pass
+      against WCAG 2.2 AA found and fixed 11 issues — a page without a
+      title, a 1.2:1 control border, an unnamed vote score, scroll regions
+      unreachable by keyboard, two guard states without an `h1`, a list
+      without a table, an unassociated error, a missing required state and
+      no `prefers-reduced-motion`. The screen-reader-only criteria remain
+      for a human handoff.
 - [ ] 3.7 Playwright E2E for the critical journeys (see `spec/web-pwa.md`).
 
 ## Phase 4 — Platform, QA and operations

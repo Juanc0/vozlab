@@ -218,14 +218,18 @@
 
       <dt class="text-ink-muted">Created</dt>
       <dd>
-        {new Date(proposal.createdAt).toISOString().slice(0, 10)}
+        <time datetime={proposal.createdAt}>
+          {new Date(proposal.createdAt).toISOString().slice(0, 10)}
+        </time>
         <span class="text-ink-muted">({ageDays} days ago)</span>
       </dd>
 
       {#if proposal.resolvedAt}
         <dt class="text-ink-muted">Resolved</dt>
         <dd>
-          {new Date(proposal.resolvedAt).toISOString().slice(0, 10)}
+          <time datetime={proposal.resolvedAt}>
+            {new Date(proposal.resolvedAt).toISOString().slice(0, 10)}
+          </time>
           {#if proposal.resolvedBy}
             <span class="block font-mono text-xs break-all text-ink-muted">{proposal.resolvedBy}</span>
           {/if}
@@ -297,7 +301,7 @@
           </button>
           <button
             type="button"
-            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
             disabled={resolving}
             onclick={() => void resolve('reject')}
           >
@@ -308,7 +312,7 @@
         {#if permissions.canAutoApply}
           <button
             type="button"
-            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
             disabled={resolving}
             onclick={() => void resolve('auto-apply')}
           >

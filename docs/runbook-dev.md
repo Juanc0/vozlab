@@ -319,8 +319,15 @@ worker runs in `prompt` mode: a new version waits until the user accepts the
 reload, so assets are never swapped silently mid-session.
 
 > The login page, the event-code join and the workspace selector exist
-> (roadmap 3.3). The graph canvas and the governance screens do not yet —
-> those are 3.4 and 3.5. See [spec/web-pwa.md](spec/web-pwa.md).
+> (roadmap 3.3), and so do the graph canvas (3.4), the governance screens
+> (3.5) and the offline shell (3.6). See [spec/web-pwa.md](spec/web-pwa.md).
+
+> **A production build stops the dev server.** `pnpm --filter @vozlab/web
+> build` empties `apps/web/dev-dist/`, which is the directory the dev server
+> serves the development service worker from; the server then dies with an
+> `ENOENT … dev-dist/sw.js` behind the Vite overlay. Restart it
+> (`pnpm --filter @vozlab/web dev`) after a build, or run the two in
+> different terminals.
 
 ### 14. Sign in to the PWA locally
 

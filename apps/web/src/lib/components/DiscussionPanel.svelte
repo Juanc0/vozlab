@@ -375,14 +375,14 @@
         minlength="3"
         maxlength="255"
         required
-        class="mt-0.5 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+        class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
         placeholder="What should the community discuss?"
         bind:value={newTitle}
       />
     </div>
     <button
       type="submit"
-      class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+      class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
       disabled={creating}
     >
       {creating ? 'Opening…' : 'Start the thread'}
@@ -417,7 +417,7 @@
           {#if canCloseThread(thread, authorHash)}
             <button
               type="button"
-              class="mt-1 rounded-md border border-line bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+              class="mt-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
               disabled={busyId === thread.id || thread.status === 'CLOSED'}
               onclick={() => void closeThreadNow(thread)}
             >
@@ -431,7 +431,7 @@
     {#if threadsCursor !== null}
       <button
         type="button"
-        class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+        class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
         disabled={threadsLoading}
         onclick={() => void loadThreads(targetId, targetType, threadsCursor)}
       >
@@ -463,7 +463,7 @@
       {#if postsCursor !== null}
         <button
           type="button"
-          class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+          class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
           disabled={postsLoading}
           onclick={() => void loadPosts(selectedThread.id, postsCursor)}
         >
@@ -481,7 +481,7 @@
             <span>Replying to “{replyParent.body.slice(0, 80)}{replyParent.body.length > 80 ? '…' : ''}”</span>
             <button
               type="button"
-              class="rounded border border-line bg-surface px-1.5 py-0.5 text-xs text-ink hover:bg-surface-muted"
+              class="rounded border border-line-strong bg-surface px-1.5 py-0.5 text-xs text-ink hover:bg-surface-muted"
               onclick={cancelReply}
             >
               Cancel the reply
@@ -494,7 +494,7 @@
           rows="3"
           maxlength="5000"
           required
-          class="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
           placeholder="Your comment…"
           bind:value={replyBody}
         ></textarea>
@@ -518,7 +518,9 @@
         <article class="rounded-md border border-line bg-surface-muted/40 p-2">
           <header class="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
             <span class="font-mono break-all">{node.post.authorHash}</span>
-            <span>{new Date(node.post.createdAt).toISOString().slice(0, 10)}</span>
+            <time datetime={node.post.createdAt}>
+              {new Date(node.post.createdAt).toISOString().slice(0, 10)}
+            </time>
           </header>
 
           <p class="mt-1 text-sm whitespace-pre-wrap break-words">{node.post.body}</p>
@@ -535,7 +537,7 @@
 
             <button
               type="button"
-              class="rounded-md border border-line bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
+              class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
               onclick={() => startReply(node.post.id)}
             >
               Reply
@@ -544,7 +546,7 @@
             {#if canDeletePost(node.post, authorHash)}
               <button
                 type="button"
-                class="rounded-md border border-line bg-surface px-2 py-1 text-xs font-medium text-negative hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+                class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-negative hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={busyId === node.post.id}
                 onclick={() => void removePost(node.post)}
               >

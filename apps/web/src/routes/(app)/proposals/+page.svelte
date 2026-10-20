@@ -164,6 +164,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Proposals — VozLab</title>
+</svelte:head>
+
 <section class="space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Proposals</h1>
@@ -185,7 +189,7 @@
         <label for="filter-status" class="block text-xs text-ink-muted">Status</label>
         <select
           id="filter-status"
-          class="mt-0.5 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.status ?? ''}
           onchange={handleStatusChange}
         >
@@ -200,7 +204,7 @@
         <label for="filter-target-type" class="block text-xs text-ink-muted">Target</label>
         <select
           id="filter-target-type"
-          class="mt-0.5 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.targetType ?? ''}
           onchange={handleTargetTypeChange}
         >
@@ -215,7 +219,7 @@
         <label for="filter-kind" class="block text-xs text-ink-muted">Kind</label>
         <select
           id="filter-kind"
-          class="mt-0.5 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.kind ?? ''}
           onchange={handleKindChange}
         >
@@ -243,35 +247,66 @@
           No proposal matches these filters in this workspace.
         </p>
       {:else}
-        <ul class="divide-y divide-line">
-          {#each proposals as proposal (proposal.id)}
-            <li class="py-2">
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <button
-                  type="button"
-                  class="rounded text-left font-medium text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
-                  aria-current={selectedId === proposal.id ? 'true' : undefined}
-                  onclick={() => (selectedId = proposal.id)}
-                >
-                  {proposal.kind === 'MERGE' ? 'Merge proposal' : 'Edit proposal'}
-                  {proposal.targetType.toLowerCase()}
-                </button>
-                <span class="text-xs text-ink-muted">
-                  {proposal.status} · score {proposal.communityScore} · {formatDate(proposal.createdAt)}
-                </span>
-              </div>
-
-              {#if proposal.justification}
-                <p class="mt-1 text-sm text-ink-muted">{proposal.justification}</p>
-              {/if}
-            </li>
-          {/each}
-        </ul>
+        <!--
+          The list is a real table: a proposal is a row, and the row is
+          identified by its own cell (the row header). The scroll container
+          is a focusable region so that a keyboard user can reach the
+          columns that do not fit (WCAG 2.2 SC 2.1.1).
+        -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="overflow-x-auto rounded-card border border-line"
+          role="region"
+          aria-label="The proposals of the workspace"
+          tabindex="0"
+        >
+          <table class="w-full border-collapse text-left text-sm">
+            <caption class="sr-only">
+              The proposals of the workspace: kind and target, status, community score and creation
+              date.
+            </caption>
+            <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
+              <tr>
+                <th scope="col" class="px-3 py-2 font-semibold">Proposal</th>
+                <th scope="col" class="px-3 py-2 font-semibold">Status</th>
+                <th scope="col" class="px-3 py-2 font-semibold">Score</th>
+                <th scope="col" class="px-3 py-2 font-semibold">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each proposals as proposal (proposal.id)}
+                <tr class="border-t border-line align-top">
+                  <th scope="row" class="px-3 py-2 font-normal">
+                    <button
+                      type="button"
+                      class="rounded text-left font-medium text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
+                      aria-current={selectedId === proposal.id ? 'true' : undefined}
+                      onclick={() => (selectedId = proposal.id)}
+                    >
+                      {proposal.kind === 'MERGE' ? 'Merge proposal' : 'Edit proposal'}
+                      {proposal.targetType.toLowerCase()}
+                    </button>
+                    {#if proposal.justification}
+                      <span class="mt-1 block text-sm font-normal text-ink-muted">
+                        {proposal.justification}
+                      </span>
+                    {/if}
+                  </th>
+                  <td class="px-3 py-2 text-ink-muted">{proposal.status}</td>
+                  <td class="px-3 py-2 tabular-nums text-ink-muted">{proposal.communityScore}</td>
+                  <td class="px-3 py-2 text-ink-muted">
+                    <time datetime={proposal.createdAt}>{formatDate(proposal.createdAt)}</time>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
 
         {#if cursor !== null}
           <button
             type="button"
-            class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loading}
             onclick={() => void loadProposals(cursor)}
           >

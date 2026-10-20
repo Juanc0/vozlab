@@ -19,10 +19,12 @@
 
 import { apiUrl } from '$lib/config/api-base-url';
 import { runUnderRefreshLock } from '$lib/api/refresh-lock';
+import { connectivityState } from '$lib/pwa/connectivity.svelte';
 import type { SessionState } from '$lib/state/session.svelte';
 import type { WorkspaceState } from '$lib/state/workspace.svelte';
 import {
   ApiError,
+  OfflineError,
   fallbackCodeForStatus,
   fallbackMessageForStatus,
   type ApiErrorCode,
@@ -258,9 +260,20 @@ export class ApiClient {
 
   private async fetch(init: ApiRequestInit): Promise<Response> {
     const hasBody = init.body !== undefined && init.body !== null;
+    const method = init.method ?? 'GET';
+
+    // The offline mode of the PWA is **read-only**.
+    //
+    // A write is refused **here**, before the request leaves the app: the
+    // user gets a message that says why, not a network error after the
+    // fact. The reads are not touched — they may be served from the cache
+    // or fail on their own terms.
+    if (method !== 'GET' && connectivityState.offline) {
+      throw new OfflineError();
+    }
 
     return fetch(this.buildUrl(init), {
-      method: init.method ?? 'GET',
+      method,
       headers: this.buildHeaders(init, hasBody),
       body: hasBody ? JSON.stringify(init.body) : undefined,
       // The refresh cookie is `HttpOnly` and scoped to `/api/v1/auth`.

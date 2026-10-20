@@ -10,11 +10,17 @@
    * The state of the vote lives in the {@link VoteLedger} of the page: the
    * API has no read for the interactions, so the session is the only place
    * that knows which vote was cast.
+   *
+   * **Offline, the vote is refused before the optimistic update.** A request
+   * that never left the app must not move the score, and there is nothing to
+   * roll back: it was never optimistic.
    */
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import { castVote } from '$lib/api/interactions';
+  import { OfflineError } from '$lib/api/errors';
   import type { InteractionTargetType, InteractionType } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
+  import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { getApiClient } from '$lib/state/context';
 
   interface Props {
@@ -69,6 +75,15 @@
     info = null;
     failure = null;
 
+    // The offline mode is read-only: the vote is refused **before** the
+    // optimistic update, so the score does not move at all. The rollback
+    // does not run either — there is nothing to roll back.
+    if (connectivityState.offline) {
+      failure = describeFailure(new OfflineError());
+      pending = false;
+      return;
+    }
+
     // A repeat of the type the user already cast is idempotent on the
     // server: it answers `201` but does not move the counter again. The
     // ledger knows the type, so it knows the difference.
@@ -122,35 +137,34 @@
   }
 </script>
 
-<div class="inline-flex items-center gap-1.5">
+<!--
+  The two buttons are a group: the name tells the screen reader what the
+  group votes on, and the score is read next to its own label.
+-->
+<div class="inline-flex items-center gap-1.5" role="group" aria-label={`Vote on ${label}`}>
   <button
     type="button"
-    class="rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
+    class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
     aria-pressed={voted === 'UPVOTE'}
     aria-label={`Upvote ${label}`}
     disabled={pending}
     onclick={() => void vote('UPVOTE')}
   >
     <span aria-hidden="true">▲</span>
-    <span class="sr-only">Upvote</span>
   </button>
 
-  <span class="text-xs text-ink-muted" aria-hidden="true">Score</span>
-  <span
-    class="min-w-6 text-center text-sm font-semibold tabular-nums"
-    aria-label={`Score: ${displayed}`}
-  >{displayed}</span>
+  <span class="text-xs text-ink-muted">Score</span>
+  <span class="min-w-6 text-center text-sm font-semibold tabular-nums">{displayed}</span>
 
   <button
     type="button"
-    class="rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
+    class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
     aria-pressed={voted === 'DOWNVOTE'}
     aria-label={`Downvote ${label}`}
     disabled={pending}
     onclick={() => void vote('DOWNVOTE')}
   >
     <span aria-hidden="true">▼</span>
-    <span class="sr-only">Downvote</span>
   </button>
 </div>
 

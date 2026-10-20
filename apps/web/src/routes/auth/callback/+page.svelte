@@ -20,6 +20,10 @@
   );
 </script>
 
+<svelte:head>
+  <title>The sign-in did not go through — VozLab</title>
+</svelte:head>
+
 <section class="mx-auto max-w-prose space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">The sign-in did not go through</h1>
@@ -39,7 +43,7 @@
     </a>
     <a
       href="/join"
-      class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+      class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
     >
       Join with an event code
     </a>

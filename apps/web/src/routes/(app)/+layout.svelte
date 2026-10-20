@@ -4,6 +4,7 @@
   import { page } from '$app/state';
   import { restoreSession } from '$lib/auth/restore';
   import AppSidebar from '$lib/components/AppSidebar.svelte';
+  import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
   import type { LayoutProps } from './$types';
 
@@ -65,14 +66,14 @@
     <div class="min-w-0">
       {#if status === 'no-membership'}
         <section class="rounded-card border border-line bg-surface p-6">
-          <h2 class="text-lg font-semibold tracking-tight">No workspace in this institution</h2>
+          <h1 class="text-lg font-semibold tracking-tight">No workspace in this institution</h1>
           <p class="mt-2 text-sm text-ink-muted">
             Your account is valid, but it is not a member of any workspace of this institution. Ask
             an administrator to add you to one, or join an event with a code.
           </p>
           <a
             href="/join"
-            class="mt-4 inline-block rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+            class="mt-4 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           >
             Join with an event code
           </a>
@@ -84,8 +85,15 @@
   </div>
 {:else if status === 'failed'}
   <section role="alert" class="rounded-card border border-line bg-surface p-6">
-    <h2 class="text-lg font-semibold tracking-tight">The session could not be restored</h2>
-    <p class="mt-2 text-sm text-ink-muted">{failure}</p>
+    <h1 class="text-lg font-semibold tracking-tight">The session could not be restored</h1>
+    <p class="mt-2 text-sm text-ink-muted">
+      {#if connectivityState.offline}
+        The browser is offline: the session needs the network to be restored. The pages that need
+        the server cannot be loaded until the connection is back.
+      {:else}
+        {failure}
+      {/if}
+    </p>
     <button
       type="button"
       class="mt-4 rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
@@ -95,5 +103,7 @@
     </button>
   </section>
 {:else}
-  <p role="status" class="text-sm text-ink-muted">Restoring your session…</p>
+  <div role="status" aria-live="polite">
+    <h1 class="text-lg font-semibold tracking-tight">Restoring your session…</h1>
+  </div>
 {/if}

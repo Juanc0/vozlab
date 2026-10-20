@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { json, renderGovernance } from './harness/governance';
 import { PROPOSAL } from './fixtures/governance';
@@ -22,8 +22,11 @@ vi.mock('$app/navigation', () => ({ goto }));
 
 /** The score the vote buttons show. */
 function shownScore(): number {
-  const label = screen.getByLabelText(/^Score: /);
-  return Number(label.textContent?.trim());
+  // The vote is a group: the score is the number it shows next to its own
+  // label.
+  const group = screen.getByRole('group', { name: /vote on/i });
+  const score = within(group).getByText(/^-?\d+$/);
+  return Number(score.textContent?.trim());
 }
 
 /** The reads of the proposal screen, with the vote left to the caller. */

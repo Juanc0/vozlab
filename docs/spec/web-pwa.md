@@ -270,14 +270,39 @@ Minimal manifest:
 - A new service-worker version prompts the user to reload; do not silently
   swap assets mid-session.
 
+### Corrections against the code (3.6)
+
+**`navigateFallback` cannot be used with an SSR SvelteKit app.** Workbox
+binds it to `createHandlerBoundToURL(...)`, and `PrecacheController
+.createHandlerBoundToURL` replaces the request with the precached URL and
+returns it **unconditionally** — so it would answer *every* navigation with
+the fallback and replace every server-rendered page. The offline navigation
+is a Workbox `NetworkFirst` route with `PrecacheFallbackPlugin`, whose
+fallback is a real static document (`static/offline.html`) that is in the
+precache manifest.
+
+**The write block happens in the client, before the request.** The API client
+is the only place a request is issued, so it refuses a non-`GET` when the
+browser is offline and throws a client-side `OfflineError`
+(`ERR_OFFLINE` — the API never answered, so there is no API code). The
+optimistic vote is the one special case: it checks the connectivity
+**before** it moves the score, so a refused vote is never optimistic and
+never rolls back.
+
+**The install control only exists when the browser offered one.**
+`beforeinstallprompt` never fires in Firefox and Safari, so the control is
+rendered only after the event was captured — there is no dead button. The
+same type of rule applies to the update prompt: the waiting worker is
+applied only when the user accepts it.
+
 ## Phase 3 acceptance criteria
 
 - [x] SvelteKit 5 + Tailwind builds and serves SSR. *(3.1 — `pnpm --filter
   @vozlab/web build`, adapter-node, verified with `curl` against the built
   server.)*
-- [ ] PWA manifest and service worker are generated; offline writes blocked.
-  *(3.1 generates the manifest and the worker in `prompt` mode; the offline
-  shell and the write block are 3.6.)*
+- [x] PWA manifest and service worker are generated; offline writes blocked.
+  *(3.1 generates the manifest and the worker in `prompt` mode; 3.6 adds the
+  offline document, the offline banner and the write block.)*
 - [x] Workspace changes are isolated per tab via `sessionStorage`.
 - [x] `(app)` routes redirect to `/login` without a session. *(3.3 — four
   guard states: `restoring`, `ready`, `no-membership`, `failed`.)*
