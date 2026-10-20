@@ -104,6 +104,26 @@ Idempotent. Creates the `sabana` tenant, the `general` workspace
 ontology classes `Problem`, `Idea`, `Resource` and one example data source
 (`dev-minutes-2026`).
 
+It also writes the **demo graph**: 24 nodes and 35 relations in Spanish,
+arranged in three independent clusters — *movilidad y transporte*, *espacios
+y accesibilidad* and *vida académica y bienestar* — plus 4 proposals, 3
+discussion threads with 10 posts and 71 votes. The ontology grows with it:
+the relations `INVOLVES`, `ADDRESSES`, `BUILDS_ON` and `EVIDENCED_BY` join
+`RELATES_TO`, and the classes carry the datatype properties that drive the
+dynamic node form (`sector`, `alcance`, `horizonte`, `costoEstimado`,
+`enlace`, `tipoFuente`).
+
+> **`db:seed:dev` is a reset button.** It deletes the workspace content it
+> does not own — anything a previous run or the E2E suite left behind — and
+> prints what it removed. The demo is therefore deterministic, and running
+> it before a presentation restores the pristine graph.
+
+The nodes are authored by the **maintainer** identity and the proposals are
+put forward by the **member**, so the presenter, signed in as the author, is
+exactly the person who can approve them. One of the pending proposals is
+older than 14 days with a score of 12, which is what the moderator's
+auto-apply path needs.
+
 ### 6. Mint a development JWT
 
 ```bash

@@ -206,6 +206,41 @@ Milestones:
       It is opt-in — `pnpm --filter @vozlab/web test:e2e` — like the API's
       `test:integration`; the CI job is 4.3.
 
+### Phase 3 — follow-up (presentation readiness)
+
+Requested after 3.7, to present the product to the university community.
+
+- [x] 3.8 A realistic seed in Spanish: three independent focus clusters,
+      each with a handful of nodes and the relations between them, plus the
+      proposals, discussions and votes the governance screens need. Result:
+      24 nodes and 35 relations in Spanish across *movilidad y transporte*,
+      *espacios y accesibilidad* and *vida académica y bienestar*, two
+      bridges between them, 4 proposals, 3 threads with 10 posts and 71
+      votes. The ontology grew with them — `INVOLVES`, `ADDRESSES`,
+      `BUILDS_ON` and `EVIDENCED_BY` join `RELATES_TO`, and the classes
+      carry the datatype properties the dynamic form needs. The seed is
+      also the workspace's reset button: it removes what it does not own and
+      prints the report the presenter reads from the terminal. The nodes are
+      authored by the maintainer and the proposals are put forward by the
+      member, so the presenter is the one who can approve them.
+- [ ] 3.9 A development sign-in, so the presenter can act as the maintainer:
+      the event-code join grants `MEMBER`, and a member can neither approve
+      nor auto-apply. The token is minted locally and never persisted.
+- [ ] 3.10 i18n: the interface in Spanish (the default) and English, with a
+      language selector and the preference kept in a cookie so the server
+      renders the right language.
+- [ ] 3.11 API: `GET /api/v1/nodes/window` — a bounded window of the
+      workspace (the newest nodes and the relations among them) for the
+      exploration view.
+- [ ] 3.12 The exploration view, next to the subgraph view: pan, hover and
+      click expansion, a selectable focus, the shape of the arrows, dragging
+      a node, and a layout that rearranges when the nodes grow.
+- [ ] 3.13 The inspector: one right-hand sidebar with tabs (content,
+      attributes, proposals, forum) shared by both graph views, where the
+      selected node or relation can be edited or corrected.
+- [ ] 3.14 A responsive layout: mobile-first, the panels become sheets, and
+      the canvas follows the window when it resizes.
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's
