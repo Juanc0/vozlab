@@ -11,6 +11,10 @@
    * without stealing the focus.
    */
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
+  import { getLocaleState } from '$lib/state/context';
+
+  const locale = getLocaleState();
+  const t = locale.t;
 </script>
 
 {#if connectivityState.offline}
@@ -18,11 +22,8 @@
     <div
       class="mx-auto flex w-full max-w-6xl flex-wrap items-baseline gap-x-2 gap-y-1 px-4 py-2 text-sm text-ink"
     >
-      <span class="font-semibold">You are offline.</span>
-      <span>
-        You can keep reading what is already loaded, but creating, editing, voting and resolving
-        are blocked until the connection is back. Nothing is queued in the meantime.
-      </span>
+      <span class="font-semibold">{t('offline.heading')}</span>
+      <span>{t('offline.text')}</span>
     </div>
   </div>
 {/if}

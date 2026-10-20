@@ -5,6 +5,7 @@ import WorkspaceSelector from '$lib/components/WorkspaceSelector.svelte';
 import { WORKSPACE_CONTEXT_KEY } from '$lib/state/context';
 import { ACTIVE_WORKSPACE_STORAGE_KEY, WorkspaceState } from '$lib/state/workspace.svelte';
 import type { WorkspaceSummaryDto } from '@vozlab/shared-types';
+import { contextWithLocale } from './harness/locale';
 
 vi.mock('$app/environment', () => ({
   browser: true,
@@ -35,7 +36,7 @@ function renderSelector(workspaces: WorkspaceSummaryDto[], activeId?: string): W
   }
 
   render(WorkspaceSelector, {
-    context: new Map<unknown, unknown>([[WORKSPACE_CONTEXT_KEY, workspace]])
+    context: contextWithLocale([[WORKSPACE_CONTEXT_KEY, workspace]])
   });
 
   return workspace;
@@ -50,7 +51,7 @@ describe('WorkspaceSelector', () => {
   it('shows the active workspace and the role of its membership', () => {
     renderSelector([WORKSPACE_A, WORKSPACE_B], WORKSPACE_B.id);
 
-    const select = screen.getByLabelText('Workspace') as HTMLSelectElement;
+    const select = screen.getByLabelText('Espacio de trabajo') as HTMLSelectElement;
 
     expect(select.value).toBe(WORKSPACE_B.id);
     expect(screen.getByRole('option', { name: 'General' })).toBeInTheDocument();
@@ -61,7 +62,7 @@ describe('WorkspaceSelector', () => {
   it('writes the choice to sessionStorage and updates the selector', async () => {
     const workspace = renderSelector([WORKSPACE_A, WORKSPACE_B], WORKSPACE_A.id);
 
-    const select = screen.getByLabelText('Workspace') as HTMLSelectElement;
+    const select = screen.getByLabelText('Espacio de trabajo') as HTMLSelectElement;
     await fireEvent.change(select, { target: { value: WORKSPACE_B.id } });
     await tick();
 
@@ -75,7 +76,7 @@ describe('WorkspaceSelector', () => {
   it('never writes the workspace to localStorage', async () => {
     renderSelector([WORKSPACE_A, WORKSPACE_B], WORKSPACE_A.id);
 
-    const select = screen.getByLabelText('Workspace') as HTMLSelectElement;
+    const select = screen.getByLabelText('Espacio de trabajo') as HTMLSelectElement;
     await fireEvent.change(select, { target: { value: WORKSPACE_B.id } });
     await tick();
 
@@ -86,10 +87,10 @@ describe('WorkspaceSelector', () => {
   it('disables the selector when the user belongs to no workspace', () => {
     renderSelector([]);
 
-    const select = screen.getByLabelText('Workspace') as HTMLSelectElement;
+    const select = screen.getByLabelText('Espacio de trabajo') as HTMLSelectElement;
 
     expect(select.disabled).toBe(true);
     expect(select.options).toHaveLength(0);
-    expect(screen.getByText(/no workspace selected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no hay ningún espacio de trabajo seleccionado/i)).toBeInTheDocument();
   });
 });

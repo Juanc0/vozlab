@@ -16,6 +16,7 @@
    * of the target approves it.
    */
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
+  import { formatNumber } from '$lib/i18n';
   import { getEdge } from '$lib/api/graph';
   import { createProposal, type CreatedProposal } from '$lib/api/proposals';
   import type { OntologyResponseDto } from '$lib/api/types';
@@ -33,8 +34,9 @@
     type CorrectionSnapshot,
     type CorrectionTarget
   } from '$lib/governance/correction';
-  import { getApiClient } from '$lib/state/context';
+  import { getApiClient, getLocaleState } from '$lib/state/context';
   import ModalDialog from './ModalDialog.svelte';
+  import RichText from './RichText.svelte';
 
   interface Props {
     /** `true` while the dialog is open. */
@@ -52,6 +54,9 @@
   let { open, target, ontology = null, onclose, oncreated }: Props = $props();
 
   const api = getApiClient();
+  const locale = getLocaleState();
+  const t = locale.t;
+
   const uid = $props.id();
 
   const introId = `correction-intro-${uid}`;
@@ -183,7 +188,7 @@
         if (token !== request) {
           return;
         }
-        loadError = describeFailure(caught);
+        loadError = describeFailure(caught, t);
         loading = false;
       });
   });
@@ -320,7 +325,7 @@
     } catch (caught) {
       // The envelope of the API — the code and the message — is what the
       // user sees. The form keeps what the user typed.
-      failure = describeFailure(caught);
+      failure = describeFailure(caught, t);
     } finally {
       submitting = false;
     }
@@ -357,35 +362,34 @@
 
   /** The message of the error of a field, when it has one. */
   function errorOf(key: string): string | null {
-    return invalid.find((field) => field.key === key)?.message ?? null;
+    const message = invalid.find((field) => field.key === key)?.message;
+    return message === undefined ? null : t(message.key, message.params);
   }
 </script>
 
-<ModalDialog {open} title="Suggest a correction" {onclose} describedby={introId}>
+<ModalDialog {open} title={t('correction.title')} {onclose} describedby={introId}>
   <p id={introId} class="text-sm text-ink-muted">
-    A proposal is a diff: it changes <strong>nothing</strong> until the author of the target
-    approves it. The proposal is created <strong>pending</strong> — the author of the target is
-    the one who decides.
+    <RichText text={t('correction.intro')} />
   </p>
 
   {#if target === null}
     <p class="mt-4 text-sm text-ink-muted">
-      Pick a node or a relation before proposing a correction.
+      {t('correction.pickTarget')}
     </p>
   {:else if loading}
-    <p role="status" class="mt-4 text-sm text-ink-muted">Reading the target…</p>
+    <p role="status" class="mt-4 text-sm text-ink-muted">{t('correction.readingTarget')}</p>
   {:else if loadError !== null}
     <p role="alert" class="mt-4 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
       <span class="font-mono">{loadError.code}</span> — {loadError.message}
     </p>
   {:else if build === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">Loading the target…</p>
+    <p role="status" class="mt-4 text-sm text-ink-muted">{t('correction.loadingTarget')}</p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       {#if target.kind === 'node'}
         <div>
           <label for={titleId} class="block text-sm font-medium text-ink">
-            Title <span class="font-normal text-ink-muted">(required)</span>
+            {t('node.titleLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
           </label>
           <input
             id={titleId}
@@ -407,7 +411,7 @@
 
         <div>
           <label for={descriptionId} class="block text-sm font-medium text-ink">
-            Description <span class="font-normal text-ink-muted">(optional)</span>
+            {t('node.descriptionLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
           </label>
           <textarea
             id={descriptionId}
@@ -420,13 +424,13 @@
             }}
           ></textarea>
           <p id={descriptionNoteId} class="mt-1 text-xs text-ink-muted">
-            An empty description clears the text of the node.
+            {t('correction.emptyDescription')}
           </p>
         </div>
       {:else}
         <div>
           <label for={relationKeyId} class="block text-sm font-medium text-ink">
-            Relation key <span class="font-normal text-ink-muted">(required)</span>
+            {t('correction.relationKeyLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
           </label>
           <input
             id={relationKeyId}
@@ -456,15 +460,13 @@
       {/if}
 
       <fieldset aria-describedby={attributesNoteId}>
-        <legend class="text-sm font-semibold tracking-tight">Attributes</legend>
+        <legend class="text-sm font-semibold tracking-tight">{t('correction.attributesLegend')}</legend>
         <p id={attributesNoteId} class="mt-1 text-xs text-ink-muted">
-          The API merges the attributes into the ones of the target: a proposal can change an
-          attribute and add one, but it cannot remove one and it cannot rename one. A row without
-          a value is not sent.
+          {t('correction.attributesNote')}
         </p>
 
         {#if rows.length === 0}
-          <p class="mt-2 text-sm text-ink-muted">The target carries no attribute.</p>
+          <p class="mt-2 text-sm text-ink-muted">{t('correction.noAttributes')}</p>
         {:else}
           <ul class="mt-2 space-y-2">
             {#each rows as row, index (row.id)}
@@ -473,7 +475,7 @@
               >
                 <div>
                   <label for={keyInputId(row)} class="sr-only">
-                    Key of the attribute {index + 1}
+                    {t('correction.keyLabel', { index: index + 1 })}
                   </label>
                   <input
                     id={keyInputId(row)}
@@ -493,7 +495,7 @@
 
                 <div>
                   <label for={valueInputId(row)} class="sr-only">
-                    Value of the attribute {index + 1}
+                    {t('correction.valueLabel', { index: index + 1 })}
                   </label>
                   {#if row.type === 'checkbox'}
                     <input
@@ -523,7 +525,7 @@
 
                 <div>
                   <label for={typeInputId(row)} class="sr-only">
-                    Type of the attribute {index + 1}
+                    {t('correction.typeLabel', { index: index + 1 })}
                   </label>
                   <select
                     id={typeInputId(row)}
@@ -535,30 +537,29 @@
                     }}
                   >
                     {#each ATTRIBUTE_VALUE_TYPES as type (type)}
-                      <option value={type}>{ATTRIBUTE_VALUE_TYPE_LABELS[type]}</option>
+                      <option value={type}>{t(ATTRIBUTE_VALUE_TYPE_LABELS[type])}</option>
                     {/each}
                   </select>
                 </div>
 
                 <div>
                   {#if row.exists}
-                    <span class="text-xs text-ink-muted">Kept</span>
+                    <span class="text-xs text-ink-muted">{t('correction.kept')}</span>
                   {:else}
                     <button
                       type="button"
                       class="rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
-                      aria-label={`Remove the attribute ${index + 1}`}
+                      aria-label={t('correction.removeLabel', { index: index + 1 })}
                       onclick={() => removeRow(row.id)}
                     >
-                      Remove
+                      {t('correction.remove')}
                     </button>
                   {/if}
                 </div>
 
                 {#if !row.editable}
                   <p class="text-xs text-ink-muted sm:col-span-4">
-                    This value is not a text, a number or a boolean: the form cannot propose a
-                    change for it.
+                    {t('correction.notEditable')}
                   </p>
                 {/if}
 
@@ -582,50 +583,50 @@
           class="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={addRow}
         >
-          Add an attribute
+          {t('correction.addAttribute')}
         </button>
       </fieldset>
 
       <section aria-labelledby={diffHeadingId}>
         <h3 id={diffHeadingId} class="text-sm font-semibold tracking-tight">
-          What this proposal changes
+          {t('correction.changesHeading')}
         </h3>
         <p class="mt-1 text-xs text-ink-muted">
           {#if changedFields.length === 0}
-            Nothing changes yet: the form sends nothing until a field differs from the target.
+            {t('correction.noChanges')}
           {:else if changedFields.length === 1}
-            One field changes.
+            {t('correction.oneChange')}
           {:else}
-            {changedFields.length} fields change.
+            {t('correction.manyChanges', { count: formatNumber(locale.locale, changedFields.length) })}
           {/if}
         </p>
 
         <div class="mt-2 overflow-x-auto rounded-card border border-line">
           <table class="w-full border-collapse text-left text-sm">
             <caption class="sr-only">
-              The current value and the proposed value of every field of the target.
+              {t('correction.tableCaption')}
             </caption>
             <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
               <tr>
-                <th scope="col" class="px-3 py-2 font-semibold">Field</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Current</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Proposed</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Change</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnField')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnCurrent')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnProposed')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnChange')}</th>
               </tr>
             </thead>
             <tbody>
               {#each build.diff as entry (entry.field)}
                 <tr class="border-t border-line">
                   <th scope="row" class="px-3 py-2 font-normal">
-                    <span class="font-mono text-xs">{entry.label}</span>
+                    <span class="font-mono text-xs">{t(entry.label.key, entry.label.params)}</span>
                   </th>
                   <td class="px-3 py-2 break-words text-ink-muted">{entry.current}</td>
                   <td class="px-3 py-2 break-words">{entry.proposed}</td>
                   <td class="px-3 py-2">
                     {#if entry.changed}
-                      <span class="font-semibold text-brand-900">Changes</span>
+                      <span class="font-semibold text-brand-900">{t('correction.changes')}</span>
                     {:else}
-                      <span class="text-ink-muted">Unchanged</span>
+                      <span class="text-ink-muted">{t('correction.unchanged')}</span>
                     {/if}
                   </td>
                 </tr>
@@ -637,7 +638,7 @@
 
       <div>
         <label for={justificationId} class="block text-sm font-medium text-ink">
-          Justification <span class="font-normal text-ink-muted">(optional)</span>
+          {t('correction.justificationLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
         </label>
         <textarea
           id={justificationId}
@@ -652,7 +653,7 @@
           }}
         ></textarea>
         <p class="mt-1 text-xs text-ink-muted">
-          Why the correction is proposed — the maintainer of the target reads it.
+          {t('correction.justificationHelp')}
         </p>
         {#if errorOf('justification') !== null}
           <p id={`${justificationId}-error`} class="mt-1 text-sm text-negative">
@@ -664,8 +665,9 @@
       {#if attempted && invalid.length > 0}
         <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
           <p class="font-semibold">
-            The form has {invalid.length}
-            {invalid.length === 1 ? 'problem' : 'problems'}.
+            {invalid.length === 1
+              ? t('correction.formProblem', { count: formatNumber(locale.locale, invalid.length) })
+              : t('correction.formProblems', { count: formatNumber(locale.locale, invalid.length) })}
           </p>
           <ul class="mt-1 list-disc pl-5">
             {#each invalid as field (field.key)}
@@ -678,7 +680,7 @@
                     focusField(field.key);
                   }}
                 >
-                  {field.label}: {field.message}
+                  {t(field.label.key, field.label.params)}: {t(field.message.key, field.message.params)}
                 </a>
               </li>
             {/each}
@@ -688,7 +690,7 @@
 
       {#if attempted && invalid.length === 0 && !build.hasChanges}
         <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-          This proposal changes nothing: change a field before sending it.
+          {t('correction.nothingToPropose')}
         </p>
       {/if}
 
@@ -697,7 +699,7 @@
           <p class="font-mono font-semibold text-negative">{failure.code}</p>
           <p class="mt-1 text-ink">{failure.message}</p>
           <p class="mt-1 text-xs text-ink-muted">
-            The form kept what you typed: nothing was proposed.
+            {t('correction.formKept')}
           </p>
         </div>
       {/if}
@@ -708,14 +710,14 @@
           class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={submitting}
         >
-          {submitting ? 'Proposing…' : 'Propose the correction'}
+          {submitting ? t('correction.proposing') : t('correction.proposeSubmit')}
         </button>
         <button
           type="button"
           class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={onclose}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>

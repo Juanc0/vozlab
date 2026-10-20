@@ -17,6 +17,7 @@ import type {
   OntologyResponseDto,
   ObjectPropertyDto
 } from '$lib/api/types';
+import type { Locale, Message } from '$lib/i18n';
 
 /**
  * The node's own fields.
@@ -44,15 +45,26 @@ export function isFixedNodeField(systemKey: string): boolean {
 /**
  * The name of a metamodel element.
  *
- * `displayNames` is a locale map: `en` wins, otherwise the first entry that
- * carries a name. The fallback is the system key, which is always there.
+ * `displayNames` is a **locale map**: the name of the language of the
+ * interface wins, then the English one, then the first entry that carries
+ * a name. The fallback is the system key, which is always there.
+ *
+ * The ontology is data, not interface copy — but it carries its own
+ * translations, and a form whose labels are in another language than the
+ * screen around them is a half-translated screen.
  */
 export function displayNameOf(
   displayNames: Record<string, string> | null | undefined,
-  fallback: string
+  fallback: string,
+  locale: Locale = 'en'
 ): string {
   if (!displayNames) {
     return fallback;
+  }
+
+  const current = displayNames[locale];
+  if (typeof current === 'string' && current.trim() !== '') {
+    return current;
   }
 
   const english = displayNames['en'];
@@ -80,7 +92,10 @@ export interface ClassOption {
 }
 
 /** The active classes of the ontology, ordered by name. */
-export function classOptions(ontology: OntologyResponseDto | null): ClassOption[] {
+export function classOptions(
+  ontology: OntologyResponseDto | null,
+  locale: Locale = 'en'
+): ClassOption[] {
   if (ontology === null) {
     return [];
   }
@@ -88,16 +103,29 @@ export function classOptions(ontology: OntologyResponseDto | null): ClassOption[
   return ontology.classes
     .map((cls) => ({
       systemKey: cls.systemKey,
-      label: displayNameOf(cls.displayNames, cls.systemKey),
-      description: descriptionOf(cls.descriptions)
+      label: displayNameOf(cls.displayNames, cls.systemKey, locale),
+      description: descriptionOf(cls.descriptions, locale)
     }))
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
-/** The first description of a locale map, or `null`. */
-export function descriptionOf(descriptions: Record<string, string> | null | undefined): string | null {
+/**
+ * The description of a metamodel element, in the language of the interface.
+ *
+ * `descriptions` is a locale map, like the names: the description of the
+ * language of the interface wins, then the English one.
+ */
+export function descriptionOf(
+  descriptions: Record<string, string> | null | undefined,
+  locale: Locale = 'en'
+): string | null {
   if (!descriptions) {
     return null;
+  }
+
+  const current = descriptions[locale];
+  if (typeof current === 'string' && current.trim() !== '') {
+    return current;
   }
 
   const english = descriptions['en'];
@@ -174,7 +202,8 @@ export interface NodeFormModel {
  */
 export function buildNodeForm(
   ontology: OntologyResponseDto | null,
-  classKey: string
+  classKey: string,
+  locale: Locale = 'en'
 ): NodeFormModel {
   const cls = ontology?.classes.find((candidate) => candidate.systemKey === classKey) ?? null;
   const properties = (ontology?.datatypeProperties ?? []).filter(
@@ -187,30 +216,30 @@ export function buildNodeForm(
   for (const property of [...properties].sort((left, right) =>
     left.systemKey.localeCompare(right.systemKey)
   )) {
-    const label = displayNameOf(property.displayNames, property.systemKey);
+    const label = displayNameOf(property.displayNames, property.systemKey, locale);
 
     if (isFixedNodeField(property.systemKey)) {
       skipped.push({ systemKey: property.systemKey, label, reason: 'fixed-field' });
       continue;
     }
 
-    fields.push(toAttributeField(property));
+    fields.push(toAttributeField(property, locale));
   }
 
   return {
     classKey,
-    label: cls === null ? classKey : displayNameOf(cls.displayNames, classKey),
+    label: cls === null ? classKey : displayNameOf(cls.displayNames, classKey, locale),
     fields,
     skipped
   };
 }
 
 /** Projects an ontology property onto an attribute field. */
-function toAttributeField(property: DatatypePropertyDto): AttributeField {
+function toAttributeField(property: DatatypePropertyDto, locale: Locale): AttributeField {
   return {
     systemKey: property.systemKey,
-    label: displayNameOf(property.displayNames, property.systemKey),
-    description: descriptionOf(property.descriptions),
+    label: displayNameOf(property.displayNames, property.systemKey, locale),
+    description: descriptionOf(property.descriptions, locale),
     datatype: property.datatype,
     isRequired: property.isRequired,
     defaultValue: property.defaultValue,
@@ -265,10 +294,15 @@ export function toDateInputValue(value: unknown): string {
   return parsed.toISOString().slice(0, 10);
 }
 
-/** The result of coercing a raw input into the value of an attribute. */
+/**
+ * The result of coercing a raw input into the value of an attribute.
+ *
+ * The refusal is a **message** (the key of its copy and its values), not a
+ * sentence: the copy lives in the dictionary and the screen renders it.
+ */
 export type CoercionResult =
   | { readonly ok: true; readonly value: unknown }
-  | { readonly ok: false; readonly message: string };
+  | { readonly ok: false; readonly message: Message };
 
 /**
  * Coerces the raw input of a field into the value that is stored.
@@ -280,7 +314,7 @@ export function coerceAttributeValue(field: AttributeField, raw: unknown): Coerc
   switch (field.datatype) {
     case 'string': {
       if (typeof raw !== 'string') {
-        return { ok: false, message: 'This attribute must be a text.' };
+        return { ok: false, message: { key: 'validation.attributeMustBeText' } };
       }
       return { ok: true, value: raw.trim() };
     }
@@ -289,16 +323,16 @@ export function coerceAttributeValue(field: AttributeField, raw: unknown): Coerc
       if (typeof raw === 'number') {
         return Number.isFinite(raw)
           ? { ok: true, value: raw }
-          : { ok: false, message: 'This attribute must be a number.' };
+          : { ok: false, message: { key: 'validation.attributeMustBeNumber' } };
       }
 
       if (typeof raw !== 'string' || raw.trim() === '') {
-        return { ok: false, message: 'This attribute must be a number.' };
+        return { ok: false, message: { key: 'validation.attributeMustBeNumber' } };
       }
 
       const parsed = Number(raw.trim());
       if (!Number.isFinite(parsed)) {
-        return { ok: false, message: 'This attribute must be a number.' };
+        return { ok: false, message: { key: 'validation.attributeMustBeNumber' } };
       }
       return { ok: true, value: parsed };
     }
@@ -310,12 +344,12 @@ export function coerceAttributeValue(field: AttributeField, raw: unknown): Coerc
       if (raw === 'true' || raw === 'false') {
         return { ok: true, value: raw === 'true' };
       }
-      return { ok: false, message: 'This attribute must be true or false.' };
+      return { ok: false, message: { key: 'validation.attributeMustBeBoolean' } };
     }
 
     case 'date': {
       if (typeof raw !== 'string' || !isDateInput(raw)) {
-        return { ok: false, message: 'This attribute must be a date (YYYY-MM-DD).' };
+        return { ok: false, message: { key: 'validation.attributeMustBeDate' } };
       }
       return { ok: true, value: raw };
     }
@@ -327,15 +361,18 @@ export function coerceAttributeValue(field: AttributeField, raw: unknown): Coerc
           ok: false,
           message:
             allowed.length === 0
-              ? 'This attribute has no allowed value.'
-              : `This attribute must be one of: ${allowed.join(', ')}.`
+              ? { key: 'validation.attributeHasNoAllowedValue' }
+              : {
+                  key: 'validation.attributeMustBeOneOf',
+                  params: { allowed: allowed.join(', ') }
+                }
         };
       }
       return { ok: true, value: raw };
     }
 
     default: {
-      return { ok: false, message: 'This attribute has an unknown kind.' };
+      return { ok: false, message: { key: 'validation.attributeUnknownKind' } };
     }
   }
 }
@@ -365,7 +402,7 @@ export type FormValues = Record<string, RawFieldValue>;
 /** The outcome of the validation of the form. */
 export interface FormValidation {
   /** The messages of the invalid fields, keyed by the field key. */
-  readonly errors: Readonly<Record<string, string>>;
+  readonly errors: Readonly<Record<string, Message>>;
   /** The attributes to send, keyed by the `systemKey` of the property. */
   readonly attributes: Readonly<Record<string, unknown>>;
   /** `true` when the form may be sent. */
@@ -385,13 +422,19 @@ export function validateNodeForm(
   values: FormValues,
   fixed: { title: string; description: string }
 ): FormValidation {
-  const errors: Record<string, string> = {};
+  const errors: Record<string, Message> = {};
 
   const title = fixed.title.trim();
   if (title.length < TITLE_MIN_LENGTH) {
-    errors['title'] = `The title must be at least ${TITLE_MIN_LENGTH} characters.`;
+    errors['title'] = {
+      key: 'validation.titleTooShort',
+      params: { min: TITLE_MIN_LENGTH }
+    };
   } else if (title.length > TITLE_MAX_LENGTH) {
-    errors['title'] = `The title must be at most ${TITLE_MAX_LENGTH} characters.`;
+    errors['title'] = {
+      key: 'validation.titleTooLong',
+      params: { max: TITLE_MAX_LENGTH }
+    };
   }
 
   const attributes: Record<string, unknown> = {};
@@ -405,7 +448,7 @@ export function validateNodeForm(
 
     if (isEmpty) {
       if (field.isRequired) {
-        errors[field.systemKey] = 'This attribute is required.';
+        errors[field.systemKey] = { key: 'validation.attributeRequired' };
       }
       continue;
     }

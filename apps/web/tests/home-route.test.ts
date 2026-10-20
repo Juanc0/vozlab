@@ -11,6 +11,7 @@ import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { EDGE, NEW_NODE, NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
 import { ONTOLOGY } from './fixtures/ontology';
 import Home from '../src/routes/(app)/+page.svelte';
+import { contextWithLocale } from './harness/locale';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
@@ -112,8 +113,8 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL } },
-    context: new Map<unknown, unknown>([
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
+    context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
       [API_CLIENT_CONTEXT_KEY, client]
@@ -162,7 +163,7 @@ describe('the graph page', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/this workspace has no node yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/todavía no tiene ningún nodo/i)).toBeInTheDocument();
     });
   });
 
@@ -225,7 +226,7 @@ describe('the graph page', () => {
     });
 
     // A deeper window fails: the error is shown and the graph stays.
-    await fireEvent.change(screen.getByLabelText('Depth'), { target: { value: '2' } });
+    await fireEvent.change(screen.getByLabelText('Profundidad'), { target: { value: '2' } });
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_NODE_NOT_FOUND');
@@ -242,7 +243,7 @@ describe('the graph page', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: 'Graph' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Grafo' })).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/live/i)).not.toBeInTheDocument();
@@ -254,7 +255,7 @@ describe('the graph page', () => {
 
     renderPage();
 
-    const button = screen.getByRole('button', { name: 'New node' });
+    const button = screen.getByRole('button', { name: 'Nuevo nodo' });
     await waitFor(() => {
       expect(button).toBeEnabled();
     });
@@ -264,8 +265,8 @@ describe('the graph page', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
-    expect(screen.getByLabelText('Ontology class')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Title/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Clase de la ontología')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Título/)).toBeInTheDocument();
   });
 
   it('shows a created node in the list of the workspace', async () => {
@@ -289,14 +290,14 @@ describe('the graph page', () => {
 
     renderPage();
 
-    const button = screen.getByRole('button', { name: 'New node' });
+    const button = screen.getByRole('button', { name: 'Nuevo nodo' });
     await waitFor(() => {
       expect(button).toBeEnabled();
     });
 
     await fireEvent.click(button);
-    await fireEvent.input(screen.getByLabelText(/Title/), { target: { value: NEW_NODE.title } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+    await fireEvent.input(screen.getByLabelText(/Título/), { target: { value: NEW_NODE.title } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NEW_NODE.title })).toBeInTheDocument();
@@ -318,7 +319,7 @@ describe('the graph page', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
 
-    const relate = await screen.findByRole('button', { name: 'Relate to another node' });
+    const relate = await screen.findByRole('button', { name: 'Relacionar con otro nodo' });
     await fireEvent.click(relate);
 
     await waitFor(() => {
@@ -326,7 +327,7 @@ describe('the graph page', () => {
     });
 
     // Only the relations of the class of the source are offered.
-    const picker = screen.getByLabelText('Relation (required)') as HTMLSelectElement;
+    const picker = screen.getByLabelText('Relación (obligatorio)') as HTMLSelectElement;
     expect(Array.from(picker.options).map((option) => option.value)).toEqual(['RELATES_TO']);
   });
 });

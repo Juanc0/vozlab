@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import '../app.css';
   import AppShell from '$lib/components/AppShell.svelte';
   import { ApiClient } from '$lib/api/client';
+  import { LocaleState } from '$lib/i18n';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { installState } from '$lib/pwa/install.svelte';
   import { registerServiceWorker } from '$lib/pwa/register';
@@ -21,7 +22,13 @@
   const workspace = new WorkspaceState();
   const api = new ApiClient({ baseUrl: () => data.apiBaseUrl, session, workspace });
 
-  provideAppState({ session, workspace, api });
+  // The language comes from the server: it read the cookie of the visitor,
+  // so the first render of the client is the one of the server and there is
+  // no hydration mismatch. It is read **once**: the visitor changes it
+  // through the state, not through the data of the page.
+  const locale = new LocaleState(untrack(() => data.locale));
+
+  provideAppState({ session, workspace, api, locale });
 
   onMount(() => {
     // The connectivity drives the offline banner and the block of the

@@ -93,10 +93,10 @@ describe('the delta of a proposal', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /Edit proposal node/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Propuesta de edición de nodo/i }));
 
     await waitFor(() => {
       expect(screen.getByText('title')).toBeInTheDocument();
@@ -114,10 +114,10 @@ describe('the delta of a proposal', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Merge proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de fusión de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /Merge proposal node/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Propuesta de fusión de nodo/i }));
 
     await waitFor(() => {
       expect(screen.getByText(NODE_A.title)).toBeInTheDocument();
@@ -133,17 +133,17 @@ describe('the delta of a proposal', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Merge proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de fusión de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /Merge proposal node/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Propuesta de fusión de nodo/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/does not name a surviving node/i)).toBeInTheDocument();
+      expect(screen.getByText(/no nombra ningún nodo que sobrevive/i)).toBeInTheDocument();
     });
 
     // The rest of the review still works.
-    expect(screen.getByRole('heading', { name: 'Merge proposal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Propuesta de fusión' })).toBeInTheDocument();
     expect(screen.getByText('mergeIntoNodeId')).toBeInTheDocument();
     expect(screen.getByText('not-a-uuid')).toBeInTheDocument();
   });

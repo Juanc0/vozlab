@@ -2,6 +2,10 @@
   import { page } from '$app/state';
   import { ERROR_CODES } from '@vozlab/shared-types';
   import { isKnownErrorCode } from '$lib/api/errors';
+  import { getLocaleState } from '$lib/state/context';
+
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /**
    * The landing of a failed institutional login.
@@ -16,17 +20,17 @@
   const message = $derived(
     known !== null
       ? ERROR_CODES[known].message
-      : 'The sign-in could not be completed. The identity provider did not accept the request.'
+      : t('callback.genericMessage')
   );
 </script>
 
 <svelte:head>
-  <title>The sign-in did not go through — VozLab</title>
+  <title>{t('callback.pageTitle')}</title>
 </svelte:head>
 
 <section class="mx-auto max-w-prose space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">The sign-in did not go through</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">{t('callback.heading')}</h1>
     <p class="mt-2 text-ink-muted">{message}</p>
   </div>
 
@@ -39,13 +43,13 @@
       href="/login"
       class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
     >
-      Try again
+      {t('common.tryAgain')}
     </a>
     <a
       href="/join"
       class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
     >
-      Join with an event code
+      {t('common.joinWithCode')}
     </a>
   </div>
 </section>

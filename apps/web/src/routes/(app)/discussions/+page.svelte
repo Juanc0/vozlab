@@ -15,21 +15,23 @@
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
   import DiscussionPanel from '$lib/components/DiscussionPanel.svelte';
   import { VoteLedger } from '$lib/governance/vote.svelte';
-  import { getApiClient, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The session-local state of the votes. */
   const ledger = new VoteLedger();
 
   /** The kinds of object a discussion may be about. */
-  const targetTypeOptions: { value: DiscussionTargetType; label: string }[] = [
-    { value: 'NODE', label: 'Node' },
-    { value: 'EDGE', label: 'Relation' },
-    { value: 'PROPOSAL', label: 'Proposal' },
-    { value: 'ONTOLOGY', label: 'Ontology class' }
-  ];
+  const targetTypeOptions: { value: DiscussionTargetType; label: string }[] = $derived([
+    { value: 'NODE', label: t('discussions.targetNode') },
+    { value: 'EDGE', label: t('discussions.targetRelation') },
+    { value: 'PROPOSAL', label: t('discussions.targetProposal') },
+    { value: 'ONTOLOGY', label: t('discussions.targetOntology') }
+  ]);
 
   /** The controls of the picker. */
   let targetTypeInput = $state<DiscussionTargetType>('NODE');
@@ -105,7 +107,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      nodesError = describeFailure(caught);
+      nodesError = describeFailure(caught, t);
     }
   }
 
@@ -138,25 +140,27 @@
 </script>
 
 <svelte:head>
-  <title>Discussions — VozLab</title>
+  <title>{t('discussions.pageTitle')}</title>
 </svelte:head>
 
 <section class="space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Discussions</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">{t('discussions.heading')}</h1>
     <p class="mt-2 max-w-prose text-ink-muted">
-      A discussion is always about something: a node, a relation, a proposal or an ontology class.
-      The target is named in the query string; the active workspace is carried by a request header,
-      not by the URL.
+      {t('discussions.intro')}
     </p>
   </div>
 
   <section aria-labelledby="discussion-target-heading" class="rounded-card border border-line bg-surface p-4">
-    <h2 id="discussion-target-heading" class="text-base font-semibold tracking-tight">Target</h2>
+    <h2 id="discussion-target-heading" class="text-base font-semibold tracking-tight">
+      {t('discussions.targetHeading')}
+    </h2>
 
     <form class="mt-3 flex flex-wrap items-end gap-3" onsubmit={applyTarget}>
       <div>
-        <label for="target-type" class="block text-xs text-ink-muted">Kind of object</label>
+        <label for="target-type" class="block text-xs text-ink-muted">
+          {t('discussions.kindLabel')}
+        </label>
         <select
           id="target-type"
           class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
@@ -169,12 +173,14 @@
       </div>
 
       <div class="min-w-0 flex-1">
-        <label for="target-id" class="block text-xs text-ink-muted">Identifier</label>
+        <label for="target-id" class="block text-xs text-ink-muted">
+          {t('discussions.identifierLabel')}
+        </label>
         <input
           id="target-id"
           type="text"
           class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-mono text-sm text-ink"
-          placeholder="The uuid of the object"
+          placeholder={t('discussions.identifierPlaceholder')}
           bind:value={targetIdInput}
         />
       </div>
@@ -183,7 +189,7 @@
         type="submit"
         class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
       >
-        Show the discussion
+        {t('discussions.show')}
       </button>
     </form>
 
@@ -193,14 +199,16 @@
       </p>
     {:else if nodes.length > 0}
       <div class="mt-3">
-        <label for="target-node" class="block text-xs text-ink-muted">Or pick a node of the workspace</label>
+        <label for="target-node" class="block text-xs text-ink-muted">
+          {t('discussions.pickNode')}
+        </label>
         <select
           id="target-node"
           class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={targetIdInput}
           onchange={handleNodePicked}
         >
-          <option value="">No node picked</option>
+          <option value="">{t('discussions.noNodePicked')}</option>
           {#each nodes as node (node.id)}
             <option value={node.id}>{node.title}</option>
           {/each}
@@ -211,15 +219,14 @@
 
   {#if targetId === ''}
     <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-      Pick a target above to read its threads. The node details panel links here with the node
-      preselected.
+      {t('discussions.pickTarget')}
     </p>
   {:else}
     <DiscussionPanel
       targetId={targetId}
       targetType={targetType}
       {ledger}
-      heading="Threads of the target"
+      heading={t('discussions.threadsHeading')}
     />
   {/if}
 </section>

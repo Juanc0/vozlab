@@ -59,13 +59,13 @@ function stubFetch(
 /** Opens the proposal of the list and waits for its review. */
 async function openProposal(): Promise<void> {
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /proposal node/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /propuesta de edición de nodo/i })).toBeInTheDocument();
   });
 
-  await fireEvent.click(screen.getByRole('button', { name: /proposal node/i }));
+  await fireEvent.click(screen.getByRole('button', { name: /propuesta de edición de nodo/i }));
 
   await waitFor(() => {
-    expect(screen.getByRole('heading', { name: /^(Edit|Merge) proposal$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^(Propuesta de edición|Propuesta de fusión)$/i })).toBeInTheDocument();
   });
 }
 
@@ -125,9 +125,9 @@ describe('the resolution controls of a proposal', () => {
     await openProposal();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Aprobar' })).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
   });
 
   it('hides the approve and reject controls from a user who is not the maintainer', async () => {
@@ -137,11 +137,11 @@ describe('the resolution controls of a proposal', () => {
     await openProposal();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /^(Edit|Merge) proposal$/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /^(Propuesta de edición|Propuesta de fusión)$/i })).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aprobar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
   });
 
   it('shows the auto-apply control to a moderator when the criteria are met', async () => {
@@ -151,7 +151,7 @@ describe('the resolution controls of a proposal', () => {
     await openProposal();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Auto-apply' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Aplicar automáticamente' })).toBeInTheDocument();
     });
   });
 
@@ -162,10 +162,10 @@ describe('the resolution controls of a proposal', () => {
     await openProposal();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Aprobar' })).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: 'Auto-apply' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aplicar automáticamente' })).not.toBeInTheDocument();
   });
 
   it('hides the auto-apply control when the criteria are not met', async () => {
@@ -175,11 +175,11 @@ describe('the resolution controls of a proposal', () => {
     await openProposal();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Aprobar' })).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: 'Auto-apply' })).not.toBeInTheDocument();
-    expect(screen.getByText(/community score is below 10/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aplicar automáticamente' })).not.toBeInTheDocument();
+    expect(screen.getByText(/la puntuación de la comunidad está por debajo de 10/i)).toBeInTheDocument();
   });
 
   it('surfaces the refusal of the API when the criteria are not met', async () => {
@@ -197,7 +197,7 @@ describe('the resolution controls of a proposal', () => {
 
     await openProposal();
 
-    const button = await screen.findByRole('button', { name: 'Auto-apply' });
+    const button = await screen.findByRole('button', { name: 'Aplicar automáticamente' });
     await fireEvent.click(button);
 
     await waitFor(() => {
@@ -233,10 +233,10 @@ describe('the resolution controls of a proposal', () => {
 
     await openProposal();
 
-    await fireEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Aprobar' }));
 
     await waitFor(() => {
-      expect(screen.getByText('The proposal is now APPROVED_BY_AUTHOR.')).toBeInTheDocument();
+      expect(screen.getByText('La propuesta está ahora en APPROVED_BY_AUTHOR.')).toBeInTheDocument();
     });
   });
 });

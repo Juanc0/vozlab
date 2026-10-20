@@ -17,7 +17,7 @@ test('a write is refused while the browser is offline and no request leaves the 
   await page.goto('/');
   await waitForApp(page);
 
-  const opener = page.getByRole('button', { name: 'New node' });
+  const opener = page.getByRole('button', { name: 'Nuevo nodo' });
   await expect(opener).toBeEnabled();
 
   // Every request that is not a read is watched from the moment the browser
@@ -32,14 +32,20 @@ test('a write is refused while the browser is offline and no request leaves the 
   await context.setOffline(true);
 
   // The banner says it before the user tries.
-  await expect(page.getByText('You are offline.')).toBeVisible();
+  await expect(page.getByText('Estás sin conexión.')).toBeVisible();
 
   await opener.click();
 
-  const dialog = page.getByRole('dialog', { name: 'New node' });
-  await dialog.getByLabel('Ontology class').selectOption('Problem');
-  await dialog.getByLabel('Title').fill(`${api.marker} offline node`);
-  await dialog.getByRole('button', { name: 'Create the node' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nuevo nodo' });
+  await dialog.getByLabel('Clase de la ontología').selectOption('Problem');
+  await dialog.getByLabel('Título').fill(`${api.marker} offline node`);
+
+  // The class of the ontology declares two mandatory attributes: the form
+  // refuses to send a node without them.
+  await dialog.getByLabel('Sector').selectOption('Transporte');
+  await dialog.getByLabel('Alcance').selectOption('Campus');
+
+  await dialog.getByRole('button', { name: 'Crear el nodo' }).click();
 
   // The refusal carries the local code and explains itself.
   const alert = dialog.getByRole('alert').filter({ hasText: 'ERR_OFFLINE' });

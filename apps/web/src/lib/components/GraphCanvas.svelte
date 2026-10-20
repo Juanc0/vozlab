@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { GraphInstance } from '$lib/graph/cytoscape';
+  import { getLocaleState } from '$lib/state/context';
 
   interface Props {
     /** The nodes of the bounded subgraph. */
@@ -20,8 +21,11 @@
     edges = [],
     selectedNodeId = null,
     onselect,
-    description = 'The subgraph is drawn on a canvas; the same content is listed below.'
+    description
   }: Props = $props();
+
+  const locale = getLocaleState();
+  const t = locale.t;
 
   const uid = $props.id();
   const descriptionId = `graph-canvas-description-${uid}`;
@@ -114,9 +118,11 @@
 <div
   bind:this={container}
   role="img"
-  aria-label="Subgraph canvas"
+  aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
   class="h-full min-h-96 w-full overflow-hidden rounded-card border border-line bg-surface"
 ></div>
 
-<p id={descriptionId} class="mt-2 text-sm text-ink-muted">{description}</p>
+<p id={descriptionId} class="mt-2 text-sm text-ink-muted">
+  {description ?? t('graph.canvasDefaultDescription')}
+</p>

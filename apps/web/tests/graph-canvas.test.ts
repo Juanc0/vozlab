@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import GraphCanvas from '$lib/components/GraphCanvas.svelte';
 import GraphHarness from './harness/GraphHarness.svelte';
 import { EDGE, NODE_A, NODE_B } from './fixtures/graph';
+import { localeContext } from './harness/locale';
 
 /**
  * Cytoscape needs a `<canvas>`, which jsdom does not provide. The module is
@@ -77,7 +78,7 @@ describe('the graph canvas', () => {
   });
 
   it('creates the instance once and registers the dagre layout once', async () => {
-    render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
+    render(GraphCanvas, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
 
     // The canvas is imported dynamically inside the effect, so the module
     // may take longer than the default one second of `waitFor` when the
@@ -93,7 +94,7 @@ describe('the graph canvas', () => {
   });
 
   it('patches the elements when the data changes instead of re-creating the instance', async () => {
-    const { rerender } = render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
+    const { rerender } = render(GraphCanvas, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
 
     // The canvas is imported dynamically inside the effect, so the module
     // may take longer than the default one second of `waitFor` when the
@@ -120,7 +121,7 @@ describe('the graph canvas', () => {
   });
 
   it('destroys the instance when the canvas is unmounted', async () => {
-    const { unmount } = render(GraphCanvas, { props: { nodes: [NODE_A], edges: [] } });
+    const { unmount } = render(GraphCanvas, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
 
     // The canvas is imported dynamically inside the effect, so the module
     // may take longer than the default one second of `waitFor` when the
@@ -138,11 +139,11 @@ describe('the graph canvas', () => {
   });
 
   it('gives the canvas an accessible name and a description', async () => {
-    render(GraphCanvas, {
+    render(GraphCanvas, { context: localeContext(),
       props: { nodes: [NODE_A], edges: [], description: 'Two nodes, one relation.' }
     });
 
-    const canvas = screen.getByRole('img', { name: 'Subgraph canvas' });
+    const canvas = screen.getByRole('img', { name: 'Lienzo del subgrafo' });
 
     expect(canvas).toBeInTheDocument();
     expect(canvas).toHaveAccessibleDescription('Two nodes, one relation.');
@@ -164,7 +165,7 @@ describe('the canvas and the list view', () => {
   });
 
   it('selects the node in the canvas when the list selects it', async () => {
-    render(GraphHarness, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+    render(GraphHarness, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     // The canvas is imported dynamically inside the effect, so the module
     // may take longer than the default one second of `waitFor` when the
@@ -185,7 +186,7 @@ describe('the canvas and the list view', () => {
   });
 
   it('marks the node in the list when the canvas selects it', async () => {
-    render(GraphHarness, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+    render(GraphHarness, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     // The canvas is imported dynamically inside the effect, so the module
     // may take longer than the default one second of `waitFor` when the

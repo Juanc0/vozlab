@@ -7,11 +7,14 @@
   import { signInWithDevelopmentToken } from '$lib/auth/dev-sign-in';
   import { loginRedirectPath } from '$lib/auth/login-redirect';
   import { navigateTo } from '$lib/auth/redirect';
-  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import RichText from '$lib/components/RichText.svelte';
 
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /**
    * Where the browser has to come back to.
@@ -78,10 +81,10 @@
 
       devFailure =
         outcome.status === 'invalid-token'
-          ? 'That is not a bearer token. Mint one with db:mint-token and paste the whole value.'
+          ? t('login.devErrorInvalidToken')
           : outcome.status === 'rejected'
-            ? 'The API rejected the token: it is expired, revoked or not valid.'
-            : 'The API could not be reached.';
+            ? t('login.devErrorRejected')
+            : t('login.devErrorUnreachable');
     } finally {
       devPending = false;
     }
@@ -89,15 +92,14 @@
 </script>
 
 <svelte:head>
-  <title>Sign in — VozLab</title>
+  <title>{t('login.pageTitle')}</title>
 </svelte:head>
 
 <section class="mx-auto max-w-prose space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Sign in to VozLab</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">{t('login.heading')}</h1>
     <p class="mt-2 text-ink-muted">
-      VozLab does not keep passwords. Your institution's identity provider authenticates you and
-      hands a session back to this app; the app only ever sees the session.
+      {t('login.intro')}
     </p>
   </div>
 
@@ -107,39 +109,37 @@
       class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800"
       onclick={startLogin}
     >
-      Continue with your institution
+      {t('login.continue')}
     </button>
     <p class="mt-3 text-sm text-ink-muted">
-      The browser is sent to the identity provider and returns here when it is done.
+      {t('login.continueHelp')}
     </p>
   </div>
 
   <div class="rounded-card border border-line bg-surface p-6">
-    <h2 class="text-lg font-semibold">Joining an event?</h2>
+    <h2 class="text-lg font-semibold">{t('login.joiningHeading')}</h2>
     <p class="mt-2 text-sm text-ink-muted">
-      An event code is a one-off credential for a single workspace. It needs no account and no
-      identity provider.
+      {t('login.joiningText')}
     </p>
     <a
       href="/join"
       class="mt-3 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
     >
-      Join with an event code
+      {t('common.joinWithCode')}
     </a>
   </div>
 
   {#if isDevelopmentBuild()}
     <div class="rounded-card border border-line bg-surface p-6">
-      <h2 class="text-lg font-semibold">Development sign-in</h2>
+      <h2 class="text-lg font-semibold">{t('login.devHeading')}</h2>
       <p class="mt-2 text-sm text-ink-muted">
-        An event code grants the <code>MEMBER</code> role, and a member can neither approve a
-        proposal nor auto-apply one. Paste a token minted locally to act as one of the dev
-        identities — the maintainer is the author of the seeded graph, so it is the one who can
-        approve its proposals.
+        <RichText text={t('login.devText')} />
       </p>
 
       <form class="mt-4 space-y-3" onsubmit={submitDevSignIn}>
-        <label for="dev-token" class="block text-sm font-medium text-ink">Development token</label>
+        <label for="dev-token" class="block text-sm font-medium text-ink">
+          {t('login.devTokenLabel')}
+        </label>
         <input
           id="dev-token"
           type="text"
@@ -155,11 +155,11 @@
           class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={devPending || !hydrated}
         >
-          {devPending ? 'Signing in…' : 'Sign in as this identity'}
+          {devPending ? t('login.devSigningIn') : t('login.devSubmit')}
         </button>
 
         {#if !hydrated}
-          <p class="text-xs text-ink-muted" role="status">Preparing the form…</p>
+          <p class="text-xs text-ink-muted" role="status">{t('login.devPreparing')}</p>
         {/if}
 
         {#if devFailure}
@@ -168,8 +168,7 @@
       </form>
 
       <p class="mt-4 text-sm text-ink-muted">
-        The token stays in memory. It is never written to the browser's storage, and this panel
-        exists only in a development build.
+        {t('login.devTokenNote')}
       </p>
 
       <!--
@@ -181,7 +180,7 @@
       <pre
         class="mt-3 overflow-x-auto rounded-md bg-surface-muted p-3 text-xs"
         role="region"
-        aria-label="The commands that mint a development session"
+        aria-label={t('login.devCommandsLabel')}
         tabindex="0"
       ><code>pnpm --filter @vozlab/database db:mint-token -- --as maintainer
 pnpm --filter @vozlab/database db:mint-token -- --as moderator
@@ -189,24 +188,22 @@ pnpm --filter @vozlab/database db:mint-token -- --as member</code></pre>
     </div>
   {:else}
     <div class="rounded-card border border-line bg-surface p-6">
-      <h2 class="text-lg font-semibold">Local development</h2>
+      <h2 class="text-lg font-semibold">{t('login.localHeading')}</h2>
       <p class="mt-2 text-sm text-ink-muted">
-        Without an identity provider there is no sign-in to redirect to. Mint a development session
-        for the API instead and use it as the bearer token:
+        {t('login.localText')}
       </p>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <pre
         class="mt-3 overflow-x-auto rounded-md bg-surface-muted p-3 text-xs"
         role="region"
-        aria-label="The command that mints a development token"
+        aria-label={t('login.localCommandLabel')}
         tabindex="0"
       ><code>pnpm --filter @vozlab/database db:mint-token -- --as maintainer</code></pre>
       <p class="mt-2 text-sm text-ink-muted">
-        That token belongs to the API (scripts, workers, <code>curl</code>). The app itself needs an
-        identity provider or an event code.
+        <RichText text={t('login.localNote')} />
       </p>
       <p class="mt-2 text-sm text-ink-muted">
-        The runbook describes the whole flow: <code>docs/runbook-dev.md</code>.
+        <RichText text={t('login.localRunbook')} />
       </p>
     </div>
   {/if}

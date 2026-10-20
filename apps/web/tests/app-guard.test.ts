@@ -10,6 +10,7 @@ import {
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import type { AuthUserDto, WorkspaceSummaryDto } from '@vozlab/shared-types';
+import { contextWithLocale } from './harness/locale';
 import AppLayout from '../src/routes/(app)/+layout.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
@@ -82,7 +83,7 @@ function renderLayout(): { session: SessionState; workspace: WorkspaceState } {
   const workspace = new WorkspaceState();
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
-  const context = new Map<unknown, unknown>([
+  const context = contextWithLocale([
     [SESSION_CONTEXT_KEY, session],
     [WORKSPACE_CONTEXT_KEY, workspace],
     [API_CLIENT_CONTEXT_KEY, client]
@@ -91,7 +92,7 @@ function renderLayout(): { session: SessionState; workspace: WorkspaceState } {
   const children = createRawSnippet(() => ({ render: () => '<p>Page of the app</p>' }));
 
   render(AppLayout, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL }, children },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' }, children },
     context
   });
 
@@ -115,8 +116,8 @@ describe('the (app) guard', () => {
 
     renderLayout();
 
-    expect(screen.getByRole('status')).toHaveTextContent(/restoring your session/i);
-    expect(screen.queryByLabelText('Workspace')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/restaurando tu sesión/i);
+    expect(screen.queryByLabelText('Espacio de trabajo')).not.toBeInTheDocument();
   });
 
   it('sends the user to the login page when the session cannot be restored', async () => {
@@ -148,7 +149,7 @@ describe('the (app) guard', () => {
     renderLayout();
 
     await waitFor(() => {
-      expect(screen.getByText(/no workspace in this institution/i)).toBeInTheDocument();
+      expect(screen.getByText(/no hay ningún espacio de trabajo en esta institución/i)).toBeInTheDocument();
     });
 
     // A valid account without a membership is not a redirect loop.
@@ -168,8 +169,8 @@ describe('the (app) guard', () => {
       expect(screen.getByText('Page of the app')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('link', { name: 'Proposals' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Workspace')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Propuestas' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Espacio de trabajo')).toBeInTheDocument();
     expect(workspace.currentWorkspaceId).toBe(WORKSPACE.id);
     expect(goto).not.toHaveBeenCalled();
   });

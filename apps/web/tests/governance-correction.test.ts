@@ -22,6 +22,7 @@ import {
   type CorrectionSnapshot
 } from '$lib/governance/correction';
 import { EDGE, NODE_A } from './fixtures/graph';
+import { spanish } from './harness/messages';
 
 /** A counter of the rows — the ids only have to be unique. */
 function counter(): () => string {
@@ -179,7 +180,7 @@ describe('the coercion of the attribute rows', () => {
     const coerced = coerceAttributeRow(row);
 
     expect(coerced.ok).toBe(false);
-    expect(coerced.ok === false && coerced.message).toBe('This attribute must be a number.');
+    expect(coerced.ok === false && spanish(coerced.message)).toBe('Este atributo debe ser un número.');
   });
 
   it('keeps the type of the value of the target', () => {

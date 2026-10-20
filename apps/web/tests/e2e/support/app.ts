@@ -34,7 +34,7 @@ export async function waitForApp(page: Page): Promise<void> {
   for (let attempt = 0; attempt < RESTORE_ATTEMPTS; attempt += 1) {
     await page.waitForLoadState('networkidle');
 
-    const retry = page.getByRole('button', { name: 'Try again' });
+    const retry = page.getByRole('button', { name: 'Intentar de nuevo' });
 
     if ((await retry.count()) === 0) {
       return;

@@ -16,6 +16,7 @@ import {
   PROPERTY_SOURCE,
   PROPERTY_STATE
 } from './fixtures/ontology';
+import { spanish } from './harness/messages';
 
 describe('the ontology of the node form', () => {
   it('lists the active classes by their display name', () => {
@@ -25,8 +26,18 @@ describe('the ontology of the node form', () => {
     expect(options.map((option) => option.label)).toEqual(['Idea', 'Problem', 'Resource']);
   });
 
-  it('prefers the english name and falls back to the first one', () => {
-    expect(displayNameOf({ en: 'Problem', es: 'Problema' }, 'fallback')).toBe('Problem');
+  it('names the classes in the language of the interface', () => {
+    // The ontology carries its own translations: a form whose labels are in
+    // another language than the screen around them is half-translated.
+    const options = classOptions(ONTOLOGY, 'es');
+
+    expect(options.map((option) => option.label)).toEqual(['Idea', 'Problema', 'Recurso']);
+  });
+
+  it('prefers the name of the language of the interface and falls back to the english one', () => {
+    expect(displayNameOf({ en: 'Problem', es: 'Problema' }, 'fallback', 'es')).toBe('Problema');
+    expect(displayNameOf({ en: 'Problem', es: 'Problema' }, 'fallback', 'en')).toBe('Problem');
+    expect(displayNameOf({ en: 'Problem' }, 'fallback', 'es')).toBe('Problem');
     expect(displayNameOf({ es: 'Problema' }, 'fallback')).toBe('Problema');
     expect(displayNameOf({}, 'fallback')).toBe('fallback');
     expect(displayNameOf(undefined, 'fallback')).toBe('fallback');
@@ -128,7 +139,7 @@ describe('the ontology of the node form', () => {
     );
 
     expect(result.valid).toBe(false);
-    expect(result.errors['severity']).toBe('This attribute must be a number.');
+    expect(spanish(result.errors['severity']!)).toBe('Este atributo debe ser un número.');
     // The invalid attribute is not sent: the form does not leave the app.
     expect(result.attributes).toEqual({ source: 'runbook' });
     expect(result.attributes['severity']).toBeUndefined();
@@ -140,8 +151,8 @@ describe('the ontology of the node form', () => {
     const result = validateNodeForm(model, { severity: '', source: '' }, { title: 'ab', description: '' });
 
     expect(result.valid).toBe(false);
-    expect(result.errors['title']).toBe('The title must be at least 3 characters.');
-    expect(result.errors['severity']).toBe('This attribute is required.');
+    expect(spanish(result.errors['title']!)).toBe('El título debe tener al menos 3 caracteres.');
+    expect(spanish(result.errors['severity']!)).toBe('Este atributo es obligatorio.');
   });
 
   it('builds the attributes keyed by the system key of the property', () => {
@@ -187,7 +198,7 @@ describe('the ontology of the node form', () => {
       { title: 'Publish the timetable', description: '' }
     );
     expect(refused.valid).toBe(false);
-    expect(refused.errors['state']).toContain('draft, review, accepted');
+    expect(spanish(refused.errors['state']!)).toContain('draft, review, accepted');
   });
 
   it('builds an empty form for a workspace without any class', () => {

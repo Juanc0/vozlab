@@ -19,28 +19,28 @@ test('a thread is opened, a comment is posted and a reply lands under its parent
   await waitForApp(page);
 
   // The thread is opened.
-  await page.getByLabel('New thread').fill(`${api.marker} thread`);
-  await page.getByRole('button', { name: 'Start the thread' }).click();
+  await page.getByLabel('Hilo nuevo').fill(`${api.marker} thread`);
+  await page.getByRole('button', { name: 'Abrir el hilo' }).click();
   await expect(page.getByRole('button', { name: `${api.marker} thread` })).toBeVisible();
 
   // The comment is posted.
   const comment = `${api.marker} first comment`;
-  await page.getByLabel('Write a comment').fill(comment);
-  await page.getByRole('button', { name: 'Post the comment' }).click();
+  await page.getByLabel('Escribe un comentario').fill(comment);
+  await page.getByRole('button', { name: 'Publicar el comentario' }).click();
   await expect(page.getByText(comment, { exact: true })).toBeVisible();
 
   // The reply is written under its parent.
   await page
     .getByRole('listitem')
     .filter({ hasText: comment })
-    .getByRole('button', { name: 'Reply' })
+    .getByRole('button', { name: 'Responder' })
     .click();
 
-  await expect(page.getByLabel('Write a reply')).toBeVisible();
+  await expect(page.getByLabel('Escribe una respuesta')).toBeVisible();
 
   const reply = `${api.marker} nested reply`;
-  await page.getByLabel('Write a reply').fill(reply);
-  await page.getByRole('button', { name: 'Post the reply' }).click();
+  await page.getByLabel('Escribe una respuesta').fill(reply);
+  await page.getByRole('button', { name: 'Publicar la respuesta' }).click();
 
   await expect(page.getByText(reply, { exact: true })).toBeVisible();
 

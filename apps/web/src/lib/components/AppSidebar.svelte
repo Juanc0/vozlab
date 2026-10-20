@@ -3,22 +3,28 @@
   import { page } from '$app/state';
   import { logout } from '$lib/api/auth';
   import { forgetDevelopmentToken } from '$lib/auth/dev-sign-in';
-  import { getApiClient, getSessionState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState } from '$lib/state/context';
+  import LocaleSelector from './LocaleSelector.svelte';
   import WorkspaceSelector from './WorkspaceSelector.svelte';
 
   const api = getApiClient();
   const session = getSessionState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The routes of the application. The workspace is never a path segment. */
-  const links = [
-    { href: '/', label: 'Graph' },
-    { href: '/proposals', label: 'Proposals' },
-    { href: '/discussions', label: 'Discussions' }
-  ];
+  const links = $derived([
+    { href: '/', label: t('sidebar.graph') },
+    { href: '/proposals', label: t('sidebar.proposals') },
+    { href: '/discussions', label: t('sidebar.discussions') }
+  ]);
 
   /** The name of the signed-in user, whatever the provider is. */
   const displayName = $derived(
-    session.user?.fullName ?? session.user?.anonymousAlias ?? session.user?.email ?? 'Signed in'
+    session.user?.fullName ??
+      session.user?.anonymousAlias ??
+      session.user?.email ??
+      t('sidebar.signedInFallback')
   );
 
   let signingOut = $state(false);
@@ -31,7 +37,7 @@
     try {
       await logout(api);
     } catch (error) {
-      signOutError = error instanceof Error ? error.message : 'The sign-out failed.';
+      signOutError = error instanceof Error ? error.message : t('sidebar.signOutFailed');
       signingOut = false;
       return;
     }
@@ -45,7 +51,7 @@
 </script>
 
 <div class="flex h-full flex-col gap-6">
-  <nav aria-label="Sections">
+  <nav aria-label={t('sidebar.sectionsLabel')}>
     <ul class="space-y-1">
       {#each links as link (link.href)}
         <li>
@@ -63,9 +69,11 @@
 
   <WorkspaceSelector />
 
+  <LocaleSelector />
+
   <div class="mt-auto space-y-2 border-t border-line pt-4">
     <p class="text-xs text-ink-muted">
-      Signed in as
+      {t('sidebar.signedInAs')}
       <span class="block truncate text-sm font-medium text-ink">{displayName}</span>
     </p>
 
@@ -75,7 +83,7 @@
       disabled={signingOut}
       onclick={signOut}
     >
-      {signingOut ? 'Signing out…' : 'Sign out'}
+      {signingOut ? t('sidebar.signingOut') : t('sidebar.signOut')}
     </button>
 
     {#if signOutError}

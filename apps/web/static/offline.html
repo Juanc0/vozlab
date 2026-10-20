@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#1e3a8a" />
     <!-- The icon is in the precache: the page must not ask the network for it. -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>VozLab — you are offline</title>
+    <title>VozLab — estás sin conexión</title>
     <meta
       name="description"
-      content="VozLab could not reach the network. This page is served by the service worker while the browser is offline."
+      content="VozLab no ha podido contactar con la red. Esta página la sirve el service worker mientras el navegador está sin conexión."
     />
     <style>
       /*
@@ -193,28 +193,28 @@
 
       <main>
         <div class="card">
-          <h1>You are offline</h1>
+          <h1>Estás sin conexión</h1>
           <p>
-            VozLab could not reach the network, so this page was served by the app's own offline
-            copy. Nothing you were reading is lost — but the pages that need the server cannot be
-            loaded right now.
+            VozLab no ha podido contactar con la red, así que esta página la ha servido la copia
+            sin conexión de la propia aplicación. No se pierde nada de lo que estabas leyendo —
+            pero las páginas que necesitan el servidor no se pueden cargar ahora mismo.
           </p>
           <ul>
-            <li>The graph, the proposals and the discussions need the network to be read.</li>
-            <li>Creating, editing, voting and resolving are blocked while you are offline.</li>
-            <li>Nothing is queued: an action refused now is simply not done.</li>
+            <li>El grafo, las propuestas y los debates necesitan la red para poder leerse.</li>
+            <li>Crear, editar, votar y resolver están bloqueados mientras estás sin conexión.</li>
+            <li>No se encola nada: una acción rechazada ahora sencillamente no se hace.</li>
           </ul>
           <div class="actions">
             <button type="button" class="button" onclick="window.location.reload()">
-              Try again
+              Intentar de nuevo
             </button>
-            <a class="button button-secondary" href="/">Go to the start page</a>
+            <a class="button button-secondary" href="/">Ir a la página de inicio</a>
           </div>
         </div>
       </main>
 
       <footer>
-        <div class="footer-bar">VozLab — co-creation client for the knowledge graph.</div>
+        <div class="footer-bar">VozLab — cliente de co-creación para el grafo de conocimiento.</div>
       </footer>
     </div>
   </body>

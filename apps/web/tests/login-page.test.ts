@@ -10,6 +10,7 @@ import {
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import LoginPage from '../src/routes/(auth)/login/+page.svelte';
+import { contextWithLocale } from './harness/locale';
 
 const { navigateTo } = vi.hoisted(() => ({ navigateTo: vi.fn() }));
 vi.mock('$lib/auth/redirect', () => ({ navigateTo }));
@@ -35,7 +36,7 @@ function renderLogin(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(LoginPage, {
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [API_CLIENT_CONTEXT_KEY, client],
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace]
@@ -44,7 +45,7 @@ function renderLogin(): void {
 }
 
 async function startLogin(): Promise<string> {
-  await fireEvent.click(screen.getByRole('button', { name: /continue with your institution/i }));
+  await fireEvent.click(screen.getByRole('button', { name: /continuar con tu institución/i }));
   return navigateTo.mock.calls[0]?.[0] as string;
 }
 
@@ -116,16 +117,16 @@ describe('the login page in a development build', () => {
   it('offers the development sign-in', () => {
     renderLogin();
 
-    expect(screen.getByRole('heading', { name: /development sign-in/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/development token/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in as this identity/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /acceso de desarrollo/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/token de desarrollo/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /entrar con esta identidad/i })).toBeInTheDocument();
   });
 
   it('explains why the event code is not enough', () => {
     renderLogin();
 
-    expect(screen.getByText(/neither approve a proposal nor auto-apply/i)).toBeInTheDocument();
-    expect(screen.getByText(/never written to the browser's storage/i)).toBeInTheDocument();
+    expect(screen.getByText(/ni aprobar una propuesta ni aplicarla automáticamente/i)).toBeInTheDocument();
+    expect(screen.getByText(/nunca se escribe en el almacenamiento del navegador/i)).toBeInTheDocument();
   });
 
   it('lists the commands that mint a token for each identity', () => {
@@ -139,12 +140,12 @@ describe('the login page in a development build', () => {
   it('refuses a text that is not a token without calling the API', async () => {
     renderLogin();
 
-    await fireEvent.input(screen.getByLabelText(/development token/i), {
+    await fireEvent.input(screen.getByLabelText(/token de desarrollo/i), {
       target: { value: 'not a token' }
     });
-    await fireEvent.click(screen.getByRole('button', { name: /sign in as this identity/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /entrar con esta identidad/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not a bearer token/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no es un token bearer/i);
     expect(goto).not.toHaveBeenCalled();
   });
 });
@@ -160,16 +161,16 @@ describe('the login page in a production build', () => {
   it('has no development sign-in at all', () => {
     renderLogin();
 
-    expect(screen.queryByRole('heading', { name: /development sign-in/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: /development token/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /acceso de desarrollo/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /token de desarrollo/i })).not.toBeInTheDocument();
   });
 
   it('explains the institutional sign-in and the development alternative', () => {
     renderLogin();
 
-    expect(screen.getByRole('heading', { level: 1, name: /sign in to vozlab/i })).toBeInTheDocument();
-    expect(screen.getByText(/does not keep passwords/i)).toBeInTheDocument();
-    expect(screen.getByText(/identity provider authenticates you/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /iniciar sesión en vozlab/i })).toBeInTheDocument();
+    expect(screen.getByText(/no guarda contraseñas/i)).toBeInTheDocument();
+    expect(screen.getByText(/proveedor de identidad de tu institución te autentica/i)).toBeInTheDocument();
     expect(screen.getByText(/db:mint-token/)).toBeInTheDocument();
     expect(screen.getByText(/docs\/runbook-dev\.md/)).toBeInTheDocument();
   });

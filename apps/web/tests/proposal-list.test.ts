@@ -63,7 +63,7 @@ describe('the proposal list', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
     });
 
     expect(requestedUrls(fetchMock)[0]).toContain('/proposals?limit=20');
@@ -74,15 +74,15 @@ describe('the proposal list', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'PENDING' } });
+    await fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PENDING' } });
     await waitFor(() => {
       expect(requestedUrls(fetchMock).some((url) => url.includes('status=PENDING'))).toBe(true);
     });
 
-    await fireEvent.change(screen.getByLabelText('Target'), { target: { value: 'EDGE' } });
+    await fireEvent.change(screen.getByLabelText('Objetivo'), { target: { value: 'EDGE' } });
     await waitFor(() => {
       expect(
         requestedUrls(fetchMock).some(
@@ -91,7 +91,7 @@ describe('the proposal list', () => {
       ).toBe(true);
     });
 
-    await fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'MERGE' } });
+    await fireEvent.change(screen.getByLabelText('Tipo'), { target: { value: 'MERGE' } });
     await waitFor(() => {
       expect(
         requestedUrls(fetchMock).some(
@@ -116,10 +116,10 @@ describe('the proposal list', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Show older proposals' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Mostrar propuestas anteriores' }));
 
     await waitFor(() => {
       expect(requestedUrls(fetchMock).some((url) => url.includes('cursor=cursor-2'))).toBe(true);
@@ -137,7 +137,7 @@ describe('the proposal list', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByText(/No proposal matches these filters/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ninguna propuesta coincide con estos filtros/i)).toBeInTheDocument();
     });
   });
 
@@ -171,10 +171,10 @@ describe('the proposal list', () => {
     renderGovernance(Proposals, { fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit proposal node/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /Edit proposal node/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Propuesta de edición de nodo/i }));
 
     await waitFor(() => {
       expect(screen.getByText('title')).toBeInTheDocument();

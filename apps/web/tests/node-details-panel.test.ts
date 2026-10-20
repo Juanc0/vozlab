@@ -6,6 +6,7 @@ import { API_CLIENT_CONTEXT_KEY, WORKSPACE_CONTEXT_KEY } from '$lib/state/contex
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { NODE_A, PROPOSAL, WORKSPACE_ID } from './fixtures/graph';
+import { contextWithLocale } from './harness/locale';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
@@ -41,7 +42,7 @@ function renderPanel(node: typeof NODE_A | null): void {
 
   render(NodeDetailsPanel, {
     props: { node },
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [API_CLIENT_CONTEXT_KEY, client],
       [WORKSPACE_CONTEXT_KEY, workspace]
     ])
@@ -105,7 +106,7 @@ describe('the node details panel', () => {
     renderPanel(NODE_A);
 
     await waitFor(() => {
-      expect(screen.getByText(/partial/i)).toBeInTheDocument();
+      expect(screen.getByText(/parcial/i)).toBeInTheDocument();
     });
   });
 
@@ -116,14 +117,14 @@ describe('the node details panel', () => {
     renderPanel(NODE_A);
 
     await waitFor(() => {
-      expect(screen.getByText('No proposal targets this node.')).toBeInTheDocument();
+      expect(screen.getByText('Ninguna propuesta apunta a este nodo.')).toBeInTheDocument();
     });
   });
 
   it('asks the user to select a node when nothing is selected', () => {
     renderPanel(null);
 
-    expect(screen.getByText(/select a node/i)).toBeInTheDocument();
+    expect(screen.getByText(/selecciona un nodo/i)).toBeInTheDocument();
   });
 
   it('shows the API envelope when the history cannot be read', async () => {

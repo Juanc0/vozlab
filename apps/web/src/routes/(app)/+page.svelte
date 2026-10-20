@@ -26,13 +26,17 @@
   import NodeDetailsPanel from '$lib/components/NodeDetailsPanel.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
-  import { getApiClient, getWorkspaceState } from '$lib/state/context';
+  import { formatNumber } from '$lib/i18n';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
+  import RichText from '$lib/components/RichText.svelte';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The depths the API accepts. */
   const depthOptions = Array.from({ length: SUBGRAPH_MAX_DEPTH + 1 }, (_, index) => index);
@@ -195,7 +199,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      rootsError = describeFailure(caught);
+      rootsError = describeFailure(caught, t);
     } finally {
       if (current === rootsRequest) {
         rootsLoading = false;
@@ -227,7 +231,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      ontologyError = describeFailure(caught);
+      ontologyError = describeFailure(caught, t);
     } finally {
       if (current === ontologyRequest) {
         ontologyLoading = false;
@@ -276,7 +280,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      graphError = describeFailure(caught);
+      graphError = describeFailure(caught, t);
     } finally {
       if (current === graphRequest) {
         graphLoading = false;
@@ -354,10 +358,10 @@
     try {
       const node = await getNode(api, created.id);
       rootNodes = [node, ...rootNodes.filter((candidate) => candidate.id !== node.id)];
-      notice = { text: `The node “${node.title}” was created and is pending review.` };
+      notice = { text: t('graph.nodeCreated', { title: node.title }) };
     } catch {
       await loadRoots(null);
-      notice = { text: `The node “${created.title}” was created and is pending review.` };
+      notice = { text: t('graph.nodeCreated', { title: created.title }) };
     }
   }
 
@@ -369,7 +373,7 @@
    * window is simply not in it.
    */
   function handleEdgeCreated(edge: SubgraphEdgeDto): void {
-    notice = { text: `The relation “${edge.relationKey}” was created and is pending review.` };
+    notice = { text: t('graph.edgeCreated', { relationKey: edge.relationKey }) };
 
     if (rootId !== null) {
       void loadGraph(rootId, depth, limit);
@@ -402,16 +406,16 @@
 
     const subject =
       current === null
-        ? 'The correction'
+        ? t('graph.correctionSubject')
         : current.kind === 'node'
-          ? `The correction of the node “${current.node.title}”`
-          : `The correction of the relation “${current.edge.relationKey}”`;
+          ? t('graph.nodeCorrectionSubject', { title: current.node.title })
+          : t('graph.edgeCorrectionSubject', { relationKey: current.edge.relationKey });
 
     notice = {
-      text: `${subject} was proposed. It is pending: the author of the target decides, and nothing changes until they do.`,
+      text: t('graph.proposalCreated', { subject }),
       link: {
         href: `/proposals?proposal=${encodeURIComponent(created.id)}`,
-        label: 'Open the proposal'
+        label: t('graph.openProposal')
       }
     };
   }
@@ -436,17 +440,20 @@
 </script>
 
 <svelte:head>
-  <title>Graph — VozLab</title>
+  <title>{t('graph.pageTitle')}</title>
 </svelte:head>
 
 <section class="space-y-6">
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-semibold tracking-tight">Graph</h1>
+      <h1 class="text-2xl font-semibold tracking-tight">{t('graph.heading')}</h1>
       <p class="mt-2 max-w-prose text-ink-muted">
-        The canvas draws a <strong>bounded</strong> subgraph: at most {SUBGRAPH_MAX_NODES} nodes and
-        {SUBGRAPH_MAX_DEPTH} hops from the root. The whole content is also listed below the canvas,
-        because a canvas is a picture a screen reader cannot see.
+        <RichText
+          text={t('graph.intro', {
+            maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES),
+            maxDepth: formatNumber(locale.locale, SUBGRAPH_MAX_DEPTH)
+          })}
+        />
       </p>
     </div>
 
@@ -457,14 +464,14 @@
         disabled={ontology === null}
         onclick={openNodeDialog}
       >
-        New node
+        {t('graph.newNode')}
       </button>
       {#if ontologyError !== null}
         <p role="alert" class="text-xs text-negative">
           <span class="font-mono">{ontologyError.code}</span> — {ontologyError.message}
         </p>
       {:else if ontologyLoading}
-        <p class="text-xs text-ink-muted">Reading the ontology…</p>
+        <p class="text-xs text-ink-muted">{t('graph.readingOntology')}</p>
       {/if}
     </div>
   </div>
@@ -481,9 +488,11 @@
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="min-w-0 space-y-6">
       <section aria-labelledby="root-picker-heading" class="rounded-card border border-line bg-surface p-4">
-        <h2 id="root-picker-heading" class="text-base font-semibold tracking-tight">Root node</h2>
+        <h2 id="root-picker-heading" class="text-base font-semibold tracking-tight">
+          {t('graph.rootHeading')}
+        </h2>
         <p class="mt-1 text-sm text-ink-muted">
-          The newest nodes of this workspace. Pick one to draw the subgraph around it.
+          {t('graph.rootHelp')}
         </p>
 
         {#if rootsError}
@@ -491,10 +500,10 @@
             <span class="font-mono">{rootsError.code}</span> — {rootsError.message}
           </p>
         {:else if rootsLoading && rootNodes.length === 0}
-          <p role="status" class="mt-3 text-sm text-ink-muted">Loading the nodes…</p>
+          <p role="status" class="mt-3 text-sm text-ink-muted">{t('graph.loadingNodes')}</p>
         {:else if rootNodes.length === 0}
           <p class="mt-3 text-sm text-ink-muted">
-            This workspace has no node yet. Nothing can be drawn until one exists.
+            {t('graph.noNodes')}
           </p>
         {:else}
           <ul class="mt-3 divide-y divide-line">
@@ -520,7 +529,7 @@
               disabled={rootsLoading}
               onclick={() => loadRoots(rootCursor)}
             >
-              {rootsLoading ? 'Loading…' : 'Show older nodes'}
+              {rootsLoading ? t('common.loading') : t('graph.showOlderNodes')}
             </button>
           {/if}
         {/if}
@@ -528,11 +537,15 @@
 
       <section aria-labelledby="canvas-heading" class="rounded-card border border-line bg-surface p-4">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="canvas-heading" class="text-base font-semibold tracking-tight">Subgraph</h2>
+          <h2 id="canvas-heading" class="text-base font-semibold tracking-tight">
+            {t('graph.subgraphHeading')}
+          </h2>
 
           <div class="flex flex-wrap items-end gap-3 text-sm">
             <div>
-              <label for="subgraph-depth" class="block text-xs text-ink-muted">Depth</label>
+              <label for="subgraph-depth" class="block text-xs text-ink-muted">
+                {t('graph.depthLabel')}
+              </label>
               <select
                 id="subgraph-depth"
                 class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
@@ -546,7 +559,9 @@
             </div>
 
             <div>
-              <label for="subgraph-limit" class="block text-xs text-ink-muted">Max. nodes</label>
+              <label for="subgraph-limit" class="block text-xs text-ink-muted">
+                {t('graph.maxNodesLabel')}
+              </label>
               <input
                 id="subgraph-limit"
                 type="number"
@@ -561,8 +576,12 @@
         </div>
 
         <p class="mt-1 text-xs text-ink-muted">
-          Depth {depth} · up to {limit} nodes. The API caps the window at {SUBGRAPH_MAX_DEPTH} hops
-          and {SUBGRAPH_MAX_NODES} nodes: this is a window on the graph, not the whole graph.
+          {t('graph.bounds', {
+            depth: formatNumber(locale.locale, depth),
+            limit: formatNumber(locale.locale, limit),
+            maxDepth: formatNumber(locale.locale, SUBGRAPH_MAX_DEPTH),
+            maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES)
+          })}
         </p>
 
         {#if graphError}
@@ -570,7 +589,7 @@
             <span class="font-mono">{graphError.code}</span> — {graphError.message}
             {#if graphLoaded}
               <span class="mt-1 block text-ink-muted">
-                The subgraph below is the one that was loaded last.
+                {t('graph.staleGraph')}
               </span>
             {/if}
           </p>
@@ -579,11 +598,11 @@
         <div class="mt-4">
           {#if rootId === null}
             <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-              Pick a root node above to draw the subgraph around it.
+              {t('graph.pickRoot')}
             </p>
           {:else if graphLoading && !graphLoaded}
             <p role="status" class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-              Loading the subgraph…
+              {t('graph.loadingSubgraph')}
             </p>
           {:else if graphLoaded}
             <GraphCanvas
@@ -591,7 +610,10 @@
               edges={graphEdges}
               selectedNodeId={selectedNodeId}
               onselect={selectNode}
-              description={`${graphNodes.length} nodes and ${graphEdges.length} relations in the subgraph around the selected root, drawn with a deterministic dagre layout.`}
+              description={t('graph.canvasDescription', {
+                nodes: formatNumber(locale.locale, graphNodes.length),
+                edges: formatNumber(locale.locale, graphEdges.length)
+              })}
             />
 
             <div class="mt-6">
@@ -612,7 +634,9 @@
 
     <aside aria-labelledby="details-heading" class="min-w-0">
       <section class="rounded-card border border-line bg-surface p-4">
-        <h2 id="details-heading" class="text-base font-semibold tracking-tight">Node details</h2>
+        <h2 id="details-heading" class="text-base font-semibold tracking-tight">
+          {t('graph.nodeDetailsHeading')}
+        </h2>
         <div class="mt-3">
           <NodeDetailsPanel
             node={selectedNode}
@@ -623,7 +647,7 @@
       </section>
 
       <p class="mt-4 text-xs text-ink-muted">
-        The graph is read from <code class="break-all">{data.apiBaseUrl}</code>.
+        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
       </p>
     </aside>
   </div>

@@ -122,7 +122,7 @@ describe('the discussions of a target', () => {
     renderGovernance(Discussions, { authorHash: MAINTAINER_HASH, fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Close the thread' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cerrar el hilo' })).toBeInTheDocument();
     });
   });
 
@@ -134,7 +134,7 @@ describe('the discussions of a target', () => {
       expect(screen.getByRole('button', { name: THREAD.title })).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: 'Close the thread' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cerrar el hilo' })).not.toBeInTheDocument();
   });
 
   it('shows the delete control to the author of the comment only', async () => {
@@ -144,9 +144,9 @@ describe('the discussions of a target', () => {
     await openThread();
 
     // The author of the first comment may delete it.
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
     // The reply of the maintainer is not theirs.
-    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Eliminar' })).toHaveLength(1);
   });
 
   it('hides the delete control from everybody but the author', async () => {
@@ -156,7 +156,7 @@ describe('the discussions of a target', () => {
     await openThread();
 
     // Only the reply of the maintainer is theirs.
-    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Eliminar' })).toHaveLength(1);
   });
 
   it('posts a reply under its parent and reads the thread again', async () => {
@@ -165,12 +165,12 @@ describe('the discussions of a target', () => {
 
     await openThread();
 
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Reply' })[0]);
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Responder' })[0]);
 
-    await fireEvent.input(screen.getByLabelText(/Write a reply/), {
+    await fireEvent.input(screen.getByLabelText(/Escribe una respuesta/), {
       target: { value: 'The budget covers it.' }
     });
-    await fireEvent.click(screen.getByRole('button', { name: 'Post the reply' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Publicar la respuesta' }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(
@@ -204,13 +204,15 @@ describe('the discussions of a target', () => {
     renderGovernance(Discussions, { authorHash: MAINTAINER_HASH, fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Close the thread' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cerrar el hilo' })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Close the thread' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Cerrar el hilo' }));
 
     await waitFor(() => {
-      expect(screen.getByText('The thread “Should the shuttle run every 30 minutes?” was closed.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Se ha cerrado el hilo «Should the shuttle run every 30 minutes?».')
+      ).toBeInTheDocument();
     });
   });
 
@@ -222,10 +224,10 @@ describe('the discussions of a target', () => {
     renderGovernance(Discussions, { authorHash: MAINTAINER_HASH, fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Close the thread' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cerrar el hilo' })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Close the thread' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Cerrar el hilo' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_AUTHORIZATION_FAILED');
@@ -238,10 +240,10 @@ describe('the discussions of a target', () => {
 
     await openThread();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
 
     await waitFor(() => {
-      expect(screen.getByText('The comment was deleted.')).toBeInTheDocument();
+      expect(screen.getByText('El comentario se ha eliminado.')).toBeInTheDocument();
     });
 
     const deletion = fetchMock.mock.calls.find(
@@ -281,13 +283,13 @@ describe('the discussions of a target', () => {
     renderGovernance(Discussions, { authorHash: MAINTAINER_HASH, fetch: fetchMock });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('New thread')).toBeInTheDocument();
+      expect(screen.getByLabelText('Hilo nuevo')).toBeInTheDocument();
     });
 
-    await fireEvent.input(screen.getByLabelText('New thread'), {
+    await fireEvent.input(screen.getByLabelText('Hilo nuevo'), {
       target: { value: 'A brand new thread' }
     });
-    await fireEvent.click(screen.getByRole('button', { name: 'Start the thread' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Abrir el hilo' }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(

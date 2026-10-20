@@ -11,6 +11,7 @@
    */
   import type { ProposalDto } from '$lib/api/types';
   import { deltaEntries, formatDeltaValue, isPlainObject, readMergeTarget } from '$lib/governance/delta';
+  import { getLocaleState } from '$lib/state/context';
 
   interface Props {
     /** The proposal whose delta is shown. */
@@ -20,6 +21,9 @@
   }
 
   let { proposal, mergeTargetLabel = null }: Props = $props();
+
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The fields of the delta, sorted by name. */
   const entries = $derived(deltaEntries(proposal.proposedChanges));
@@ -33,19 +37,19 @@
 {#if proposal.kind === 'MERGE' && mergeTarget !== null}
   {#if mergeTarget.kind === 'node'}
     <p class="text-sm">
-      This proposal merges the target into the surviving node
-      <strong>{mergeTargetLabel ?? 'the node below'}</strong>
+      {t('delta.mergeInto')}
+      <strong>{mergeTargetLabel ?? t('delta.nodeBelow')}</strong>
       <span class="font-mono text-xs break-all text-ink-muted">{mergeTarget.mergeIntoNodeId}</span>
     </p>
   {:else}
     <p role="alert" class="text-sm text-negative">
-      The payload of this merge proposal does not name a surviving node ({mergeTarget.reason}).
+      {t('delta.noSurvivor', { reason: mergeTarget.reason })}
     </p>
   {/if}
 {/if}
 
 {#if entries.length === 0}
-  <p class="text-sm text-ink-muted">This proposal carries no change.</p>
+  <p class="text-sm text-ink-muted">{t('delta.noChange')}</p>
 {:else}
   <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
     {#each entries as entry (entry.field)}

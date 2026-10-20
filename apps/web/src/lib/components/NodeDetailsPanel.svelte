@@ -4,7 +4,8 @@
   import { loadNodeProposalHistory, type NodeProposalHistory } from '$lib/api/proposals';
   import type { NodeDto } from '$lib/api/types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
-  import { getApiClient, getWorkspaceState } from '$lib/state/context';
+  import { formatDate, formatNumber } from '$lib/i18n';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
 
   interface Props {
     /** The selected node, or `null` when nothing is selected. */
@@ -24,6 +25,8 @@
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   let history = $state.raw<NodeProposalHistory | null>(null);
   let historyError = $state<ApiFailure | null>(null);
@@ -68,7 +71,7 @@
           return;
         }
 
-        historyError = describeFailure(caught);
+        historyError = describeFailure(caught, t);
         loadingHistory = false;
       });
   });
@@ -87,7 +90,7 @@
       return String(value);
     }
     if (value === null || value === undefined) {
-      return '—';
+      return t('common.emptyValue');
     }
     try {
       return JSON.stringify(value);
@@ -95,17 +98,11 @@
       return String(value);
     }
   }
-
-  /** A readable instant. */
-  function formatDate(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
-  }
 </script>
 
 {#if node === null}
   <p class="text-sm text-ink-muted">
-    Select a node in the canvas or in the list to see its details.
+    {t('node.selectPrompt')}
   </p>
 {:else}
   <div class="space-y-4">
@@ -115,7 +112,7 @@
         {#if node.description}
           {node.description}
         {:else}
-          <span class="italic">No description.</span>
+          <span class="italic">{t('node.noDescription')}</span>
         {/if}
       </p>
 
@@ -126,7 +123,7 @@
             class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
             onclick={() => onrelate(node)}
           >
-            Relate to another node
+            {t('node.relate')}
           </button>
         {/if}
 
@@ -138,10 +135,10 @@
           <button
             type="button"
             class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
-            aria-label={`Suggest a correction of the node ${node.title}`}
+            aria-label={t('node.suggestCorrectionLabel', { title: node.title })}
             onclick={() => onsuggest(node)}
           >
-            Suggest a correction
+            {t('graph.suggestCorrection')}
           </button>
         {/if}
 
@@ -153,37 +150,37 @@
           href="/discussions?target={node.id}&type=NODE"
           class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
         >
-          Discuss this node
+          {t('node.discuss')}
         </a>
       </div>
     </div>
 
     <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-      <dt class="text-ink-muted">Ontology class</dt>
+      <dt class="text-ink-muted">{t('node.ontologyClass')}</dt>
       <dd>{node.typeKey}</dd>
 
-      <dt class="text-ink-muted">Status</dt>
+      <dt class="text-ink-muted">{t('node.status')}</dt>
       <dd>{node.status}</dd>
 
-      <dt class="text-ink-muted">Community score</dt>
-      <dd>{node.communityScore}</dd>
+      <dt class="text-ink-muted">{t('node.communityScore')}</dt>
+      <dd>{formatNumber(locale.locale, node.communityScore)}</dd>
 
-      <dt class="text-ink-muted">Author</dt>
+      <dt class="text-ink-muted">{t('node.author')}</dt>
       <dd class="font-mono text-xs break-all">{node.authorHash}</dd>
 
-      <dt class="text-ink-muted">Created</dt>
+      <dt class="text-ink-muted">{t('node.created')}</dt>
       <dd>
-        <time datetime={node.createdAt}>{formatDate(node.createdAt)}</time>
+        <time datetime={node.createdAt}>{formatDate(locale.locale, node.createdAt)}</time>
       </dd>
     </dl>
 
     <section aria-labelledby="node-attributes-heading">
       <h4 id="node-attributes-heading" class="text-xs font-semibold tracking-wide uppercase">
-        Ontology attributes
+        {t('node.attributesHeading')}
       </h4>
 
       {#if attributeEntries.length === 0}
-        <p class="mt-1 text-sm text-ink-muted">This node carries no attribute.</p>
+        <p class="mt-1 text-sm text-ink-muted">{t('node.noAttributes')}</p>
       {:else}
         <dl class="mt-1 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
           {#each attributeEntries as [key, value] (key)}
@@ -196,16 +193,16 @@
 
     <section aria-labelledby="node-proposals-heading">
       <h4 id="node-proposals-heading" class="text-xs font-semibold tracking-wide uppercase">
-        Edit-proposal history
+        {t('node.proposalHistoryHeading')}
       </h4>
       {#if loadingHistory}
-        <p role="status" class="mt-1 text-sm text-ink-muted">Loading the proposals…</p>
+        <p role="status" class="mt-1 text-sm text-ink-muted">{t('node.loadingProposals')}</p>
       {:else if historyError}
         <p role="alert" class="mt-1 text-sm text-negative">
           <span class="font-mono">{historyError.code}</span> — {historyError.message}
         </p>
       {:else if history === null || history.proposals.length === 0}
-        <p class="mt-1 text-sm text-ink-muted">No proposal targets this node.</p>
+        <p class="mt-1 text-sm text-ink-muted">{t('node.noProposals')}</p>
       {:else}
         <ul class="mt-2 space-y-2">
           {#each history.proposals as proposal (proposal.id)}
@@ -215,7 +212,9 @@
                 <span class="rounded bg-surface px-1.5 py-0.5 text-xs text-ink-muted">
                   {proposal.status}
                 </span>
-                <span class="text-xs text-ink-muted">{formatDate(proposal.createdAt)}</span>
+                <span class="text-xs text-ink-muted">
+                  {formatDate(locale.locale, proposal.createdAt)}
+                </span>
               </div>
               {#if proposal.justification}
                 <p class="mt-1 text-ink-muted">{proposal.justification}</p>
@@ -227,9 +226,7 @@
 
       {#if history?.truncated}
         <p class="mt-2 text-xs text-warning">
-          This history is <strong>partial</strong>: the API returned one bounded page of the
-          workspace's proposals and more exist beyond it. The API cannot filter by target, so the
-          history of this node is filtered from that page.
+          {t('node.historyTruncated')}
         </p>
       {/if}
     </section>

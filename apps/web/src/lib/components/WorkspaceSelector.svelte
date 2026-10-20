@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { getWorkspaceState } from '$lib/state/context';
+  import { getLocaleState, getWorkspaceState } from '$lib/state/context';
 
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /**
    * The membership of the **active** workspace.
@@ -31,7 +33,7 @@
     for="workspace-select"
     class="block text-xs font-semibold tracking-wide text-ink-muted uppercase"
   >
-    Workspace
+    {t('workspace.label')}
   </label>
 
   <select
@@ -48,10 +50,10 @@
 
   <p class="text-xs text-ink-muted">
     {#if active}
-      Your role here:
+      {t('workspace.yourRole')}
       <span class="font-semibold text-ink">{active.role}</span>
     {:else}
-      No workspace selected.
+      {t('workspace.noneSelected')}
     {/if}
   </p>
 </div>

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 import { installState, type BeforeInstallPromptEvent } from '$lib/pwa/install.svelte';
+import { localeContext } from './harness/locale';
 
 vi.mock('$app/environment', () => ({
   browser: true,
@@ -42,31 +43,31 @@ describe('the install prompt', () => {
   it('offers nothing while the browser never fired the event', () => {
     // Firefox and Safari never fire `beforeinstallprompt`: a button that
     // cannot do anything must not be shown.
-    render(InstallPrompt);
+    render(InstallPrompt, { context: localeContext() });
 
-    expect(screen.queryByRole('button', { name: /install/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /instalar/i })).not.toBeInTheDocument();
   });
 
   it('appears once the browser captured the offer', async () => {
-    render(InstallPrompt);
+    render(InstallPrompt, { context: localeContext() });
 
     fireBeforeInstallPrompt();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /instalar/i })).toBeInTheDocument();
     });
   });
 
   it('opens the browser install dialog when the user accepts', async () => {
-    render(InstallPrompt);
+    render(InstallPrompt, { context: localeContext() });
 
     const { prompt } = fireBeforeInstallPrompt('accepted');
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /instalar/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /install/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /instalar/i }));
 
     await waitFor(() => {
       expect(prompt).toHaveBeenCalledTimes(1);
@@ -74,33 +75,33 @@ describe('the install prompt', () => {
   });
 
   it('takes the offer away when the app was installed', async () => {
-    render(InstallPrompt);
+    render(InstallPrompt, { context: localeContext() });
 
     fireBeforeInstallPrompt();
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /instalar/i })).toBeInTheDocument();
     });
 
     window.dispatchEvent(new Event('appinstalled'));
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /install/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /instalar/i })).not.toBeInTheDocument();
     });
   });
 
   it('takes the offer away when the user dismissed the browser dialog', async () => {
-    render(InstallPrompt);
+    render(InstallPrompt, { context: localeContext() });
 
     fireBeforeInstallPrompt('dismissed');
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /instalar/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /install/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /instalar/i }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /install/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /instalar/i })).not.toBeInTheDocument();
     });
   });
 });

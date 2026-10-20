@@ -23,6 +23,7 @@
 
 import { formatDeltaValue } from './delta';
 import type { EdgeDto, NodeDto, SubgraphEdgeDto } from '$lib/api/types';
+import type { Message, TranslationKey } from '$lib/i18n';
 
 /** The target of a correction: a node or a relation. */
 export type CorrectionTarget =
@@ -68,11 +69,16 @@ export type AttributeValueType = 'text' | 'number' | 'checkbox';
 /** The value types the form offers, in the order it offers them. */
 export const ATTRIBUTE_VALUE_TYPES: readonly AttributeValueType[] = ['text', 'number', 'checkbox'];
 
-/** The label of a value type, as the picker shows it. */
-export const ATTRIBUTE_VALUE_TYPE_LABELS: Readonly<Record<AttributeValueType, string>> = {
-  text: 'Text',
-  number: 'Number',
-  checkbox: 'Checkbox'
+/**
+ * The label of a value type, as the picker shows it.
+ *
+ * The labels are the **keys** of their copy: the dictionary owns the words
+ * and the screen renders them with `t()`.
+ */
+export const ATTRIBUTE_VALUE_TYPE_LABELS: Readonly<Record<AttributeValueType, TranslationKey>> = {
+  text: 'correction.typeText',
+  number: 'correction.typeNumber',
+  checkbox: 'correction.typeCheckbox'
 };
 
 /** The shortest title the API accepts for a node (`CreateNodeSchema`). */
@@ -143,7 +149,7 @@ export interface FieldDiff {
   /** The name of the field: `title`, `description`, `relationKey` or `attributes.<key>`. */
   readonly field: string;
   /** The name of the field, as the user reads it. */
-  readonly label: string;
+  readonly label: Message;
   /** The value the target carries today. */
   readonly current: string;
   /** The value the proposal would set. */
@@ -164,9 +170,9 @@ export interface InvalidField {
    */
   readonly key: string;
   /** The name of the field, for the summary of the errors. */
-  readonly label: string;
+  readonly label: Message;
   /** Why the field is not valid. */
-  readonly message: string;
+  readonly message: Message;
 }
 
 /** The outcome of the validation of the form. */
@@ -298,10 +304,15 @@ export function retypeAttributeRow(row: AttributeRow, type: AttributeValueType):
   return next;
 }
 
-/** The outcome of the coercion of a row. */
+/**
+ * The outcome of the coercion of a row.
+ *
+ * The refusal is a **message** (the key of its copy and its values), not a
+ * sentence: the copy lives in the dictionary and the screen renders it.
+ */
 export type RowCoercion =
   | { readonly ok: true; readonly value: unknown }
-  | { readonly ok: false; readonly message: string };
+  | { readonly ok: false; readonly message: Message };
 
 /**
  * Coerces the raw input of a row into the value that is proposed.
@@ -324,7 +335,7 @@ export function coerceAttributeRow(row: AttributeRow): RowCoercion {
       }
       const parsed = Number(text);
       if (!Number.isFinite(parsed)) {
-        return { ok: false, message: 'This attribute must be a number.' };
+        return { ok: false, message: { key: 'validation.attributeMustBeNumber' } };
       }
       return { ok: true, value: parsed };
     }
@@ -334,7 +345,7 @@ export function coerceAttributeRow(row: AttributeRow): RowCoercion {
     }
 
     default: {
-      return { ok: false, message: 'This attribute has an unknown kind.' };
+      return { ok: false, message: { key: 'validation.attributeUnknownKind' } };
     }
   }
 }
@@ -365,8 +376,11 @@ export function buildCorrection(
   if (draft.justification.length > CORRECTION_JUSTIFICATION_MAX_LENGTH) {
     invalid.push({
       key: 'justification',
-      label: 'Justification',
-      message: `The justification must be at most ${CORRECTION_JUSTIFICATION_MAX_LENGTH} characters.`
+      label: { key: 'correction.justificationLabel' },
+      message: {
+        key: 'validation.justificationTooLong',
+        params: { max: CORRECTION_JUSTIFICATION_MAX_LENGTH }
+      }
     });
   }
 
@@ -386,7 +400,7 @@ export function buildCorrection(
 
     diff.push({
       field: `attributes.${key}`,
-      label: key,
+      label: { key: 'correction.attributeField', params: { key } },
       current: formatDeltaValue(current),
       proposed: formatProposedValue(current, proposed),
       changed: !sameValue(current, proposed)
@@ -421,8 +435,11 @@ function buildNodeFields(
   if (!titleValid) {
     invalid.push({
       key: 'title',
-      label: 'Title',
-      message: `The title must be between ${CORRECTION_TITLE_MIN_LENGTH} and ${CORRECTION_TITLE_MAX_LENGTH} characters.`
+      label: { key: 'correction.fieldTitle' },
+      message: {
+        key: 'validation.titleLength',
+        params: { min: CORRECTION_TITLE_MIN_LENGTH, max: CORRECTION_TITLE_MAX_LENGTH }
+      }
     });
   }
 
@@ -430,7 +447,7 @@ function buildNodeFields(
 
   diff.push({
     field: 'title',
-    label: 'Title',
+    label: { key: 'correction.fieldTitle' },
     current: formatDeltaValue(snapshot.title),
     proposed: title,
     changed: titleChanged
@@ -447,7 +464,7 @@ function buildNodeFields(
 
   diff.push({
     field: 'description',
-    label: 'Description',
+    label: { key: 'correction.fieldDescription' },
     current: formatDeltaValue(snapshot.description),
     proposed: description === '' ? '(empty)' : description,
     changed: descriptionChanged
@@ -476,8 +493,11 @@ function buildEdgeFields(
   if (!relationKeyValid) {
     invalid.push({
       key: 'relationKey',
-      label: 'Relation key',
-      message: `The relation key must be between ${CORRECTION_RELATION_KEY_MIN_LENGTH} and ${CORRECTION_RELATION_KEY_MAX_LENGTH} characters.`
+      label: { key: 'correction.fieldRelationKey' },
+      message: {
+        key: 'validation.relationKeyLength',
+        params: { min: CORRECTION_RELATION_KEY_MIN_LENGTH, max: CORRECTION_RELATION_KEY_MAX_LENGTH }
+      }
     });
   }
 
@@ -485,7 +505,7 @@ function buildEdgeFields(
 
   diff.push({
     field: 'relationKey',
-    label: 'Relation key',
+    label: { key: 'correction.fieldRelationKey' },
     current: formatDeltaValue(snapshot.relationKey),
     proposed: relationKey,
     changed
@@ -528,8 +548,8 @@ function buildAttributes(
       // target already carries is the row that is prefilled with it.
       invalid.push({
         key: attributeKeyFieldKey(row.id),
-        label: `The attribute “${key}”`,
-        message: 'Two rows carry the same key.'
+        label: { key: 'correction.attributeField', params: { key } },
+        message: { key: 'validation.duplicateAttributeKey' }
       });
       continue;
     }
@@ -543,7 +563,7 @@ function buildAttributes(
     if (!coerced.ok) {
       invalid.push({
         key: attributeFieldKey(row.id),
-        label: `The attribute “${key}”`,
+        label: { key: 'correction.attributeField', params: { key } },
         message: coerced.message
       });
       continue;
@@ -554,9 +574,8 @@ function buildAttributes(
         // The API merges the attributes: it cannot remove one.
         invalid.push({
           key: attributeFieldKey(row.id),
-          label: `The attribute “${key}”`,
-          message:
-            'An existing attribute cannot be emptied: the API merges the attributes, it cannot remove one.'
+          label: { key: 'correction.attributeField', params: { key } },
+          message: { key: 'validation.attributeCannotBeEmptied' }
         });
       }
       continue;

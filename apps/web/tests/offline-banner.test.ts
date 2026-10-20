@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppShell from '$lib/components/AppShell.svelte';
 import { connectivityState } from '$lib/pwa/connectivity.svelte';
+import { localeContext } from './harness/locale';
 
 vi.mock('$app/environment', () => ({
   browser: true,
@@ -31,55 +32,55 @@ describe('the offline banner', () => {
   });
 
   it('stays hidden while the browser is online', () => {
-    render(AppShell, { title: 'VozLab' });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
-    expect(screen.queryByText(/You are offline/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Estás sin conexión/i)).not.toBeInTheDocument();
   });
 
   it('appears when the browser goes offline', async () => {
-    render(AppShell, { title: 'VozLab' });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
     goOffline();
 
     await waitFor(() => {
-      expect(screen.getByText(/You are offline/i)).toBeInTheDocument();
+      expect(screen.getByText(/Estás sin conexión/i)).toBeInTheDocument();
     });
   });
 
   it('disappears when the browser comes back', async () => {
-    render(AppShell, { title: 'VozLab' });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
     goOffline();
     await waitFor(() => {
-      expect(screen.getByText(/You are offline/i)).toBeInTheDocument();
+      expect(screen.getByText(/Estás sin conexión/i)).toBeInTheDocument();
     });
 
     goOnline();
 
     await waitFor(() => {
-      expect(screen.queryByText(/You are offline/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Estás sin conexión/i)).not.toBeInTheDocument();
     });
   });
 
   it('says what is blocked and that nothing is queued', async () => {
-    render(AppShell, { title: 'VozLab' });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
     goOffline();
 
     await waitFor(() => {
-      expect(screen.getByText(/You are offline/i)).toBeInTheDocument();
+      expect(screen.getByText(/Estás sin conexión/i)).toBeInTheDocument();
     });
-    expect(screen.getByText(/blocked until the connection is back/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nothing is queued/i)).toBeInTheDocument();
+    expect(screen.getByText(/bloqueados hasta que vuelva la conexión/i)).toBeInTheDocument();
+    expect(screen.getByText(/no se encola nada/i)).toBeInTheDocument();
   });
 
   it('is a polite live region: the change is announced, the focus is not stolen', async () => {
-    render(AppShell, { title: 'VozLab' });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
     goOffline();
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/You are offline/i);
+      expect(screen.getByRole('status')).toHaveTextContent(/Estás sin conexión/i);
     });
     expect(document.activeElement).toBe(document.body);
   });

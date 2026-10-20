@@ -163,6 +163,42 @@ The server-side alternative — a grace window that returns the same successor
 token for a reuse inside it — is the API's decision: it would weaken the
 theft detection.
 
+## The language of the interface
+
+The interface speaks **Spanish by default** and English as the second
+language. The preference lives in the cookie `vozlab_locale`, never in
+`localStorage` or `sessionStorage`.
+
+- `es.ts` is the **source of truth**: it holds the dictionary as a nested
+  `as const` object, and its dotted paths are the `TranslationKey` union, so
+  `t('loginn.title')` does not compile.
+- `en.ts` is declared as `Dictionary<typeof es>`, which widens every string
+  leaf and recurses into the objects. A missing key, a misspelled key and a
+  leftover key are all **compile errors**. The two dictionaries cannot drift.
+- The state is a runes class provided through the **context API**, not a
+  module singleton — a singleton would leak one visitor's language into
+  another's SSR request.
+- The server renders the right language: a `handle` hook rewrites the
+  `<html lang>` of the document from the cookie, and the root layout reads
+  the same cookie to seed the state. The first client render therefore
+  matches the server — no hydration mismatch, no flash of the wrong
+  language.
+- Changing the language updates the state, the `lang` attribute and the
+  cookie **without a reload**: the session lives in memory, and a reload
+  would cost the user their sign-in.
+- The selector's options are written in their own language ("Español",
+  "English"), so a person who does not read the current language still finds
+  theirs.
+- Dates and numbers follow the locale through `Intl`.
+
+The **seeded content is Spanish**: it is data, not interface copy. The
+ontology's `displayNames` are locale maps, so the class and property names
+follow the interface's language, and the seed carries both.
+
+The API's error `code` values are contract identifiers and stay in English.
+The API's error `message` is the API's own copy and also stays as it is;
+the messages the web app owns are translated.
+
 ## Graph canvas
 
 `GraphCanvas.svelte` initializes Cytoscape once, updates elements when props

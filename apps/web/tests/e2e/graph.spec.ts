@@ -31,40 +31,40 @@ test('the graph lists the nodes, draws the bounded subgraph and states its bound
   await expect(page.getByRole('button', { name: root.title })).toBeVisible();
 
   // The bound of the window is stated, not implied.
-  await expect(page.getByText('at most 200 nodes and 3 hops from the root')).toBeVisible();
+  await expect(page.getByText('como máximo 200 nodos y 3 saltos desde la raíz')).toBeVisible();
   await expect(
-    page.getByText('The API caps the window at 3 hops and 200 nodes')
+    page.getByText('La API acota la ventana a 3 saltos y 200 nodos')
   ).toBeVisible();
 
   // Picking a node draws its subgraph.
   await page.getByRole('button', { name: root.title }).click();
 
-  const canvas = page.getByRole('img', { name: 'Subgraph canvas' });
+  const canvas = page.getByRole('img', { name: 'Lienzo del subgrafo' });
   await expect(canvas).toBeVisible();
 
   // The canvas says what it shows; the list view must say the same.
-  const description = page.getByText(/nodes and \d+ relations in the subgraph/);
+  const description = page.getByText(/nodos y \d+ relaciones en el subgrafo/);
   await expect(description).toBeVisible();
 
-  const counted = /(\d+) nodes and (\d+) relations/.exec((await description.textContent()) ?? '');
+  const counted = /(\d+) nodos y (\d+) relaciones/.exec((await description.textContent()) ?? '');
   expect(counted).not.toBeNull();
 
   const nodeCount = counted?.[1] ?? '';
   const relationCount = counted?.[2] ?? '';
 
   await expect(
-    page.getByRole('heading', { name: `Nodes of the subgraph (${nodeCount})`, exact: true })
+    page.getByRole('heading', { name: `Nodos del subgrafo (${nodeCount})`, exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: `Relations of the subgraph (${relationCount})`, exact: true })
+    page.getByRole('heading', { name: `Relaciones del subgrafo (${relationCount})`, exact: true })
   ).toBeVisible();
 
   // The list view lists the same nodes and relations as the canvas.
-  const nodeTable = page.getByRole('region', { name: 'The nodes of the subgraph' });
+  const nodeTable = page.getByRole('region', { name: 'Los nodos del subgrafo' });
   await expect(nodeTable.getByRole('button', { name: root.title })).toBeVisible();
   await expect(nodeTable.getByRole('button', { name: idea.title })).toBeVisible();
 
-  const relationTable = page.getByRole('region', { name: 'The relations of the subgraph' });
+  const relationTable = page.getByRole('region', { name: 'Las relaciones del subgrafo' });
   await expect(relationTable.getByRole('rowheader', { name: 'RELATES_TO' })).toBeVisible();
   await expect(relationTable.getByRole('button', { name: root.title })).toBeVisible();
   await expect(relationTable.getByRole('button', { name: idea.title })).toBeVisible();

@@ -231,9 +231,16 @@ Requested after 3.7, to present the product to the university community.
       `sessionStorage` so a reload does not cost the presenter the role, and
       that path is dead in a production bundle. The sign-out takes it away.
       The maintainer can now approve the seeded proposals in the app.
-- [ ] 3.10 i18n: the interface in Spanish (the default) and English, with a
+- [x] 3.10 i18n: the interface in Spanish (the default) and English, with a
       language selector and the preference kept in a cookie so the server
-      renders the right language.
+      renders the right language. Result: one nested dictionary of 358
+      paths, with `es.ts` as the source of truth and `en.ts` typed as
+      `Dictionary<typeof es>` — a missing, misspelled or leftover key is a
+      compile error, so the two cannot drift. The state goes through the
+      context API, a `handle` hook rewrites `<html lang>` from the cookie so
+      the server renders the right language with no flash, and changing the
+      language does not reload the page (the session is in memory). Dates
+      and numbers follow the locale through `Intl`.
 - [ ] 3.11 API: `GET /api/v1/nodes/window` — a bounded window of the
       workspace (the newest nodes and the relations among them) for the
       exploration view.

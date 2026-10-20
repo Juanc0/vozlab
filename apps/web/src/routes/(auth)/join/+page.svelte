@@ -4,11 +4,13 @@
   import { eventJoin } from '$lib/api/auth';
   import { isApiError } from '$lib/api/errors';
   import { adoptSession } from '$lib/auth/restore';
-  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
 
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   let code = $state('');
   let alias = $state('');
@@ -52,8 +54,7 @@
       if (outcome.status === 'no-membership') {
         failure = {
           code: null,
-          message:
-            'The event did not grant a workspace membership in this institution. Ask the organiser for a code of a workspace you can join.'
+          message: t('join.noMembership')
         };
         return;
       }
@@ -61,7 +62,7 @@
       if (outcome.status !== 'restored') {
         failure = {
           code: outcome.error?.code ?? null,
-          message: outcome.error?.message ?? 'The event could not be joined.'
+          message: outcome.error?.message ?? t('join.failed')
         };
         return;
       }
@@ -72,7 +73,7 @@
       // never a raw HTTP status line.
       failure = isApiError(error)
         ? { code: error.code, message: error.message }
-        : { code: null, message: 'The event could not be joined.' };
+        : { code: null, message: t('join.failed') };
     } finally {
       pending = false;
     }
@@ -80,22 +81,21 @@
 </script>
 
 <svelte:head>
-  <title>Join an event — VozLab</title>
+  <title>{t('join.pageTitle')}</title>
 </svelte:head>
 
 <section class="mx-auto max-w-prose space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Join an event</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">{t('join.heading')}</h1>
     <p class="mt-2 text-ink-muted">
-      Type the code your facilitator shared. The code is the whole credential: there is no camera
-      scan, no account and no identity provider involved. A text field is all it takes.
+      {t('join.intro')}
     </p>
   </div>
 
   <form class="space-y-5 rounded-card border border-line bg-surface p-6" onsubmit={submit}>
     <div>
       <label for="event-code" class="block text-sm font-medium text-ink">
-        Event code <span class="font-normal text-ink-muted">(required)</span>
+        {t('join.codeLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
       </label>
       <input
         id="event-code"
@@ -113,13 +113,13 @@
         bind:value={code}
       />
       <p id="event-code-help" class="mt-1 text-xs text-ink-muted">
-        Between 16 and 128 characters, exactly as it was shared.
+        {t('join.codeHelp')}
       </p>
     </div>
 
     <div>
       <label for="event-alias" class="block text-sm font-medium text-ink">
-        Display name <span class="font-normal text-ink-muted">(optional)</span>
+        {t('join.aliasLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
       </label>
       <input
         id="event-alias"
@@ -132,7 +132,7 @@
         bind:value={alias}
       />
       <p id="event-alias-help" class="mt-1 text-xs text-ink-muted">
-        The name the other participants see. Leave it empty to stay anonymous.
+        {t('join.aliasHelp')}
       </p>
     </div>
 
@@ -154,15 +154,15 @@
       class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending || !hydrated}
     >
-      {pending ? 'Joining…' : 'Join the event'}
+      {pending ? t('join.submitting') : t('join.submit')}
     </button>
 
     {#if !hydrated}
-      <p class="text-xs text-ink-muted" role="status">Preparing the form…</p>
+      <p class="text-xs text-ink-muted" role="status">{t('join.preparing')}</p>
     {/if}
   </form>
 
   <p class="text-sm text-ink-muted">
-    Signing in with your institution instead? <a href="/login" class="underline">Sign in</a>.
+    {t('join.signInInstead')} <a href="/login" class="underline">{t('join.signInLink')}</a>.
   </p>
 </section>

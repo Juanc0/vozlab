@@ -10,6 +10,7 @@ import { SessionState } from '$lib/state/session.svelte';
 import { ACTIVE_WORKSPACE_STORAGE_KEY, WorkspaceState } from '$lib/state/workspace.svelte';
 import type { AuthUserDto, WorkspaceSummaryDto } from '@vozlab/shared-types';
 import JoinPage from '../src/routes/(auth)/join/+page.svelte';
+import { contextWithLocale } from './harness/locale';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
@@ -79,7 +80,7 @@ function renderJoin(): { session: SessionState; workspace: WorkspaceState } {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(JoinPage, {
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
       [API_CLIENT_CONTEXT_KEY, client]
@@ -90,8 +91,8 @@ function renderJoin(): { session: SessionState; workspace: WorkspaceState } {
 }
 
 async function submitCode(code: string): Promise<void> {
-  await fireEvent.input(screen.getByLabelText(/event code/i), { target: { value: code } });
-  await fireEvent.submit(screen.getByRole('button', { name: /join the event/i }).closest('form')!);
+  await fireEvent.input(screen.getByLabelText(/código del evento/i), { target: { value: code } });
+  await fireEvent.submit(screen.getByRole('button', { name: /unirse al evento/i }).closest('form')!);
 }
 
 describe('the join page', () => {
@@ -180,10 +181,10 @@ describe('the join page', () => {
   it('needs no camera: the code is typed in a text field', () => {
     renderJoin();
 
-    const input = screen.getByLabelText(/event code/i) as HTMLInputElement;
+    const input = screen.getByLabelText(/código del evento/i) as HTMLInputElement;
 
     expect(input.tagName).toBe('INPUT');
     expect(input.type).toBe('text');
-    expect(screen.getByText(/there is no camera scan/i)).toBeInTheDocument();
+    expect(screen.getByText(/no hay escaneo con la cámara/i)).toBeInTheDocument();
   });
 });

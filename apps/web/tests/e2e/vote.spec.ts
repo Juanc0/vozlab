@@ -33,10 +33,10 @@ test('the score moves at once and a refused second vote is rolled back', async (
   await page
     .getByRole('row')
     .filter({ hasText: justification })
-    .getByRole('button', { name: 'Edit proposal node' })
+    .getByRole('button', { name: 'Propuesta de edición de nodo' })
     .click();
 
-  const group = page.getByRole('group', { name: 'Vote on this proposal' });
+  const group = page.getByRole('group', { name: 'Votar sobre esta propuesta' });
   const score = group.locator('span', { hasText: /^\d+$/ });
   await expect(score).toHaveText('0');
 
@@ -69,16 +69,16 @@ test('the score moves at once and a refused second vote is rolled back', async (
   // The first vote: the score moves at once, the request has not answered
   // yet.
   const releaseUpvote = holdTheNextVote();
-  await page.getByRole('button', { name: 'Upvote this proposal' }).click();
+  await page.getByRole('button', { name: 'Votar a favor de esta propuesta' }).click();
   await expect(score).toHaveText('1');
   releaseUpvote();
 
-  await expect(page.getByText('Your vote was recorded. The score is now 1.')).toBeVisible();
+  await expect(page.getByText('Tu voto se ha registrado. La puntuación ahora es 1.')).toBeVisible();
 
   // The second vote is the other kind: it moves the score at once too, and
   // the server refuses it.
   const releaseDownvote = holdTheNextVote();
-  await page.getByRole('button', { name: 'Downvote this proposal' }).click();
+  await page.getByRole('button', { name: 'Votar en contra de esta propuesta' }).click();
   await expect(score).toHaveText('0');
   releaseDownvote();
 

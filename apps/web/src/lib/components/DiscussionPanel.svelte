@@ -26,7 +26,8 @@
   import { buildPostTree, type PostNode } from '$lib/governance/posts';
   import { canCloseThread, canDeletePost } from '$lib/governance/permissions';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
-  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { formatDate } from '$lib/i18n';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import VoteButtons from './VoteButtons.svelte';
 
   interface Props {
@@ -40,11 +41,16 @@
     heading?: string;
   }
 
-  let { targetId, targetType, ledger, heading = 'Discussion' }: Props = $props();
+  let { targetId, targetType, ledger, heading }: Props = $props();
 
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
+
+  /** The heading of the section. */
+  const sectionHeading = $derived(heading ?? t('discussion.heading'));
 
   /** The threads of the target. */
   let threads = $state.raw<ThreadDto[]>([]);
@@ -158,7 +164,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      threadsError = describeFailure(caught);
+      threadsError = describeFailure(caught, t);
     } finally {
       if (current === threadsRequest) {
         threadsLoading = false;
@@ -192,7 +198,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      postsError = describeFailure(caught);
+      postsError = describeFailure(caught, t);
     } finally {
       if (current === postsRequest) {
         postsLoading = false;
@@ -214,7 +220,10 @@
 
     const title = newTitle.trim();
     if (title.length < 3) {
-      actionError = { code: 'ERR_VALIDATION_FAILED', message: 'The title must be at least 3 characters long.' };
+      actionError = {
+        code: 'ERR_VALIDATION_FAILED',
+        message: t('discussion.titleTooShort')
+      };
       return;
     }
 
@@ -225,11 +234,11 @@
     try {
       const created = await createThread(api, { targetId, targetType, title });
       newTitle = '';
-      notice = `The thread “${created.title}” was opened.`;
+      notice = t('discussion.threadOpened', { title: created.title });
       await loadThreads(targetId, targetType);
       selectThread(created.id);
     } catch (caught) {
-      actionError = describeFailure(caught);
+      actionError = describeFailure(caught, t);
     } finally {
       creating = false;
     }
@@ -246,7 +255,7 @@
       return;
     }
     if (body === '') {
-      actionError = { code: 'ERR_VALIDATION_FAILED', message: 'A reply cannot be empty.' };
+      actionError = { code: 'ERR_VALIDATION_FAILED', message: t('discussion.emptyReply') };
       return;
     }
 
@@ -263,11 +272,14 @@
       });
       replyBody = '';
       replyParentId = null;
-      notice = parentPostId === null ? 'Your comment was posted.' : 'Your reply was posted.';
+      notice =
+        parentPostId === null
+          ? t('discussion.commentPosted')
+          : t('discussion.replyPosted');
       // The thread is read again: the new post is shown in place.
       await loadPosts(threadId);
     } catch (caught) {
-      actionError = describeFailure(caught);
+      actionError = describeFailure(caught, t);
     } finally {
       posting = false;
     }
@@ -282,9 +294,9 @@
     try {
       const closed = await closeThread(api, thread.id);
       threads = threads.map((candidate) => (candidate.id === closed.id ? closed : candidate));
-      notice = `The thread “${closed.title}” was closed.`;
+      notice = t('discussion.threadClosed', { title: closed.title });
     } catch (caught) {
-      actionError = describeFailure(caught);
+      actionError = describeFailure(caught, t);
     } finally {
       busyId = null;
     }
@@ -298,11 +310,11 @@
 
     try {
       await deletePost(api, post.id);
-      notice = 'The comment was deleted.';
+      notice = t('discussion.commentDeleted');
       // The thread is read again: the deleted post is gone from the list.
       await loadPosts(post.threadId);
     } catch (caught) {
-      actionError = describeFailure(caught);
+      actionError = describeFailure(caught, t);
     } finally {
       busyId = null;
     }
@@ -348,7 +360,9 @@
 </script>
 
 <section aria-labelledby="discussion-heading" class="rounded-card border border-line bg-surface p-4">
-  <h2 id="discussion-heading" class="text-base font-semibold tracking-tight">{heading}</h2>
+  <h2 id="discussion-heading" class="text-base font-semibold tracking-tight">
+    {sectionHeading}
+  </h2>
 
   {#if notice}
     <p role="status" class="mt-2 rounded-md border border-line bg-surface-muted p-2 text-sm">{notice}</p>
@@ -368,7 +382,9 @@
 
   <form class="mt-3 flex flex-wrap items-end gap-2" onsubmit={startThread}>
     <div class="min-w-0 flex-1">
-      <label for="thread-title" class="block text-xs text-ink-muted">New thread</label>
+      <label for="thread-title" class="block text-xs text-ink-muted">
+        {t('discussion.newThread')}
+      </label>
       <input
         id="thread-title"
         type="text"
@@ -376,7 +392,7 @@
         maxlength="255"
         required
         class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
-        placeholder="What should the community discuss?"
+        placeholder={t('discussion.newThreadPlaceholder')}
         bind:value={newTitle}
       />
     </div>
@@ -385,14 +401,14 @@
       class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
       disabled={creating}
     >
-      {creating ? 'Opening…' : 'Start the thread'}
+      {creating ? t('discussion.opening') : t('discussion.startThread')}
     </button>
   </form>
 
   {#if threadsLoading && threads.length === 0}
-    <p role="status" class="mt-3 text-sm text-ink-muted">Loading the threads…</p>
+    <p role="status" class="mt-3 text-sm text-ink-muted">{t('discussion.loadingThreads')}</p>
   {:else if threads.length === 0}
-    <p class="mt-3 text-sm text-ink-muted">No thread discusses this object yet.</p>
+    <p class="mt-3 text-sm text-ink-muted">{t('discussion.noThreads')}</p>
   {:else}
     <ul class="mt-3 divide-y divide-line">
       {#each threads as thread (thread.id)}
@@ -409,7 +425,7 @@
             <span class="text-xs text-ink-muted">
               {thread.status}
               {#if thread.status === 'CLOSED'}
-                · closed
+                {t('discussion.closedSuffix')}
               {/if}
             </span>
           </div>
@@ -421,7 +437,9 @@
               disabled={busyId === thread.id || thread.status === 'CLOSED'}
               onclick={() => void closeThreadNow(thread)}
             >
-              {thread.status === 'CLOSED' ? 'Thread closed' : 'Close the thread'}
+              {thread.status === 'CLOSED'
+                ? t('discussion.threadClosedLabel')
+                : t('discussion.closeThread')}
             </button>
           {/if}
         </li>
@@ -435,7 +453,7 @@
         disabled={threadsLoading}
         onclick={() => void loadThreads(targetId, targetType, threadsCursor)}
       >
-        {threadsLoading ? 'Loading…' : 'Show older threads'}
+        {threadsLoading ? t('common.loading') : t('discussion.showOlderThreads')}
       </button>
     {/if}
   {/if}
@@ -443,7 +461,7 @@
   {#if selectedThread !== null}
     <section aria-labelledby="thread-posts-heading" class="mt-5 border-t border-line pt-4">
       <h3 id="thread-posts-heading" class="text-sm font-semibold tracking-tight">
-        Comments of “{selectedThread.title}”
+        {t('discussion.commentsOf', { title: selectedThread.title })}
       </h3>
 
       {#if postsError}
@@ -453,9 +471,9 @@
       {/if}
 
       {#if postsLoading && posts.length === 0}
-        <p role="status" class="mt-2 text-sm text-ink-muted">Loading the comments…</p>
+        <p role="status" class="mt-2 text-sm text-ink-muted">{t('discussion.loadingComments')}</p>
       {:else if posts.length === 0}
-        <p class="mt-2 text-sm text-ink-muted">This thread holds no comment yet.</p>
+        <p class="mt-2 text-sm text-ink-muted">{t('discussion.noComments')}</p>
       {:else}
         {@render postList(postTree, 0)}
       {/if}
@@ -467,24 +485,28 @@
           disabled={postsLoading}
           onclick={() => void loadPosts(selectedThread.id, postsCursor)}
         >
-          {postsLoading ? 'Loading…' : 'Show older comments'}
+          {postsLoading ? t('common.loading') : t('discussion.showOlderComments')}
         </button>
       {/if}
 
       <form class="mt-4" onsubmit={postReply}>
         <label for="reply-body" class="block text-xs text-ink-muted">
-          {replyParent === null ? 'Write a comment' : 'Write a reply'}
+          {replyParent === null ? t('discussion.writeComment') : t('discussion.writeReply')}
         </label>
 
         {#if replyParent !== null}
           <p class="mt-1 flex items-center gap-2 text-xs text-ink-muted">
-            <span>Replying to “{replyParent.body.slice(0, 80)}{replyParent.body.length > 80 ? '…' : ''}”</span>
+            <span>
+              {t('discussion.replyingTo', {
+                body: `${replyParent.body.slice(0, 80)}${replyParent.body.length > 80 ? '…' : ''}`
+              })}
+            </span>
             <button
               type="button"
               class="rounded border border-line-strong bg-surface px-1.5 py-0.5 text-xs text-ink hover:bg-surface-muted"
               onclick={cancelReply}
             >
-              Cancel the reply
+              {t('discussion.cancelReply')}
             </button>
           </p>
         {/if}
@@ -495,7 +517,7 @@
           maxlength="5000"
           required
           class="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
-          placeholder="Your comment…"
+          placeholder={t('discussion.commentPlaceholder')}
           bind:value={replyBody}
         ></textarea>
 
@@ -504,7 +526,11 @@
           class="mt-2 rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={posting}
         >
-          {posting ? 'Posting…' : replyParent === null ? 'Post the comment' : 'Post the reply'}
+          {posting
+            ? t('discussion.posting')
+            : replyParent === null
+              ? t('discussion.postComment')
+              : t('discussion.postReply')}
         </button>
       </form>
     </section>
@@ -519,7 +545,7 @@
           <header class="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
             <span class="font-mono break-all">{node.post.authorHash}</span>
             <time datetime={node.post.createdAt}>
-              {new Date(node.post.createdAt).toISOString().slice(0, 10)}
+              {formatDate(locale.locale, node.post.createdAt)}
             </time>
           </header>
 
@@ -531,7 +557,7 @@
               targetId={node.post.id}
               targetType="POST"
               score={node.post.communityScore}
-              label="this comment"
+              label={t('vote.thisComment')}
               reconcile={() => reconcilePostScore(node.post.id)}
             />
 
@@ -540,7 +566,7 @@
               class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
               onclick={() => startReply(node.post.id)}
             >
-              Reply
+              {t('discussion.reply')}
             </button>
 
             {#if canDeletePost(node.post, authorHash)}
@@ -550,7 +576,7 @@
                 disabled={busyId === node.post.id}
                 onclick={() => void removePost(node.post)}
               >
-                Delete
+                {t('discussion.delete')}
               </button>
             {/if}
           </div>

@@ -1,0 +1,509 @@
+/**
+ * The English dictionary.
+ *
+ * It is declared as `Dictionary<typeof es>`: the shape is the one of the
+ * Spanish dictionary and the values are widened to `string`. A missing key,
+ * a misspelled key or a leftover key is therefore a **compile error** — the
+ * two dictionaries cannot drift apart.
+ *
+ * The English copy is the one that was there before the translation: it
+ * moved into the dictionary, it did not change.
+ */
+
+import type { Dictionary } from '../dictionary';
+import { es } from './es';
+
+export const en: Dictionary<typeof es> = {
+  common: {
+    cancel: 'Cancel',
+    close: 'Close',
+    loading: 'Loading…',
+    all: 'All',
+    required: '(required)',
+    optional: '(optional)',
+    tryAgain: 'Try again',
+    joinWithCode: 'Join with an event code',
+    emptyValue: '—'
+  },
+
+  shell: {
+    skipToContent: 'Skip to content',
+    footer: 'VozLab — co-creation client for the knowledge graph.'
+  },
+
+  sidebar: {
+    sectionsLabel: 'Sections',
+    graph: 'Graph',
+    proposals: 'Proposals',
+    discussions: 'Discussions',
+    signedInAs: 'Signed in as',
+    signedInFallback: 'Signed in',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    signOutFailed: 'The sign-out failed.'
+  },
+
+  workspace: {
+    label: 'Workspace',
+    yourRole: 'Your role here:',
+    noneSelected: 'No workspace selected.'
+  },
+
+  locale: {
+    label: 'Language',
+    es: 'Español',
+    en: 'English'
+  },
+
+  login: {
+    pageTitle: 'Sign in — VozLab',
+    heading: 'Sign in to VozLab',
+    intro:
+      'VozLab does not keep passwords. Your institution\'s identity provider authenticates you and hands a session back to this app; the app only ever sees the session.',
+    continue: 'Continue with your institution',
+    continueHelp:
+      'The browser is sent to the identity provider and returns here when it is done.',
+    joiningHeading: 'Joining an event?',
+    joiningText:
+      'An event code is a one-off credential for a single workspace. It needs no account and no identity provider.',
+    devHeading: 'Development sign-in',
+    devText:
+      'An event code grants the `MEMBER` role, and a member can neither approve a proposal nor auto-apply one. Paste a token minted locally to act as one of the dev identities — the maintainer is the author of the seeded graph, so it is the one who can approve its proposals.',
+    devTokenLabel: 'Development token',
+    devSubmit: 'Sign in as this identity',
+    devSigningIn: 'Signing in…',
+    devPreparing: 'Preparing the form…',
+    devErrorInvalidToken:
+      'That is not a bearer token. Mint one with db:mint-token and paste the whole value.',
+    devErrorRejected:
+      'The API rejected the token: it is expired, revoked or not valid.',
+    devErrorUnreachable: 'The API could not be reached.',
+    devTokenNote:
+      'The token stays in memory. It is never written to the browser\'s storage, and this panel exists only in a development build.',
+    devCommandsLabel: 'The commands that mint a development session',
+    localHeading: 'Local development',
+    localText:
+      'Without an identity provider there is no sign-in to redirect to. Mint a development session for the API instead and use it as the bearer token:',
+    localCommandLabel: 'The command that mints a development token',
+    localNote:
+      'That token belongs to the API (scripts, workers, `curl`). The app itself needs an identity provider or an event code.',
+    localRunbook: 'The runbook describes the whole flow: `docs/runbook-dev.md`.'
+  },
+
+  join: {
+    pageTitle: 'Join an event — VozLab',
+    heading: 'Join an event',
+    intro:
+      'Type the code your facilitator shared. The code is the whole credential: there is no camera scan, no account and no identity provider involved. A text field is all it takes.',
+    codeLabel: 'Event code',
+    codeHelp: 'Between 16 and 128 characters, exactly as it was shared.',
+    aliasLabel: 'Display name',
+    aliasHelp:
+      'The name the other participants see. Leave it empty to stay anonymous.',
+    submit: 'Join the event',
+    submitting: 'Joining…',
+    preparing: 'Preparing the form…',
+    noMembership:
+      'The event did not grant a workspace membership in this institution. Ask the organiser for a code of a workspace you can join.',
+    failed: 'The event could not be joined.',
+    signInInstead: 'Signing in with your institution instead?',
+    signInLink: 'Sign in'
+  },
+
+  callback: {
+    pageTitle: 'The sign-in did not go through — VozLab',
+    heading: 'The sign-in did not go through',
+    genericMessage:
+      'The sign-in could not be completed. The identity provider did not accept the request.'
+  },
+
+  app: {
+    workspaceAndSections: 'Workspace and sections',
+    noWorkspaceHeading: 'No workspace in this institution',
+    noWorkspaceText:
+      'Your account is valid, but it is not a member of any workspace of this institution. Ask an administrator to add you to one, or join an event with a code.',
+    restoreFailedHeading: 'The session could not be restored',
+    restoreFailedOffline:
+      'The browser is offline: the session needs the network to be restored. The pages that need the server cannot be loaded until the connection is back.',
+    restoring: 'Restoring your session…'
+  },
+
+  graph: {
+    pageTitle: 'Graph — VozLab',
+    heading: 'Graph',
+    intro:
+      'The canvas draws a **bounded** subgraph: at most {maxNodes} nodes and {maxDepth} hops from the root. The whole content is also listed below the canvas, because a canvas is a picture a screen reader cannot see.',
+    newNode: 'New node',
+    readingOntology: 'Reading the ontology…',
+    nodeCreated: 'The node “{title}” was created and is pending review.',
+    edgeCreated: 'The relation “{relationKey}” was created and is pending review.',
+    correctionSubject: 'The correction',
+    nodeCorrectionSubject: 'The correction of the node “{title}”',
+    edgeCorrectionSubject: 'The correction of the relation “{relationKey}”',
+    proposalCreated:
+      '{subject} was proposed. It is pending: the author of the target decides, and nothing changes until they do.',
+    openProposal: 'Open the proposal',
+    rootHeading: 'Root node',
+    rootHelp:
+      'The newest nodes of this workspace. Pick one to draw the subgraph around it.',
+    loadingNodes: 'Loading the nodes…',
+    noNodes:
+      'This workspace has no node yet. Nothing can be drawn until one exists.',
+    showOlderNodes: 'Show older nodes',
+    subgraphHeading: 'Subgraph',
+    depthLabel: 'Depth',
+    maxNodesLabel: 'Max. nodes',
+    bounds:
+      'Depth {depth} · up to {limit} nodes. The API caps the window at {maxDepth} hops and {maxNodes} nodes: this is a window on the graph, not the whole graph.',
+    staleGraph: 'The subgraph below is the one that was loaded last.',
+    pickRoot: 'Pick a root node above to draw the subgraph around it.',
+    loadingSubgraph: 'Loading the subgraph…',
+    canvasLabel: 'Subgraph canvas',
+    canvasDefaultDescription:
+      'The subgraph is drawn on a canvas; the same content is listed below.',
+    canvasDescription:
+      '{nodes} nodes and {edges} relations in the subgraph around the selected root, drawn with a deterministic dagre layout.',
+    nodeDetailsHeading: 'Node details',
+    apiOrigin: 'The graph is read from `{apiBaseUrl}`.',
+    listSummary: 'The subgraph as a list',
+    listNodesHeading: 'Nodes of the subgraph',
+    listNodesCaption:
+      'The nodes of the subgraph: title, ontology class and status.',
+    listNodesRegion: 'The nodes of the subgraph',
+    listRelationsHeading: 'Relations of the subgraph',
+    listRelationsCaption:
+      'The relations of the subgraph: relation key, endpoints, status and score.',
+    listRelationsRegion: 'The relations of the subgraph',
+    listNoNodes: 'The subgraph has no node.',
+    listNoRelations: 'The subgraph has no relation.',
+    unknownNode: 'Unknown node',
+    columnTitle: 'Title',
+    columnType: 'Type',
+    columnStatus: 'Status',
+    columnRelation: 'Relation',
+    columnFrom: 'From',
+    columnTo: 'To',
+    columnScore: 'Score',
+    columnCorrection: 'Correction',
+    suggestCorrection: 'Suggest a correction',
+    suggestCorrectionOfRelation:
+      'Suggest a correction of the relation {relationKey}',
+    voteRelationLabel: 'the relation {relationKey}'
+  },
+
+  node: {
+    newNodeTitle: 'New node',
+    createIntro:
+      'The fields come from the active ontology of this workspace. The node is created **pending**: the community reviews it before it joins the graph.',
+    loadingOntology: 'Loading the ontology…',
+    noActiveClass:
+      'This workspace has no active class: there is nothing to create a node from.',
+    ontologyClass: 'Ontology class',
+    titleLabel: 'Title',
+    descriptionLabel: 'Description',
+    attributesOf: 'Attributes of {label}',
+    noActiveAttributes:
+      'This class declares no active attribute: the node is only a title and a description.',
+    notShownHeading: 'Not shown in this form',
+    skippedExplanation:
+      '{label}: the ontology re-declares a field of the node itself, so the value is asked once, in the field above.',
+    formProblem: 'The form has {count} problem.',
+    formProblems: 'The form has {count} problems.',
+    formKept: 'The form kept what you typed: nothing was created.',
+    creating: 'Creating…',
+    createSubmit: 'Create the node',
+    selectPrompt:
+      'Select a node in the canvas or in the list to see its details.',
+    noDescription: 'No description.',
+    relate: 'Relate to another node',
+    suggestCorrectionLabel: 'Suggest a correction of the node {title}',
+    discuss: 'Discuss this node',
+    communityScore: 'Community score',
+    author: 'Author',
+    created: 'Created',
+    attributesHeading: 'Ontology attributes',
+    noAttributes: 'This node carries no attribute.',
+    proposalHistoryHeading: 'Edit-proposal history',
+    loadingProposals: 'Loading the proposals…',
+    noProposals: 'No proposal targets this node.',
+    historyTruncated:
+      'This history is **partial**: the API returned one bounded page of the workspace\'s proposals and more exist beyond it. The API cannot filter by target, so the history of this node is filtered from that page.',
+    status: 'Status'
+  },
+
+  edge: {
+    relateTitle: 'Relate two nodes',
+    intro:
+      'A relation is created **pending**: the community reviews it before it joins the graph. Only the relations the ontology allows for this node are offered.',
+    pickSource:
+      'Pick a node in the canvas or in the list before relating it to another one.',
+    noRelation:
+      'The active ontology declares no relation whose domain is {typeKey}: there is nothing to relate this node with yet.',
+    from: 'From',
+    fromClass: 'from',
+    toClass: 'to',
+    relationLabel: 'Relation',
+    toLabel: 'To',
+    pickTarget: 'Pick the node the relation points at.',
+    noTarget:
+      'No node of the range class {range} exists in this workspace: create one first.',
+    willPointAt: 'The relation will point at {title}.',
+    candidates:
+      'The candidates are taken from the {count} nodes of the workspace that the list above holds.',
+    formKept: 'The form kept what you typed: nothing was created.',
+    creating: 'Creating…',
+    createSubmit: 'Create the relation'
+  },
+
+  correction: {
+    title: 'Suggest a correction',
+    intro:
+      'A proposal is a diff: it changes **nothing** until the author of the target approves it. The proposal is created **pending** — the author of the target is the one who decides.',
+    pickTarget:
+      'Pick a node or a relation before proposing a correction.',
+    readingTarget: 'Reading the target…',
+    loadingTarget: 'Loading the target…',
+    emptyDescription: 'An empty description clears the text of the node.',
+    relationKeyLabel: 'Relation key',
+    attributesLegend: 'Attributes',
+    attributesNote:
+      'The API merges the attributes into the ones of the target: a proposal can change an attribute and add one, but it cannot remove one and it cannot rename one. A row without a value is not sent.',
+    noAttributes: 'The target carries no attribute.',
+    keyLabel: 'Key of the attribute {index}',
+    valueLabel: 'Value of the attribute {index}',
+    typeLabel: 'Type of the attribute {index}',
+    kept: 'Kept',
+    remove: 'Remove',
+    removeLabel: 'Remove the attribute {index}',
+    notEditable:
+      'This value is not a text, a number or a boolean: the form cannot propose a change for it.',
+    changesHeading: 'What this proposal changes',
+    noChanges:
+      'Nothing changes yet: the form sends nothing until a field differs from the target.',
+    oneChange: 'One field changes.',
+    manyChanges: '{count} fields change.',
+    tableCaption:
+      'The current value and the proposed value of every field of the target.',
+    columnField: 'Field',
+    columnCurrent: 'Current',
+    columnProposed: 'Proposed',
+    columnChange: 'Change',
+    changes: 'Changes',
+    unchanged: 'Unchanged',
+    justificationLabel: 'Justification',
+    justificationHelp:
+      'Why the correction is proposed — the maintainer of the target reads it.',
+    formProblem: 'The form has {count} problem.',
+    formProblems: 'The form has {count} problems.',
+    nothingToPropose:
+      'This proposal changes nothing: change a field before sending it.',
+    formKept: 'The form kept what you typed: nothing was proposed.',
+    proposing: 'Proposing…',
+    proposeSubmit: 'Propose the correction',
+    fieldTitle: 'Title',
+    fieldDescription: 'Description',
+    fieldRelationKey: 'Relation key',
+    attributeField: 'Attribute “{key}”',
+    addAttribute: 'Add an attribute',
+    typeText: 'Text',
+    typeNumber: 'Number',
+    typeCheckbox: 'Checkbox'
+  },
+
+  proposals: {
+    pageTitle: 'Proposals — VozLab',
+    heading: 'Proposals',
+    intro:
+      'The knowledge pull requests of the workspace: open one to see the proposed change, to discuss it and to vote on it. The active workspace is carried by a request header, not by the URL: the path stays `/proposals`.',
+    filtersHeading: 'Filters',
+    filterStatus: 'Status',
+    filterTarget: 'Target',
+    filterKind: 'Kind',
+    statusPending: 'Pending',
+    statusApproved: 'Approved by the author',
+    statusRejected: 'Rejected by the author',
+    statusAutoApplied: 'Auto-applied',
+    targetNode: 'Node',
+    targetRelation: 'Relation',
+    targetOntology: 'Ontology class',
+    kindEdit: 'Edit',
+    kindMerge: 'Merge',
+    nounNode: 'node',
+    nounRelation: 'relation',
+    nounOntology: 'ontology class',
+    listHeading: 'The proposals of the workspace',
+    listRegion: 'The proposals of the workspace',
+    listCaption:
+      'The proposals of the workspace: kind and target, status, community score and creation date.',
+    columnProposal: 'Proposal',
+    columnStatus: 'Status',
+    columnScore: 'Score',
+    columnCreated: 'Created',
+    editProposalOf: 'Edit proposal {target}',
+    mergeProposalOf: 'Merge proposal {target}',
+    loading: 'Loading the proposals…',
+    none: 'No proposal matches these filters in this workspace.',
+    showOlder: 'Show older proposals',
+    detailHeading: 'The proposal under review',
+    pickProposal:
+      'Pick a proposal in the list to see its proposed change, its discussion and the controls of its resolution.',
+    mergeProposal: 'Merge proposal',
+    editProposal: 'Edit proposal',
+    target: 'Target',
+    author: 'Author',
+    created: 'Created',
+    resolved: 'Resolved',
+    daysAgo: '{count} days ago',
+    proposedChange: 'Proposed change',
+    voteHeading: 'Vote',
+    resolutionHeading: 'Resolution',
+    nowStatus: 'The proposal is now {status}.',
+    readingTarget: 'Reading the target of the proposal…',
+    notOpen: 'This proposal is {status}: it is not open for a resolution.',
+    approve: 'Approve',
+    reject: 'Reject',
+    autoApply: 'Auto-apply',
+    belongsToMaintainer:
+      'Resolving a proposal belongs to the maintainer of its target.',
+    autoApplyBlocked:
+      'The auto-apply is not available: {reason}',
+    autoApplyBlockedScore:
+      'the community score is below {score}.',
+    autoApplyBlockedAge: 'the proposal is younger than {days} days.',
+    autoApplyBlockedRole:
+      'the role in this workspace is not a moderator or an administrator.',
+    autoApplyBlockedClosed: 'the proposal is not open.',
+    discussionHeading: 'Discussion of this proposal'
+  },
+
+  delta: {
+    mergeInto:
+      'This proposal merges the target into the surviving node',
+    nodeBelow: 'the node below',
+    noSurvivor:
+      'The payload of this merge proposal does not name a surviving node ({reason}).',
+    noChange: 'This proposal carries no change.'
+  },
+
+  discussions: {
+    pageTitle: 'Discussions — VozLab',
+    heading: 'Discussions',
+    intro:
+      'A discussion is always about something: a node, a relation, a proposal or an ontology class. The target is named in the query string; the active workspace is carried by a request header, not by the URL.',
+    targetHeading: 'Target',
+    kindLabel: 'Kind of object',
+    targetNode: 'Node',
+    targetRelation: 'Relation',
+    targetProposal: 'Proposal',
+    targetOntology: 'Ontology class',
+    identifierLabel: 'Identifier',
+    identifierPlaceholder: 'The uuid of the object',
+    show: 'Show the discussion',
+    pickNode: 'Or pick a node of the workspace',
+    noNodePicked: 'No node picked',
+    pickTarget:
+      'Pick a target above to read its threads. The node details panel links here with the node preselected.',
+    threadsHeading: 'Threads of the target'
+  },
+
+  discussion: {
+    heading: 'Discussion',
+    titleTooShort: 'The title must be at least 3 characters long.',
+    emptyReply: 'A reply cannot be empty.',
+    threadOpened: 'The thread “{title}” was opened.',
+    commentPosted: 'Your comment was posted.',
+    replyPosted: 'Your reply was posted.',
+    threadClosed: 'The thread “{title}” was closed.',
+    commentDeleted: 'The comment was deleted.',
+    newThread: 'New thread',
+    newThreadPlaceholder: 'What should the community discuss?',
+    opening: 'Opening…',
+    startThread: 'Start the thread',
+    loadingThreads: 'Loading the threads…',
+    noThreads: 'No thread discusses this object yet.',
+    closedSuffix: '· closed',
+    threadClosedLabel: 'Thread closed',
+    closeThread: 'Close the thread',
+    showOlderThreads: 'Show older threads',
+    commentsOf: 'Comments of “{title}”',
+    loadingComments: 'Loading the comments…',
+    noComments: 'This thread holds no comment yet.',
+    showOlderComments: 'Show older comments',
+    writeComment: 'Write a comment',
+    writeReply: 'Write a reply',
+    replyingTo: 'Replying to “{body}”',
+    cancelReply: 'Cancel the reply',
+    commentPlaceholder: 'Your comment…',
+    posting: 'Posting…',
+    postComment: 'Post the comment',
+    postReply: 'Post the reply',
+    reply: 'Reply',
+    delete: 'Delete'
+  },
+
+  vote: {
+    thisItem: 'this item',
+    thisProposal: 'this proposal',
+    thisComment: 'this comment',
+    onLabel: 'Vote on {label}',
+    upvote: 'Upvote {label}',
+    downvote: 'Downvote {label}',
+    score: 'Score',
+    alreadyCounted: 'Your vote was already counted: the score is unchanged.',
+    recorded: 'Your vote was recorded. The score is now {score}.',
+    rejectedTitle: 'The vote was rejected'
+  },
+
+  offline: {
+    heading: 'You are offline.',
+    text:
+      'You can keep reading what is already loaded, but creating, editing, voting and resolving are blocked until the connection is back. Nothing is queued in the meantime.'
+  },
+
+  install: {
+    message:
+      'VozLab can be installed on this device and open in its own window.',
+    action: 'Install VozLab'
+  },
+
+  pwa: {
+    errorTitle: 'The offline support could not be enabled',
+    errorHint:
+      'The app keeps working, but it will not be available offline.',
+    offlineReady:
+      'VozLab is ready to work offline: the app is cached on this device.',
+    dismiss: 'Got it'
+  },
+
+  update: {
+    available: 'A new version of VozLab is available.',
+    reload: 'Reload now'
+  },
+
+  errors: {
+    offline:
+      'The browser is offline: the request was not sent. This action needs the network.',
+    unexpected: 'The request failed.'
+  },
+
+  validation: {
+    titleTooShort: 'The title must be at least {min} characters.',
+    titleTooLong: 'The title must be at most {max} characters.',
+    titleLength: 'The title must be between {min} and {max} characters.',
+    relationKeyLength:
+      'The relation key must be between {min} and {max} characters.',
+    justificationTooLong:
+      'The justification must be at most {max} characters.',
+    attributeRequired: 'This attribute is required.',
+    attributeMustBeText: 'This attribute must be a text.',
+    attributeMustBeNumber: 'This attribute must be a number.',
+    attributeMustBeBoolean: 'This attribute must be true or false.',
+    attributeMustBeDate: 'This attribute must be a date (YYYY-MM-DD).',
+    attributeHasNoAllowedValue: 'This attribute has no allowed value.',
+    attributeMustBeOneOf: 'This attribute must be one of: {allowed}.',
+    attributeUnknownKind: 'This attribute has an unknown kind.',
+    duplicateAttributeKey: 'Two rows carry the same key.',
+    attributeCannotBeEmptied:
+      'An existing attribute cannot be emptied: the API merges the attributes, it cannot remove one.'
+  }
+};

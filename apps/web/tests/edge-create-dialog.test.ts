@@ -7,6 +7,7 @@ import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
 import { ONTOLOGY } from './fixtures/ontology';
+import { contextWithLocale } from './harness/locale';
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 
@@ -36,7 +37,7 @@ function renderDialog(
       onclose: () => {},
       oncreated: options.oncreated
     },
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [API_CLIENT_CONTEXT_KEY, client],
       [WORKSPACE_CONTEXT_KEY, workspace]
     ])
@@ -65,24 +66,24 @@ describe('the edge creation form', () => {
   it('offers only the relations the API would accept for the source', () => {
     renderDialog();
 
-    const picker = screen.getByLabelText('Relation (required)') as HTMLSelectElement;
+    const picker = screen.getByLabelText('Relación (obligatorio)') as HTMLSelectElement;
     expect(Array.from(picker.options).map((option) => option.value)).toEqual(['RELATES_TO']);
 
     // The domain and the range of the relation are stated.
-    expect(screen.getByRole('dialog')).toHaveTextContent('RELATES_TO — from Problem to Idea.');
+    expect(screen.getByRole('dialog')).toHaveTextContent('RELATES_TO — de Problem a Idea.');
   });
 
   it('offers no relation when the ontology declares none for the class', () => {
     renderDialog({ source: { ...NODE_A, typeKey: 'Resource' } });
 
     expect(screen.queryByLabelText('Relation')).not.toBeInTheDocument();
-    expect(screen.getByText(/declares no relation/)).toBeInTheDocument();
+    expect(screen.getByText(/no declara ninguna relación/)).toBeInTheDocument();
   });
 
   it('offers only the nodes of the range class as the target', () => {
     renderDialog();
 
-    const picker = screen.getByLabelText('To (required)') as HTMLSelectElement;
+    const picker = screen.getByLabelText('Destino (obligatorio)') as HTMLSelectElement;
     const values = Array.from(picker.options).map((option) => option.value);
 
     // `NODE_A` is a `Problem`: the range of `RELATES_TO` is an `Idea`.
@@ -107,8 +108,8 @@ describe('the edge creation form', () => {
     const oncreated = vi.fn();
     renderDialog({ oncreated });
 
-    await fireEvent.change(screen.getByLabelText('To (required)'), { target: { value: NODE_B.id } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the relation' }));
+    await fireEvent.change(screen.getByLabelText('Destino (obligatorio)'), { target: { value: NODE_B.id } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear la relación' }));
 
     await waitFor(() => {
       expect(oncreated).toHaveBeenCalled();
@@ -134,9 +135,9 @@ describe('the edge creation form', () => {
 
     renderDialog();
 
-    const target = screen.getByLabelText('To (required)');
+    const target = screen.getByLabelText('Destino (obligatorio)');
     await fireEvent.change(target, { target: { value: NODE_B.id } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the relation' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear la relación' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_INVALID_RELATION_DOMAIN_RANGE');
@@ -146,8 +147,8 @@ describe('the edge creation form', () => {
     );
 
     // The form kept what the user picked.
-    expect((screen.getByLabelText('To (required)') as HTMLSelectElement).value).toBe(NODE_B.id);
-    expect((screen.getByLabelText('Relation (required)') as HTMLSelectElement).value).toBe('RELATES_TO');
+    expect((screen.getByLabelText('Destino (obligatorio)') as HTMLSelectElement).value).toBe(NODE_B.id);
+    expect((screen.getByLabelText('Relación (obligatorio)') as HTMLSelectElement).value).toBe('RELATES_TO');
   });
 
   it('refuses to send a relation without a target', async () => {
@@ -156,10 +157,10 @@ describe('the edge creation form', () => {
 
     renderDialog();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the relation' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear la relación' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Pick the node the relation points at.')).toBeInTheDocument();
+      expect(screen.getByText('Elige el nodo al que apunta la relación.')).toBeInTheDocument();
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });

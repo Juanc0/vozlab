@@ -7,6 +7,7 @@ import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { ONTOLOGY } from './fixtures/ontology';
 import { WORKSPACE_ID } from './fixtures/graph';
+import { contextWithLocale } from './harness/locale';
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 
@@ -34,7 +35,7 @@ function renderDialog(
       onclose: () => {},
       oncreated: options.oncreated
     },
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [API_CLIENT_CONTEXT_KEY, client],
       [WORKSPACE_CONTEXT_KEY, workspace]
     ])
@@ -63,11 +64,12 @@ describe('the node creation form', () => {
   it('builds the fields from the datatype properties of the chosen class', () => {
     renderDialog();
 
-    // The class picker lists the active classes by their display name.
-    const classPicker = screen.getByLabelText('Ontology class') as HTMLSelectElement;
+    // The class picker lists the active classes by their display name, in
+    // the language of the interface.
+    const classPicker = screen.getByLabelText('Clase de la ontología') as HTMLSelectElement;
     expect(
       Array.from(classPicker.options).map((option) => option.textContent?.trim())
-    ).toEqual(['Idea', 'Problem', 'Resource']);
+    ).toEqual(['Idea', 'Problema', 'Recurso']);
 
     // The class of the form is the first one: `Idea`.
     expect(screen.getByLabelText(/^State/)).toBeInTheDocument();
@@ -78,7 +80,7 @@ describe('the node creation form', () => {
   it('shows the fields of the class the user picks', async () => {
     renderDialog();
 
-    const classPicker = screen.getByLabelText('Ontology class');
+    const classPicker = screen.getByLabelText('Clase de la ontología');
     await fireEvent.change(classPicker, { target: { value: 'Problem' } });
 
     expect(screen.getByLabelText(/Severity/)).toBeInTheDocument();
@@ -89,22 +91,22 @@ describe('the node creation form', () => {
   it('skips a property that re-declares a field of the node and says why', async () => {
     renderDialog();
 
-    const classPicker = screen.getByLabelText('Ontology class');
+    const classPicker = screen.getByLabelText('Clase de la ontología');
     await fireEvent.change(classPicker, { target: { value: 'Problem' } });
 
     // The node's own fields are asked once, not twice.
-    expect(screen.getAllByLabelText(/Title/)).toHaveLength(1);
-    expect(screen.getAllByLabelText(/Description/)).toHaveLength(1);
+    expect(screen.getAllByLabelText(/Título/)).toHaveLength(1);
+    expect(screen.getAllByLabelText(/Descripción/)).toHaveLength(1);
 
-    expect(screen.getByText('Not shown in this form')).toBeInTheDocument();
+    expect(screen.getByText('No se muestra en este formulario')).toBeInTheDocument();
     expect(screen.getByText('title')).toBeInTheDocument();
-    expect(screen.getAllByText(/re-declares a field of the node itself/)).toHaveLength(2);
+    expect(screen.getAllByText(/vuelve a declarar un campo del propio nodo/)).toHaveLength(2);
   });
 
   it('drives the input kind and the initial value with the datatype', async () => {
     renderDialog();
 
-    const classPicker = screen.getByLabelText('Ontology class');
+    const classPicker = screen.getByLabelText('Clase de la ontología');
     await fireEvent.change(classPicker, { target: { value: 'Problem' } });
 
     const severity = screen.getByLabelText(/Severity/) as HTMLInputElement;
@@ -137,16 +139,16 @@ describe('the node creation form', () => {
     const oncreated = vi.fn();
     renderDialog({ oncreated });
 
-    const classPicker = screen.getByLabelText('Ontology class');
+    const classPicker = screen.getByLabelText('Clase de la ontología');
     await fireEvent.change(classPicker, { target: { value: 'Problem' } });
 
-    await fireEvent.input(screen.getByLabelText(/Title/), {
+    await fireEvent.input(screen.getByLabelText(/Título/), {
       target: { value: 'The campus shuttle leaves every hour' }
     });
     await fireEvent.input(screen.getByLabelText(/Severity/), { target: { value: '5' } });
     await fireEvent.input(screen.getByLabelText(/Source/), { target: { value: 'minutes' } });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
 
     await waitFor(() => {
       expect(oncreated).toHaveBeenCalled();
@@ -164,15 +166,15 @@ describe('the node creation form', () => {
 
     renderDialog();
 
-    const classPicker = screen.getByLabelText('Ontology class');
+    const classPicker = screen.getByLabelText('Clase de la ontología');
     await fireEvent.change(classPicker, { target: { value: 'Problem' } });
 
-    await fireEvent.input(screen.getByLabelText(/Title/), { target: { value: 'A valid title' } });
+    await fireEvent.input(screen.getByLabelText(/Título/), { target: { value: 'A valid title' } });
     // A number field refuses a text: the browser empties it, and the form
     // never sends an empty required attribute.
     await fireEvent.input(screen.getByLabelText(/Severity/), { target: { value: 'high' } });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Severity');
@@ -196,8 +198,8 @@ describe('the node creation form', () => {
 
     renderDialog();
 
-    await fireEvent.input(screen.getByLabelText(/Title/), { target: { value: 'A valid title' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+    await fireEvent.input(screen.getByLabelText(/Título/), { target: { value: 'A valid title' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_VALIDATION_FAILED');
@@ -205,22 +207,22 @@ describe('the node creation form', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('unknown or inactive typeKey');
 
     // The form kept what the user typed.
-    expect((screen.getByLabelText(/Title/) as HTMLInputElement).value).toBe('A valid title');
+    expect((screen.getByLabelText(/Título/) as HTMLInputElement).value).toBe('A valid title');
   });
 
   it('moves the focus into the form and announces the invalid fields', async () => {
     renderDialog();
 
-    const title = screen.getByLabelText(/Title/) as HTMLInputElement;
+    const title = screen.getByLabelText(/Título/) as HTMLInputElement;
     await waitFor(() => {
       expect(document.activeElement).toBe(title);
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('The form has');
+      expect(screen.getByRole('alert')).toHaveTextContent('El formulario tiene');
     });
-    expect(screen.getByRole('alert')).toHaveTextContent('Title');
+    expect(screen.getByRole('alert')).toHaveTextContent('Título');
   });
 });

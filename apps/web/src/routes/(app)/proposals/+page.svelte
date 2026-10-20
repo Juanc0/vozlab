@@ -21,10 +21,14 @@
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
   import ProposalDetail from '$lib/components/ProposalDetail.svelte';
   import { VoteLedger } from '$lib/governance/vote.svelte';
-  import { getApiClient, getWorkspaceState } from '$lib/state/context';
+  import { formatDate, formatNumber } from '$lib/i18n';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
+  import RichText from '$lib/components/RichText.svelte';
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The session-local state of the votes. */
   const ledger = new VoteLedger();
@@ -58,25 +62,44 @@
   let focusRequest = 0;
 
   /** The statuses the API accepts (`ListProposalQuerySchema`). */
-  const statusOptions: { value: ProposalStatus; label: string }[] = [
-    { value: 'PENDING', label: 'Pending' },
-    { value: 'APPROVED_BY_AUTHOR', label: 'Approved by the author' },
-    { value: 'REJECTED_BY_AUTHOR', label: 'Rejected by the author' },
-    { value: 'AUTO_APPLIED', label: 'Auto-applied' }
-  ];
+  const statusOptions: { value: ProposalStatus; label: string }[] = $derived([
+    { value: 'PENDING', label: t('proposals.statusPending') },
+    { value: 'APPROVED_BY_AUTHOR', label: t('proposals.statusApproved') },
+    { value: 'REJECTED_BY_AUTHOR', label: t('proposals.statusRejected') },
+    { value: 'AUTO_APPLIED', label: t('proposals.statusAutoApplied') }
+  ]);
 
   /** The kinds of target the API accepts. */
-  const targetTypeOptions: { value: TargetType; label: string }[] = [
-    { value: 'NODE', label: 'Node' },
-    { value: 'EDGE', label: 'Relation' },
-    { value: 'ONTOLOGY', label: 'Ontology class' }
-  ];
+  const targetTypeOptions: { value: TargetType; label: string }[] = $derived([
+    { value: 'NODE', label: t('proposals.targetNode') },
+    { value: 'EDGE', label: t('proposals.targetRelation') },
+    { value: 'ONTOLOGY', label: t('proposals.targetOntology') }
+  ]);
 
   /** The kinds of proposal (ADR-0026). */
-  const kindOptions: { value: ProposalKind; label: string }[] = [
-    { value: 'EDIT', label: 'Edit' },
-    { value: 'MERGE', label: 'Merge' }
-  ];
+  const kindOptions: { value: ProposalKind; label: string }[] = $derived([
+    { value: 'EDIT', label: t('proposals.kindEdit') },
+    { value: 'MERGE', label: t('proposals.kindMerge') }
+  ]);
+
+  /**
+   * The name of the kind of a target, as the list of the proposals reads.
+   *
+   * The value of the API is a contract identifier; the name the user reads
+   * is the copy of the dictionary.
+   */
+  function targetNoun(targetType: string): string {
+    switch (targetType) {
+      case 'NODE':
+        return t('proposals.nounNode');
+      case 'EDGE':
+        return t('proposals.nounRelation');
+      case 'ONTOLOGY':
+        return t('proposals.nounOntology');
+      default:
+        return targetType;
+    }
+  }
 
   /** The proposal under review. */
   const selected = $derived(
@@ -134,7 +157,7 @@
           return;
         }
         focused = null;
-        focusError = describeFailure(caught);
+        focusError = describeFailure(caught, t);
       });
   });
 
@@ -180,7 +203,7 @@
       if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
         return;
       }
-      listError = describeFailure(caught);
+      listError = describeFailure(caught, t);
     } finally {
       if (current === request) {
         loading = false;
@@ -231,25 +254,17 @@
       proposal.id === proposalId ? { ...proposal, communityScore } : proposal
     );
   }
-
-  /** A readable instant. */
-  function formatDate(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
-  }
 </script>
 
 <svelte:head>
-  <title>Proposals — VozLab</title>
+  <title>{t('proposals.pageTitle')}</title>
 </svelte:head>
 
 <section class="space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Proposals</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">{t('proposals.heading')}</h1>
     <p class="mt-2 max-w-prose text-ink-muted">
-      The knowledge pull requests of the workspace: open one to see the proposed change, to
-      discuss it and to vote on it. The active workspace is carried by a request header, not by the
-      URL: the path stays <code>/proposals</code>.
+      <RichText text={t('proposals.intro')} />
     </p>
   </div>
 
@@ -257,18 +272,22 @@
     aria-labelledby="proposal-filters-heading"
     class="rounded-card border border-line bg-surface p-4"
   >
-    <h2 id="proposal-filters-heading" class="text-base font-semibold tracking-tight">Filters</h2>
+    <h2 id="proposal-filters-heading" class="text-base font-semibold tracking-tight">
+      {t('proposals.filtersHeading')}
+    </h2>
 
     <div class="mt-3 flex flex-wrap items-end gap-3 text-sm">
       <div>
-        <label for="filter-status" class="block text-xs text-ink-muted">Status</label>
+        <label for="filter-status" class="block text-xs text-ink-muted">
+          {t('proposals.filterStatus')}
+        </label>
         <select
           id="filter-status"
           class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.status ?? ''}
           onchange={handleStatusChange}
         >
-          <option value="">All</option>
+          <option value="">{t('common.all')}</option>
           {#each statusOptions as option (option.value)}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -276,14 +295,16 @@
       </div>
 
       <div>
-        <label for="filter-target-type" class="block text-xs text-ink-muted">Target</label>
+        <label for="filter-target-type" class="block text-xs text-ink-muted">
+          {t('proposals.filterTarget')}
+        </label>
         <select
           id="filter-target-type"
           class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.targetType ?? ''}
           onchange={handleTargetTypeChange}
         >
-          <option value="">All</option>
+          <option value="">{t('common.all')}</option>
           {#each targetTypeOptions as option (option.value)}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -291,14 +312,16 @@
       </div>
 
       <div>
-        <label for="filter-kind" class="block text-xs text-ink-muted">Kind</label>
+        <label for="filter-kind" class="block text-xs text-ink-muted">
+          {t('proposals.filterKind')}
+        </label>
         <select
           id="filter-kind"
           class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
           value={filters.kind ?? ''}
           onchange={handleKindChange}
         >
-          <option value="">All</option>
+          <option value="">{t('common.all')}</option>
           {#each kindOptions as option (option.value)}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -309,17 +332,17 @@
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
     <section aria-labelledby="proposal-list-heading" class="min-w-0">
-      <h2 id="proposal-list-heading" class="sr-only">The proposals of the workspace</h2>
+      <h2 id="proposal-list-heading" class="sr-only">{t('proposals.listHeading')}</h2>
 
       {#if listError}
         <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
           <span class="font-mono">{listError.code}</span> — {listError.message}
         </p>
       {:else if loading && proposals.length === 0}
-        <p role="status" class="text-sm text-ink-muted">Loading the proposals…</p>
+        <p role="status" class="text-sm text-ink-muted">{t('proposals.loading')}</p>
       {:else if proposals.length === 0}
         <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-          No proposal matches these filters in this workspace.
+          {t('proposals.none')}
         </p>
       {:else}
         <!--
@@ -332,20 +355,19 @@
         <div
           class="overflow-x-auto rounded-card border border-line"
           role="region"
-          aria-label="The proposals of the workspace"
+          aria-label={t('proposals.listRegion')}
           tabindex="0"
         >
           <table class="w-full border-collapse text-left text-sm">
             <caption class="sr-only">
-              The proposals of the workspace: kind and target, status, community score and creation
-              date.
+              {t('proposals.listCaption')}
             </caption>
             <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
               <tr>
-                <th scope="col" class="px-3 py-2 font-semibold">Proposal</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Status</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Score</th>
-                <th scope="col" class="px-3 py-2 font-semibold">Created</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnProposal')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnStatus')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnScore')}</th>
+                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnCreated')}</th>
               </tr>
             </thead>
             <tbody>
@@ -358,8 +380,9 @@
                       aria-current={selectedId === proposal.id ? 'true' : undefined}
                       onclick={() => (selectedId = proposal.id)}
                     >
-                      {proposal.kind === 'MERGE' ? 'Merge proposal' : 'Edit proposal'}
-                      {proposal.targetType.toLowerCase()}
+                      {proposal.kind === 'MERGE'
+                        ? t('proposals.mergeProposalOf', { target: targetNoun(proposal.targetType) })
+                        : t('proposals.editProposalOf', { target: targetNoun(proposal.targetType) })}
                     </button>
                     {#if proposal.justification}
                       <span class="mt-1 block text-sm font-normal text-ink-muted">
@@ -368,9 +391,13 @@
                     {/if}
                   </th>
                   <td class="px-3 py-2 text-ink-muted">{proposal.status}</td>
-                  <td class="px-3 py-2 tabular-nums text-ink-muted">{proposal.communityScore}</td>
+                  <td class="px-3 py-2 tabular-nums text-ink-muted">
+                    {formatNumber(locale.locale, proposal.communityScore)}
+                  </td>
                   <td class="px-3 py-2 text-ink-muted">
-                    <time datetime={proposal.createdAt}>{formatDate(proposal.createdAt)}</time>
+                    <time datetime={proposal.createdAt}>
+                      {formatDate(locale.locale, proposal.createdAt)}
+                    </time>
                   </td>
                 </tr>
               {/each}
@@ -385,7 +412,7 @@
             disabled={loading}
             onclick={() => void loadProposals(cursor)}
           >
-            {loading ? 'Loading…' : 'Show older proposals'}
+            {loading ? t('common.loading') : t('proposals.showOlder')}
           </button>
         {/if}
       {/if}
@@ -393,7 +420,7 @@
 
     <aside aria-labelledby="proposal-detail-heading" class="min-w-0">
       <section class="rounded-card border border-line bg-surface p-4">
-        <h2 id="proposal-detail-heading" class="sr-only">The proposal under review</h2>
+        <h2 id="proposal-detail-heading" class="sr-only">{t('proposals.detailHeading')}</h2>
 
         {#if focusError}
           <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
@@ -401,8 +428,7 @@
           </p>
         {:else if selected === null}
           <p class="text-sm text-ink-muted">
-            Pick a proposal in the list to see its proposed change, its discussion and the controls
-            of its resolution.
+            {t('proposals.pickProposal')}
           </p>
         {:else}
           <ProposalDetail

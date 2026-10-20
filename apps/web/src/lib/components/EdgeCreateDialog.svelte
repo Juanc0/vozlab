@@ -15,6 +15,7 @@
    * what the user sees when it refuses.
    */
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
+  import { formatNumber } from '$lib/i18n';
   import { createEdge } from '$lib/api/graph';
   import type { NodeDto, OntologyResponseDto, SubgraphEdgeDto } from '$lib/api/types';
   import {
@@ -22,8 +23,9 @@
     relationAccepts,
     relationsForSource
   } from '$lib/ontology/node-form';
-  import { getApiClient } from '$lib/state/context';
+  import { getApiClient, getLocaleState } from '$lib/state/context';
   import ModalDialog from './ModalDialog.svelte';
+  import RichText from './RichText.svelte';
 
   interface Props {
     /** `true` while the dialog is open. */
@@ -43,6 +45,9 @@
   let { open, ontology, source, nodes = [], onclose, oncreated }: Props = $props();
 
   const api = getApiClient();
+  const locale = getLocaleState();
+  const t = locale.t;
+
   const uid = $props.id();
 
   const introId = `edge-form-intro-${uid}`;
@@ -78,7 +83,8 @@
       ? null
       : displayNameOf(
           ontology?.classes.find((cls) => cls.systemKey === relation.rangeClassKey)?.displayNames,
-          relation.rangeClassKey
+          relation.rangeClassKey,
+          locale.locale
         )
   );
 
@@ -135,7 +141,7 @@
     const nextErrors: Record<string, string> = {};
 
     if (targetNodeId === '') {
-      nextErrors['target'] = 'Pick the node the relation points at.';
+      nextErrors['target'] = t('edge.pickTarget');
     }
 
     errors = nextErrors;
@@ -158,7 +164,7 @@
     } catch (caught) {
       // The envelope of the API — the code and the message — is what the
       // user sees. The form keeps what the user typed.
-      failure = describeFailure(caught);
+      failure = describeFailure(caught, t);
       submitting = false;
       return;
     }
@@ -169,28 +175,25 @@
   }
 </script>
 
-<ModalDialog {open} title="Relate two nodes" {onclose} describedby={introId}>
+<ModalDialog {open} title={t('edge.relateTitle')} {onclose} describedby={introId}>
   <p id={introId} class="text-sm text-ink-muted">
-    A relation is created <strong>pending</strong>: the community reviews it before it joins the
-    graph. Only the relations the ontology allows for this node are offered.
+    <RichText text={t('edge.intro')} />
   </p>
 
   {#if source === null}
     <p class="mt-4 text-sm text-ink-muted">
-      Pick a node in the canvas or in the list before relating it to another one.
+      {t('edge.pickSource')}
     </p>
   {:else if ontology === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">Loading the ontology…</p>
+    <p role="status" class="mt-4 text-sm text-ink-muted">{t('node.loadingOntology')}</p>
   {:else if relations.length === 0}
     <p class="mt-4 text-sm text-ink-muted">
-      The active ontology declares no relation whose domain is
-      <span class="font-mono text-xs">{source.typeKey}</span>: there is nothing to relate this node
-      with yet.
+      {t('edge.noRelation', { typeKey: source.typeKey })}
     </p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       <div>
-        <span class="block text-sm font-medium text-ink">From</span>
+        <span class="block text-sm font-medium text-ink">{t('edge.from')}</span>
         <p class="mt-1 rounded-md border border-line bg-surface-muted px-3 py-2 text-sm">
           {source.title}
           <span class="block text-xs text-ink-muted">{source.typeKey}</span>
@@ -199,7 +202,7 @@
 
       <div>
         <label for={relationId} class="block text-sm font-medium text-ink">
-          Relation <span class="font-normal text-ink-muted">(required)</span>
+          {t('edge.relationLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
         </label>
         <select
           id={relationId}
@@ -211,14 +214,14 @@
         >
           {#each relations as candidate (candidate.systemKey)}
             <option value={candidate.systemKey}>
-              {displayNameOf(candidate.displayNames, candidate.systemKey)}
+              {displayNameOf(candidate.displayNames, candidate.systemKey, locale.locale)}
             </option>
           {/each}
         </select>
         {#if relation !== null}
           <p class="mt-1 text-xs text-ink-muted">
-            <span class="font-mono">{relation.systemKey}</span> — from
-            <span class="font-mono">{relation.domainClassKey}</span> to
+            <span class="font-mono">{relation.systemKey}</span> — {t('edge.fromClass')}
+            <span class="font-mono">{relation.domainClassKey}</span> {t('edge.toClass')}
             <span class="font-mono">{relation.rangeClassKey}</span>.
           </p>
         {/if}
@@ -226,7 +229,7 @@
 
       <div>
         <label for={targetId} class="block text-sm font-medium text-ink">
-          To <span class="font-normal text-ink-muted">(required)</span>
+          {t('edge.toLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
         </label>
         <select
           id={targetId}
@@ -238,7 +241,7 @@
             targetNodeId = event.currentTarget.value;
           }}
         >
-          <option value="">—</option>
+          <option value="">{t('common.emptyValue')}</option>
           {#each targets as candidate (candidate.id)}
             <option value={candidate.id}>{candidate.title}</option>
           {/each}
@@ -246,21 +249,16 @@
 
         {#if targets.length === 0}
           <p class="mt-1 text-xs text-ink-muted">
-            No node of the range class
-            {#if rangeLabel !== null}
-              <span class="font-mono">{rangeLabel}</span>
-            {/if}
-            exists in this workspace: create one first.
+            {t('edge.noTarget', { range: rangeLabel ?? '' })}
           </p>
         {:else if target !== null}
           <p class="mt-1 text-xs text-ink-muted">
-            The relation will point at <span class="font-medium">{target.title}</span>.
+            {t('edge.willPointAt', { title: target.title })}
           </p>
         {/if}
 
         <p class="mt-1 text-xs text-ink-muted">
-          The candidates are taken from the {nodes.length}
-          {nodes.length === 1 ? 'node' : 'nodes'} of the workspace that the list above holds.
+          {t('edge.candidates', { count: formatNumber(locale.locale, nodes.length) })}
         </p>
 
         {#if errors['target'] !== undefined}
@@ -273,7 +271,7 @@
           <p class="font-mono font-semibold text-negative">{failure.code}</p>
           <p class="mt-1 text-ink">{failure.message}</p>
           <p class="mt-1 text-xs text-ink-muted">
-            The form kept what you typed: nothing was created.
+            {t('edge.formKept')}
           </p>
         </div>
       {/if}
@@ -284,14 +282,14 @@
           class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={submitting}
         >
-          {submitting ? 'Creating…' : 'Create the relation'}
+          {submitting ? t('edge.creating') : t('edge.createSubmit')}
         </button>
         <button
           type="button"
           class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={onclose}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>

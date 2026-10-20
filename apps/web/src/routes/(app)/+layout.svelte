@@ -10,7 +10,7 @@
   } from '$lib/auth/dev-sign-in';
   import AppSidebar from '$lib/components/AppSidebar.svelte';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
-  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import type { LayoutProps } from './$types';
 
   let { children }: LayoutProps = $props();
@@ -18,6 +18,8 @@
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /**
    * The state of the guard.
@@ -70,7 +72,7 @@
 
     if (outcome.status === 'failed') {
       status = 'failed';
-      failure = outcome.error?.message ?? 'The API could not be reached.';
+      failure = outcome.error?.message ?? t('login.devErrorUnreachable');
       return;
     }
 
@@ -84,23 +86,22 @@
 
 {#if status === 'ready' || status === 'no-membership'}
   <div class="grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
-    <aside aria-label="Workspace and sections" class="min-w-0">
+    <aside aria-label={t('app.workspaceAndSections')} class="min-w-0">
       <AppSidebar />
     </aside>
 
     <div class="min-w-0">
       {#if status === 'no-membership'}
         <section class="rounded-card border border-line bg-surface p-6">
-          <h1 class="text-lg font-semibold tracking-tight">No workspace in this institution</h1>
+          <h1 class="text-lg font-semibold tracking-tight">{t('app.noWorkspaceHeading')}</h1>
           <p class="mt-2 text-sm text-ink-muted">
-            Your account is valid, but it is not a member of any workspace of this institution. Ask
-            an administrator to add you to one, or join an event with a code.
+            {t('app.noWorkspaceText')}
           </p>
           <a
             href="/join"
             class="mt-4 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           >
-            Join with an event code
+            {t('common.joinWithCode')}
           </a>
         </section>
       {:else}
@@ -110,11 +111,10 @@
   </div>
 {:else if status === 'failed'}
   <section role="alert" class="rounded-card border border-line bg-surface p-6">
-    <h1 class="text-lg font-semibold tracking-tight">The session could not be restored</h1>
+    <h1 class="text-lg font-semibold tracking-tight">{t('app.restoreFailedHeading')}</h1>
     <p class="mt-2 text-sm text-ink-muted">
       {#if connectivityState.offline}
-        The browser is offline: the session needs the network to be restored. The pages that need
-        the server cannot be loaded until the connection is back.
+        {t('app.restoreFailedOffline')}
       {:else}
         {failure}
       {/if}
@@ -124,11 +124,11 @@
       class="mt-4 rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
       onclick={restore}
     >
-      Try again
+      {t('common.tryAgain')}
     </button>
   </section>
 {:else}
   <div role="status" aria-live="polite">
-    <h1 class="text-lg font-semibold tracking-tight">Restoring your session…</h1>
+    <h1 class="text-lg font-semibold tracking-tight">{t('app.restoring')}</h1>
   </div>
 {/if}

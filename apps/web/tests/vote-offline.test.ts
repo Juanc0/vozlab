@@ -24,7 +24,7 @@ vi.mock('$app/navigation', () => ({ goto }));
 
 /** The score the vote buttons show. */
 function shownScore(): number {
-  const group = screen.getByRole('group', { name: /vote on/i });
+  const group = screen.getByRole('group', { name: /votar sobre/i });
   const score = within(group).getByText(/^-?\d+$/);
   return Number(score.textContent?.trim());
 }
@@ -63,13 +63,13 @@ function stubFetch(): ReturnType<typeof vi.fn> {
 /** Opens the proposal of the list and waits for its review. */
 async function openProposal(): Promise<void> {
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /proposal node/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /propuesta de edición de nodo/i })).toBeInTheDocument();
   });
 
-  await fireEvent.click(screen.getByRole('button', { name: /proposal node/i }));
+  await fireEvent.click(screen.getByRole('button', { name: /propuesta de edición de nodo/i }));
 
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: 'Upvote this proposal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' })).toBeInTheDocument();
   });
 }
 
@@ -98,7 +98,7 @@ describe('a vote that is refused offline', () => {
 
     window.dispatchEvent(new Event('offline'));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this item' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de este elemento' }));
 
     // The request never left the app: the vote was never optimistic, so
     // there is nothing to roll back either.
@@ -118,7 +118,7 @@ describe('a vote that is refused offline', () => {
 
     window.dispatchEvent(new Event('offline'));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this item' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de este elemento' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_OFFLINE');
@@ -137,7 +137,7 @@ describe('a vote that is refused offline', () => {
 
     window.dispatchEvent(new Event('offline'));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this item' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de este elemento' }));
 
     expect(requestedUrls(fetchMock).some((url) => url.includes('/interactions'))).toBe(false);
   });
@@ -152,7 +152,7 @@ describe('a vote that is refused offline', () => {
 
     window.dispatchEvent(new Event('offline'));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_OFFLINE');
@@ -172,10 +172,10 @@ describe('a vote that is refused offline', () => {
     );
 
     window.dispatchEvent(new Event('offline'));
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this item' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de este elemento' }));
 
     window.dispatchEvent(new Event('online'));
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this item' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de este elemento' }));
 
     await waitFor(() => {
       expect(requestedUrls(fetchMock).some((url) => url.includes('/interactions'))).toBe(true);

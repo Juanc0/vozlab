@@ -10,12 +10,14 @@
 
 import { getContext, setContext } from 'svelte';
 import type { ApiClient } from '$lib/api/client';
+import type { LocaleState } from '$lib/i18n';
 import type { SessionState } from './session.svelte';
 import type { WorkspaceState } from './workspace.svelte';
 
 export const SESSION_CONTEXT_KEY = Symbol.for('vozlab.web.session');
 export const WORKSPACE_CONTEXT_KEY = Symbol.for('vozlab.web.workspace');
 export const API_CLIENT_CONTEXT_KEY = Symbol.for('vozlab.web.api-client');
+export const LOCALE_CONTEXT_KEY = Symbol.for('vozlab.web.locale');
 
 export interface AppState {
   /** The in-memory session (access token + user). */
@@ -24,6 +26,8 @@ export interface AppState {
   readonly workspace: WorkspaceState;
   /** The HTTP client, bound to the session and the workspace. */
   readonly api: ApiClient;
+  /** The language of the interface. */
+  readonly locale: LocaleState;
 }
 
 /**
@@ -35,6 +39,7 @@ export function provideAppState(state: AppState): AppState {
   setContext(SESSION_CONTEXT_KEY, state.session);
   setContext(WORKSPACE_CONTEXT_KEY, state.workspace);
   setContext(API_CLIENT_CONTEXT_KEY, state.api);
+  setContext(LOCALE_CONTEXT_KEY, state.locale);
   return state;
 }
 
@@ -51,6 +56,11 @@ export function getWorkspaceState(): WorkspaceState {
 /** The HTTP client of the current request/tab. */
 export function getApiClient(): ApiClient {
   return getRequiredContext<ApiClient>(API_CLIENT_CONTEXT_KEY, 'API client');
+}
+
+/** The language of the interface of the current request/tab. */
+export function getLocaleState(): LocaleState {
+  return getRequiredContext<LocaleState>(LOCALE_CONTEXT_KEY, 'locale state');
 }
 
 function getRequiredContext<T>(key: symbol, name: string): T {

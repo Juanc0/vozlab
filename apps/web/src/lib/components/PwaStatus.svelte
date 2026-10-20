@@ -8,6 +8,10 @@
    * will not be available offline).
    */
   import { pwaState } from '$lib/pwa/state.svelte';
+  import { getLocaleState } from '$lib/state/context';
+
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The "ready to work offline" notice is dismissed by the user. */
   let dismissed = $state(false);
@@ -19,9 +23,8 @@
       class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
     >
       <p class="text-ink">
-        The offline support could not be enabled
-        <span class="font-mono text-negative">{pwaState.error}</span>. The app keeps working, but it
-        will not be available offline.
+        {t('pwa.errorTitle')}
+        <span class="font-mono text-negative">{pwaState.error}</span>. {t('pwa.errorHint')}
       </p>
     </div>
   </div>
@@ -30,7 +33,7 @@
     <div
       class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
     >
-      <p class="text-ink">VozLab is ready to work offline: the app is cached on this device.</p>
+      <p class="text-ink">{t('pwa.offlineReady')}</p>
       <button
         type="button"
         class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
@@ -38,7 +41,7 @@
           dismissed = true;
         }}
       >
-        Got it
+        {t('pwa.dismiss')}
       </button>
     </div>
   </div>

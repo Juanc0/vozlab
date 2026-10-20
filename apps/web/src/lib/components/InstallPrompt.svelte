@@ -8,6 +8,10 @@
    * the offer away.
    */
   import { installState } from '$lib/pwa/install.svelte';
+  import { getLocaleState } from '$lib/state/context';
+
+  const locale = getLocaleState();
+  const t = locale.t;
 </script>
 
 {#if installState.canInstall}
@@ -15,13 +19,13 @@
     <div
       class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
     >
-      <p class="text-ink">VozLab can be installed on this device and open in its own window.</p>
+      <p class="text-ink">{t('install.message')}</p>
       <button
         type="button"
         class="rounded-md border border-line-strong-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
         onclick={() => void installState.install()}
       >
-        Install VozLab
+        {t('install.action')}
       </button>
     </div>
   </div>

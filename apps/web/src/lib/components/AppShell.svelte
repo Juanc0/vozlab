@@ -4,6 +4,7 @@
   import OfflineBanner from '$lib/components/OfflineBanner.svelte';
   import PwaStatus from '$lib/components/PwaStatus.svelte';
   import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
+  import { getLocaleState } from '$lib/state/context';
 
   interface Props {
     title?: string;
@@ -11,6 +12,9 @@
   }
 
   let { title = 'VozLab', children }: Props = $props();
+
+  const locale = getLocaleState();
+  const t = locale.t;
 </script>
 
 <div class="flex min-h-dvh flex-col bg-surface-muted text-ink">
@@ -18,7 +22,7 @@
     href="#main-content"
     class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-md focus:bg-brand-900 focus:px-4 focus:py-2 focus:text-white"
   >
-    Skip to content
+    {t('shell.skipToContent')}
   </a>
 
   <header class="border-b border-line bg-surface">
@@ -53,7 +57,7 @@
 
   <footer class="border-t border-line bg-surface">
     <div class="mx-auto w-full max-w-6xl px-4 py-4 text-sm text-ink-muted">
-      VozLab — co-creation client for the knowledge graph.
+      {t('shell.footer')}
     </div>
   </footer>
 </div>

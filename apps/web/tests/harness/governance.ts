@@ -15,6 +15,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { contextWithLocale } from './locale';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { WORKSPACE_ID } from '../fixtures/graph';
@@ -94,7 +95,7 @@ export function renderGovernance(
 
   const result = render(component, {
     props,
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
       [API_CLIENT_CONTEXT_KEY, client]

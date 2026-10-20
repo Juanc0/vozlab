@@ -24,7 +24,7 @@ vi.mock('$app/navigation', () => ({ goto }));
 function shownScore(): number {
   // The vote is a group: the score is the number it shows next to its own
   // label.
-  const group = screen.getByRole('group', { name: /vote on/i });
+  const group = screen.getByRole('group', { name: /votar sobre/i });
   const score = within(group).getByText(/^-?\d+$/);
   return Number(score.textContent?.trim());
 }
@@ -54,13 +54,13 @@ function stubFetch(vote: (input: RequestInfo | URL, init?: RequestInit) => Promi
 /** Opens the proposal of the list and waits for its review. */
 async function openProposal(): Promise<void> {
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /proposal node/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /propuesta de edición de nodo/i })).toBeInTheDocument();
   });
 
-  await fireEvent.click(screen.getByRole('button', { name: /proposal node/i }));
+  await fireEvent.click(screen.getByRole('button', { name: /propuesta de edición de nodo/i }));
 
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: 'Upvote this proposal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' })).toBeInTheDocument();
   });
 }
 
@@ -100,7 +100,7 @@ describe('the optimistic vote', () => {
 
     expect(shownScore()).toBe(3);
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' }));
 
     // The score moved before the API answered.
     expect(shownScore()).toBe(4);
@@ -108,7 +108,7 @@ describe('the optimistic vote', () => {
     release();
 
     await waitFor(() => {
-      expect(screen.getByText(/Your vote was recorded/)).toBeInTheDocument();
+      expect(screen.getByText(/Tu voto se ha registrado/)).toBeInTheDocument();
     });
     expect(shownScore()).toBe(4);
   });
@@ -128,7 +128,7 @@ describe('the optimistic vote', () => {
 
     await openProposal();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_DUPLICATE_INTERACTION');
@@ -150,7 +150,7 @@ describe('the optimistic vote', () => {
 
     await openProposal();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Downvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar en contra de esta propuesta' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -178,10 +178,10 @@ describe('the optimistic vote', () => {
 
     await openProposal();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Your vote was recorded/)).toBeInTheDocument();
+      expect(screen.getByText(/Tu voto se ha registrado/)).toBeInTheDocument();
     });
 
     expect(shownScore()).toBe(4);
@@ -227,7 +227,7 @@ describe('the optimistic vote', () => {
 
     await openProposal();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Upvote this proposal' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' }));
 
     await waitFor(() => {
       expect(shownScore()).toBe(1);
@@ -251,16 +251,16 @@ describe('the optimistic vote', () => {
 
     await openProposal();
 
-    const upvote = screen.getByRole('button', { name: 'Upvote this proposal' });
+    const upvote = screen.getByRole('button', { name: 'Votar a favor de esta propuesta' });
     expect(upvote).toHaveAttribute('aria-pressed', 'false');
 
     await fireEvent.click(upvote);
 
     await waitFor(() => {
-      expect(screen.getByText(/Your vote was recorded/)).toBeInTheDocument();
+      expect(screen.getByText(/Tu voto se ha registrado/)).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: 'Upvote this proposal' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Votar a favor de esta propuesta' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );

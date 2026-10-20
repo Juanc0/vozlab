@@ -16,6 +16,7 @@
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import { createNode, type CreatedNode } from '$lib/api/graph';
   import type { OntologyResponseDto } from '$lib/api/types';
+  import { formatNumber, type Message } from '$lib/i18n';
   import {
     buildNodeForm,
     classOptions,
@@ -24,8 +25,9 @@
     type AttributeField,
     type FormValues
   } from '$lib/ontology/node-form';
-  import { getApiClient } from '$lib/state/context';
+  import { getApiClient, getLocaleState } from '$lib/state/context';
   import ModalDialog from './ModalDialog.svelte';
+  import RichText from './RichText.svelte';
 
   interface Props {
     /** `true` while the dialog is open. */
@@ -43,6 +45,9 @@
   let { open, ontology, ontologyError = null, onclose, oncreated }: Props = $props();
 
   const api = getApiClient();
+  const locale = getLocaleState();
+  const t = locale.t;
+
   const uid = $props.id();
 
   const introId = `node-form-intro-${uid}`;
@@ -62,7 +67,7 @@
   let values = $state<FormValues>({});
 
   /** The messages of the invalid fields, keyed by the field key. */
-  let errors = $state<Record<string, string>>({});
+  let errors = $state<Record<string, Message>>({});
 
   /** The envelope of a failed creation. */
   let failure = $state<ApiFailure | null>(null);
@@ -71,10 +76,12 @@
   let submitting = $state(false);
 
   /** The classes the user can pick. */
-  const options = $derived(classOptions(ontology));
+  const options = $derived(classOptions(ontology, locale.locale));
 
   /** The model of the form for the chosen class. */
-  const model = $derived(classKey === '' ? null : buildNodeForm(ontology, classKey));
+  const model = $derived(
+    classKey === '' ? null : buildNodeForm(ontology, classKey, locale.locale)
+  );
 
   /** The attribute fields of the form. */
   const fields = $derived(model?.fields ?? []);
@@ -93,12 +100,21 @@
       key,
       label:
         key === 'title'
-          ? 'Title'
+          ? t('node.titleLabel')
           : key === 'description'
-            ? 'Description'
+            ? t('node.descriptionLabel')
             : (fields.find((field) => field.systemKey === key)?.label ?? key)
     }))
   );
+
+  /** The message of the error of a field, when it has one. */
+  function errorOf(key: string): string | null {
+    const message = errors[key];
+    if (message === undefined) {
+      return null;
+    }
+    return t(message.key, message.params);
+  }
 
   /**
    * A fresh form every time the dialog opens.
@@ -210,7 +226,7 @@
     } catch (caught) {
       // The API answers with an envelope: the code and the message are what
       // the user sees. The form keeps what the user typed.
-      failure = describeFailure(caught);
+      failure = describeFailure(caught, t);
       submitting = false;
       return;
     }
@@ -243,10 +259,9 @@
   }
 </script>
 
-<ModalDialog {open} title="New node" {onclose} describedby={introId}>
+<ModalDialog {open} title={t('node.newNodeTitle')} {onclose} describedby={introId}>
   <p id={introId} class="text-sm text-ink-muted">
-    The fields come from the active ontology of this workspace. The node is created
-    <strong>pending</strong>: the community reviews it before it joins the graph.
+    <RichText text={t('node.createIntro')} />
   </p>
 
   {#if ontology === null && ontologyError !== null}
@@ -254,15 +269,17 @@
       <span class="font-mono">{ontologyError.code}</span> — {ontologyError.message}
     </p>
   {:else if ontology === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">Loading the ontology…</p>
+    <p role="status" class="mt-4 text-sm text-ink-muted">{t('node.loadingOntology')}</p>
   {:else if options.length === 0}
     <p class="mt-4 text-sm text-ink-muted">
-      This workspace has no active class: there is nothing to create a node from.
+      {t('node.noActiveClass')}
     </p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       <div>
-        <label for={classId} class="block text-sm font-medium text-ink">Ontology class</label>
+        <label for={classId} class="block text-sm font-medium text-ink">
+          {t('node.ontologyClass')}
+        </label>
         <select
           id={classId}
           class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
@@ -283,7 +300,7 @@
 
       <div>
         <label for={titleId} class="block text-sm font-medium text-ink">
-          Title <span class="font-normal text-ink-muted">(required)</span>
+          {t('node.titleLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
         </label>
         <input
           id={titleId}
@@ -302,13 +319,13 @@
           }}
         />
         {#if errors['title'] !== undefined}
-          <p id={`${titleId}-error`} class="mt-1 text-sm text-negative">{errors['title']}</p>
+          <p id={`${titleId}-error`} class="mt-1 text-sm text-negative">{errorOf('title')}</p>
         {/if}
       </div>
 
       <div>
         <label for={descriptionId} class="block text-sm font-medium text-ink">
-          Description <span class="font-normal text-ink-muted">(optional)</span>
+          {t('node.descriptionLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
         </label>
         <textarea
           id={descriptionId}
@@ -322,14 +339,16 @@
         ></textarea>
         {#if errors['description'] !== undefined}
           <p id={`${descriptionId}-error`} class="mt-1 text-sm text-negative">
-            {errors['description']}
+            {errorOf('description')}
           </p>
         {/if}
       </div>
 
       {#if fields.length > 0}
         <fieldset class="space-y-4">
-          <legend class="text-sm font-semibold tracking-tight">Attributes of {model?.label}</legend>
+          <legend class="text-sm font-semibold tracking-tight">
+            {t('node.attributesOf', { label: model?.label ?? '' })}
+          </legend>
 
           {#each fields as field (field.systemKey)}
             <div>
@@ -349,14 +368,14 @@
                   />
                   {field.label}
                   {#if field.isRequired}
-                    <span class="text-xs font-normal text-ink-muted">(required)</span>
+                    <span class="text-xs font-normal text-ink-muted">{t('common.required')}</span>
                   {/if}
                 </label>
               {:else}
                 <label for={fieldId(field)} class="block text-sm font-medium text-ink">
                   {field.label}
                   {#if field.isRequired}
-                    <span class="font-normal text-ink-muted">(required)</span>
+                    <span class="text-xs font-normal text-ink-muted">{t('common.required')}</span>
                   {/if}
                 </label>
 
@@ -372,7 +391,7 @@
                       setValue(field.systemKey, event.currentTarget.value);
                     }}
                   >
-                    <option value="">—</option>
+                    <option value="">{t('common.emptyValue')}</option>
                     {#each field.allowedValues ?? [] as allowed (allowed)}
                       <option value={allowed}>{allowed}</option>
                     {/each}
@@ -426,7 +445,7 @@
 
               {#if errors[field.systemKey] !== undefined}
                 <p id={fieldErrorId(field)} class="mt-1 text-sm text-negative">
-                  {errors[field.systemKey]}
+                  {errorOf(field.systemKey)}
                 </p>
               {/if}
             </div>
@@ -434,19 +453,18 @@
         </fieldset>
       {:else}
         <p class="text-sm text-ink-muted">
-          This class declares no active attribute: the node is only a title and a description.
+          {t('node.noActiveAttributes')}
         </p>
       {/if}
 
       {#if skipped.length > 0}
         <div class="rounded-md border border-line bg-surface-muted p-3 text-sm">
-          <p class="font-medium">Not shown in this form</p>
+          <p class="font-medium">{t('node.notShownHeading')}</p>
           <ul class="mt-1 list-disc pl-5 text-ink-muted">
             {#each skipped as property (property.systemKey)}
               <li>
-                <span class="font-mono text-xs">{property.systemKey}</span> — {property.label}: the
-                ontology re-declares a field of the node itself, so the value is asked once, in the
-                field above.
+                <span class="font-mono text-xs">{property.systemKey}</span> —
+                {t('node.skippedExplanation', { label: property.label })}
               </li>
             {/each}
           </ul>
@@ -456,8 +474,9 @@
       {#if invalidFields.length > 0}
         <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
           <p class="font-semibold">
-            The form has {invalidFields.length}
-            {invalidFields.length === 1 ? 'problem' : 'problems'}.
+            {invalidFields.length === 1
+              ? t('node.formProblem', { count: formatNumber(locale.locale, invalidFields.length) })
+              : t('node.formProblems', { count: formatNumber(locale.locale, invalidFields.length) })}
           </p>
           <ul class="mt-1 list-disc pl-5">
             {#each invalidFields as field (field.key)}
@@ -470,7 +489,7 @@
                     focusField(field.key);
                   }}
                 >
-                  {field.label}: {errors[field.key]}
+                  {field.label}: {errorOf(field.key)}
                 </a>
               </li>
             {/each}
@@ -483,7 +502,7 @@
           <p class="font-mono font-semibold text-negative">{failure.code}</p>
           <p class="mt-1 text-ink">{failure.message}</p>
           <p class="mt-1 text-xs text-ink-muted">
-            The form kept what you typed: nothing was created.
+            {t('node.formKept')}
           </p>
         </div>
       {/if}
@@ -494,14 +513,14 @@
           class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={submitting}
         >
-          {submitting ? 'Creating…' : 'Create the node'}
+          {submitting ? t('node.creating') : t('node.createSubmit')}
         </button>
         <button
           type="button"
           class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
           onclick={onclose}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>

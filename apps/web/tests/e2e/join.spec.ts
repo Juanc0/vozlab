@@ -19,18 +19,18 @@ test.describe('the event-code join', () => {
     await page.goto('/join');
     await waitForApp(page);
 
-    await page.getByLabel('Event code').fill(eventCode());
-    await page.getByLabel('Display name').fill(`Attendee ${uniqueMarker()}`);
-    await page.getByRole('button', { name: 'Join the event' }).click();
+    await page.getByLabel('Código del evento').fill(eventCode());
+    await page.getByLabel('Nombre visible').fill(`Attendee ${uniqueMarker()}`);
+    await page.getByRole('button', { name: 'Unirse al evento' }).click();
 
     // The app is reached — the URL stays clean, the workspace is not a path
     // segment.
     await expect(page).toHaveURL(`${WEB_ORIGIN}/`);
-    await expect(page.getByRole('heading', { name: 'Graph', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Grafo', level: 1 })).toBeVisible();
 
     // The workspace is selected: the selector holds a real workspace and the
     // user is a member of it.
-    const workspace = page.getByRole('combobox', { name: 'Workspace' });
+    const workspace = page.getByRole('combobox', { name: 'Espacio de trabajo' });
     await expect(workspace).toBeEnabled();
     await expect(workspace).toHaveValue(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -38,7 +38,7 @@ test.describe('the event-code join', () => {
 
     // The role of the user is shown — it comes from the membership, never
     // from the UI.
-    const role = page.getByText('Your role here:');
+    const role = page.getByText('Tu rol aquí:');
     await expect(role).toBeVisible();
     await expect(role).toContainText('MEMBER');
   });
@@ -49,8 +49,8 @@ test.describe('the event-code join', () => {
     await page.goto('/join');
     await waitForApp(page);
 
-    await page.getByLabel('Event code').fill('vle_this-code-does-not-exist-0000');
-    await page.getByRole('button', { name: 'Join the event' }).click();
+    await page.getByLabel('Código del evento').fill('vle_this-code-does-not-exist-0000');
+    await page.getByRole('button', { name: 'Unirse al evento' }).click();
 
     // The envelope of the API is what the user sees — never a status line.
     const alert = page.getByRole('alert').filter({ hasText: 'ERR_EVENT_EXPIRED' });
@@ -60,6 +60,6 @@ test.describe('the event-code join', () => {
 
     // The page did not change.
     await expect(page).toHaveURL(/\/join$/);
-    await expect(page.getByRole('heading', { name: 'Join an event', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unirse a un evento', level: 1 })).toBeVisible();
   });
 });

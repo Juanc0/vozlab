@@ -16,6 +16,7 @@ import { API_CLIENT_CONTEXT_KEY, WORKSPACE_CONTEXT_KEY } from '$lib/state/contex
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { EDGE, NODE_A, WORKSPACE_ID } from './fixtures/graph';
+import { contextWithLocale } from './harness/locale';
 
 vi.mock('$app/environment', () => ({
   browser: true,
@@ -54,7 +55,7 @@ function renderDialog(
       onclose: options.onclose ?? (() => {}),
       oncreated: options.oncreated
     },
-    context: new Map<unknown, unknown>([
+    context: contextWithLocale([
       [API_CLIENT_CONTEXT_KEY, client],
       [WORKSPACE_CONTEXT_KEY, workspace]
     ])
@@ -96,19 +97,19 @@ describe('the correction form', () => {
   it('prefills the form with the state of the target', async () => {
     renderDialog();
 
-    expect((screen.getByLabelText('Title (required)') as HTMLInputElement).value).toBe(NODE_A.title);
+    expect((screen.getByLabelText('Título (obligatorio)') as HTMLInputElement).value).toBe(NODE_A.title);
     expect(
-      (screen.getByLabelText('Description (optional)') as HTMLTextAreaElement).value
+      (screen.getByLabelText('Descripción (opcional)') as HTMLTextAreaElement).value
     ).toBe(NODE_A.description);
 
     // The attributes of the target are the rows of the editor.
     await waitFor(() => {
-      expect(screen.getByLabelText('Key of the attribute 1')).toBeInTheDocument();
+      expect(screen.getByLabelText('Clave del atributo 1')).toBeInTheDocument();
     });
-    expect((screen.getByLabelText('Key of the attribute 1') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Clave del atributo 1') as HTMLInputElement).value).toBe(
       'severity'
     );
-    expect((screen.getByLabelText('Value of the attribute 1') as HTMLInputElement).value).toBe('3');
+    expect((screen.getByLabelText('Valor del atributo 1') as HTMLInputElement).value).toBe('3');
   });
 
   it('shows the current value and the proposed one of every field', async () => {
@@ -117,20 +118,20 @@ describe('the correction form', () => {
     const table = screen.getByRole('table');
     expect(table).toHaveTextContent('The campus shuttle leaves every hour');
 
-    await fireEvent.input(screen.getByLabelText('Title (required)'), {
+    await fireEvent.input(screen.getByLabelText('Título (obligatorio)'), {
       target: { value: 'The campus shuttle leaves every half hour' }
     });
 
     // The row of the title is marked as a change; the other ones are not.
     const rows = screen.getAllByRole('row');
-    const titleRow = rows.find((row) => row.textContent?.trim().startsWith('Title'));
-    expect(titleRow).toHaveTextContent('Changes');
+    const titleRow = rows.find((row) => row.textContent?.trim().startsWith('Título'));
+    expect(titleRow).toHaveTextContent('Cambia');
     expect(titleRow).toHaveTextContent('The campus shuttle leaves every half hour');
 
     const descriptionRow = rows.find((row) =>
-      row.textContent?.trim().startsWith('Description')
+      row.textContent?.trim().startsWith('Descripción')
     );
-    expect(descriptionRow).toHaveTextContent('Unchanged');
+    expect(descriptionRow).toHaveTextContent('Sin cambios');
   });
 
   it('sends only the fields that change', async () => {
@@ -140,17 +141,17 @@ describe('the correction form', () => {
     const oncreated = vi.fn();
     renderDialog({ oncreated });
 
-    await fireEvent.input(screen.getByLabelText('Title (required)'), {
+    await fireEvent.input(screen.getByLabelText('Título (obligatorio)'), {
       target: { value: 'The campus shuttle leaves every half hour' }
     });
-    await fireEvent.input(screen.getByLabelText('Value of the attribute 1'), {
+    await fireEvent.input(screen.getByLabelText('Valor del atributo 1'), {
       target: { value: '5' }
     });
-    await fireEvent.input(screen.getByLabelText('Justification (optional)'), {
+    await fireEvent.input(screen.getByLabelText('Justificación (opcional)'), {
       target: { value: 'The title names the wrong building.' }
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
       expect(oncreated).toHaveBeenCalled();
@@ -176,18 +177,18 @@ describe('the correction form', () => {
     renderDialog();
 
     // A new row: the user says which kind of value it carries.
-    await fireEvent.click(screen.getByRole('button', { name: 'Add an attribute' }));
-    await fireEvent.input(screen.getByLabelText('Key of the attribute 3'), {
+    await fireEvent.click(screen.getByRole('button', { name: 'Añadir un atributo' }));
+    await fireEvent.input(screen.getByLabelText('Clave del atributo 3'), {
       target: { value: 'owner' }
     });
-    await fireEvent.change(screen.getByLabelText('Type of the attribute 3'), {
+    await fireEvent.change(screen.getByLabelText('Tipo del atributo 3'), {
       target: { value: 'checkbox' }
     });
-    await fireEvent.input(screen.getByLabelText('Value of the attribute 1'), {
+    await fireEvent.input(screen.getByLabelText('Valor del atributo 1'), {
       target: { value: '7' }
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
@@ -204,10 +205,10 @@ describe('the correction form', () => {
 
     renderDialog();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/This proposal changes nothing/)).toBeInTheDocument();
+      expect(screen.getByText(/Esta propuesta no cambia nada/)).toBeInTheDocument();
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -227,14 +228,14 @@ describe('the correction form', () => {
 
     renderDialog();
 
-    await fireEvent.input(screen.getByLabelText('Title (required)'), {
+    await fireEvent.input(screen.getByLabelText('Título (obligatorio)'), {
       target: { value: 'The campus shuttle leaves every half hour' }
     });
-    await fireEvent.input(screen.getByLabelText('Justification (optional)'), {
+    await fireEvent.input(screen.getByLabelText('Justificación (opcional)'), {
       target: { value: 'The title names the wrong building.' }
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('ERR_DUPLICATE_PROPOSAL');
@@ -244,11 +245,11 @@ describe('the correction form', () => {
     );
 
     // The form kept what the user typed.
-    expect((screen.getByLabelText('Title (required)') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Título (obligatorio)') as HTMLInputElement).value).toBe(
       'The campus shuttle leaves every half hour'
     );
     expect(
-      (screen.getByLabelText('Justification (optional)') as HTMLTextAreaElement).value
+      (screen.getByLabelText('Justificación (opcional)') as HTMLTextAreaElement).value
     ).toBe('The title names the wrong building.');
   });
 
@@ -281,13 +282,13 @@ describe('the correction form', () => {
 
     await waitFor(() => {
       expect(
-        (screen.getByLabelText('Relation key (required)') as HTMLInputElement).value
+        (screen.getByLabelText('Clave de la relación (obligatorio)') as HTMLInputElement).value
       ).toBe(EDGE.relationKey);
     });
 
     // The relation of the subgraph has no attributes: they are read.
     await waitFor(() => {
-      expect((screen.getByLabelText('Key of the attribute 1') as HTMLInputElement).value).toBe(
+      expect((screen.getByLabelText('Clave del atributo 1') as HTMLInputElement).value).toBe(
         'weight'
       );
     });
@@ -325,14 +326,14 @@ describe('the correction form', () => {
 
     await waitFor(() => {
       expect(
-        (screen.getByLabelText('Relation key (required)') as HTMLInputElement).value
+        (screen.getByLabelText('Clave de la relación (obligatorio)') as HTMLInputElement).value
       ).toBe(EDGE.relationKey);
     });
 
-    await fireEvent.input(screen.getByLabelText('Relation key (required)'), {
+    await fireEvent.input(screen.getByLabelText('Clave de la relación (obligatorio)'), {
       target: { value: 'INFORMS' }
     });
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
@@ -357,17 +358,17 @@ describe('the correction form', () => {
 
     // The focus is somewhere else when the form is sent: the form must
     // move it to the field that is not valid.
-    await fireEvent.input(screen.getByLabelText('Title (required)'), { target: { value: 'ab' } });
-    screen.getByLabelText('Justification (optional)').focus();
+    await fireEvent.input(screen.getByLabelText('Título (obligatorio)'), { target: { value: 'ab' } });
+    screen.getByLabelText('Justificación (opcional)').focus();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('The form has');
+      expect(screen.getByRole('alert')).toHaveTextContent('El formulario tiene');
     });
 
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByLabelText('Title (required)'));
+      expect(document.activeElement).toBe(screen.getByLabelText('Título (obligatorio)'));
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -380,20 +381,20 @@ describe('the correction form', () => {
     renderDialog();
 
     // The value of a number row is not a number: the row is the problem.
-    await fireEvent.input(screen.getByLabelText('Value of the attribute 1', { exact: true }), {
+    await fireEvent.input(screen.getByLabelText('Valor del atributo 1', { exact: true }), {
       target: { value: 'high' }
     });
-    screen.getByLabelText('Justification (optional)').focus();
+    screen.getByLabelText('Justificación (opcional)').focus();
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('This attribute must be a number.');
+      expect(screen.getByRole('alert')).toHaveTextContent('Este atributo debe ser un número.');
     });
 
     await waitFor(() => {
       expect(document.activeElement).toBe(
-        screen.getByLabelText('Value of the attribute 1', { exact: true })
+        screen.getByLabelText('Valor del atributo 1', { exact: true })
       );
     });
 
@@ -415,13 +416,13 @@ describe('the correction form', () => {
 
     renderDialog();
 
-    await fireEvent.input(screen.getByLabelText('Title (required)'), {
+    await fireEvent.input(screen.getByLabelText('Título (obligatorio)'), {
       target: { value: 'The campus shuttle leaves every half hour' }
     });
 
     window.dispatchEvent(new Event('offline'));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Propose the correction' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Proponer la corrección' }));
 
     // The refusal carries the local code and explains itself.
     await waitFor(() => {
@@ -432,7 +433,7 @@ describe('the correction form', () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     // The form kept what the user typed.
-    expect((screen.getByLabelText('Title (required)') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Título (obligatorio)') as HTMLInputElement).value).toBe(
       'The campus shuttle leaves every half hour'
     );
   });

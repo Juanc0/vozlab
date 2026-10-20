@@ -29,7 +29,8 @@
     proposalPermissions
   } from '$lib/governance/permissions';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
-  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { formatDate, formatNumber } from '$lib/i18n';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import DiscussionPanel from './DiscussionPanel.svelte';
   import ProposalDelta from './ProposalDelta.svelte';
   import VoteButtons from './VoteButtons.svelte';
@@ -50,6 +51,8 @@
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
+  const locale = getLocaleState();
+  const t = locale.t;
 
   /** The target of the proposal — its maintainer and a readable label. */
   let target = $state<ProposalTarget | null>(null);
@@ -151,6 +154,27 @@
   const ageDays = $derived(Math.floor(proposalAgeDays(proposal)));
 
   /**
+   * The reason why the auto-apply is not available.
+   *
+   * The reason is a piece of copy: it is read from the dictionary and put
+   * into the sentence that explains the refusal.
+   */
+  function autoApplyBlockerReason(): string {
+    const blocker = permissions?.autoApplyBlocker;
+
+    if (blocker === 'score') {
+      return t('proposals.autoApplyBlockedScore', { score: AUTO_APPLY_MIN_SCORE });
+    }
+    if (blocker === 'age') {
+      return t('proposals.autoApplyBlockedAge', { days: AUTO_APPLY_MIN_AGE_DAYS });
+    }
+    if (blocker === 'role') {
+      return t('proposals.autoApplyBlockedRole');
+    }
+    return t('proposals.autoApplyBlockedClosed');
+  }
+
+  /**
    * Reads the score of the proposal back after a vote.
    *
    * The API has no read for the interactions: a vote of the **same** type is
@@ -182,10 +206,10 @@
             ? await rejectProposal(api, proposal.id)
             : await autoApplyProposal(api, proposal.id);
 
-      notice = `The proposal is now ${resolved.status}.`;
+      notice = t('proposals.nowStatus', { status: resolved.status });
       onresolved?.(resolved);
     } catch (caught) {
-      actionError = describeFailure(caught);
+      actionError = describeFailure(caught, t);
     } finally {
       resolving = false;
     }
@@ -196,7 +220,7 @@
   <header>
     <div class="flex flex-wrap items-center gap-2">
       <h2 id="proposal-heading" class="text-base font-semibold tracking-tight">
-        {proposal.kind === 'MERGE' ? 'Merge proposal' : 'Edit proposal'}
+        {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
       <span class="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-ink-muted">
         {proposal.status}
@@ -204,7 +228,7 @@
     </div>
 
     <dl class="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-      <dt class="text-ink-muted">Target</dt>
+      <dt class="text-ink-muted">{t('proposals.target')}</dt>
       <dd>
         {proposal.targetType}
         {#if target?.label}
@@ -213,22 +237,24 @@
         <span class="block font-mono text-xs break-all text-ink-muted">{proposal.targetId}</span>
       </dd>
 
-      <dt class="text-ink-muted">Author</dt>
+      <dt class="text-ink-muted">{t('proposals.author')}</dt>
       <dd class="font-mono text-xs break-all">{proposal.proposerHash}</dd>
 
-      <dt class="text-ink-muted">Created</dt>
+      <dt class="text-ink-muted">{t('proposals.created')}</dt>
       <dd>
         <time datetime={proposal.createdAt}>
-          {new Date(proposal.createdAt).toISOString().slice(0, 10)}
+          {formatDate(locale.locale, proposal.createdAt)}
         </time>
-        <span class="text-ink-muted">({ageDays} days ago)</span>
+        <span class="text-ink-muted">
+          ({t('proposals.daysAgo', { count: formatNumber(locale.locale, ageDays) })})
+        </span>
       </dd>
 
       {#if proposal.resolvedAt}
-        <dt class="text-ink-muted">Resolved</dt>
+        <dt class="text-ink-muted">{t('proposals.resolved')}</dt>
         <dd>
           <time datetime={proposal.resolvedAt}>
-            {new Date(proposal.resolvedAt).toISOString().slice(0, 10)}
+            {formatDate(locale.locale, proposal.resolvedAt)}
           </time>
           {#if proposal.resolvedBy}
             <span class="block font-mono text-xs break-all text-ink-muted">{proposal.resolvedBy}</span>
@@ -244,7 +270,7 @@
 
   <section aria-labelledby="proposal-delta-heading">
     <h3 id="proposal-delta-heading" class="text-xs font-semibold tracking-wide uppercase">
-      Proposed change
+      {t('proposals.proposedChange')}
     </h3>
     <div class="mt-1">
       <ProposalDelta {proposal} mergeTargetLabel={mergeLabel} />
@@ -252,14 +278,16 @@
   </section>
 
   <section aria-labelledby="proposal-vote-heading">
-    <h3 id="proposal-vote-heading" class="text-xs font-semibold tracking-wide uppercase">Vote</h3>
+    <h3 id="proposal-vote-heading" class="text-xs font-semibold tracking-wide uppercase">
+      {t('proposals.voteHeading')}
+    </h3>
     <div class="mt-1">
       <VoteButtons
         {ledger}
         targetId={proposal.id}
         targetType="PROPOSAL"
         score={proposal.communityScore}
-        label="this proposal"
+        label={t('vote.thisProposal')}
         reconcile={reconcileScore}
       />
     </div>
@@ -267,7 +295,7 @@
 
   <section aria-labelledby="proposal-resolution-heading">
     <h3 id="proposal-resolution-heading" class="text-xs font-semibold tracking-wide uppercase">
-      Resolution
+      {t('proposals.resolutionHeading')}
     </h3>
 
     {#if notice}
@@ -283,10 +311,10 @@
     {/if}
 
     {#if permissions === null}
-      <p role="status" class="mt-1 text-sm text-ink-muted">Reading the target of the proposal…</p>
+      <p role="status" class="mt-1 text-sm text-ink-muted">{t('proposals.readingTarget')}</p>
     {:else if proposal.status !== 'PENDING'}
       <p class="mt-1 text-sm text-ink-muted">
-        This proposal is {proposal.status}: it is not open for a resolution.
+        {t('proposals.notOpen', { status: proposal.status })}
       </p>
     {:else}
       <div class="mt-1 flex flex-wrap items-center gap-2">
@@ -297,7 +325,7 @@
             disabled={resolving}
             onclick={() => void resolve('approve')}
           >
-            Approve
+            {t('proposals.approve')}
           </button>
           <button
             type="button"
@@ -305,7 +333,7 @@
             disabled={resolving}
             onclick={() => void resolve('reject')}
           >
-            Reject
+            {t('proposals.reject')}
           </button>
         {/if}
 
@@ -316,29 +344,20 @@
             disabled={resolving}
             onclick={() => void resolve('auto-apply')}
           >
-            Auto-apply
+            {t('proposals.autoApply')}
           </button>
         {/if}
       </div>
 
       {#if !permissions.canResolve}
         <p class="mt-1 text-sm text-ink-muted">
-          Resolving a proposal belongs to the maintainer of its target.
+          {t('proposals.belongsToMaintainer')}
         </p>
       {/if}
 
       {#if !permissions.canAutoApply}
         <p class="mt-1 text-sm text-ink-muted">
-          The auto-apply is not available:
-          {#if permissions.autoApplyBlocker === 'score'}
-            the community score is below {AUTO_APPLY_MIN_SCORE}.
-          {:else if permissions.autoApplyBlocker === 'age'}
-            the proposal is younger than {AUTO_APPLY_MIN_AGE_DAYS} days.
-          {:else if permissions.autoApplyBlocker === 'role'}
-            the role in this workspace is not a moderator or an administrator.
-          {:else}
-            the proposal is not open.
-          {/if}
+          {t('proposals.autoApplyBlocked', { reason: autoApplyBlockerReason() })}
         </p>
       {/if}
     {/if}
@@ -348,6 +367,6 @@
     targetId={proposal.id}
     targetType="PROPOSAL"
     {ledger}
-    heading="Discussion of this proposal"
+    heading={t('proposals.discussionHeading')}
   />
 </article>

@@ -20,8 +20,9 @@
   import { OfflineError } from '$lib/api/errors';
   import type { InteractionTargetType, InteractionType } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
+  import { formatNumber } from '$lib/i18n';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
-  import { getApiClient } from '$lib/state/context';
+  import { getApiClient, getLocaleState } from '$lib/state/context';
 
   interface Props {
     /** The session-local state of the votes. */
@@ -45,9 +46,14 @@
     reconcile?: () => Promise<number | null>;
   }
 
-  let { ledger, targetId, targetType, score, label = 'this item', reconcile }: Props = $props();
+  let { ledger, targetId, targetType, score, label, reconcile }: Props = $props();
 
   const api = getApiClient();
+  const locale = getLocaleState();
+  const t = locale.t;
+
+  /** The name of the target, for the accessible names of the buttons. */
+  const target = $derived(label ?? t('vote.thisItem'));
 
   let pending = $state(false);
   let info = $state<string | null>(null);
@@ -55,6 +61,9 @@
 
   /** The score shown: the server's score plus the votes in flight. */
   const displayed = $derived(ledger.score(targetId, score));
+
+  /** The score, written with the conventions of the locale. */
+  const formatted = $derived(formatNumber(locale.locale, displayed));
 
   /** The interaction the user already cast for this target, if any. */
   const voted = $derived(ledger.votedType(targetId));
@@ -79,7 +88,7 @@
     // optimistic update, so the score does not move at all. The rollback
     // does not run either — there is nothing to roll back.
     if (connectivityState.offline) {
-      failure = describeFailure(new OfflineError());
+      failure = describeFailure(new OfflineError(), t);
       pending = false;
       return;
     }
@@ -100,7 +109,7 @@
       }
     } catch (caught) {
       ledger.rollback(targetId, optimistic);
-      failure = describeFailure(caught);
+      failure = describeFailure(caught, t);
     } finally {
       pending = false;
     }
@@ -109,8 +118,8 @@
   /** Announces the outcome of the vote to the screen readers. */
   function announce(wasRepeat: boolean): void {
     info = wasRepeat
-      ? 'Your vote was already counted: the score is unchanged.'
-      : `Your vote was recorded. The score is now ${ledger.score(targetId, score)}.`;
+      ? t('vote.alreadyCounted')
+      : t('vote.recorded', { score: formatNumber(locale.locale, ledger.score(targetId, score)) });
   }
 
   /**
@@ -141,26 +150,26 @@
   The two buttons are a group: the name tells the screen reader what the
   group votes on, and the score is read next to its own label.
 -->
-<div class="inline-flex items-center gap-1.5" role="group" aria-label={`Vote on ${label}`}>
+<div class="inline-flex items-center gap-1.5" role="group" aria-label={t('vote.onLabel', { label: target })}>
   <button
     type="button"
     class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
     aria-pressed={voted === 'UPVOTE'}
-    aria-label={`Upvote ${label}`}
+    aria-label={t('vote.upvote', { label: target })}
     disabled={pending}
     onclick={() => void vote('UPVOTE')}
   >
     <span aria-hidden="true">▲</span>
   </button>
 
-  <span class="text-xs text-ink-muted">Score</span>
-  <span class="min-w-6 text-center text-sm font-semibold tabular-nums">{displayed}</span>
+  <span class="text-xs text-ink-muted">{t('vote.score')}</span>
+  <span class="min-w-6 text-center text-sm font-semibold tabular-nums">{formatted}</span>
 
   <button
     type="button"
     class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
     aria-pressed={voted === 'DOWNVOTE'}
-    aria-label={`Downvote ${label}`}
+    aria-label={t('vote.downvote', { label: target })}
     disabled={pending}
     onclick={() => void vote('DOWNVOTE')}
   >
@@ -172,6 +181,6 @@
 
 {#if failure}
   <p role="alert" class="mt-1 text-xs text-negative">
-    The vote was rejected — <span class="font-mono">{failure.code}</span> — {failure.message}
+    {t('vote.rejectedTitle')} — <span class="font-mono">{failure.code}</span> — {failure.message}
   </p>
 {/if}

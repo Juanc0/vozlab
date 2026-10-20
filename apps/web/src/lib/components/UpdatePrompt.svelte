@@ -8,6 +8,10 @@
    * applies it.
    */
   import { pwaState } from '$lib/pwa/state.svelte';
+  import { getLocaleState } from '$lib/state/context';
+
+  const locale = getLocaleState();
+  const t = locale.t;
 </script>
 
 {#if pwaState.needsRefresh}
@@ -15,13 +19,13 @@
     <div
       class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm text-brand-950"
     >
-      <p class="font-medium">A new version of VozLab is available.</p>
+      <p class="font-medium">{t('update.available')}</p>
       <button
         type="button"
         class="rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
         onclick={() => void pwaState.applyUpdate()}
       >
-        Reload now
+        {t('update.reload')}
       </button>
     </div>
   </div>

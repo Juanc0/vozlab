@@ -7,10 +7,11 @@ import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { VoteLedger } from '$lib/governance/vote.svelte';
 import { EDGE, NODE_A, NODE_B } from './fixtures/graph';
+import { contextWithLocale, localeContext } from './harness/locale';
 
 describe('the list view of the subgraph', () => {
   it('lists every node with its type and its status', () => {
-    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     const [nodeTable] = screen.getAllByRole('table');
 
@@ -23,7 +24,7 @@ describe('the list view of the subgraph', () => {
   });
 
   it('lists every relation with its key and its endpoints', () => {
-    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     const [, relationTable] = screen.getAllByRole('table');
 
@@ -33,7 +34,7 @@ describe('the list view of the subgraph', () => {
   });
 
   it('reports the selection of the node', () => {
-    render(GraphListView, {
+    render(GraphListView, { context: localeContext(),
       props: { nodes: [NODE_A, NODE_B], edges: [EDGE], selectedNodeId: NODE_B.id }
     });
 
@@ -50,7 +51,7 @@ describe('the list view of the subgraph', () => {
 
   it('selects the node when the user picks it in the list', async () => {
     const onselect = vi.fn();
-    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
 
     const [nodeTable] = screen.getAllByRole('table');
     await fireEvent.click(within(nodeTable).getByRole('button', { name: NODE_B.title }));
@@ -60,7 +61,7 @@ describe('the list view of the subgraph', () => {
 
   it('selects the endpoint of a relation when the user picks it', async () => {
     const onselect = vi.fn();
-    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
 
     const [, relationTable] = screen.getAllByRole('table');
     await fireEvent.click(within(relationTable).getByRole('button', { name: NODE_A.title }));
@@ -69,28 +70,28 @@ describe('the list view of the subgraph', () => {
   });
 
   it('says so when the subgraph holds no node and no relation', () => {
-    render(GraphListView, { props: { nodes: [], edges: [] } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [], edges: [] } });
 
-    expect(screen.getByText('The subgraph has no node.')).toBeInTheDocument();
-    expect(screen.getByText('The subgraph has no relation.')).toBeInTheDocument();
+    expect(screen.getByText('El subgrafo no tiene ningún nodo.')).toBeInTheDocument();
+    expect(screen.getByText('El subgrafo no tiene ninguna relación.')).toBeInTheDocument();
   });
 
   it('is a disclosure: the long list can be collapsed', () => {
-    const { container } = render(GraphListView, { props: { nodes: [NODE_A], edges: [] } });
+    const { container } = render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
 
     const details = container.querySelector('details');
 
     expect(details).not.toBeNull();
     expect(details?.open).toBe(true);
-    expect(details?.querySelector('summary')?.textContent).toContain('The subgraph as a list');
+    expect(details?.querySelector('summary')?.textContent).toContain('El subgrafo en forma de lista');
   });
 
   it('offers no vote on a relation without a ledger', () => {
-    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     const [, relationTable] = screen.getAllByRole('table');
 
-    expect(within(relationTable).queryByRole('button', { name: /upvote/i })).not.toBeInTheDocument();
+    expect(within(relationTable).queryByRole('button', { name: /votar a favor/i })).not.toBeInTheDocument();
   });
 
   it('offers the optimistic vote on a relation when a ledger is given', () => {
@@ -100,7 +101,7 @@ describe('the list view of the subgraph', () => {
         edges: [EDGE],
         ledger: new VoteLedger()
       },
-      context: new Map<unknown, unknown>([
+      context: contextWithLocale([
         [
           API_CLIENT_CONTEXT_KEY,
           new ApiClient({
@@ -115,10 +116,10 @@ describe('the list view of the subgraph', () => {
     const [, relationTable] = screen.getAllByRole('table');
 
     expect(
-      within(relationTable).getByRole('button', { name: /upvote/i })
+      within(relationTable).getByRole('button', { name: /votar a favor/i })
     ).toBeInTheDocument();
     expect(
-      within(relationTable).getByRole('button', { name: /downvote/i })
+      within(relationTable).getByRole('button', { name: /votar en contra/i })
     ).toBeInTheDocument();
   });
 });

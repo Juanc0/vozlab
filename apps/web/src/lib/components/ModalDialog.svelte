@@ -16,6 +16,7 @@
    * and `Escape` itself. Both paths behave the same way for the user.
    */
   import type { Snippet } from 'svelte';
+  import { getLocaleState } from '$lib/state/context';
 
   interface Props {
     /** `true` while the dialog is open. */
@@ -31,6 +32,9 @@
   }
 
   let { open, title, onclose, children, describedby }: Props = $props();
+
+  const locale = getLocaleState();
+  const t = locale.t;
 
   const uid = $props.id();
   const titleId = `dialog-title-${uid}`;
@@ -189,7 +193,7 @@
           class="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-surface-muted hover:text-ink"
           onclick={closeNow}
         >
-          Close
+          {t('common.close')}
         </button>
       </div>
 
