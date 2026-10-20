@@ -59,7 +59,8 @@ they disagree with the code, **the code wins** — fix the doc.
 - `pnpm --filter @vozlab/api dev` — `tsx watch` with `--env-file-if-exists=../../.env`.
 - `pnpm --filter @vozlab/database db:generate[:router|:tenant]`,
   `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
-  `db:mint-token -- --as maintainer|moderator|member|agent`.
+  `db:mint-token -- --as maintainer|moderator|member|agent`,
+  `db:grant-mcp-reader` (dev-only read-only role for the Postgres MCP).
 - `docker compose up -d --build` — Postgres 18 (`vozlab/postgres:18-age-pgvector`),
   Redis 7, Ollama. Init SQL runs only on a fresh volume.
 
