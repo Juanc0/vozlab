@@ -2,6 +2,9 @@
 
 - Status: Accepted
 - Date: 2026-10-19
+- Amended by: [ADR-0026](ADR-0026-merge-contract.md) — the merge contract now
+  exists, so §2's interim behaviour (the `MERGE` verdict is logged, not
+  applied) is replaced by a merge proposal. The rest of the decision stands.
 
 ## Context
 
@@ -106,3 +109,5 @@ merge is silently lost either — it is in the log.
 - [ADR-0009 API-owned source registry](ADR-0009-api-owned-source-registry.md) —
   the same principle: the API owns the contract, the worker proposes.
 - [FR-19](../requirements.md) — the requirement being implemented.
+- [ADR-0026 merge contract](ADR-0026-merge-contract.md) — the contract §2 was
+  waiting for.
