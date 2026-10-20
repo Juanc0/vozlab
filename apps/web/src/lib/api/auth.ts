@@ -10,7 +10,12 @@
  * - `POST /auth/logout` is Bearer-protected and clears the refresh cookie.
  */
 
-import { isSafeRedirectPath, type AuthMeDto, type AuthSessionDto } from '@vozlab/shared-types';
+import {
+  isSafeRedirectPath,
+  type AuthMeDto,
+  type AuthSessionDto,
+  type EventJoinInput
+} from '@vozlab/shared-types';
 import type { ApiClient } from './client';
 
 /** Where the identity provider sends the browser back to by default. */
@@ -26,6 +31,29 @@ export const DEFAULT_REDIRECT_PATH = '/';
 export function loginUrl(client: ApiClient, redirectPath: string = DEFAULT_REDIRECT_PATH): string {
   const safePath = isSafeRedirectPath(redirectPath) ? redirectPath : DEFAULT_REDIRECT_PATH;
   return client.url(`/auth/login?redirect=${encodeURIComponent(safePath)}`);
+}
+
+/**
+ * Joins an event with its code (FR-03).
+ *
+ * The route is public and rate-limited per IP: the code is the credential, so
+ * the call carries neither the `Authorization` nor the `X-Workspace-ID`
+ * header. The answer is a full session — an access token plus the rotated
+ * `HttpOnly` refresh cookie.
+ */
+export async function eventJoin(client: ApiClient, input: EventJoinInput): Promise<AuthSessionDto> {
+  const code = input.code.trim();
+  const alias = input.alias?.trim();
+
+  const body: EventJoinInput = alias === undefined || alias === '' ? { code } : { code, alias };
+
+  return client.request<AuthSessionDto>({
+    method: 'POST',
+    path: '/auth/event-join',
+    auth: 'none',
+    workspace: false,
+    body
+  });
 }
 
 /**

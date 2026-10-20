@@ -6,11 +6,10 @@
 
 <section class="space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">VozLab</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">Graph</h1>
     <p class="mt-2 max-w-prose text-ink-muted">
-      Co-creation client for the VozLab knowledge graph. This route is a placeholder for the
-      graph canvas (batch 3.4); the route groups <code>(auth)</code> and <code>(app)</code> arrive in
-      batch 3.3.
+      The Cytoscape canvas with the <code>dagre</code> layout arrives in batch 3.4. This route
+      names the batch it belongs to; it draws nothing yet and reads nothing from the API.
     </p>
   </div>
 

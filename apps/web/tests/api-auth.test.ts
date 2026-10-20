@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchMe, loginUrl, logout, refreshSession } from '$lib/api/auth';
+import { eventJoin, fetchMe, loginUrl, logout, refreshSession } from '$lib/api/auth';
 import { ApiClient } from '$lib/api/client';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
@@ -103,6 +103,52 @@ describe('auth api', () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${BASE_URL}/auth/logout`);
     expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('POST');
+  });
+
+  it('joins an event with the code alone', async () => {
+    const { client, fetchMock } = harness();
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: 'event-token',
+          expiresAt: '2026-10-19T12:15:00.000Z',
+          user: USER
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+
+    const session = await eventJoin(client, { code: '  vle_0123456789abcdefghijkl  ' });
+
+    expect(session.accessToken).toBe('event-token');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${BASE_URL}/auth/event-join`);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('POST');
+    expect(headersOf(fetchMock).get('Authorization')).toBeNull();
+    expect(headersOf(fetchMock).get('X-Workspace-ID')).toBeNull();
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      code: 'vle_0123456789abcdefghijkl'
+    });
+  });
+
+  it('sends the alias of an event join when there is one', async () => {
+    const { client, fetchMock } = harness();
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: 'event-token',
+          expiresAt: '2026-10-19T12:15:00.000Z',
+          user: USER
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+
+    await eventJoin(client, { code: 'vle_0123456789abcdefghijkl', alias: '  Curious Otter  ' });
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      code: 'vle_0123456789abcdefghijkl',
+      alias: 'Curious Otter'
+    });
   });
 
   it('builds the login URL with a same-origin redirect', () => {

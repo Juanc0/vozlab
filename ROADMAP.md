@@ -153,7 +153,13 @@ Milestones:
       headers, surfaces the `{ code, message }` envelope as a typed
       `ApiError`, clears the session on `401` and switches workspace on
       `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`. 38 web tests.
-- [ ] 3.3 Route groups `(auth)` / `(app)`; clean URLs.
+- [x] 3.3 Route groups `(auth)` / `(app)`; clean URLs. Result: `(auth)/login`
+      and `(auth)/join` are real (the OIDC redirect and the event-code join
+      exist since Batch 1V), `(app)` carries a four-state guard
+      (`restoring`/`ready`/`no-membership`/`failed`) with a sidebar and a
+      per-tab workspace selector, and `/auth/callback` lands the OIDC
+      failures outside both groups. The workspace is never a path segment.
+      81 web tests.
 - [ ] 3.4 Cytoscape graph canvas + subgraph loading.
 - [ ] 3.5 Node/edge creation, proposal review (approve/reject), discussions and
       voting UI with optimistic updates.

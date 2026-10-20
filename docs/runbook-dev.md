@@ -318,10 +318,37 @@ It serves the SSR app, `/manifest.webmanifest` and the service worker. The
 worker runs in `prompt` mode: a new version waits until the user accepts the
 reload, so assets are never swapped silently mid-session.
 
-> The scaffold is all that exists today (roadmap 3.1). There is no login
-> screen, no workspace selector and no graph canvas yet; those are 3.2 to 3.4.
-> Local development therefore still uses `db:mint-token` — see
-> [spec/web-pwa.md](spec/web-pwa.md).
+> The login page, the event-code join and the workspace selector exist
+> (roadmap 3.3). The graph canvas and the governance screens do not yet —
+> those are 3.4 and 3.5. See [spec/web-pwa.md](spec/web-pwa.md).
+
+### 14. Sign in to the PWA locally
+
+The PWA keeps the access token in memory and the refresh token in an
+`HttpOnly` cookie, so it needs a real session. `db:mint-token` cannot open
+one — a minted token has no refresh cookie — so local development uses the
+**event-code join**:
+
+```bash
+pnpm --filter @vozlab/database db:event-code
+# Raw code (only shown once — put this in the QR):
+#   vle__x8dvtIachq8pUjGxGCQ_Q1y
+```
+
+Open <http://localhost:5173/join>, paste the code and submit. The API
+consumes the code, creates an anonymous event user with a workspace
+membership, sets the refresh cookie and returns the session; the PWA adopts
+it and lands in the app with the workspace selected.
+
+The `/login` page starts the real OIDC flow, which needs an identity
+provider. None runs in Compose, so locally it is the event-code path above.
+
+The API half can be exercised without any of this:
+
+```bash
+TOKEN=$(pnpm --filter @vozlab/database db:mint-token -- --as maintainer \
+  | grep -E '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$')
+```
 
 ## Verify
 

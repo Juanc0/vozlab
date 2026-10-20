@@ -18,8 +18,9 @@ offline mode is read-only.
 ```text
 apps/web/src/routes/
 ├── (auth)/
-│   ├── login/+page.svelte        # institutional SSO entry (FR-01, not built)
-│   └── join/+page.svelte         # QR/event session (FR-03, not built)
+│   ├── login/+page.svelte        # institutional SSO entry (FR-01)
+│   └── join/+page.svelte         # event/QR session (FR-03)
+├── auth/callback/+page.svelte    # OIDC failure landing (outside the groups)
 └── (app)/
     ├── +layout.svelte            # session guard, sidebar, workspace selector
     ├── +page.svelte              # graph canvas
@@ -27,13 +28,36 @@ apps/web/src/routes/
     └── discussions/+page.svelte  # threads and comments
 ```
 
-`(app)` redirects to `/login` when no session/workspace is available. Until
-FR-01/02/03 endpoints exist, development uses a manually minted JWT from
-`db:mint-token`; the login/join pages are placeholders.
+`(app)` redirects to `/login` when no session is available. The URL stays
+clean (`/`); the active workspace is **not** a path segment (FR-04).
+Notifications over SSE are **not implemented**; the layout must not pretend a
+live stream exists.
 
-The URL stays clean (`/`); the active workspace is **not** a path segment
-(FR-04). Notifications over SSE are **not implemented**; the layout must not
-pretend a live stream exists.
+### Corrections against the code
+
+- **The login and join pages are real.** The endpoints exist (Batch 1V):
+  `GET /api/v1/auth/login` starts the OIDC redirect, `POST
+  /api/v1/auth/event-join` consumes an event code, `POST /api/v1/auth/refresh`
+  exchanges the `HttpOnly` cookie for an access token and `GET
+  /api/v1/auth/me` returns the memberships. Local development without an
+  IdP uses the **event-code join**, not a minted JWT: `db:event-code` issues
+  a code and `/join` consumes it. A minted token has no refresh cookie and
+  cannot open a session in the app.
+- **`/auth/callback` is outside both groups.** The API redirects an OIDC
+  failure to `${WEB_ORIGIN}/auth/callback?error=CODE`. That path cannot live
+  inside `(auth)` — a group adds no path prefix, so it would serve
+  `/callback` — and it must not be swallowed by `(app)`, whose guard would
+  redirect it back to the login.
+- **The guard has four states, not two.** `restoring` (the session is being
+  restored in the browser, and the server renders exactly this state so the
+  first client render matches), `ready`, `no-membership` (a valid session
+  with no workspace — an explicit state, never a redirect loop) and
+  `failed` (the API could not be reached — an explicit error, never
+  masquerading as a missing session).
+- **A 403 `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` needs a seam.** The workspace
+  state can switch to another permitted workspace, but when none is left the
+  caller must send the user back to `/login`. The first batch that fetches
+  graph data owns that path.
 
 ## Per-tab workspace state
 
@@ -194,8 +218,9 @@ Minimal manifest:
 - [ ] PWA manifest and service worker are generated; offline writes blocked.
   *(3.1 generates the manifest and the worker in `prompt` mode; the offline
   shell and the write block are 3.6.)*
-- [ ] Workspace changes are isolated per tab via `sessionStorage`.
-- [ ] `(app)` routes redirect to `/login` without a session.
+- [x] Workspace changes are isolated per tab via `sessionStorage`.
+- [x] `(app)` routes redirect to `/login` without a session. *(3.3 — four
+  guard states: `restoring`, `ready`, `no-membership`, `failed`.)*
 - [ ] Cytoscape renders a bounded subgraph with `dagre` and cleans up.
 - [ ] Proposals/discussions/votes use the real API, including optimistic vote
   rollback.
