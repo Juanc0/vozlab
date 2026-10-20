@@ -1,6 +1,6 @@
 """`NODE_CREATED` handler for the Relator (Agent 2).
 
-Flow (ADR-0022, ADR-0023):
+Flow (ADR-0022, ADR-0023, ADR-0026):
 
 1. Ask the API for the closest nodes of the workspace
    (`GET /api/v1/nodes/:id/neighbors`). A `409 ERR_NODE_NOT_EMBEDDED` means
@@ -9,7 +9,8 @@ Flow (ADR-0022, ADR-0023):
 2. Ask the local LLM for a verdict: `MERGE`, `EDGE` or `INDEPENDENT`.
 3. Act:
    - `INDEPENDENT` → nothing to do;
-   - `MERGE` → recorded in the log only; there is no merge contract yet;
+   - `MERGE` → submit a merge proposal (`POST /api/v1/proposals` with
+     `kind: "MERGE"`), which the community reviews;
    - `EDGE` → create a `PENDING` edge through `POST /api/v1/edges`, using a
      relation key taken from the workspace ontology.
 
@@ -105,16 +106,9 @@ class NodeCreatedHandler:
             return
 
         if verdict.action == "MERGE":
-            # ADR-0023: a merge has no contract to submit to yet. The verdict
-            # is recorded, never applied.
-            self._logger.info(
-                "merge verdict recorded but not applied (no merge contract yet)",
-                extra={
-                    "node_id": event.node_id,
-                    "target_id": verdict.target_id,
-                    "reason": verdict.reason,
-                },
-            )
+            # ADR-0026: a merge is a proposal like any other. The API owns the
+            # contract and the community reviews it.
+            self._propose_merge(event, verdict.target_id, verdict.reason)
             return
 
         target = next(n for n in neighbors if n["id"] == verdict.target_id)
@@ -220,6 +214,60 @@ class NodeCreatedHandler:
             ):
                 return True
         return False
+
+    def _propose_merge(
+        self,
+        event: NodeCreatedEvent,
+        target_id: str | None,
+        reason: str,
+    ) -> None:
+        """Submit a merge proposal (ADR-0026).
+
+        The proposal's target is the new node (the duplicate) and
+        `mergeIntoNodeId` is the neighbour the model chose. The API applies
+        the merge only when the proposal is approved.
+        """
+        if not target_id:
+            raise PermanentError("a merge verdict without a target cannot be submitted")
+
+        try:
+            # Not retried at the HTTP level: a POST is not idempotent and the
+            # API has no idempotency key.
+            self._api.post(
+                "/api/v1/proposals",
+                workspace_id=event.workspace_id,
+                correlation_id=event.req_id or None,
+                json={
+                    "kind": "MERGE",
+                    "targetId": event.node_id,
+                    "targetType": "NODE",
+                    "proposedChanges": {"mergeIntoNodeId": target_id},
+                    "justification": reason,
+                },
+            )
+        except ApiError as exc:
+            if exc.status_code == 409:
+                # A pending merge proposal already exists for this node:
+                # nothing to propose, and nothing to retry.
+                self._logger.info(
+                    "a merge proposal is already pending; nothing to propose",
+                    extra={
+                        "node_id": event.node_id,
+                        "target_id": target_id,
+                    },
+                )
+                return
+            raise self._classify(exc, f"proposing the merge into {target_id}") from exc
+
+        self._logger.info(
+            "merge proposed",
+            extra={
+                "node_id": event.node_id,
+                "target_id": target_id,
+                "reason": reason,
+                "workspace_id": event.workspace_id,
+            },
+        )
 
     def _create_edge(self, event: NodeCreatedEvent, target_id: str, relation_key: str) -> None:
         try:

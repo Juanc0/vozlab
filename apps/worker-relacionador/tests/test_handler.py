@@ -74,6 +74,7 @@ def make_handler(
     ontology: dict | None = None,
     neighbors_status: int = 200,
     edge_status: int = 201,
+    proposal_status: int = 201,
 ) -> tuple[NodeCreatedHandler, StubChat, list[httpx.Request]]:
     requests: list[httpx.Request] = []
 
@@ -99,6 +100,19 @@ def make_handler(
                     "sourceNodeId": NODE_ID,
                     "targetNodeId": TARGET_ID,
                     "relationKey": "RELATES_TO",
+                    "status": "PENDING",
+                },
+            )
+        if path == "/api/v1/proposals" and request.method == "POST":
+            if proposal_status != 201:
+                return httpx.Response(proposal_status, json={"code": "ERR_VALIDATION_FAILED"})
+            return httpx.Response(
+                201,
+                json={
+                    "id": "proposal-1",
+                    "targetId": NODE_ID,
+                    "targetType": "NODE",
+                    "kind": "MERGE",
                     "status": "PENDING",
                 },
             )
@@ -147,15 +161,49 @@ def test_an_independent_verdict_creates_nothing() -> None:
     assert [r for r in requests if r.method == "POST"] == []
 
 
-def test_a_merge_verdict_creates_nothing() -> None:
+def test_a_merge_verdict_submits_a_merge_proposal() -> None:
     handler, _chat, requests = make_handler(
         verdict=Verdict(action="MERGE", target_id=TARGET_ID, reason="duplicate")
     )
 
     handler(make_message())
 
-    # ADR-0023: a merge has no contract yet; it is recorded, never applied.
-    assert [r for r in requests if r.method == "POST"] == []
+    # ADR-0026: a merge is a proposal, not a direct write.
+    posts = [r for r in requests if r.method == "POST"]
+    assert len(posts) == 1
+    assert posts[0].url.path == "/api/v1/proposals"
+    body = json.loads(posts[0].content)
+    assert body == {
+        "kind": "MERGE",
+        "targetId": NODE_ID,
+        "targetType": "NODE",
+        "proposedChanges": {"mergeIntoNodeId": TARGET_ID},
+        "justification": "duplicate",
+    }
+    assert posts[0].headers["x-workspace-id"] == WORKSPACE_ID
+    assert posts[0].headers["x-correlation-id"] == "req-1"
+
+
+def test_a_merge_that_is_already_proposed_is_not_retried() -> None:
+    handler, _chat, requests = make_handler(
+        verdict=Verdict(action="MERGE", target_id=TARGET_ID, reason="duplicate"),
+        proposal_status=409,
+    )
+
+    handler(make_message())
+
+    # The API answered "already proposed": the entry is acknowledged.
+    assert [r for r in requests if r.method == "POST"]
+
+
+def test_a_rejected_merge_proposal_is_permanent() -> None:
+    handler, _chat, _requests = make_handler(
+        verdict=Verdict(action="MERGE", target_id=TARGET_ID, reason="duplicate"),
+        proposal_status=422,
+    )
+
+    with pytest.raises(PermanentError):
+        handler(make_message())
 
 
 def test_without_neighbours_the_model_is_not_asked() -> None:
