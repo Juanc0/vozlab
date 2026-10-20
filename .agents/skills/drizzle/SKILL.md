@@ -1,8 +1,6 @@
 ---
 name: drizzle
-description: "Type-safe SQL ORM for TypeScript with zero runtime overhead"
-user-invocable: false
-disable-model-invocation: true
+description: "Drizzle ORM 0.45 for TypeScript - schema definitions, relational queries, transactions, migrations and drizzle-kit. Use when working with drizzle-orm, @vozlab/database, the tenant or router schema, drizzle-kit generate/push/migrate, or any repository that builds Drizzle queries."
 progressive_disclosure:
   entry_point:
     summary: "Type-safe SQL ORM for TypeScript with zero runtime overhead"
@@ -17,6 +15,33 @@ progressive_disclosure:
 # Drizzle ORM
 
 Modern TypeScript-first ORM with zero dependencies, compile-time type safety, and SQL-like syntax. Optimized for edge runtimes and serverless environments.
+
+## VozLab specifics
+
+The generic guidance below assumes a single database. VozLab does not:
+
+- **Two physical databases, never mixed.** The router DB (`vozlab_router`,
+  `public.tenants` / `tenant_connections` / `event_codes`) and the tenant DB
+  (`vozlab_tenant_dev`, schemas `auth` / `meta` / `public` / `social`) have
+  **separate drizzle configs and separate migrations**
+  (`drizzle.router.config.ts`, `drizzle.tenant.config.ts`). The schema files in
+  `packages/database/src/schema/` are the source of truth (ADR-0003).
+- **A tenant DB per institution.** The pool is resolved per internal tenant
+  UUID `tid`; every repository method takes `tid` and the adapter narrows the
+  opaque `DbTransaction` handle to its concrete Drizzle type once.
+- **Extensions in play.** PostgreSQL 18 with Apache AGE 1.8 and pgvector:
+  `nodes.embedding` is `vector(768)` with an HNSW index, and the bounded
+  subgraph read path is a recursive SQL CTE over `public.edges` (the AGE
+  mirroring adapter is deferred, ADR-0004).
+- **Soft delete.** The adapter owns `deleted_at`; reads filter
+  `deleted_at IS NULL`. Only `softDelete` stamps it.
+- **Keyset pagination.** The shared helpers in
+  `infrastructure/persistence/keyset.ts` build the opaque cursor and the tuple
+  comparison that must match the `ORDER BY`. `OFFSET` is never used.
+
+Before changing a schema: generate the migration with the right target
+(`pnpm --filter @vozlab/database db:generate:router` or `db:generate:tenant`),
+and never run migrations from the API process.
 
 ## Quick Start
 
