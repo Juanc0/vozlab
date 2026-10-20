@@ -13,6 +13,7 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@vozlab/shared-types": "workspace:*",
     "cytoscape": "^3.34.4",
     "cytoscape-dagre": "^4.0.1"
   },

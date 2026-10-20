@@ -1,6 +1,6 @@
 # Architecture
 
-VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, but only the scaffold (roadmap 3.1) — the state layer, the routes, the graph canvas and the governance UI are not built yet.
+VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, with the scaffold (3.1) and the state layer plus HTTP client (3.2) done — the route groups, the graph canvas and the governance UI are not built yet.
 
 ## Context and containers
 
@@ -117,7 +117,7 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 
 ## What is not built
 
-- PWA state layer, route groups, graph canvas, governance UI, offline shell and E2E suite: only the 3.1 scaffold exists (it builds and serves SSR). The OIDC login screen, the session restore UI and the event QR scanner are 3.3.
+- PWA route groups, graph canvas, governance UI, offline shell and E2E suite: the 3.1 scaffold and the 3.2 state layer exist, but no route is wired yet. The OIDC login screen, the session restore UI and the event QR scanner are 3.3.
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SSE, GraphQL.
 - Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).

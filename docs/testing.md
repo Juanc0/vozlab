@@ -11,8 +11,8 @@ plan.
 | --- | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 | Vitest 5.0.5 (jsdom) |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` | `apps/web/tests/**/*.test.ts` |
-| Size | 29 files / 159 tests | 5 files / 29 tests | 4 files / 16 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle | The app shell landmarks, the route components, the runtime API base URL resolution, the service-worker registration flow |
+| Size | 29 files / 159 tests | 5 files / 29 tests | 8 files / 49 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle | The app shell landmarks, the route components, the runtime API base URL resolution, the service-worker registration flow, the per-tab workspace state, the in-memory session, the HTTP client's headers and error envelope |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider | jsdom; no network, no service worker |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) | `pnpm test` (default, CI) |
 | Coverage | Not measured; no coverage provider installed | Not measured | Not measured |

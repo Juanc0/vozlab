@@ -45,12 +45,14 @@ The old docs contain an invalid type (`Array<{ id: name: slug: string string; }>
 The corrected shape is:
 
 ```ts
-type WorkspaceSummary = { id: string; name: string; slug: string };
+// `WorkspaceSummaryDto` and `WorkspaceRole` come from
+// `@vozlab/shared-types` — do not restate them here.
+type WorkspaceSummary = WorkspaceSummaryDto; // { id, slug, name, role }
 
 class WorkspaceState {
   currentWorkspaceId = $state('');
   workspaces = $state<WorkspaceSummary[]>([]);
-  role = $state<'ADMIN' | 'MODERATOR' | 'MEMBER' | 'VIEWER'>('MEMBER');
+  role = $state<WorkspaceRole>('MEMBER');
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -64,11 +66,25 @@ class WorkspaceState {
     sessionStorage.setItem('vozlab_active_workspace', id);
   }
 
-  canEdit = $derived(this.role !== 'VIEWER');
+  isModerator = $derived(isModeratorOrAdmin(this.role));
 }
-
-export const workspaceState = new WorkspaceState();
 ```
+
+Three corrections, made against the code rather than the older draft:
+
+- **There is no `VIEWER` role.** The workspace roles are `ADMIN | MODERATOR |
+  MEMBER` (`WorkspaceRoleSchema` in `@vozlab/shared-types`, enforced by the
+  tenant schema). There is no `canEdit`: every membership role may create
+  nodes, edges, proposals and votes. Only the *resolution* actions are
+  restricted — approve/reject to the target's maintainer, auto-apply to
+  `MODERATOR`/`ADMIN` — and the API re-checks them regardless of the UI.
+- **The role is derived from the active membership**, not an independent
+  field: `WorkspaceSummaryDto` carries the role, and the state picks the one
+  of the active workspace.
+- **The state is not a module-level singleton.** `export const workspaceState =
+  new WorkspaceState()` leaks one user's workspace into another user's SSR
+  request. The root layout creates the instance and provides it through
+  Svelte's context API; every child reads it with `getContext`.
 
 The HTTP client reads the same key and injects:
 
@@ -79,10 +95,20 @@ x-correlation-id: <uuid>
 Content-Type: application/json
 ```
 
+`Content-Type` is only sent when the request carries a body.
+`GET /api/v1/auth/me` is the one Bearer-protected route that takes **no**
+`X-Workspace-ID`: the workspace is the answer, not an input.
+
 It should surface the API error envelope (`code`, `message`) rather than raw
 HTTP text. A `401` clears the session; a `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`
-switches back to a permitted workspace. Token storage (memory vs.
-`sessionStorage` vs. httpOnly cookie) is an open security decision.
+switches back to a permitted workspace.
+
+**Token storage is decided, not open.** The access JWT is returned in the JSON
+body of `/auth/refresh` and kept **in memory only**; the refresh token is an
+opaque `HttpOnly` cookie scoped to `/api/v1/auth` and rotated on every
+refresh, so JavaScript never sees it. Neither credential is written to
+`localStorage` or `sessionStorage`. The only persisted value is the active
+workspace id.
 
 ## Graph canvas
 
@@ -177,9 +203,6 @@ Minimal manifest:
 
 ## Open questions
 
-- Token storage/refresh: keep the access token in memory and call
-  `/api/v1/auth/refresh` on load (the API half exists; the PWA client is not
-  built).
 - SSE/event notification design (deferred) and offline cache scope.
 - i18n/branding per tenant; graph performance beyond 200 nodes.
 

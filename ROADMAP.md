@@ -145,8 +145,14 @@ Milestones:
       never swaps assets silently). 16 web tests. The state layer, the route
       groups, the canvas, the governance UI, the offline shell and the E2E
       suite are 3.2 to 3.7.
-- [ ] 3.2 Runes state + per-tab `sessionStorage` workspace + HTTP client that
-      injects `X-Workspace-ID`.
+- [x] 3.2 Runes state + per-tab `sessionStorage` workspace + HTTP client that
+      injects `X-Workspace-ID`. Result: `WorkspaceState` (per-tab
+      `sessionStorage`, never `localStorage`), `SessionState` (access token in
+      memory only), a context-provided state (no module singleton — it would
+      leak across SSR requests) and an `ApiClient` that injects the three
+      headers, surfaces the `{ code, message }` envelope as a typed
+      `ApiError`, clears the session on `401` and switches workspace on
+      `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`. 38 web tests.
 - [ ] 3.3 Route groups `(auth)` / `(app)`; clean URLs.
 - [ ] 3.4 Cytoscape graph canvas + subgraph loading.
 - [ ] 3.5 Node/edge creation, proposal review (approve/reject), discussions and
