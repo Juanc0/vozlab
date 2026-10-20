@@ -2,6 +2,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { editProposals } from '@vozlab/database';
 import {
   EditProposal,
+  ProposalKind,
   ProposalStatus,
   TargetType,
 } from '../../../domain/entities/EditProposal.js';
@@ -75,6 +76,7 @@ export class DrizzleProposalRepository implements IProposalRepository {
     opts: {
       status?: ProposalStatus;
       targetType?: TargetType;
+      kind?: ProposalKind;
       limit: number;
       cursor?: string;
     },
@@ -93,6 +95,9 @@ export class DrizzleProposalRepository implements IProposalRepository {
     }
     if (opts.targetType) {
       conditions.push(eq(editProposals.targetType, opts.targetType));
+    }
+    if (opts.kind) {
+      conditions.push(eq(editProposals.kind, opts.kind));
     }
     if (decoded) {
       conditions.push(keysetAfter(editProposals.createdAt, editProposals.id, decoded, 'desc'));
@@ -138,6 +143,7 @@ export class DrizzleProposalRepository implements IProposalRepository {
       workspaceId: proposal.workspaceId,
       targetId: proposal.targetId,
       targetType: proposal.targetType,
+      kind: proposal.kind,
       proposerHash: proposal.proposerHash.toString(),
       proposedChanges: proposal.proposedChanges,
       justification: proposal.justification,
@@ -180,6 +186,7 @@ function toDomain(row: typeof editProposals.$inferSelect): EditProposal {
     row.communityScore,
     row.resolvedBy ? AuthorHash.fromString(row.resolvedBy) : null,
     row.resolvedAt ?? null,
-    row.createdAt
+    row.createdAt,
+    (row.kind as ProposalKind) ?? 'EDIT'
   );
 }

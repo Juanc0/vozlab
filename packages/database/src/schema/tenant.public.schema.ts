@@ -9,6 +9,7 @@ import {
   customType,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { workspaces } from './tenant.auth.schema.js';
@@ -56,6 +57,13 @@ export const nodes = pgTable(
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
     authorHash: varchar('author_hash', { length: 64 }).notNull(),
     status: varchar('status', { length: 20 }).default('PENDING').notNull(), // DRAFT | PENDING | ACTIVE | MERGED | DEPRECATED | REJECTED
+    // ADR-0026: the node that survives when this node is merged away.
+    // NULL for every node that was never merged. The pointer is kept when the
+    // survivor is hard-deleted (the rows only leave the table with the
+    // workspace).
+    mergedIntoId: uuid('merged_into_id').references((): AnyPgColumn => nodes.id, {
+      onDelete: 'set null',
+    }),
     communityScore: integer('community_score').default(0).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -125,6 +133,9 @@ export const editProposals = pgTable('edit_proposals', {
     .references(() => workspaces.id, { onDelete: 'cascade' }),
   targetId: uuid('target_id').notNull(), // Logically points to Node, Edge, or Ontology Class
   targetType: varchar('target_type', { length: 30 }).notNull(), // 'NODE' | 'EDGE' | 'ONTOLOGY'
+  // ADR-0026: the kind of the proposal. 'EDIT' is an attribute delta applied
+  // to the target; 'MERGE' folds the target node into another one.
+  kind: varchar('kind', { length: 20 }).default('EDIT').notNull(),
   proposerHash: varchar('proposer_hash', { length: 64 }).notNull(),
   proposedChanges: jsonb('proposed_changes').notNull(),
   justification: text('justification'),

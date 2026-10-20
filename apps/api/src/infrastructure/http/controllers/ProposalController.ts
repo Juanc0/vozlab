@@ -21,6 +21,8 @@ interface ProposalDto {
   workspaceId: string;
   targetId: string;
   targetType: string;
+  /** ADR-0026: `EDIT` (an attribute delta) or `MERGE` (a node is folded in). */
+  kind: string;
   status: string;
   communityScore: number;
   justification: string | null;
@@ -37,6 +39,7 @@ function toProposalDto(proposal: EditProposal): ProposalDto {
     workspaceId: proposal.workspaceId,
     targetId: proposal.targetId,
     targetType: proposal.targetType,
+    kind: proposal.kind,
     status: proposal.status,
     communityScore: proposal.communityScore,
     justification: proposal.justification,
@@ -84,6 +87,7 @@ export class ProposalController {
         id: proposal.id,
         targetId: proposal.targetId,
         targetType: proposal.targetType,
+        kind: proposal.kind,
         status: proposal.status,
         communityScore: proposal.communityScore,
       });
@@ -114,6 +118,7 @@ export class ProposalController {
         cursor: parsed.data.cursor,
         status: parsed.data.status,
         targetType: parsed.data.targetType,
+        kind: parsed.data.kind,
       });
 
       return reply.status(200).send({

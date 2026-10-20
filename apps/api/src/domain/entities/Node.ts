@@ -19,7 +19,12 @@ export class Node {
     public status: NodeStatus,
     public communityScore: number = 0,
     public readonly createdAt: Date = new Date(),
-    public updatedAt: Date = new Date()
+    public updatedAt: Date = new Date(),
+    /**
+     * ADR-0026: the node that survives when this node is merged away.
+     * NULL for every node that was never merged.
+     */
+    public mergedIntoId: string | null = null
   ) {}
 
   /**
@@ -28,7 +33,10 @@ export class Node {
   changeStatus(newStatus: NodeStatus): void {
     const validTransitions: Record<NodeStatus, NodeStatus[]> = {
       DRAFT: ['PENDING', 'ACTIVE'],
-      PENDING: ['ACTIVE', 'REJECTED'],
+      // ADR-0026: a node can be merged away while it is still PENDING — it
+      // is the only state a node reaches today (no route activates a node),
+      // so forbidding the transition would make merges unusable.
+      PENDING: ['ACTIVE', 'REJECTED', 'MERGED'],
       ACTIVE: ['MERGED', 'DEPRECATED'],
       MERGED: [],
       DEPRECATED: [],
@@ -42,6 +50,51 @@ export class Node {
       );
     }
     this.status = newStatus;
+    this.updatedAt = new Date();
+  }
+
+  /**
+   * Whether the node can be merged away (ADR-0026): `PENDING` and `ACTIVE`
+   * can, the terminal states (`MERGED`, `DEPRECATED`, `REJECTED`) cannot.
+   *
+   * The rule is checked twice: when the merge proposal is created and again
+   * when it is applied, because the node can change in between.
+   */
+  public get isMergeable(): boolean {
+    return this.status === 'PENDING' || this.status === 'ACTIVE';
+  }
+
+  /**
+   * Merge this node into `targetId` (ADR-0026): the node stops being a graph
+   * citizen and points at the node that survives. The merge itself is applied
+   * by the API; this method only records the decision.
+   */
+  public mergeInto(targetId: string): void {
+    if (targetId === this.id) {
+      throw new DomainError(
+        'ERR_VALIDATION_FAILED',
+        'a node cannot be merged into itself'
+      );
+    }
+    this.changeStatus('MERGED');
+    this.mergedIntoId = targetId;
+  }
+
+  /**
+   * Absorb a duplicate that was merged into this node (ADR-0026): the
+   * attributes the duplicate has and this node does not are adopted — the
+   * survivor's own values always win — and the support for the duplicate
+   * carries over.
+   */
+  public absorb(source: Node): void {
+    if (source.id === this.id) {
+      throw new DomainError(
+        'ERR_VALIDATION_FAILED',
+        'a node cannot absorb itself'
+      );
+    }
+    this.attributes = { ...source.attributes, ...this.attributes };
+    this.communityScore += source.communityScore;
     this.updatedAt = new Date();
   }
 

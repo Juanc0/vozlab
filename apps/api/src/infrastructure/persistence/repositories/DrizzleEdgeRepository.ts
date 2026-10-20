@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { edges } from '@vozlab/database';
 import { Edge, EdgeStatus } from '../../../domain/entities/Edge.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
@@ -165,6 +165,87 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
     }
 
     await db.update(edges).set(patch).where(eq(edges.id, targetId));
+  }
+
+  /**
+   * ADR-0026: re-point the edges of a merged node to the node that survives.
+   *
+   * Three statements, in this order:
+   *
+   *   1. the edges between the merged node and itself or the survivor are
+   *      soft-deleted — they would become self-loops of the survivor;
+   *   2. the edges that would duplicate an existing edge of the survivor
+   *      (same relation key, same other end) are soft-deleted instead of
+   *      re-pointed;
+   *   3. the remaining edges are re-pointed: the merged node's end becomes the
+   *      survivor's end.
+   *
+   * The adapter is the single writer of `deleted_at` (ADR-0011).
+   */
+  async repointEdges(
+    nodeId: string,
+    replacementId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+
+    await db.execute(sql`
+      UPDATE public.edges
+      SET deleted_at = now()
+      WHERE workspace_id = ${workspaceId}
+        AND deleted_at IS NULL
+        AND (
+          (source_node_id = ${nodeId} AND target_node_id = ${nodeId})
+          OR (source_node_id = ${nodeId} AND target_node_id = ${replacementId})
+          OR (target_node_id = ${nodeId} AND source_node_id = ${replacementId})
+        )
+    `);
+
+    await db.execute(sql`
+      UPDATE public.edges e
+      SET deleted_at = now()
+      WHERE e.workspace_id = ${workspaceId}
+        AND e.deleted_at IS NULL
+        AND (e.source_node_id = ${nodeId} OR e.target_node_id = ${nodeId})
+        AND EXISTS (
+          SELECT 1
+          FROM public.edges d
+          WHERE d.workspace_id = e.workspace_id
+            AND d.deleted_at IS NULL
+            AND d.id <> e.id
+            AND d.relation_key = e.relation_key
+            AND (
+              (
+                e.source_node_id = ${nodeId}
+                AND d.source_node_id = ${replacementId}
+                AND d.target_node_id = e.target_node_id
+              )
+              OR (
+                e.target_node_id = ${nodeId}
+                AND d.target_node_id = ${replacementId}
+                AND d.source_node_id = e.source_node_id
+              )
+            )
+        )
+    `);
+
+    await db.execute(sql`
+      UPDATE public.edges
+      SET source_node_id = ${replacementId}
+      WHERE workspace_id = ${workspaceId}
+        AND deleted_at IS NULL
+        AND source_node_id = ${nodeId}
+    `);
+
+    await db.execute(sql`
+      UPDATE public.edges
+      SET target_node_id = ${replacementId}
+      WHERE workspace_id = ${workspaceId}
+        AND deleted_at IS NULL
+        AND target_node_id = ${nodeId}
+    `);
   }
 }
 

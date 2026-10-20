@@ -43,6 +43,13 @@
       "when": 1792443144622,
       "tag": "0005_elite_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792458341338,
+      "tag": "0006_busy_shadowcat",
+      "breakpoints": true
     }
   ]
 }

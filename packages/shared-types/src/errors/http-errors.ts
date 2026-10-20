@@ -102,6 +102,10 @@ export const ERROR_CODES = {
     status: 409,
     message: 'A vote already exists for this user and target',
   },
+  ERR_DUPLICATE_PROPOSAL: {
+    status: 409,
+    message: 'A pending proposal already exists for this target',
+  },
   ERR_INVALID_RELATION_DOMAIN_RANGE: {
     status: 422,
     message: 'Relation violates the ontology domain/range restrictions',

@@ -60,6 +60,96 @@ describe('Node', () => {
     expect(node.updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
   });
 
+  // --- ADR-0026: the merge ---
+
+  it('merges a PENDING node into the survivor', () => {
+    const node = makeNode('PENDING');
+
+    node.mergeInto('node-2');
+
+    expect(node.status).toBe('MERGED');
+    expect(node.mergedIntoId).toBe('node-2');
+  });
+
+  it('merges an ACTIVE node into the survivor', () => {
+    const node = makeNode('ACTIVE');
+
+    node.mergeInto('node-2');
+
+    expect(node.status).toBe('MERGED');
+    expect(node.mergedIntoId).toBe('node-2');
+  });
+
+  it('refuses to merge a node into itself', () => {
+    const node = makeNode('PENDING');
+
+    try {
+      node.mergeInto('node-1');
+      expect.unreachable('expected mergeInto to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DomainError);
+      expect((error as DomainError).code).toBe('ERR_VALIDATION_FAILED');
+    }
+    expect(node.status).toBe('PENDING');
+    expect(node.mergedIntoId).toBeNull();
+  });
+
+  it('refuses to merge a terminal node', () => {
+    const node = makeNode('MERGED');
+
+    try {
+      node.mergeInto('node-2');
+      expect.unreachable('expected mergeInto to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DomainError);
+      expect((error as DomainError).code).toBe('ERR_INVALID_STATE_TRANSITION');
+    }
+    expect(node.mergedIntoId).toBeNull();
+  });
+
+  it('absorbs the attributes the survivor does not have', () => {
+    const survivor = makeNode('ACTIVE');
+    survivor.updateAttributes({ country: 'UK' });
+    const duplicate = new Node(
+      'node-2',
+      'ws-1',
+      'Person',
+      'Ada Byron',
+      null,
+      { born: 1815, country: 'UK' },
+      authorHash,
+      'PENDING',
+      7
+    );
+
+    survivor.absorb(duplicate);
+
+    // The survivor's own value wins; the duplicate's extra key is adopted.
+    expect(survivor.attributes).toEqual({ born: 1815, country: 'UK' });
+    // The support for the duplicate carries over.
+    expect(survivor.communityScore).toBe(7);
+  });
+
+  it('refuses to absorb itself', () => {
+    const node = makeNode('ACTIVE');
+
+    try {
+      node.absorb(node);
+      expect.unreachable('expected absorb to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DomainError);
+      expect((error as DomainError).code).toBe('ERR_VALIDATION_FAILED');
+    }
+  });
+
+  it('knows which states can be merged away', () => {
+    expect(makeNode('PENDING').isMergeable).toBe(true);
+    expect(makeNode('ACTIVE').isMergeable).toBe(true);
+    expect(makeNode('MERGED').isMergeable).toBe(false);
+    expect(makeNode('DEPRECATED').isMergeable).toBe(false);
+    expect(makeNode('REJECTED').isMergeable).toBe(false);
+  });
+
   // The adapter half of the contract — "persist `node.updatedAt` verbatim" —
   // is asserted for real in tests/infrastructure/timestampOwnership.test.ts
   // with a thin fake Drizzle client.

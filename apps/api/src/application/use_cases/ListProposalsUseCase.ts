@@ -1,5 +1,6 @@
 import {
   EditProposal,
+  ProposalKind,
   ProposalStatus,
   TargetType,
 } from '../../domain/entities/EditProposal.js';
@@ -12,6 +13,7 @@ export type ListProposalsInput = {
   cursor?: string;
   status?: ProposalStatus;
   targetType?: TargetType;
+  kind?: ProposalKind;
 };
 
 export type ListProposalsResult = {
@@ -21,8 +23,8 @@ export type ListProposalsResult = {
 
 /**
  * Use Case: cursor-paginated listing of the workspace's proposals (NFR-04),
- * optionally filtered by status/targetType. Delegates keyset pagination to
- * the repository port so the application layer stays storage-agnostic.
+ * optionally filtered by status/targetType/kind. Delegates keyset pagination
+ * to the repository port so the application layer stays storage-agnostic.
  */
 export class ListProposalsUseCase {
   constructor(private readonly proposalRepo: IProposalRepository) {}
@@ -33,6 +35,7 @@ export class ListProposalsUseCase {
       {
         status: input.status,
         targetType: input.targetType,
+        kind: input.kind,
         limit: input.limit,
         cursor: input.cursor,
       },

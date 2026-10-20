@@ -12,6 +12,7 @@ import {
   assertIsMaintainer,
   resolveTargetAuthorHash,
 } from './proposalAuthorization.js';
+import { applyMergeProposal } from './applyMergeProposal.js';
 import { assertNever } from '../../shared/assertNever.js';
 
 export interface ResolveProposalInput {
@@ -38,6 +39,9 @@ export interface ProposalDeltaRepositories {
  * Apply `proposal.proposedChanges` to the target entity selected by
  * `proposal.targetType` (NODE / EDGE / ONTOLOGY) — RF-10/FR-12.
  *
+ * A `MERGE` proposal is not a delta: it folds the target node into another
+ * one (ADR-0026), so the kind decides which operation runs.
+ *
  * MUST run inside the caller's UnitOfWork `tx` so the target mutation and the
  * proposal status change commit atomically. An approved ONTOLOGY proposal
  * always ends with the class `ACTIVE` (FR-09).
@@ -49,6 +53,11 @@ export async function applyProposalDelta(
   tid: string,
   tx: DbTransaction
 ): Promise<void> {
+  if (proposal.kind === 'MERGE') {
+    await applyMergeProposal(repos, proposal, workspaceId, tid, tx);
+    return;
+  }
+
   switch (proposal.targetType) {
     case 'NODE':
       await repos.nodeRepo.applyDelta(
@@ -157,6 +166,16 @@ export class ApproveProposalUseCase {
       targetType: proposal.targetType,
       workspaceId: input.workspaceId,
     });
+
+    // A merge also changes the graph, so it gets its own event (ADR-0026).
+    if (proposal.kind === 'MERGE') {
+      await this.eventPublisher.publish('NODE_MERGED', {
+        reqId: input.reqId ?? '',
+        mergedNodeId: proposal.targetId,
+        survivingNodeId: proposal.mergeTargetId ?? '',
+        workspaceId: input.workspaceId,
+      });
+    }
 
     return proposal;
   }

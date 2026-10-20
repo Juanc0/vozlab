@@ -91,6 +91,16 @@ export class AutoApplyProposalUseCase {
       workspaceId: input.workspaceId,
     });
 
+    // A merge also changes the graph, so it gets its own event (ADR-0026).
+    if (proposal.kind === 'MERGE') {
+      await this.eventPublisher.publish('NODE_MERGED', {
+        reqId: input.reqId ?? '',
+        mergedNodeId: proposal.targetId,
+        survivingNodeId: proposal.mergeTargetId ?? '',
+        workspaceId: input.workspaceId,
+      });
+    }
+
     return proposal;
   }
 }

@@ -445,6 +445,57 @@ export class DrizzleNodeRepository implements INodeRepository {
       })
       .where(eq(nodes.id, targetId));
   }
+
+  /**
+   * ADR-0026: apply a merge.
+   *
+   * The duplicate becomes `MERGED` and points at the survivor; the survivor
+   * adopts the attributes and the support of the duplicate. The write on the
+   * duplicate is a compare-and-set on its status: a node that is no longer
+   * mergeable (it was merged by another proposal in the meantime) is not
+   * touched, and the caller gets `ERR_INVALID_STATE_TRANSITION`.
+   */
+  async mergeInto(
+    source: Node,
+    target: Node,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+
+    const updated = await db
+      .update(nodes)
+      .set({
+        status: source.status,
+        mergedIntoId: source.mergedIntoId,
+        updatedAt: source.updatedAt,
+      })
+      .where(
+        and(
+          eq(nodes.id, source.id),
+          eq(nodes.workspaceId, source.workspaceId),
+          inArray(nodes.status, ['PENDING', 'ACTIVE']),
+          isNull(nodes.deletedAt)
+        )
+      )
+      .returning({ id: nodes.id });
+
+    if (updated.length === 0) {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        'the node is no longer mergeable'
+      );
+    }
+
+    await db
+      .update(nodes)
+      .set({
+        attributes: target.attributes,
+        communityScore: target.communityScore,
+        updatedAt: target.updatedAt,
+      })
+      .where(eq(nodes.id, target.id));
+  }
 }
 
 /**
@@ -462,6 +513,7 @@ function toDomain(row: typeof nodes.$inferSelect): Node {
     row.status as NodeStatus,
     row.communityScore,
     row.createdAt,
-    row.updatedAt
+    row.updatedAt,
+    row.mergedIntoId ?? null
   );
 }

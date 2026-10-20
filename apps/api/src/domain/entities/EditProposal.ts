@@ -5,6 +5,15 @@ export type TargetType = 'NODE' | 'EDGE' | 'ONTOLOGY';
 export type ProposalStatus = 'PENDING' | 'APPROVED_BY_AUTHOR' | 'REJECTED_BY_AUTHOR' | 'AUTO_APPLIED';
 
 /**
+ * The kind of a proposal (ADR-0026).
+ *
+ * `EDIT` applies an attribute delta to the target; `MERGE` folds the target
+ * node into another one. The kind is stored with the proposal, so it is
+ * never inferred from the shape of the payload.
+ */
+export type ProposalKind = 'EDIT' | 'MERGE';
+
+/**
  * Domain Entity: EditProposal (Pull Request style on knowledge graph).
  *
  * Encapsulates the proposal state machine:
@@ -25,8 +34,19 @@ export class EditProposal {
     public communityScore: number = 0,
     public resolvedBy: AuthorHash | null = null,
     public resolvedAt: Date | null = null,
-    public readonly createdAt: Date = new Date()
+    public readonly createdAt: Date = new Date(),
+    public readonly kind: ProposalKind = 'EDIT'
   ) {}
+
+  /**
+   * The node that survives this proposal when it is a merge (ADR-0026), or
+   * null for an edit proposal.
+   */
+  public get mergeTargetId(): string | null {
+    if (this.kind !== 'MERGE') return null;
+    const value = this.proposedChanges?.mergeIntoNodeId;
+    return typeof value === 'string' && value.length > 0 ? value : null;
+  }
 
   /**
    * Author/Maintainer approves the proposal (Merge).

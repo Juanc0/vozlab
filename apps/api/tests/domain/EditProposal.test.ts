@@ -64,4 +64,54 @@ describe('EditProposal', () => {
     expect(eligible.status).toBe('AUTO_APPLIED');
     expect(eligible.resolvedBy).toEqual(moderator);
   });
+
+  // --- ADR-0026: the kind ---
+
+  it('defaults to the EDIT kind', () => {
+    const proposal = makeProposal();
+
+    expect(proposal.kind).toBe('EDIT');
+    expect(proposal.mergeTargetId).toBeNull();
+  });
+
+  it('exposes the surviving node of a merge proposal', () => {
+    const proposal = new EditProposal(
+      'proposal-2',
+      'ws-1',
+      'node-1',
+      'NODE',
+      { mergeIntoNodeId: 'node-2' },
+      proposer,
+      'PENDING',
+      null,
+      0,
+      null,
+      null,
+      new Date(),
+      'MERGE'
+    );
+
+    expect(proposal.kind).toBe('MERGE');
+    expect(proposal.mergeTargetId).toBe('node-2');
+  });
+
+  it('has no surviving node when the merge payload is malformed', () => {
+    const proposal = new EditProposal(
+      'proposal-3',
+      'ws-1',
+      'node-1',
+      'NODE',
+      {},
+      proposer,
+      'PENDING',
+      null,
+      0,
+      null,
+      null,
+      new Date(),
+      'MERGE'
+    );
+
+    expect(proposal.mergeTargetId).toBeNull();
+  });
 });

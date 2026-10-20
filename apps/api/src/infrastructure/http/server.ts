@@ -142,6 +142,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     proposalRepo,
     interactionRepo,
     ontologyRepo,
+    nodeRepo,
     eventPublisher
   );
   const approveProposalUseCase = new ApproveProposalUseCase(

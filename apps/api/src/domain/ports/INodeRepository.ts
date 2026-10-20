@@ -137,4 +137,17 @@ export interface INodeRepository {
     tid: string,
     tx?: DbTransaction
   ): Promise<void>;
+  /**
+   * Apply a merge (ADR-0026): `source` becomes `MERGED` and points at
+   * `target`, and `target` absorbs the attributes and the support of the
+   * duplicate. The entities already carry the decision (the domain owns the
+   * transition); the adapter persists it. Both writes happen in the caller's
+   * transaction.
+   */
+  mergeInto(
+    source: Node,
+    target: Node,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
 }

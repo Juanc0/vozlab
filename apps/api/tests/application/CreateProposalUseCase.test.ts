@@ -1,5 +1,6 @@
 import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
+import { makeNodeRepository } from '../support/fakes.js';
 
 import { CreateProposalUseCase } from '../../src/application/use_cases/CreateProposalUseCase.js';
 import { EditProposal } from '../../src/domain/entities/EditProposal.js';
@@ -95,7 +96,13 @@ describe('CreateProposalUseCase', () => {
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
 
-    const useCase = new CreateProposalUseCase(repo, interactionRepo, ontologyRepo, publisher);
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher
+    );
 
     const proposal = await useCase.execute({
       targetId: 'node-123',
@@ -118,7 +125,13 @@ describe('CreateProposalUseCase', () => {
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
 
-    const useCase = new CreateProposalUseCase(repo, interactionRepo, ontologyRepo, publisher);
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher
+    );
 
     await expect(
       useCase.execute({
@@ -143,7 +156,13 @@ describe('CreateProposalUseCase', () => {
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
 
-    const useCase = new CreateProposalUseCase(repo, interactionRepo, ontologyRepo, publisher);
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher
+    );
 
     await expect(
       useCase.execute({
@@ -166,7 +185,13 @@ describe('CreateProposalUseCase', () => {
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher } = makeEventPublisher();
 
-    const useCase = new CreateProposalUseCase(repo, interactionRepo, ontologyRepo, publisher);
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher
+    );
 
     await expect(
       useCase.execute({
@@ -188,7 +213,13 @@ describe('CreateProposalUseCase', () => {
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher } = makeEventPublisher();
 
-    const useCase = new CreateProposalUseCase(repo, interactionRepo, ontologyRepo, publisher);
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher
+    );
 
     await expect(
       useCase.execute({

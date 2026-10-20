@@ -24,6 +24,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     update: vi.fn(),
     softDelete: vi.fn(),
     applyDelta: vi.fn(),
+    mergeInto: vi.fn(),
     setEmbedding: vi.fn(),
     findNearestInWorkspace: vi.fn(),
   };
@@ -37,6 +38,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     update: vi.fn(),
     softDelete: vi.fn(),
     applyDelta: vi.fn(),
+    repointEdges: vi.fn(),
   };
 
   const ontologyRepo: IOntologyRepository = {

@@ -36,4 +36,19 @@ export interface IEdgeRepository {
     tid: string,
     tx?: DbTransaction
   ): Promise<void>;
+  /**
+   * Re-point every edge of `nodeId` to `replacementId` (a merge, ADR-0026):
+   * an edge whose other end is `nodeId` now starts (or ends) at the
+   * replacement. A self-loop of the merged node and any edge that would
+   * duplicate an existing edge of the replacement (same relation key) are
+   * soft-deleted instead of re-pointed. The operation stays inside one
+   * workspace and participates in the caller's `tx`.
+   */
+  repointEdges(
+    nodeId: string,
+    replacementId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
 }

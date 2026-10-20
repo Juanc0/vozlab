@@ -1,5 +1,10 @@
 import { DbTransaction } from './Transaction.js';
-import { EditProposal, ProposalStatus, TargetType } from '../entities/EditProposal.js';
+import {
+  EditProposal,
+  ProposalKind,
+  ProposalStatus,
+  TargetType,
+} from '../entities/EditProposal.js';
 
 // Naming follows `modules_02 §6.8`.
 /**
@@ -22,18 +27,25 @@ export interface IProposalRepository {
   ): Promise<EditProposal | null>;
   /**
    * List a workspace's proposals using keyset (cursor) pagination ordered by
-   * `createdAt DESC, id DESC`, optionally filtered by `status`/`targetType`.
+   * `createdAt DESC, id DESC`, optionally filtered by `status`/`targetType`/
+   * `kind`.
    */
   listByWorkspace(
     workspaceId: string,
     opts: {
       status?: ProposalStatus;
       targetType?: TargetType;
+      kind?: ProposalKind;
       limit: number;
       cursor?: string;
     },
     tid: string
   ): Promise<{ items: EditProposal[]; nextCursor: string | null }>;
+  /**
+   * The pending proposals that target `targetId` (any kind). The target id
+   * is unique inside the tenant database, so the read is tenant-scoped even
+   * though it is not workspace-scoped.
+   */
   findPendingByTarget(targetId: string, tid: string): Promise<EditProposal[]>;
   save(proposal: EditProposal, tid: string, tx?: DbTransaction): Promise<void>;
   updateStatus(
