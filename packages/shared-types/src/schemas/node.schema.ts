@@ -1,6 +1,24 @@
 import { z } from 'zod';
 
 /**
+ * The lifecycle states of a node.
+ *
+ * DRAFT -> PENDING -> ACTIVE -> MERGED | DEPRECATED | REJECTED
+ * (the domain entity `domain/entities/Node.ts` owns the state machine and
+ * imports this vocabulary — it is declared here, once).
+ */
+export const NodeStatusSchema = z.enum([
+  'DRAFT',
+  'PENDING',
+  'ACTIVE',
+  'MERGED',
+  'DEPRECATED',
+  'REJECTED',
+]);
+
+export type NodeStatus = z.infer<typeof NodeStatusSchema>;
+
+/**
  * Zod schema for creating a new Node in the knowledge graph.
  * Validates all incoming HTTP payloads for node creation.
  */
@@ -89,7 +107,7 @@ export interface NodeDto {
   attributes: Record<string, unknown>;
   /** The opaque per-user pseudonym of the author (ADR-0013). */
   authorHash: string;
-  status: string;
+  status: NodeStatus;
   communityScore: number;
   /** ISO-8601 instant. */
   createdAt: string;

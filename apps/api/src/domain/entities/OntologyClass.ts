@@ -3,8 +3,18 @@
  * (RF-09). Pure domain object, no external dependencies.
  */
 import { DomainError } from '../errors/DomainError.js';
+import type { PropertyStatus } from '@vozlab/shared-types';
 
-export type OntologyStatus = 'PROPOSED' | 'ACTIVE' | 'REJECTED';
+/**
+ * The status of an ontology element (class, datatype property, object
+ * property).
+ *
+ * The vocabulary is declared once, in `@vozlab/shared-types`, where it is
+ * called `PropertyStatus` (the shared name); `OntologyStatus` is only an
+ * alias of it, kept for the callers that already import it from this
+ * entity.
+ */
+export type OntologyStatus = PropertyStatus;
 
 export class OntologyClass {
   constructor(

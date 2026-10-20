@@ -5,6 +5,12 @@ import { z } from 'zod';
  * (RF-11, RF-16).
  */
 
+/**
+ * The kinds of object a discussion thread can be attached to.
+ *
+ * The domain entity `domain/entities/DiscussionThread.ts` imports this
+ * vocabulary — the values are declared once.
+ */
 export const DiscussionTargetTypeSchema = z.enum([
   'NODE',
   'EDGE',
@@ -12,6 +18,16 @@ export const DiscussionTargetTypeSchema = z.enum([
   'ONTOLOGY',
 ]);
 export type DiscussionTargetType = z.infer<typeof DiscussionTargetTypeSchema>;
+
+/**
+ * The lifecycle states of a discussion thread.
+ *
+ * A thread is `OPEN` until it is closed by its creator; `CLOSED` is
+ * terminal (the domain entity `domain/entities/DiscussionThread.ts` owns
+ * the transition and imports this vocabulary — it is declared here, once).
+ */
+export const ThreadStatusSchema = z.enum(['OPEN', 'CLOSED']);
+export type ThreadStatus = z.infer<typeof ThreadStatusSchema>;
 
 export const CreateThreadSchema = z.object({
   targetId: z.string().uuid('targetId must be a valid UUID'),
@@ -61,9 +77,9 @@ export interface ThreadDto {
   id: string;
   workspaceId: string;
   targetId: string;
-  targetType: string;
+  targetType: DiscussionTargetType;
   title: string;
-  status: string;
+  status: ThreadStatus;
   /** The opaque per-user pseudonym of the creator (ADR-0013). */
   createdByHash: string;
   /** ISO-8601 instant. */

@@ -5,9 +5,9 @@ import {
 } from '@vozlab/database';
 import {
   DiscussionThread,
-  ThreadTargetType,
   ThreadStatus,
 } from '../../../domain/entities/DiscussionThread.js';
+import type { DiscussionTargetType } from '@vozlab/shared-types';
 import { DiscussionPost } from '../../../domain/entities/DiscussionPost.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
@@ -203,7 +203,7 @@ function threadToDomain(row: typeof discussionThreads.$inferSelect): DiscussionT
     row.id,
     row.workspaceId,
     row.targetId,
-    row.targetType as ThreadTargetType,
+    row.targetType as DiscussionTargetType,
     row.title,
     AuthorHash.fromString(row.createdByHash),
     row.status as ThreadStatus,

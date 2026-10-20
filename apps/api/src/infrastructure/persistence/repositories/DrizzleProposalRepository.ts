@@ -179,7 +179,7 @@ function toDomain(row: typeof editProposals.$inferSelect): EditProposal {
     row.workspaceId,
     row.targetId,
     row.targetType as TargetType,
-    (row.proposedChanges as Record<string, any>) ?? {},
+    (row.proposedChanges as Record<string, unknown>) ?? {},
     AuthorHash.fromString(row.proposerHash),
     row.status as ProposalStatus,
     row.justification ?? null,

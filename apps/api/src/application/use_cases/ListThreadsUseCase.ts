@@ -1,12 +1,10 @@
-import {
-  DiscussionThread,
-  ThreadTargetType,
-} from '../../domain/entities/DiscussionThread.js';
+import { DiscussionThread } from '../../domain/entities/DiscussionThread.js';
+import type { DiscussionTargetType } from '@vozlab/shared-types';
 import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.js';
 
 export type ListThreadsInput = {
   targetId: string;
-  targetType: ThreadTargetType;
+  targetType: DiscussionTargetType;
   workspaceId: string;
   tid: string;
   limit: number;

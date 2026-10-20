@@ -1,6 +1,22 @@
 import { z } from 'zod';
 
 /**
+ * The lifecycle states of an edge.
+ *
+ * DRAFT -> PENDING -> ACTIVE -> REJECTED (the domain entity
+ * `domain/entities/Edge.ts` owns the state machine and imports this
+ * vocabulary — it is declared here, once).
+ */
+export const EdgeStatusSchema = z.enum([
+  'DRAFT',
+  'PENDING',
+  'ACTIVE',
+  'REJECTED',
+]);
+
+export type EdgeStatus = z.infer<typeof EdgeStatusSchema>;
+
+/**
  * Zod schemas for directed edges between nodes (RF-08).
  * Relation domain/range restrictions are validated in the use case against
  * the workspace ontology (`meta.object_properties`).
@@ -38,7 +54,7 @@ export interface EdgeDto {
   attributes: Record<string, unknown>;
   /** The opaque per-user pseudonym of the author (ADR-0013). */
   authorHash: string;
-  status: string;
+  status: EdgeStatus;
   communityScore: number;
   /** ISO-8601 instant. */
   createdAt: string;

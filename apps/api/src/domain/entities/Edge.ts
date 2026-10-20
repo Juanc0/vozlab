@@ -1,11 +1,16 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
 import { DomainError } from '../errors/DomainError.js';
+import type { EdgeStatus } from '@vozlab/shared-types';
 
 /**
  * Edge entity — directed relation between two nodes (RF-08).
  * Pure domain object, no external dependencies.
+ *
+ * The status vocabulary is declared once, in `@vozlab/shared-types`
+ * (`EdgeStatusSchema`); it is re-exported here so the call sites that
+ * import it from this entity keep working.
  */
-export type EdgeStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'REJECTED';
+export type { EdgeStatus };
 
 export class Edge {
   constructor(

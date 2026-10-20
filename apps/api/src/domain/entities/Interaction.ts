@@ -1,12 +1,20 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
+import type {
+  InteractionTargetType,
+  InteractionType,
+} from '@vozlab/shared-types';
 
 /**
  * Interaction entity — immutable record of a community action (RF-14).
  * The (user, target) uniqueness is enforced at the persistence layer.
  * Pure domain object.
+ *
+ * The target-type and interaction-type vocabularies are declared once, in
+ * `@vozlab/shared-types` (`InteractionTargetTypeSchema`,
+ * `InteractionTypeSchema`); they are re-exported here so the call sites
+ * that import them from this entity keep working.
  */
-export type InteractionTargetType = 'NODE' | 'EDGE' | 'PROPOSAL' | 'POST';
-export type InteractionType = 'UPVOTE' | 'DOWNVOTE' | 'SUPPORT' | 'VALIDATE';
+export type { InteractionTargetType, InteractionType };
 
 export class Interaction {
   constructor(

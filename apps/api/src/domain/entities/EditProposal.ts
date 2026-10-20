@@ -1,17 +1,23 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
 import { DomainError } from '../errors/DomainError.js';
-
-export type TargetType = 'NODE' | 'EDGE' | 'ONTOLOGY';
-export type ProposalStatus = 'PENDING' | 'APPROVED_BY_AUTHOR' | 'REJECTED_BY_AUTHOR' | 'AUTO_APPLIED';
+import type {
+  ProposalKind,
+  ProposalStatus,
+  TargetType,
+} from '@vozlab/shared-types';
 
 /**
- * The kind of a proposal (ADR-0026).
+ * The status, kind and target-type vocabularies are declared once, in
+ * `@vozlab/shared-types` (`ProposalStatusSchema`, `ProposalKindSchema`,
+ * `TargetTypeSchema`); they are re-exported here so the call sites that
+ * import them from this entity keep working.
  *
- * `EDIT` applies an attribute delta to the target; `MERGE` folds the target
- * node into another one. The kind is stored with the proposal, so it is
- * never inferred from the shape of the payload.
+ * `ProposalKind` (ADR-0026): `EDIT` applies an attribute delta to the
+ * target; `MERGE` folds the target node into another one. The kind is
+ * stored with the proposal, so it is never inferred from the shape of the
+ * payload.
  */
-export type ProposalKind = 'EDIT' | 'MERGE';
+export type { ProposalKind, ProposalStatus, TargetType };
 
 /**
  * Domain Entity: EditProposal (Pull Request style on knowledge graph).
@@ -27,7 +33,7 @@ export class EditProposal {
     public readonly workspaceId: string,
     public readonly targetId: string,
     public readonly targetType: TargetType,
-    public readonly proposedChanges: Record<string, any>,
+    public readonly proposedChanges: Record<string, unknown>,
     public readonly proposerHash: AuthorHash,
     public status: ProposalStatus = 'PENDING',
     public justification: string | null = null,

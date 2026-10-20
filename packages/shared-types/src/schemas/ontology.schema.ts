@@ -6,6 +6,14 @@ import { z } from 'zod';
  * or object properties (typed relations with domain/range).
  */
 
+/**
+ * The lifecycle states of an ontology element (class, datatype property,
+ * object property).
+ *
+ * The domain entity `domain/entities/OntologyClass.ts` calls this
+ * vocabulary `OntologyStatus` and imports it from here — the values are
+ * declared once.
+ */
 export const PropertyStatusSchema = z.enum(['PROPOSED', 'ACTIVE', 'REJECTED']);
 export type PropertyStatus = z.infer<typeof PropertyStatusSchema>;
 
@@ -70,7 +78,7 @@ export interface OntologyClassDto {
   displayNames: Record<string, string>;
   descriptions: Record<string, string>;
   parentClassKey: string | null;
-  status: string;
+  status: PropertyStatus;
   proposedBy: string;
   /** ISO-8601 instant. */
   createdAt: string;
@@ -95,7 +103,7 @@ export interface ObjectPropertyDto {
   isDirectional: boolean;
   isSymmetric: boolean;
   allowsSelfRelation: boolean;
-  status: string;
+  status: PropertyStatus;
   proposedBy: string;
   /** ISO-8601 instant. */
   createdAt: string;

@@ -50,8 +50,8 @@ export type CastVoteInput = z.infer<typeof CastVoteSchema>;
 export interface InteractionDto {
   id: string;
   targetId: string;
-  targetType: string;
-  interactionType: string;
+  targetType: InteractionTargetType;
+  interactionType: InteractionType;
   /** The score delta applied to the target (+1 or -1). */
   value: number;
 }

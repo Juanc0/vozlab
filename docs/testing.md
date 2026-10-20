@@ -187,7 +187,7 @@ E2E, coverage or deployments.
 
 ## Known lint debt
 
-`pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any`
+`pnpm lint` is **red** with 24 pre-existing `@typescript-eslint/no-explicit-any`
 errors. This is tracked debt, not a passing gate. CI deliberately omits lint
 until the errors are fixed; do not describe the repository as fully green on
 lint. Build, type-check and unit tests are green.

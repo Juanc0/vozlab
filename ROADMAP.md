@@ -30,7 +30,7 @@ trade-offs before coding.
   builds, serves SSR and ships a manifest and a service worker. The state
   layer, the route groups, the graph canvas, the governance UI, the offline
   shell and the E2E suite are 3.2 to 3.7.
-- Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
+- Known debt: `pnpm lint` is red (24 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
 ## Batch 1U — Close-out (done)

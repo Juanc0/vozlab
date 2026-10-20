@@ -127,10 +127,10 @@ export interface ProposalDto {
   id: string;
   workspaceId: string;
   targetId: string;
-  targetType: string;
+  targetType: TargetType;
   /** ADR-0026: `EDIT` (an attribute delta) or `MERGE` (a node is folded in). */
-  kind: string;
-  status: string;
+  kind: ProposalKind;
+  status: ProposalStatus;
   communityScore: number;
   justification: string | null;
   proposerHash: string;

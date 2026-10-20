@@ -48,7 +48,7 @@ they disagree with the code, **the code wins** — fix the doc.
 - `pnpm turbo run build` — `tsc --noEmit` for every TS package (no JS emitted).
 - `pnpm type-check` — build + type-check tests and DB scripts (see below).
 - `pnpm test` — Turbo test task; `pnpm --filter @vozlab/api test` for one package.
-- `pnpm lint` — repo ESLint. **Currently red** (26 pre-existing
+- `pnpm lint` — repo ESLint. **Currently red** (24 pre-existing
   `@typescript-eslint/no-explicit-any` errors); not in CI. Do not claim it passes.
 - `uv sync` — Python 3.12 workspace environment from `uv.lock` (uses the
   repo-root `.venv`; keep it dedicated to this workspace).

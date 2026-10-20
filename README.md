@@ -13,7 +13,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | Tests | 29 API files / 159 TypeScript unit tests + 8 web files / 49 tests green (`pnpm test`); opt-in integration suite (5 files / 29 tests); Python runtime 105 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: TypeScript gate + Python gate (uv/pytest/ruff) + worker image builds |
-| Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
+| Lint | **Red debt** — 24 pre-existing `@typescript-eslint/no-explicit-any` errors |
 | Embedding pipeline | Done — `NODE_CREATED` → Ollama (768) → `nodes.embedding` via the agent-only API route; the worker is not in Compose/CI yet |
 | Relator (Agent 2) | Partial — reads the top-5 neighbours, asks the LLM and creates `PENDING` edges; a merge verdict is logged, not applied |
 | Source registry | Done — `meta.data_sources` + agent-only `GET /api/v1/ingestion/resolve-source`; no management route yet |

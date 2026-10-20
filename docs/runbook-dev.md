@@ -360,7 +360,7 @@ increases because `NODE_CREATED` is published after the transaction commits.
 ```bash
 pnpm test                                # unit suite: 29 API files / 159 tests + 4 web files / 16 tests
 pnpm turbo run build type-check          # src, tests, DB scripts and the web app
-pnpm lint                                # known red: 26 pre-existing no-explicit-any errors
+pnpm lint                                # known red: 24 pre-existing no-explicit-any errors
 
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
@@ -423,7 +423,7 @@ export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # scopes: repo, read:org
 | `test:integration` fails to connect or boot | Compose services are down, migrations/seed are missing, or ports `13000`/`18080` are taken. | Start Postgres/Redis, run `db:migrate` + `db:seed:dev`, free the ports or override `INTEGRATION_API_PORT`/`MOCK_OIDC_PORT`. |
 | `429 ERR_RATE_LIMIT_EXCEEDED` | Write cap is 30/min per actor, or the workspace ceiling was hit. | Wait for the window or clear `vozlab:ratelimit:*` keys in dev. |
 | Pretty logs despite JSON expectations | `LOG_PRETTY` uses `z.coerce.boolean()`, so the string `false` is truthy. | Leave `LOG_PRETTY` unset for JSON output. |
-| `pnpm lint` fails on `no-explicit-any` | Known debt (26 errors), not a regression. | Treat build/type-check/tests as the gate until the debt is paid. |
+| `pnpm lint` fails on `no-explicit-any` | Known debt (24 errors), not a regression. | Treat build/type-check/tests as the gate until the debt is paid. |
 | Worker `--check` says `missing agent identity` | `JWT_SECRET` is set but no static token and no `AGENT_*` identity is configured. | Set `AGENT_TOKEN`/`AGENT_TOKEN_FILE`, or set `AGENT_TENANT_KEY`, `AGENT_USER_ID` and `AGENT_AUTHOR_HASH` for development minting. |
 | `GET /api/v1/ingestion/resolve-source` answers 404 | The source is not in `meta.data_sources`, or it is `INACTIVE`. The registry has no management route yet. | Insert the row (or re-run `db:seed:dev` for the `dev-minutes-2026` example) with an `ACTIVE` status. |
 | Embedder logs `401 ERR_INVALID_TOKEN` | The token was minted with a different `JWT_SECRET` than the running API, or the API is running an older build without `AGENT_EMBEDDER` in the allow-list. | Re-mint with the API's `JWT_SECRET` and restart the API after changing `packages/shared-types`. |

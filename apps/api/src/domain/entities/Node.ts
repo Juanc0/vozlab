@@ -1,11 +1,16 @@
 import { AuthorHash } from '../value_objects/AuthorHash.js';
 import { DomainError } from '../errors/DomainError.js';
+import type { NodeStatus } from '@vozlab/shared-types';
 
 /**
  * Node entity — pure domain object with no external dependencies.
  * Enforces state transitions: DRAFT -> PENDING -> ACTIVE -> MERGED | DEPRECATED | REJECTED
+ *
+ * The status vocabulary is declared once, in `@vozlab/shared-types`
+ * (`NodeStatusSchema`); it is re-exported here so the call sites that
+ * import it from this entity keep working.
  */
-export type NodeStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'MERGED' | 'DEPRECATED' | 'REJECTED';
+export type { NodeStatus };
 
 export class Node {
   constructor(
