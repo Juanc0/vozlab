@@ -5,6 +5,7 @@ import {
   NeighborsQuerySchema,
   SetNodeEmbeddingSchema,
   SubgraphQuerySchema,
+  type NodeDto,
 } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
@@ -21,21 +22,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
 /**
  * Stable JSON projection of a Node. Never leaks the raw entity internals
  * (e.g. the `AuthorHash` value object) — the hash is emitted as a string.
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`NodeDto`) so the PWA
+ * can type the responses it consumes.
  */
-interface NodeDto {
-  id: string;
-  workspaceId: string;
-  typeKey: string;
-  title: string;
-  description: string | null;
-  attributes: Record<string, unknown>;
-  authorHash: string;
-  status: string;
-  communityScore: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 function toNodeDto(node: Node): NodeDto {
   return {
     id: node.id,

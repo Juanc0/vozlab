@@ -4,6 +4,8 @@ import {
   CreatePostSchema,
   ListThreadsQuerySchema,
   ListPostsQuerySchema,
+  type ThreadDto,
+  type PostDto,
 } from '@vozlab/shared-types';
 import { CreateThreadUseCase } from '../../../application/use_cases/CreateThreadUseCase.js';
 import { AddPostUseCase } from '../../../application/use_cases/AddPostUseCase.js';
@@ -20,31 +22,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
 /**
  * Stable JSON projection of a thread. Never leaks the raw entity internals
  * (e.g. the `AuthorHash` value object) — the hash is emitted as a string.
+ *
+ * The shapes themselves live in `@vozlab/shared-types` (`ThreadDto`,
+ * `PostDto`) so the PWA can type the responses it consumes.
  */
-interface ThreadDto {
-  id: string;
-  workspaceId: string;
-  targetId: string;
-  targetType: string;
-  title: string;
-  status: string;
-  createdByHash: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PostDto {
-  id: string;
-  threadId: string;
-  parentPostId: string | null;
-  authorHash: string;
-  body: string;
-  upvotes: number;
-  downvotes: number;
-  communityScore: number;
-  createdAt: string;
-}
-
 function toThreadDto(thread: DiscussionThread): ThreadDto {
   return {
     id: thread.id,

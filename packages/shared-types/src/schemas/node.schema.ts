@@ -71,3 +71,28 @@ export const SetNodeEmbeddingSchema = z.object({
 });
 
 export type SetNodeEmbeddingInput = z.infer<typeof SetNodeEmbeddingSchema>;
+
+/**
+ * Stable JSON projection of a Node — the element returned by
+ * `GET /api/v1/nodes/:id`, `GET /api/v1/nodes` and `GET /api/v1/nodes/subgraph`.
+ *
+ * It never leaks the raw entity internals (e.g. the `AuthorHash` value
+ * object): the pseudonym is emitted as a string. The API owns the projection
+ * (`NodeController`); the PWA consumes the result read-only.
+ */
+export interface NodeDto {
+  id: string;
+  workspaceId: string;
+  typeKey: string;
+  title: string;
+  description: string | null;
+  attributes: Record<string, unknown>;
+  /** The opaque per-user pseudonym of the author (ADR-0013). */
+  authorHash: string;
+  status: string;
+  communityScore: number;
+  /** ISO-8601 instant. */
+  createdAt: string;
+  /** ISO-8601 instant. */
+  updatedAt: string;
+}

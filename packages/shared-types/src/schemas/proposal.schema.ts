@@ -113,3 +113,31 @@ export const ResolveProposalSchema = z.object({
 });
 
 export type ResolveProposalInput = z.infer<typeof ResolveProposalSchema>;
+
+/**
+ * Stable JSON projection of an EditProposal — the element returned by
+ * `GET /api/v1/proposals` and `GET /api/v1/proposals/:id`.
+ *
+ * It never leaks the raw entity internals (e.g. the `AuthorHash` value
+ * object): the pseudonyms are emitted as their 64-hex strings (NFR-07) and
+ * `proposedChanges` is passed through as-is. The API owns the projection
+ * (`ProposalController`); the PWA consumes the result read-only.
+ */
+export interface ProposalDto {
+  id: string;
+  workspaceId: string;
+  targetId: string;
+  targetType: string;
+  /** ADR-0026: `EDIT` (an attribute delta) or `MERGE` (a node is folded in). */
+  kind: string;
+  status: string;
+  communityScore: number;
+  justification: string | null;
+  proposerHash: string;
+  resolvedBy: string | null;
+  /** ISO-8601 instant, or `null` while the proposal is still open. */
+  resolvedAt: string | null;
+  proposedChanges: Record<string, unknown>;
+  /** ISO-8601 instant. */
+  createdAt: string;
+}

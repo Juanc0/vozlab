@@ -3,6 +3,7 @@ import {
   CreateEdgeSchema,
   UpdateEdgeSchema,
   ListNodeQuerySchema,
+  type EdgeDto,
 } from '@vozlab/shared-types';
 import { CreateEdgeUseCase } from '../../../application/use_cases/CreateEdgeUseCase.js';
 import { GetEdgeUseCase } from '../../../application/use_cases/GetEdgeUseCase.js';
@@ -17,20 +18,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
 /**
  * Stable JSON projection of an Edge. Never leaks the raw entity internals
  * (e.g. the `AuthorHash` value object) — the hash is emitted as a string.
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`EdgeDto`) so the PWA
+ * can type the responses it consumes.
  */
-interface EdgeDto {
-  id: string;
-  workspaceId: string;
-  sourceNodeId: string;
-  targetNodeId: string;
-  relationKey: string;
-  attributes: Record<string, unknown>;
-  authorHash: string;
-  status: string;
-  communityScore: number;
-  createdAt: string;
-}
-
 function toEdgeDto(edge: Edge): EdgeDto {
   return {
     id: edge.id,

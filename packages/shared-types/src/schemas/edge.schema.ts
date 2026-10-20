@@ -20,3 +20,26 @@ export const UpdateEdgeSchema = z.object({
 });
 
 export type UpdateEdgeInput = z.infer<typeof UpdateEdgeSchema>;
+
+/**
+ * Stable JSON projection of an Edge — the element returned by
+ * `GET /api/v1/edges/:id`, `GET /api/v1/edges` and `PATCH /api/v1/edges/:id`.
+ *
+ * It never leaks the raw entity internals (e.g. the `AuthorHash` value
+ * object): the pseudonym is emitted as a string. The API owns the projection
+ * (`EdgeController`); the PWA consumes the result read-only.
+ */
+export interface EdgeDto {
+  id: string;
+  workspaceId: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  relationKey: string;
+  attributes: Record<string, unknown>;
+  /** The opaque per-user pseudonym of the author (ADR-0013). */
+  authorHash: string;
+  status: string;
+  communityScore: number;
+  /** ISO-8601 instant. */
+  createdAt: string;
+}

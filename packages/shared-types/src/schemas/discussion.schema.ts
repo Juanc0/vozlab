@@ -48,3 +48,49 @@ export const ListPostsQuerySchema = z.object({
   cursor: z.string().optional(),
 });
 export type ListPostsQueryInput = z.infer<typeof ListPostsQuerySchema>;
+
+/**
+ * Stable JSON projection of a discussion thread — the element returned by
+ * `GET /api/v1/discussions` and `PUT /api/v1/discussions/:threadId/close`.
+ *
+ * It never leaks the raw entity internals (e.g. the `AuthorHash` value
+ * object): the pseudonym is emitted as a string. The API owns the projection
+ * (`DiscussionController`); the PWA consumes the result read-only.
+ */
+export interface ThreadDto {
+  id: string;
+  workspaceId: string;
+  targetId: string;
+  targetType: string;
+  title: string;
+  status: string;
+  /** The opaque per-user pseudonym of the creator (ADR-0013). */
+  createdByHash: string;
+  /** ISO-8601 instant. */
+  createdAt: string;
+  /** ISO-8601 instant. */
+  updatedAt: string;
+}
+
+/**
+ * Stable JSON projection of a discussion post — the element returned by
+ * `GET /api/v1/discussions/:threadId/posts`.
+ *
+ * It never leaks the raw entity internals (e.g. the `AuthorHash` value
+ * object): the pseudonym is emitted as a string. The API owns the projection
+ * (`DiscussionController`); the PWA consumes the result read-only.
+ */
+export interface PostDto {
+  id: string;
+  threadId: string;
+  /** `null` for a top-level post. */
+  parentPostId: string | null;
+  /** The opaque per-user pseudonym of the author (ADR-0013). */
+  authorHash: string;
+  body: string;
+  upvotes: number;
+  downvotes: number;
+  communityScore: number;
+  /** ISO-8601 instant. */
+  createdAt: string;
+}

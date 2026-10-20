@@ -3,6 +3,8 @@ import {
   ProposeOntologyClassSchema,
   ProposeDatatypePropertySchema,
   ProposeObjectPropertySchema,
+  type OntologyClassDto,
+  type ObjectPropertyDto,
 } from '@vozlab/shared-types';
 import { ProposeOntologyClassUseCase } from '../../../application/use_cases/ProposeOntologyClassUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../../application/use_cases/ProposeDatatypePropertyUseCase.js';
@@ -18,38 +20,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
 /**
  * Stable JSON projection of an OntologyClass. Never leaks internal state
  * beyond what consumers need to render the metamodel.
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`OntologyClassDto`) so
+ * the PWA can type the responses it consumes.
  */
-interface OntologyClassDto {
-  id: string;
-  workspaceId: string | null;
-  systemKey: string;
-  displayNames: Record<string, string>;
-  descriptions: Record<string, string>;
-  parentClassKey: string | null;
-  status: string;
-  proposedBy: string;
-  createdAt: string;
-}
-
-/**
- * Stable JSON projection of an ObjectProperty (domain/range typed relation).
- */
-interface ObjectPropertyDto {
-  id: string;
-  workspaceId: string | null;
-  systemKey: string;
-  displayNames: Record<string, string>;
-  descriptions: Record<string, string>;
-  domainClassKey: string;
-  rangeClassKey: string;
-  isDirectional: boolean;
-  isSymmetric: boolean;
-  allowsSelfRelation: boolean;
-  status: string;
-  proposedBy: string;
-  createdAt: string;
-}
-
 function toOntologyClassDto(cls: OntologyClass): OntologyClassDto {
   return {
     id: cls.id,
@@ -64,6 +38,12 @@ function toOntologyClassDto(cls: OntologyClass): OntologyClassDto {
   };
 }
 
+/**
+ * Stable JSON projection of an ObjectProperty (domain/range typed relation).
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`ObjectPropertyDto`) so
+ * the PWA can type the responses it consumes.
+ */
 function toObjectPropertyDto(prop: ObjectProperty): ObjectPropertyDto {
   return {
     id: prop.id,

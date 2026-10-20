@@ -1,5 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CreateProposalSchema, ListProposalQuerySchema } from '@vozlab/shared-types';
+import {
+  CreateProposalSchema,
+  ListProposalQuerySchema,
+  type ProposalDto,
+} from '@vozlab/shared-types';
 import { CreateProposalUseCase } from '../../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../../application/use_cases/RejectProposalUseCase.js';
@@ -15,24 +19,10 @@ import { sendError, mapDomainError } from './errorResponse.js';
  * Stable JSON projection of an EditProposal. Never leaks the raw entity
  * internals (e.g. the `AuthorHash` value object) — pseudonyms are emitted as
  * their 64-hex strings (NFR-07); `proposedChanges` is passed through as-is.
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`ProposalDto`) so the
+ * PWA can type the responses it consumes.
  */
-interface ProposalDto {
-  id: string;
-  workspaceId: string;
-  targetId: string;
-  targetType: string;
-  /** ADR-0026: `EDIT` (an attribute delta) or `MERGE` (a node is folded in). */
-  kind: string;
-  status: string;
-  communityScore: number;
-  justification: string | null;
-  proposerHash: string;
-  resolvedBy: string | null;
-  resolvedAt: string | null;
-  proposedChanges: Record<string, unknown>;
-  createdAt: string;
-}
-
 function toProposalDto(proposal: EditProposal): ProposalDto {
   return {
     id: proposal.id,

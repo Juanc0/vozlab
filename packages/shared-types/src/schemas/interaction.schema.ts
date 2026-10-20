@@ -38,3 +38,20 @@ export const CastVoteSchema = z.object({
   interactionType: InteractionTypeSchema,
 });
 export type CastVoteInput = z.infer<typeof CastVoteSchema>;
+
+/**
+ * Stable JSON projection of a community interaction — the body returned by
+ * `POST /api/v1/interactions`.
+ *
+ * `value` is the score delta the server derived from `interactionType`
+ * (`DOWNVOTE` -> -1, the other types -> +1); the client never sends it. The
+ * PWA uses it to roll back an optimistic vote when the call fails.
+ */
+export interface InteractionDto {
+  id: string;
+  targetId: string;
+  targetType: string;
+  interactionType: string;
+  /** The score delta applied to the target (+1 or -1). */
+  value: number;
+}
