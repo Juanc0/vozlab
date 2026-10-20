@@ -1,5 +1,6 @@
 ---
 description: Takes the next open item from ROADMAP.md, executes it, validates it and updates the board.
+agent: build
 ---
 
 Act as the High-Level Engineering Committee.

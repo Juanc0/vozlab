@@ -1,5 +1,6 @@
 ---
 description: Holistic architecture audit across docs/, ROADMAP.md and the code.
+agent: architect
 ---
 
 Act as the High-Level Engineering Committee (Software Architect, Full-Stack

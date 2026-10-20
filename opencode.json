@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "mcp": {
+    "timeout": {
+      "startup": 90000,
+      "catalog": 30000,
+      "execution": 600000
+    },
+    "servers": {
+      "postgres": {
+        "type": "local",
+        "command": [
+          "docker",
+          "run",
+          "-i",
+          "--rm",
+          "--add-host=host.docker.internal:host-gateway",
+          "-e",
+          "DATABASE_URI",
+          "crystaldba/postgres-mcp",
+          "--access-mode=restricted"
+        ],
+        "environment": {
+          "DATABASE_URI": "postgresql://mcp_reader:vozlab_mcp_local@host.docker.internal:5432/vozlab_tenant_dev"
+        }
+      },
+      "playwright": {
+        "type": "local",
+        "command": ["npx", "-y", "@playwright/mcp@latest"]
+      },
+      "github": {
+        "type": "remote",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}",
+          "X-MCP-Toolsets": "repos,issues,pull_requests,actions"
+        }
+      },
+      "chrome-devtools": {
+        "type": "local",
+        "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
+        "disabled": true
+      }
+    }
+  },
+
+  "permissions": [
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+    { "action": "shell", "resource": "*db:push*", "effect": "ask" },
+    { "action": "shell", "resource": "docker compose down -v*", "effect": "ask" },
+    { "action": "shell", "resource": "rm -rf*", "effect": "ask" }
+  ]
+}
