@@ -67,6 +67,9 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
     async findDatatypeProperties() {
       return [];
     },
+    async findActiveDatatypeProperties() {
+      return [];
+    },
     async findObjectProperty() {
       return null;
     },

@@ -46,6 +46,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     findClassByKey: vi.fn(),
     findActiveClasses: vi.fn(),
     findDatatypeProperties: vi.fn(),
+    findActiveDatatypeProperties: vi.fn(),
     findObjectProperty: vi.fn(),
     findActiveObjectProperties: vi.fn(),
     saveClass: vi.fn(),

@@ -1,5 +1,6 @@
 import type { Edge } from '../../src/domain/entities/Edge.js';
 import type { Node } from '../../src/domain/entities/Node.js';
+import type { DatatypeProperty } from '../../src/domain/entities/DatatypeProperty.js';
 import type { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 import type { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
@@ -175,9 +176,16 @@ export interface FakeOntologyRepository {
   deltasApplied: string[];
 }
 
-/** In-memory `IOntologyRepository`; only `findObjectProperty` is behaviourful. */
+/**
+ * In-memory `IOntologyRepository`; only `findObjectProperty` and
+ * `findActiveDatatypeProperties` are behaviourful.
+ *
+ * `findActiveDatatypeProperties` mirrors the adapter: only the ACTIVE rows
+ * are visible to the consumers, a proposal awaiting approval stays hidden.
+ */
 export function makeOntologyRepository(
-  objectProperty: ObjectProperty | null = null
+  objectProperty: ObjectProperty | null = null,
+  datatypeProperties: DatatypeProperty[] = []
 ): FakeOntologyRepository {
   const activated: string[] = [];
   const deltasApplied: string[] = [];
@@ -192,7 +200,10 @@ export function makeOntologyRepository(
       return [];
     },
     async findDatatypeProperties() {
-      return [];
+      return datatypeProperties;
+    },
+    async findActiveDatatypeProperties() {
+      return datatypeProperties.filter((prop) => prop.status === 'ACTIVE');
     },
     async findObjectProperty() {
       return objectProperty;

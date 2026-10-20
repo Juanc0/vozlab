@@ -95,6 +95,30 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return rows.map(datatypeToDomain);
   }
 
+  /**
+   * ACTIVE datatype properties of the workspace.
+   *
+   * Stricter than `findDatatypeProperties` (which filters by class only): the
+   * status predicate keeps a `PROPOSED`/`REJECTED` attribute out of the
+   * dynamic form, exactly as `findActiveObjectProperties` does for relations.
+   */
+  async findActiveDatatypeProperties(
+    workspaceId: string,
+    tid: string
+  ): Promise<DatatypeProperty[]> {
+    const db = await this.client(tid);
+    const rows = await db
+      .select()
+      .from(datatypeProperties)
+      .where(
+        and(
+          eq(datatypeProperties.workspaceId, workspaceId),
+          eq(datatypeProperties.status, 'ACTIVE')
+        )
+      );
+    return rows.map(datatypeToDomain);
+  }
+
   async findObjectProperty(
     relationKey: string,
     workspaceId: string,

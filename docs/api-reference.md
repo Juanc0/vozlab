@@ -251,7 +251,7 @@ Notes:
 | `POST` | `/api/v1/ontology/datatype-properties` | `systemKey`; `displayNames`; `descriptions?`; `datatype` (`string\|number\|boolean\|date\|enum`, default `string`); `allowedValues?`; `isRequired?`; `defaultValue?`; `domainClassKey` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown `domainClassKey` |
 | `POST` | `/api/v1/ontology/object-properties` | `systemKey`; `displayNames`; `descriptions?`; `domainClassKey`; `rangeClassKey`; `isDirectional?`; `isSymmetric?`; `allowsSelfRelation?` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown domain/range key |
 | `PUT` | `/api/v1/ontology/classes/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not MODERATOR/ADMIN; `422` class missing/foreign or not `PROPOSED` |
-| `GET` | `/api/v1/ontology` | — | `200 { classes: OntologyClassDto[], objectProperties: ObjectPropertyDto[] }` | — |
+| `GET` | `/api/v1/ontology` | — | `200 { classes: OntologyClassDto[], objectProperties: ObjectPropertyDto[], datatypeProperties: DatatypePropertyDto[] }` | — |
 
 `OntologyClassDto`: `id`, `workspaceId`, `systemKey`, `displayNames`,
 `descriptions`, `parentClassKey`, `status`, `proposedBy`, `createdAt`.
@@ -260,10 +260,18 @@ Notes:
 
 - `ontology_classes` is UNIQUE(`workspace_id`, `system_key`); duplicate
   `systemKey` is `422`.
-- `GET /ontology` returns only `ACTIVE` classes and object properties.
-  `datatypeProperties` are not part of this response.
-- Only classes have an activation route; property rows remain `PROPOSED` until
-  a future endpoint exists.
+- `GET /ontology` returns only `ACTIVE` classes and object properties, plus
+  the `ACTIVE` datatype properties. A property still awaiting approval never
+  reaches the consumer. `datatypeProperties` is what drives the dynamic
+  node-creation form (FR-06); it carries `datatype`, `allowedValues`,
+  `isRequired` and `defaultValue` per property.
+- **Only classes have an activation route.** A datatype or object property
+  created through the API stays `PROPOSED` forever — `POST
+  /ontology/datatype-properties` and `POST /ontology/object-properties` hard-code
+  `PROPOSED` and nothing promotes them. A workspace can therefore only grow
+  its metamodel through the API for *classes*; the properties that exist are
+  the ones an operator inserted directly. The PWA's dynamic form is built
+  from what is `ACTIVE`.
 - Activating a missing/foreign class returns **422**, not 404.
 
 ## 7. Discussions

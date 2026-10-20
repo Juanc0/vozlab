@@ -108,3 +108,47 @@ export interface ObjectPropertyDto {
   /** ISO-8601 instant. */
   createdAt: string;
 }
+
+/**
+ * Stable JSON projection of a DatatypeProperty (scalar attribute of a class)
+ * — the element returned by `GET /api/v1/ontology`.
+ *
+ * It is exactly what the PWA needs to build the dynamic node-creation form
+ * (FR-06): the scalar kind, the enum domain, the required flag and the
+ * default value.
+ *
+ * The API owns the projection (`OntologyController`); the PWA consumes the
+ * result read-only.
+ */
+export interface DatatypePropertyDto {
+  id: string;
+  /** `null` for a system-wide property. */
+  workspaceId: string | null;
+  systemKey: string;
+  displayNames: Record<string, string>;
+  descriptions: Record<string, string>;
+  /** The scalar kind the form must enforce. */
+  datatype: DatatypeKind;
+  /** The enum domain; `null` for every other datatype. */
+  allowedValues: string[] | null;
+  isRequired: boolean;
+  defaultValue: unknown;
+  /** The class this attribute belongs to (its `systemKey`). */
+  domainClassKey: string;
+  status: PropertyStatus;
+  proposedBy: string;
+  /** ISO-8601 instant. */
+  createdAt: string;
+}
+
+/**
+ * The body of `GET /api/v1/ontology`.
+ *
+ * The three collections are the *active* metamodel of the workspace: a
+ * proposal awaiting approval never reaches the client (governance invariant).
+ */
+export interface OntologyResponseDto {
+  classes: OntologyClassDto[];
+  objectProperties: ObjectPropertyDto[];
+  datatypeProperties: DatatypePropertyDto[];
+}

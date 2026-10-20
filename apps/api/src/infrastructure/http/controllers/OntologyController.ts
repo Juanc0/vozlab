@@ -3,8 +3,10 @@ import {
   ProposeOntologyClassSchema,
   ProposeDatatypePropertySchema,
   ProposeObjectPropertySchema,
+  type DatatypePropertyDto,
   type OntologyClassDto,
   type ObjectPropertyDto,
+  type OntologyResponseDto,
 } from '@vozlab/shared-types';
 import { ProposeOntologyClassUseCase } from '../../../application/use_cases/ProposeOntologyClassUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../../application/use_cases/ProposeDatatypePropertyUseCase.js';
@@ -12,6 +14,7 @@ import { ProposeObjectPropertyUseCase } from '../../../application/use_cases/Pro
 import { ActivateOntologyClassUseCase } from '../../../application/use_cases/ActivateOntologyClassUseCase.js';
 import { GetOntologyUseCase } from '../../../application/use_cases/GetOntologyUseCase.js';
 import { OntologyClass } from '../../../domain/entities/OntologyClass.js';
+import { DatatypeProperty } from '../../../domain/entities/DatatypeProperty.js';
 import { ObjectProperty } from '../../../domain/entities/ObjectProperty.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
@@ -56,6 +59,33 @@ function toObjectPropertyDto(prop: ObjectProperty): ObjectPropertyDto {
     isDirectional: prop.isDirectional,
     isSymmetric: prop.isSymmetric,
     allowsSelfRelation: prop.allowsSelfRelation,
+    status: prop.status,
+    proposedBy: prop.proposedBy,
+    createdAt: prop.createdAt.toISOString(),
+  };
+}
+
+/**
+ * Stable JSON projection of a DatatypeProperty (scalar attribute of a class).
+ *
+ * It carries what the dynamic node-creation form needs (FR-06): the scalar
+ * kind, the enum domain, the required flag and the default value.
+ *
+ * The shape itself lives in `@vozlab/shared-types` (`DatatypePropertyDto`) so
+ * the PWA can type the responses it consumes.
+ */
+function toDatatypePropertyDto(prop: DatatypeProperty): DatatypePropertyDto {
+  return {
+    id: prop.id,
+    workspaceId: prop.workspaceId,
+    systemKey: prop.systemKey,
+    displayNames: prop.displayNames,
+    descriptions: prop.descriptions,
+    datatype: prop.datatype,
+    allowedValues: prop.allowedValues,
+    isRequired: prop.isRequired,
+    defaultValue: prop.defaultValue,
+    domainClassKey: prop.domainClassKey,
     status: prop.status,
     proposedBy: prop.proposedBy,
     createdAt: prop.createdAt.toISOString(),
@@ -201,7 +231,7 @@ export class OntologyController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const { classes, objectProperties } = await this.getOntology.execute({
+      const { classes, objectProperties, datatypeProperties } = await this.getOntology.execute({
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
       });
@@ -209,7 +239,8 @@ export class OntologyController {
       return reply.status(200).send({
         classes: classes.map(toOntologyClassDto),
         objectProperties: objectProperties.map(toObjectPropertyDto),
-      });
+        datatypeProperties: datatypeProperties.map(toDatatypePropertyDto),
+      } satisfies OntologyResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getOntology failed');
     }

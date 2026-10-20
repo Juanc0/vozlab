@@ -16,6 +16,14 @@ export interface IOntologyRepository {
     workspaceId: string,
     tid: string
   ): Promise<DatatypeProperty[]>;
+  /**
+   * ACTIVE datatype properties of the workspace — the scalar attributes that
+   * drive the dynamic node-creation form (FR-06).
+   *
+   * Only the ACTIVE ones: a proposal awaiting approval stays invisible, the
+   * same rule as `findActiveObjectProperties` (governance invariant).
+   */
+  findActiveDatatypeProperties(workspaceId: string, tid: string): Promise<DatatypeProperty[]>;
   findObjectProperty(
     relationKey: string,
     workspaceId: string,
