@@ -342,6 +342,35 @@ The integration suite starts the API on `13000`, a mock OIDC provider on
 deletes its own users and event codes; never point it at production. See
 [testing.md](testing.md) for scope, configuration and planned levels.
 
+## Agent tooling (optional)
+
+The AI assistants used on this repository read the database through a
+dedicated read-only role instead of the superuser. Provision it once after
+migrating and seeding:
+
+```bash
+pnpm --filter @vozlab/database db:grant-mcp-reader
+```
+
+The script is idempotent and prints the connection URI it provisioned. The
+role can only `SELECT` from the tenant database: writes are rejected by
+PostgreSQL itself (`default_transaction_read_only = on`), the hashed refresh
+tokens in `auth.refresh_tokens` are revoked, and `CONNECT` on the router
+database is refused, so the tenant connection passwords stay unreachable.
+
+Keep the URI in sync with `mcp.servers.postgres.environment.DATABASE_URI` in
+`opencode.json`. To use a different password, set `MCP_READER_PASSWORD` in
+the root `.env` before running the script. The full description of the role,
+the MCP servers, the subagents and the skills is in
+[agent-tooling.md](agent-tooling.md).
+
+The GitHub MCP server reads its token from the process environment, not from
+`.env`:
+
+```bash
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # scopes: repo, read:org
+```
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |

@@ -22,6 +22,7 @@ Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow
 | [runbook-dev.md](runbook-dev.md) | Local bootstrap, migrations, seed, tokens, troubleshooting |
 | [runbook-ops.md](runbook-ops.md) | Runtime topology, health checks, shutdown, deployment gaps |
 | [testing.md](testing.md) | Test layering, current coverage, CI, known gaps |
+| [agent-tooling.md](agent-tooling.md) | Skills, subagents, slash commands and MCP servers used to work on VozLab |
 | [spec/](spec/) | Phase 2/3 component specs — **not implemented** (workers, PWA, CI/CD) |
 | [decisions/](decisions/) | Architecture Decision Records (`ADR-*.md`) |
 | [../ROADMAP.md](../ROADMAP.md) | Open work, deferred items, known debt |

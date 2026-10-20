@@ -31,3 +31,11 @@ Act as a **High-Level Engineering Committee**:
 6. **Docs:** entry point [docs/README.md](docs/README.md); decisions in
    `docs/decisions/`; never let a doc contradict the code — the code wins, fix
    the doc.
+
+## MCPs
+
+1. Brave Search have a weird rate limit, so just try to make one call at a time.
+2. The MCP servers, subagents, slash commands and skills are described in
+   [docs/agent-tooling.md](docs/agent-tooling.md); the project configuration is
+   [opencode.json](opencode.json).
+
