@@ -1,20 +1,21 @@
 # Testing Strategy
 
 Current automated tests are **TypeScript unit tests by default, an opt-in auth
-integration suite, and a Python worker-runtime suite**. This page records what
-is green today, what is deliberately missing, and the Phase 4 plan.
+integration suite, a web unit suite, and a Python worker-runtime suite**. This
+page records what is green today, what is deliberately missing, and the Phase 4
+plan.
 
 ## Current suites
 
-| Item | Unit suite | Integration suite |
-| --- | --- | --- |
-| Runner | Vitest 2.1.9 | Vitest 2.1.9 |
-| Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` |
-| Size | 29 files / 159 tests | 5 files / 29 tests |
-| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle |
-| Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider |
-| Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) |
-| Coverage | Not measured; no coverage provider installed | Not measured |
+| Item | Unit suite | Integration suite | Web suite |
+| --- | --- | --- | --- |
+| Runner | Vitest 2.1.9 | Vitest 2.1.9 | Vitest 5.0.5 (jsdom) |
+| Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` | `apps/web/tests/**/*.test.ts` |
+| Size | 29 files / 159 tests | 5 files / 29 tests | 4 files / 16 tests |
+| Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle | The app shell landmarks, the route components, the runtime API base URL resolution, the service-worker registration flow |
+| Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider | jsdom; no network, no service worker |
+| Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) | `pnpm test` (default, CI) |
+| Coverage | Not measured; no coverage provider installed | Not measured | Not measured |
 
 The unit suite uses `tests/support/fakes.ts`, `tests/support/authFakes.ts` and
 `tests/support/hash.ts` to exercise use cases without adapters.
@@ -151,6 +152,7 @@ pnpm type-check
 | `build` | `apps/api/tsconfig.json` | `src/**/*` only, `tsc --noEmit` |
 | `type-check` (API) | `apps/api/tsconfig.tests.json` | `src/**/*` **and** `tests/**/*` |
 | `type-check` (database) | `packages/database/tsconfig.scripts.json` | `src/**/*` and `scripts/**/*` |
+| `type-check` (web) | `apps/web/tsconfig.json` | `src/**/*`, `tests/**/*` and the generated SvelteKit types, via `svelte-check` |
 | `build` (shared-types) | package tsconfig | Zod schemas and DTOs |
 
 Tests and DB scripts live outside `src/`, which is why they need the extra
@@ -165,7 +167,8 @@ No `dist/` is produced; `start` runs TypeScript through `tsx`.
   transaction rollback, stream publication); only the auth flow is integrated.
 - Integration tests in CI. They currently require a developer-managed
   docker-compose pair; Testcontainers or service containers are Phase 4.
-- End-to-end tests (Playwright) for the PWA.
+- End-to-end tests (Playwright) for the PWA. The dependency is installed
+  (`@playwright/test` in `apps/web`) but no spec exists yet — roadmap 3.7.
 - Load/performance tests (k6) and the 10,000-node / 50,000-edge stress seed.
 - Python tests in Turbo. The runtime suite runs in CI (`uv run pytest`) and
   locally, but it is not part of the Turbo task graph.

@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Phase 2 is in progress: the shared Python worker runtime exists, the embedder (FR-18) and the Relator (FR-19) work end to end, and the Extractor (FR-17, partial — the ingestion producer is missing) is implemented. The Consolidator handler, the PWA (Phase 3) and operational hardening (Phase 4) are not started. `pnpm test` = 29 files / 159 unit tests; the opt-in integration suite adds 5 files / 29 tests against local Postgres/Redis; the Python runtime adds 105 tests (`uv run pytest`, now a CI job); `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+Status snapshot: **2026-10-20**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Phase 2 is in progress: the shared Python worker runtime exists, the embedder (FR-18) and the Relator (FR-19) work end to end, and the Extractor (FR-17, partial — the ingestion producer is missing) is implemented. Phase 3 has started: `apps/web` is a working SvelteKit 5 + Tailwind 4 PWA scaffold that builds, serves SSR and ships a manifest and a service worker (roadmap 3.1); the state layer, the route groups, the graph canvas and the governance UI are not built yet. The Consolidator handler and operational hardening (Phase 4) are not started. `pnpm test` = 29 API files / 159 unit tests plus 4 web files / 16 tests; the opt-in integration suite adds 5 files / 29 tests against local Postgres/Redis; the Python runtime adds 105 tests (`uv run pytest`, now a CI job); `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
 
 ## Live documents
 
@@ -23,7 +23,7 @@ Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow
 | [runbook-ops.md](runbook-ops.md) | Runtime topology, health checks, shutdown, deployment gaps |
 | [testing.md](testing.md) | Test layering, current coverage, CI, known gaps |
 | [agent-tooling.md](agent-tooling.md) | Skills, subagents, slash commands and MCP servers used to work on VozLab |
-| [spec/](spec/) | Phase 2/3 component specs — **not implemented** (workers, PWA, CI/CD) |
+| [spec/](spec/) | Phase 2/3 component specs — the workers are built, the **PWA is partially built** (3.1), CI/CD is partial |
 | [decisions/](decisions/) | Architecture Decision Records (`ADR-*.md`) |
 | [../ROADMAP.md](../ROADMAP.md) | Open work, deferred items, known debt |
 | [archive/](archive/) | **Frozen history** — v1 spec, task prompts, reviews, old plan/TODO. Not maintained. |
@@ -41,7 +41,7 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 | FR-01 | Implemented | `AuthController.ts`, `OidcProviderClient.ts`, `CompleteOidcLoginUseCase.ts` | [auth](auth-and-tenancy.md) | Authorization code + PKCE, JWKS/issuer/audience/nonce validation, JIT user, 15 min access token + rotating refresh cookie. Requires a configured IdP; `db:mint-token` remains a local tool. |
 | FR-02 | Implemented | `OidcProviderClient.ts`, `TenantGuard.ts`, `RouterDatabaseClient.ts` | [auth](auth-and-tenancy.md) | Validated `tid` (Entra) or `hd` (Google) → router tenant → tenant DB, on login and every resource request. `iss`-only resolution remains unbuilt. |
 | FR-03 | Implemented | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts`, `router.event_codes` | [auth](auth-and-tenancy.md) | Global event code (SHA-256 stored), atomic expiry/capacity/revocation, anonymous user + membership + session. The PWA QR scanner is Phase 3. |
-| FR-04 | Deferred | `apps/web/` (empty) | [requirements](requirements.md) | PWA, clean URLs and per-tab `sessionStorage` are not built. |
+| FR-04 | Deferred | `apps/web` (scaffold) | [requirements](requirements.md) | The PWA app exists and serves SSR, but the clean URL and the per-tab `sessionStorage` workspace are 3.2/3.3. |
 | FR-05 | Implemented | `TenantWorkspaceGuard.ts`, `DrizzleMembershipRepository.ts` | [auth](auth-and-tenancy.md) | `X-Workspace-ID` + membership check on every protected request; only agents skip membership. |
 | FR-06 | Implemented | `CreateNodeUseCase.ts`, `tenant.meta.schema.ts` | [domain](domain-model.md) | `typeKey` must be an ACTIVE class; attributes are persisted as JSONB. The dynamic PWA form and attribute validation are part of FR-04. |
 | FR-07 | Implemented | `Node.ts`, `Edge.ts`, `EditProposal.ts` | [domain](domain-model.md) | `author_hash` is stored on graph objects; maintainer rights are enforced on approve/reject and author-only deletes. |

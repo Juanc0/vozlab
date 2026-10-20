@@ -17,9 +17,14 @@ Code, comments and identifiers are English. The docs are the approved spec; when
 they disagree with the code, **the code wins** — fix the doc.
 
 ## Layout
-- `apps/api` — the only app with code. Hexagonal: `domain/` (pure),
+- `apps/api` — the API. Hexagonal: `domain/` (pure),
   `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
-- `apps/web`, `apps/worker-consolidador` — empty scaffolds; not in the build yet.
+- `apps/web` — SvelteKit 5 PWA (Svelte 5 runes, Tailwind 4, adapter-node).
+  Phase 3: only the 3.1 scaffold exists — it builds, serves SSR and ships a
+  manifest and a service worker. The state layer, the route groups, the
+  Cytoscape canvas, the governance UI, the offline shell and the E2E suite
+  are 3.2–3.7. `docs/spec/web-pwa.md` is the normative spec.
+- `apps/worker-consolidador` — empty scaffold; not in the build yet.
 - `apps/worker-embedder` — Python 3.12/uv worker: consumes `NODE_CREATED`,
   calls Ollama (`nomic-embed-text`, 768 dims) and writes the vector through
   the agent-only `PUT /api/v1/nodes/:id/embedding` route.
@@ -57,6 +62,9 @@ they disagree with the code, **the code wins** — fix the doc.
 - `docker compose --profile workers up -d` — run the three workers as
   containers (the API stays on the host).
 - `pnpm --filter @vozlab/api dev` — `tsx watch` with `--env-file-if-exists=../../.env`.
+- `pnpm --filter @vozlab/web dev` — SvelteKit dev server on **5173** (the API's
+  `WEB_ORIGIN` expects it); `build` emits an adapter-node server in
+  `apps/web/build/`.
 - `pnpm --filter @vozlab/database db:generate[:router|:tenant]`,
   `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
   `db:mint-token -- --as maintainer|moderator|member|agent`,

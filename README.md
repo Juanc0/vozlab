@@ -2,7 +2,7 @@
 
 VozLab is a multi-tenant knowledge-graph platform for institutional co-creation. Community members turn scattered listening inputs (surveys, suggestion boxes, meeting minutes) into typed graph nodes, debate them in threads, and propose edits through a pull-request-style governance flow. Each institution gets its own physical PostgreSQL database; each workspace is isolated inside it.
 
-The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python AI workers, and a dedicated embedding worker. **Only the API is implemented today; the Phase 2 Python worker runtime exists as a scaffold.**
+The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python AI workers, and a dedicated embedding worker. **The API and the Phase 2 Python worker runtime are implemented; the PWA has just started (roadmap 3.1).**
 
 ## Status
 
@@ -10,7 +10,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 29 files / 159 TypeScript unit tests green (`pnpm test`); opt-in integration suite (5 files / 29 tests); Python runtime 105 tests (`uv run pytest`) |
+| Tests | 29 API files / 159 TypeScript unit tests + 4 web files / 16 tests green (`pnpm test`); opt-in integration suite (5 files / 29 tests); Python runtime 105 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: TypeScript gate + Python gate (uv/pytest/ruff) + worker image builds |
 | Lint | **Red debt** — 26 pre-existing `@typescript-eslint/no-explicit-any` errors |
@@ -18,7 +18,8 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | Relator (Agent 2) | Partial — reads the top-5 neighbours, asks the LLM and creates `PENDING` edges; a merge verdict is logged, not applied |
 | Source registry | Done — `meta.data_sources` + agent-only `GET /api/v1/ingestion/resolve-source`; no management route yet |
 | Extractor (Agent 1) | Partial — masks PII, extracts a draft and creates a `PENDING` node; nothing publishes `stream:source_raw` yet |
-| Consolidator, PWA, AGE adapter, SSE, metrics | Not built |
+| Consolidator, AGE adapter, SSE, metrics | Not built |
+| PWA (SvelteKit 5) | Scaffold only — builds, serves SSR, ships a manifest and a service worker (3.1); the state layer, routes, canvas, governance UI, offline shell and E2E suite are 3.2–3.7 |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 
@@ -27,7 +28,7 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 | Path | Contents | State |
 | --- | --- | --- |
 | `apps/api` | Fastify API (hexagonal: `domain`, `application`, `infrastructure`, `shared`) | Implemented |
-| `apps/web` | SvelteKit 5 PWA | Empty scaffold (Phase 3) |
+| `apps/web` | SvelteKit 5 PWA | Scaffold (Phase 3, 3.1 done) |
 | `apps/worker-extractor` | Python 3.12 ingestion worker | Implemented (PII masking → LLM draft → `PENDING` node); the ingestion producer is missing |
 | `apps/worker-relacionador` | Python 3.12 relationship evaluator | Implemented (neighbours → LLM → `PENDING` edge); merges deferred |
 | `apps/worker-consolidador` | Python 3.12 opportunity consolidator | Empty scaffold (Phase 2) |

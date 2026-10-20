@@ -12,11 +12,11 @@ It has **three jobs**.
 | `python` (worker runtime) | `actions/checkout@v4` → `astral-sh/setup-uv@v10` (uv 0.11.8, cache) → `uv sync --frozen --all-packages --all-groups` → `uv run pytest` → `uv run ruff check …` → `uv run ruff format --check …` |
 | `images` (worker images) | `actions/checkout@v4` → `docker build` of the embedder, Relator and Extractor images |
 
-`build` type-checks `src`; `type-check` covers API tests and database scripts;
-`test` runs the Vitest unit suite (27 files / 127 tests). The Python job runs
-the worker runtime suite (103 tests) and the format/lint gate for the Python
-code. The image job proves the worker Dockerfiles still build — the images
-are not pushed anywhere.
+`build` type-checks `src`; `type-check` covers API tests, database scripts and
+the web app (`svelte-check`); `test` runs the Vitest unit suite (29 API files /
+159 tests plus 4 web files / 16 tests). The Python job runs the worker runtime
+suite (105 tests) and the format/lint gate for the Python code. The image job
+proves the worker Dockerfiles still build — the images are not pushed anywhere.
 
 Turborepo caching is enabled for all tasks; the uv job uses the setup action's
 cache.

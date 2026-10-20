@@ -55,7 +55,9 @@ The identity model, guard chain and pseudonym rules are in
   The QR scanner UI is part of the PWA.)*
 - **FR-04 — Multi-workspace management in a clean URL.** The PWA must keep the
   public URL clean (`app.vozlab.io/`) and keep the workspace context
-  (`workspace_id`) isolated in each tab's `sessionStorage`. *(PWA not built.)*
+  (`workspace_id`) isolated in each tab's `sessionStorage`. *(Partial: the
+  SvelteKit 5 PWA scaffold exists (roadmap 3.1); the clean URLs and the
+  per-tab `sessionStorage` workspace are 3.2 and 3.3.)*
 - **FR-05 — Stateless zero-trust validation.** Every request must carry
   `X-Workspace-ID`, and the API must validate membership and permissions on that
   workspace on every request. *(Implemented.)*

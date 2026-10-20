@@ -1,8 +1,10 @@
 # Web PWA (`apps/web`)
 
-> **Not implemented (Phase 3).** `apps/web/` contains only an empty `src/`
-> directory: no `package.json`, SvelteKit app, Tailwind config, PWA plugin or
-> tests. This page defines the intended frontend; nothing here runs today.
+> **Partially implemented (Phase 3).** `apps/web/` is a working SvelteKit 5
+> app: it builds, serves SSR and ships a PWA manifest and service worker
+> (roadmap 3.1). The state layer, the route groups, the graph canvas, the
+> governance UI, the offline shell and the E2E suite are still to come —
+> 3.2 to 3.7. This page remains the normative spec for the whole phase.
 
 ## Stack
 
@@ -160,8 +162,12 @@ Minimal manifest:
 
 ## Phase 3 acceptance criteria
 
-- [ ] SvelteKit 5 + Tailwind builds and serves SSR.
+- [x] SvelteKit 5 + Tailwind builds and serves SSR. *(3.1 — `pnpm --filter
+  @vozlab/web build`, adapter-node, verified with `curl` against the built
+  server.)*
 - [ ] PWA manifest and service worker are generated; offline writes blocked.
+  *(3.1 generates the manifest and the worker in `prompt` mode; the offline
+  shell and the write block are 3.6.)*
 - [ ] Workspace changes are isolated per tab via `sessionStorage`.
 - [ ] `(app)` routes redirect to `/login` without a session.
 - [ ] Cytoscape renders a bounded subgraph with `dagre` and cleans up.

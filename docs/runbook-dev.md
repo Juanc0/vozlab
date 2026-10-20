@@ -290,6 +290,39 @@ pnpm --filter @vozlab/api dev
 `dev` runs `tsx watch` against TypeScript sources. `start` also runs from source;
 there is no emitted `dist/`.
 
+### 13. Start the PWA (optional)
+
+```bash
+pnpm --filter @vozlab/web dev
+```
+
+The dev server listens on **5173**, which is the `WEB_ORIGIN` the API already
+expects for CORS. It talks to the API at `http://localhost:3000/api/v1` by
+default; override it at runtime with `PUBLIC_API_BASE_URL`:
+
+```bash
+PUBLIC_API_BASE_URL=https://api.vozlab.example/api/v1 pnpm --filter @vozlab/web dev
+```
+
+The value is read on the server (`$env/dynamic/public`), so a built image can be
+re-pointed at another API without a rebuild.
+
+The production build is a standalone Node server:
+
+```bash
+pnpm --filter @vozlab/web build
+PORT=5173 node apps/web/build/index.js
+```
+
+It serves the SSR app, `/manifest.webmanifest` and the service worker. The
+worker runs in `prompt` mode: a new version waits until the user accepts the
+reload, so assets are never swapped silently mid-session.
+
+> The scaffold is all that exists today (roadmap 3.1). There is no login
+> screen, no workspace selector and no graph canvas yet; those are 3.2 to 3.4.
+> Local development therefore still uses `db:mint-token` — see
+> [spec/web-pwa.md](spec/web-pwa.md).
+
 ## Verify
 
 ```bash
@@ -325,14 +358,14 @@ increases because `NODE_CREATED` is published after the transaction commits.
 ## Tests and checks
 
 ```bash
-pnpm test                                # unit suite, 26 files / 125 tests
-pnpm turbo run build type-check          # src, tests and DB scripts
+pnpm test                                # unit suite: 29 API files / 159 tests + 4 web files / 16 tests
+pnpm turbo run build type-check          # src, tests, DB scripts and the web app
 pnpm lint                                # known red: 26 pre-existing no-explicit-any errors
 
 # Opt-in auth integration suite (requires the running DB, migrations and seed)
 pnpm --filter @vozlab/api test:integration
 
-# Python worker runtime (103 tests; no live Redis/Ollama/API)
+# Python worker runtime (105 tests; no live Redis/Ollama/API)
 uv sync
 uv run pytest
 ```

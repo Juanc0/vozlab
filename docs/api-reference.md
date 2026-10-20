@@ -350,8 +350,9 @@ the write path one node per request); management of the source registry; SSE;
 metrics; Apache AGE/Cypher; a merge proposal (the Relator can judge a merge
 but has nothing to submit); node or edge status transitions;
 datatype/object-property activation; interaction reads or vote retraction. The
-PWA (including its OIDC login screen and event QR scanner) and the
-Extractor/Consolidator apps are still empty scaffolds; the embedder and the
+PWA has only its scaffold (roadmap 3.1): the OIDC login screen, the event QR
+scanner, the graph canvas and the governance UI arrive in Phase 3. The
+Extractor and Consolidator apps are still empty scaffolds; the embedder and the
 Relator exist but are not in Compose or CI.
 
 Related: [Domain model](domain-model.md) · [Conventions](conventions.md) ·

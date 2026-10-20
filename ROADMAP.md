@@ -17,15 +17,19 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 29 test files / 159 TypeScript unit tests green; opt-in integration suite
-  (5 files / 29 tests) green against local PostgreSQL/Redis; Python worker
-  runtime has 105 green tests (`uv run pytest`); `build` + `type-check` green;
-  CI runs the TypeScript gate, the Python gate and the worker image builds.
+- 29 test files / 159 TypeScript unit tests green plus 4 web files / 16 tests;
+  opt-in integration suite (5 files / 29 tests) green against local
+  PostgreSQL/Redis; Python worker runtime has 105 green tests (`uv run pytest`);
+  `build` + `type-check` green; CI runs the TypeScript gate, the Python gate and
+  the worker image builds.
 - Phase 2 in progress: shared `vozlab_worker` runtime, the embedder (FR-18),
   the Relator (FR-19), the Extractor (FR-17 partial) and the source registry
-  (FR-17 prerequisite). The Consolidator handler, the ingestion producer, the
-  PWA (including its login/QR UI), observability and broad
-  integration/E2E/load tests are not started.
+  (FR-17 prerequisite). The Consolidator handler, the ingestion producer,
+  observability and broad integration/E2E/load tests are not started.
+- Phase 3 started: `apps/web` is a working SvelteKit 5 PWA scaffold (3.1) that
+  builds, serves SSR and ships a manifest and a service worker. The state
+  layer, the route groups, the graph canvas, the governance UI, the offline
+  shell and the E2E suite are 3.2 to 3.7.
 - Known debt: `pnpm lint` is red (26 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
@@ -134,7 +138,13 @@ Milestones:
 
 ## Phase 3 — PWA
 
-- [ ] 3.1 SvelteKit 5 + Tailwind + PWA scaffold (SSR, service worker, manifest).
+- [x] 3.1 SvelteKit 5 + Tailwind + PWA scaffold (SSR, service worker, manifest).
+      Result: `apps/web` is a working SvelteKit 2.70 / Svelte 5.57 / Vite 8 /
+      Tailwind 4 app on adapter-node; it builds, serves SSR and ships a
+      generated manifest and service worker in `prompt` mode (a new version
+      never swaps assets silently). 16 web tests. The state layer, the route
+      groups, the canvas, the governance UI, the offline shell and the E2E
+      suite are 3.2 to 3.7.
 - [ ] 3.2 Runes state + per-tab `sessionStorage` workspace + HTTP client that
       injects `X-Workspace-ID`.
 - [ ] 3.3 Route groups `(auth)` / `(app)`; clean URLs.

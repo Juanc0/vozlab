@@ -11,7 +11,7 @@ module.exports = {
   ],
   parser: "@typescript-eslint/parser",
   plugins: ["@typescript-eslint", "react", "react-hooks"],
-  ignorePatterns: ["**/node_modules", ".next"],
+  ignorePatterns: ["**/node_modules", ".next", ".svelte-kit", "build"],
   rules: {
     "react/react-in-jsx-scope": "off",
     "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
