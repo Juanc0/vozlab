@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Phase 2 is in progress: the shared Python worker runtime exists, the embedder (FR-18) and the Relator (FR-19) work end to end, and the Extractor (FR-17, partial — the ingestion producer is missing) is implemented. The Consolidator handler, the PWA (Phase 3) and operational hardening (Phase 4) are not started. `pnpm test` = 29 files / 156 unit tests; the opt-in integration suite adds 5 files / 28 tests against local Postgres/Redis; the Python runtime adds 105 tests (`uv run pytest`, now a CI job); `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
+Status snapshot: **2026-10-19**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow) are complete; the API core is implemented and independently verified. Phase 2 is in progress: the shared Python worker runtime exists, the embedder (FR-18) and the Relator (FR-19) work end to end, and the Extractor (FR-17, partial — the ingestion producer is missing) is implemented. The Consolidator handler, the PWA (Phase 3) and operational hardening (Phase 4) are not started. `pnpm test` = 29 files / 159 unit tests; the opt-in integration suite adds 5 files / 29 tests against local Postgres/Redis; the Python runtime adds 105 tests (`uv run pytest`, now a CI job); `pnpm turbo run build type-check` is green; `pnpm lint` is **red** with 26 pre-existing `@typescript-eslint/no-explicit-any` errors.
 
 ## Live documents
 

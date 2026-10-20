@@ -17,8 +17,8 @@ trade-offs before coding.
   keyset pagination, event publication.
 - Auth flow complete (FR-01/02/03): OIDC login/callback with PKCE, JIT accounts,
   rotating refresh sessions, logout, `/auth/me` and event-code join.
-- 29 test files / 156 TypeScript unit tests green; opt-in integration suite
-  (5 files / 28 tests) green against local PostgreSQL/Redis; Python worker
+- 29 test files / 159 TypeScript unit tests green; opt-in integration suite
+  (5 files / 29 tests) green against local PostgreSQL/Redis; Python worker
   runtime has 105 green tests (`uv run pytest`); `build` + `type-check` green;
   CI runs the TypeScript gate, the Python gate and the worker image builds.
 - Phase 2 in progress: shared `vozlab_worker` runtime, the embedder (FR-18),
