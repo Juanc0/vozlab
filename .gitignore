@@ -7,6 +7,10 @@ dist/
 build/
 coverage/
 .svelte-kit/
+# The service worker `vite-plugin-pwa` generates for the dev server.
+dev-dist/
+# The snapshot dumps of the Playwright MCP.
+.playwright-mcp/
 
 # Environment
 .env

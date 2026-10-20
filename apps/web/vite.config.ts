@@ -95,7 +95,14 @@ export default defineConfig(({ mode }) => {
               // again would duplicate them in the precache manifest.
               includeManifestIcons: false,
               devOptions: {
-                enabled: false
+                // The manifest is generated in dev too, so the `<link
+                // rel="manifest">` of `app.html` resolves instead of 404ing
+                // in the console on every page load. The service worker
+                // itself stays off: a worker in dev caches stale modules
+                // and fights with HMR.
+                enabled: true,
+                type: 'module',
+                suppressWarnings: true
               }
             })
           ])

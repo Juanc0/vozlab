@@ -18,6 +18,7 @@
  */
 
 import { apiUrl } from '$lib/config/api-base-url';
+import { runUnderRefreshLock } from '$lib/api/refresh-lock';
 import type { SessionState } from '$lib/state/session.svelte';
 import type { WorkspaceState } from '$lib/state/workspace.svelte';
 import {
@@ -155,10 +156,52 @@ export class ApiClient {
 
   #baseUrl: string | (() => string);
 
+  /**
+   * The refresh that is currently in flight in this client, if any.
+   *
+   * The refresh cookie is shared by every tab of the origin while the
+   * access token is per tab, and the API reads a second presentation of an
+   * already-rotated cookie as a theft. Two concurrent refreshes would
+   * therefore log the tab out. The in-flight promise is shared instead — see
+   * {@link serializeRefresh}.
+   */
+  #refreshInFlight: Promise<unknown> | null = null;
+
   constructor(options: ApiClientOptions) {
     this.#baseUrl = options.baseUrl;
     this.session = options.session;
     this.workspace = options.workspace;
+  }
+
+  /**
+   * Runs `operation` with the refresh serialised.
+   *
+   * Concurrent callers in the same client share the **same** promise and
+   * therefore the same result; a caller in another tab waits for the
+   * origin-scoped lock and then runs its own operation against the rotated
+   * cookie.
+   */
+  serializeRefresh<T>(operation: () => Promise<T>): Promise<T> {
+    const inFlight = this.#refreshInFlight;
+    if (inFlight !== null) {
+      return inFlight as Promise<T>;
+    }
+
+    const promise = runUnderRefreshLock(operation);
+    this.#refreshInFlight = promise;
+
+    // The slot is released as soon as the operation settles. The reaction is
+    // registered **before** the caller's own continuation runs, so a caller
+    // that awaits the refresh and then asks for another one gets a new
+    // refresh rather than the finished one.
+    const release = (): void => {
+      if (this.#refreshInFlight === promise) {
+        this.#refreshInFlight = null;
+      }
+    };
+    promise.then(release, release);
+
+    return promise;
   }
 
   /** The API base URL the client talks to. */

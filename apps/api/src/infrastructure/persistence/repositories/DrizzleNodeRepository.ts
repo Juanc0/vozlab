@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { edges, nodes } from '@vozlab/database';
 import { Node, NodeStatus } from '../../../domain/entities/Node.js';
+import { EdgeStatus } from '../../../domain/entities/Edge.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
 import {
@@ -216,7 +217,18 @@ export class DrizzleNodeRepository implements INodeRepository {
         )
       );
 
-    return { nodes: orderedNodes, edges: edgeRows };
+    return {
+      nodes: orderedNodes,
+      edges: edgeRows.map((row) => ({
+        id: row.id,
+        sourceNodeId: row.sourceNodeId,
+        targetNodeId: row.targetNodeId,
+        relationKey: row.relationKey,
+        // The column is text; the domain vocabulary is the edge status union
+        // (the same mapping the edge repository does for a full edge).
+        status: row.status as EdgeStatus,
+      })),
+    };
   }
 
   /**

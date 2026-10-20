@@ -7,12 +7,12 @@
       "outputs": [".svelte-kit/**", "build/**"]
     },
     "type-check": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "cache": true,
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "type-check"],
       "cache": true,
       "outputs": []
     }

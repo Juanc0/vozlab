@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import '../app.css';
   import AppShell from '$lib/components/AppShell.svelte';
   import { ApiClient } from '$lib/api/client';
   import { registerServiceWorker } from '$lib/pwa/register';

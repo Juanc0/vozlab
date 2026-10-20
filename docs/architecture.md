@@ -1,6 +1,6 @@
 # Architecture
 
-VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, with the scaffold (3.1), the state layer plus HTTP client (3.2) and the route groups with the session guard (3.3) done — the graph canvas and the governance UI are not built yet.
+VozLab is currently a **modular monolith**: one Fastify process exposes the REST API and owns all tenant resolution, authorization, graph mutations and event publication. Phase 2 has a shared Python runtime with the embedder, the Relator and the Extractor implemented; the Consolidator is a scaffold. Phase 3 has started: the SvelteKit 5 PWA builds and serves SSR, with the scaffold (3.1), the state layer plus HTTP client (3.2), the route groups with the session guard (3.3) and the Cytoscape canvas (3.4) done — the governance UI is not built yet.
 
 ## Context and containers
 
@@ -117,7 +117,7 @@ Environment is validated by Zod at startup (`shared/config/env.ts`); missing or 
 
 ## What is not built
 
-- PWA graph canvas, governance UI, offline shell and E2E suite: the 3.1 scaffold, the 3.2 state layer and the 3.3 route groups exist (the login, the event-code join and the session guard are real), but no graph data is fetched yet. The event QR **scanner** is not built — the join page takes the code as text.
+- PWA governance UI, offline shell and E2E suite: the scaffold (3.1), the state layer (3.2), the route groups (3.3) and the graph canvas (3.4) exist and the canvas reads real data, but node/edge creation, proposal review, discussions and voting are 3.5. The event QR **scanner** is not built — the join page takes the code as text.
 - A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SSE, GraphQL.
 - Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).

@@ -13,8 +13,21 @@
 export type {
   /** `GET /api/v1/nodes/:id`, `GET /api/v1/nodes`, `GET /api/v1/nodes/subgraph`. */
   NodeDto,
+  /** The lifecycle states of a node (`DRAFT` … `REJECTED`). */
+  NodeStatus,
+  /**
+   * `GET /api/v1/nodes/subgraph` — the edge projection of a subgraph.
+   *
+   * Narrower than {@link EdgeDto}: it carries the topology only (the
+   * endpoints, the relation key and the status).
+   */
+  SubgraphEdgeDto,
+  /** `GET /api/v1/nodes/subgraph` — the body of the subgraph response. */
+  SubgraphResponseDto,
   /** `GET /api/v1/edges/:id`, `GET /api/v1/edges`, `PATCH /api/v1/edges/:id`. */
   EdgeDto,
+  /** The lifecycle states of a relation (`DRAFT` … `REJECTED`). */
+  EdgeStatus,
   /** `GET /api/v1/proposals`, `GET /api/v1/proposals/:id`. */
   ProposalDto,
   /** `GET /api/v1/discussions`, `PUT /api/v1/discussions/:threadId/close`. */

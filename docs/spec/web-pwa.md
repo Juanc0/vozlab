@@ -134,6 +134,28 @@ refresh, so JavaScript never sees it. Neither credential is written to
 `localStorage` or `sessionStorage`. The only persisted value is the active
 workspace id.
 
+### The refresh must be serialised
+
+The refresh cookie is shared by every tab of the origin, while the access
+token is per tab. The API rotates the cookie on every refresh and treats the
+presentation of an already-rotated token as **reuse**, which revokes the
+whole family. Two tabs restoring their session at the same time would
+therefore both be logged out.
+
+Multi-tab is not an edge case: FR-04 requires the workspace to be isolated
+*per tab*, which only makes sense if a user runs several tabs. The client
+serialises the refresh:
+
+- **across tabs**, with the origin-scoped Web Locks API — the loser waits and
+  then reads the *rotated* cookie out of the shared jar;
+- **within a tab**, by sharing the in-flight promise. That state lives on the
+  `ApiClient` instance, not in a module global, so two clients never wait on
+  each other.
+
+The server-side alternative — a grace window that returns the same successor
+token for a reuse inside it — is the API's decision: it would weaken the
+theft detection.
+
 ## Graph canvas
 
 `GraphCanvas.svelte` initializes Cytoscape once, updates elements when props
@@ -167,9 +189,46 @@ physics.
 <div bind:this={container} class="h-full w-full"></div>
 ```
 
-Selecting a node opens details and its edit-proposal history. Edges are styled
-by relation key/status. Empty and error states are explicit; a failed fetch must
-not leave a blank canvas.
+### Corrections against the code
+
+**The snippet above is wrong in two ways.** It is kept only to show what must
+not be done.
+
+- The effect reads `nodes` and `edges`, so it re-runs — and re-creates the
+  whole instance — whenever they change. The instance must be created by one
+  effect that depends on nothing but the container, and the elements must be
+  patched by a *separate* effect (`cy.elements().remove()` then `cy.add()`).
+- `cytoscape.use(dagre)` re-registers the extension on every run. It belongs
+  at module level, once.
+
+The instance is also held in `$state.raw`, so Svelte does not wrap the opaque
+Cytoscape object in a reactive proxy, and the module is imported **inside**
+the effect, so the SSR pass never evaluates Cytoscape at all.
+
+**The canvas needs a text alternative.** Cytoscape draws to a `<canvas>`,
+which a screen reader cannot see. The subgraph is therefore also rendered as
+two real tables — the nodes and the relations — with captions, column
+headers and row headers, and the two views share one selection. The canvas
+itself carries `role="img"` and a short description of what it shows, for
+the case where the list is collapsed.
+
+**The subgraph edges are narrower than `EdgeDto`.** The API returns
+`{ id, sourceNodeId, targetNodeId, relationKey, status }` — the topology
+only, not the attributes, the author or the score. That shape is
+`SubgraphEdgeDto` in `@vozlab/shared-types`; the canvas must not expect a
+full edge.
+
+Selecting a node opens details and its edit-proposal history. The history is
+filtered **client-side**: the API's proposal list accepts `status`,
+`targetType`, `kind`, `limit` and `cursor`, but no `targetId`. The UI says
+so when the page was truncated — the history is partial, and pretending
+otherwise would be a lie.
+
+Edges are styled by relation key/status. Empty and error states are
+explicit; a failed fetch must not leave a blank canvas.
+
+Edges are styled by relation key/status. Empty and error states are
+explicit; a failed fetch must not leave a blank canvas.
 
 ## Governance UI
 
@@ -221,10 +280,14 @@ Minimal manifest:
 - [x] Workspace changes are isolated per tab via `sessionStorage`.
 - [x] `(app)` routes redirect to `/login` without a session. *(3.3 — four
   guard states: `restoring`, `ready`, `no-membership`, `failed`.)*
-- [ ] Cytoscape renders a bounded subgraph with `dagre` and cleans up.
+- [x] Cytoscape renders a bounded subgraph with `dagre` and cleans up. *(3.4 —
+  the instance is created once, the elements are patched on a change and the
+  instance is destroyed on unmount; `dagre` is registered once at module
+  level and the layout is deterministic, with no physics.)*
 - [ ] Proposals/discussions/votes use the real API, including optimistic vote
-  rollback.
-- [ ] No SSE; no placeholder that implies live updates.
+  rollback. *(3.5.)*
+- [x] No SSE; no placeholder that implies live updates. *(Asserted by a test
+  on the graph page: no polling, no auto-refresh, no "live" wording.)*
 
 ## Open questions
 

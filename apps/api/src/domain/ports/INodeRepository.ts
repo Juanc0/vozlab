@@ -1,5 +1,6 @@
 import { DbTransaction } from './Transaction.js';
 import { Node } from '../entities/Node.js';
+import { EdgeStatus } from '../entities/Edge.js';
 
 /**
  * A connecting edge in a subgraph projection. Deliberately narrow: the
@@ -10,7 +11,7 @@ export interface SubgraphEdge {
   sourceNodeId: string;
   targetNodeId: string;
   relationKey: string;
-  status: string;
+  status: EdgeStatus;
 }
 
 export interface SubgraphResult {

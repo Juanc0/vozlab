@@ -61,14 +61,20 @@ export async function eventJoin(client: ApiClient, input: EventJoinInput): Promi
  *
  * The API rotates the refresh cookie on every call; the browser stores the
  * new one, the access token stays in memory.
+ *
+ * The call goes through {@link serializeRefresh}: the cookie is shared by
+ * every tab of the origin, and the API reads the presentation of an
+ * already-rotated token as a theft, which would log out every tab at once.
  */
 export async function refreshSession(client: ApiClient): Promise<AuthSessionDto> {
-  return client.request<AuthSessionDto>({
-    method: 'POST',
-    path: '/auth/refresh',
-    auth: 'none',
-    workspace: false
-  });
+  return client.serializeRefresh(() =>
+    client.request<AuthSessionDto>({
+      method: 'POST',
+      path: '/auth/refresh',
+      auth: 'none',
+      workspace: false
+    })
+  );
 }
 
 /** The authenticated caller and the workspaces it is a member of. */

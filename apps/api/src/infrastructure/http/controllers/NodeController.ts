@@ -6,6 +6,7 @@ import {
   SetNodeEmbeddingSchema,
   SubgraphQuerySchema,
   type NodeDto,
+  type SubgraphResponseDto,
 } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
 import { GetNodeUseCase } from '../../../application/use_cases/GetNodeUseCase.js';
@@ -180,7 +181,7 @@ export class NodeController {
           relationKey: edge.relationKey,
           status: edge.status,
         })),
-      });
+      } satisfies SubgraphResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getSubgraph failed');
     }

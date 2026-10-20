@@ -160,7 +160,15 @@ Milestones:
       per-tab workspace selector, and `/auth/callback` lands the OIDC
       failures outside both groups. The workspace is never a path segment.
       81 web tests.
-- [ ] 3.4 Cytoscape graph canvas + subgraph loading.
+- [x] 3.4 Cytoscape graph canvas + subgraph loading. Result: the instance is
+      created once, the elements are patched on a change and the instance is
+      destroyed on unmount; `dagre` is registered once at module level with a
+      deterministic layout and no physics. The subgraph is bounded (3 hops,
+      200 nodes) and the bound is stated in the UI. The canvas has a real
+      text alternative (two tables) because a `<canvas>` is invisible to a
+      screen reader. The refresh is serialised across tabs (Web Locks) so
+      the rotating refresh cookie cannot log out two tabs at once.
+      124 web tests.
 - [ ] 3.5 Node/edge creation, proposal review (approve/reject), discussions and
       voting UI with optimistic updates.
 - [ ] 3.6 PWA/offline shell, install prompt, accessibility pass.
