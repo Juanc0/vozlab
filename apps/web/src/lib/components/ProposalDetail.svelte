@@ -1,0 +1,349 @@
+<script lang="ts">
+  /**
+   * The review of one proposal (FR-12, FR-13).
+   *
+   * The panel shows the delta, the discussion and the resolution controls.
+   * The controls are **hints**: the API re-checks every action, so a `403`
+   * or a `422` is shown with its own code and message instead of being
+   * swallowed.
+   */
+  import { describeFailure, type ApiFailure } from '$lib/api/failure';
+  import {
+    resolveMergeTargetLabel,
+    resolveProposalTarget,
+    type ProposalTarget
+  } from '$lib/api/proposal-target';
+  import {
+    autoApplyProposal,
+    approveProposal,
+    getProposal,
+    rejectProposal,
+    type ResolvedProposal
+  } from '$lib/api/proposals';
+  import type { ProposalDto } from '$lib/api/types';
+  import { readMergeTarget } from '$lib/governance/delta';
+  import {
+    AUTO_APPLY_MIN_AGE_DAYS,
+    AUTO_APPLY_MIN_SCORE,
+    proposalAgeDays,
+    proposalPermissions
+  } from '$lib/governance/permissions';
+  import type { VoteLedger } from '$lib/governance/vote.svelte';
+  import { getApiClient, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import DiscussionPanel from './DiscussionPanel.svelte';
+  import ProposalDelta from './ProposalDelta.svelte';
+  import VoteButtons from './VoteButtons.svelte';
+
+  interface Props {
+    /** The proposal under review. */
+    proposal: ProposalDto;
+    /** The session-local state of the votes. */
+    ledger: VoteLedger;
+    /** Called when the API resolved the proposal (its status changed). */
+    onresolved?: (resolved: ResolvedProposal) => void;
+    /** Called when the API answered with a fresh score of the proposal. */
+    onscored?: (proposalId: string, communityScore: number) => void;
+  }
+
+  let { proposal, ledger, onresolved, onscored }: Props = $props();
+
+  const api = getApiClient();
+  const session = getSessionState();
+  const workspace = getWorkspaceState();
+
+  /** The target of the proposal — its maintainer and a readable label. */
+  let target = $state<ProposalTarget | null>(null);
+
+  /** The title of the node that survives a merge. */
+  let mergeLabel = $state<string | null>(null);
+
+  /** The resolution in flight. */
+  let resolving = $state(false);
+
+  /** The outcome of the last resolution. */
+  let actionError = $state<ApiFailure | null>(null);
+  let notice = $state<string | null>(null);
+
+  /** The counters that discard the answer of a superseded read. */
+  let targetRequest = 0;
+  let mergeRequest = 0;
+
+  /**
+   * The proposal whose target was read last.
+   *
+   * The owner replaces the proposal object when its status or its score
+   * changes; the target of a proposal does not change with it. The reads are
+   * therefore done once per proposal — the controls must not flash while a
+   * vote is confirmed.
+   */
+  let targetReadFor = '';
+  let mergeReadFor = '';
+
+  /**
+   * Reads the target of the proposal.
+   *
+   * The target decides **who may resolve the proposal**: the API compares
+   * the caller with the author of the target, not with the author of the
+   * proposal. The read is asynchronous, so the controls wait for it — they
+   * must not flash for the wrong user.
+   */
+  $effect(() => {
+    const id = proposal.id;
+
+    if (id === targetReadFor) {
+      return;
+    }
+    targetReadFor = id;
+
+    const current = (targetRequest += 1);
+
+    target = null;
+
+    void resolveProposalTarget(api, proposal).then((resolved) => {
+      if (current !== targetRequest) {
+        return;
+      }
+      target = resolved;
+    });
+  });
+
+  /**
+   * Reads the node that survives a merge (ADR-0026).
+   *
+   * The payload is narrowed first: a malformed one names no node, and the
+   * view says so instead of asking the API about a uuid that does not
+   * exist.
+   */
+  $effect(() => {
+    const merge = proposal.kind === 'MERGE' ? readMergeTarget(proposal.proposedChanges) : null;
+    const nodeId = merge?.kind === 'node' ? merge.mergeIntoNodeId : null;
+
+    if (nodeId === null || nodeId === mergeReadFor) {
+      return;
+    }
+    mergeReadFor = nodeId;
+
+    const current = (mergeRequest += 1);
+
+    mergeLabel = null;
+
+    void resolveMergeTargetLabel(api, nodeId).then((label) => {
+      if (current !== mergeRequest) {
+        return;
+      }
+      mergeLabel = label;
+    });
+  });
+
+  /** The permissions of the signed-in user over this proposal. */
+  const permissions = $derived(
+    target === null
+      ? null
+      : proposalPermissions({
+          proposal,
+          authorHash: session.user?.authorHash ?? null,
+          isModerator: workspace.isModerator,
+          targetMaintainerHash: target.known ? target.maintainerHash : null
+        })
+  );
+
+  /** The age of the proposal, in days. */
+  const ageDays = $derived(Math.floor(proposalAgeDays(proposal)));
+
+  /**
+   * Reads the score of the proposal back after a vote.
+   *
+   * The API has no read for the interactions: a vote of the **same** type is
+   * idempotent and does not move the counter again. The score of the
+   * proposal is therefore read back and adopted — the server is the
+   * authority.
+   */
+  async function reconcileScore(): Promise<number | null> {
+    try {
+      const fresh = await getProposal(api, proposal.id);
+      onscored?.(proposal.id, fresh.communityScore);
+      return fresh.communityScore;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Resolves the proposal and reports the outcome. */
+  async function resolve(action: 'approve' | 'reject' | 'auto-apply'): Promise<void> {
+    resolving = true;
+    actionError = null;
+    notice = null;
+
+    try {
+      const resolved =
+        action === 'approve'
+          ? await approveProposal(api, proposal.id)
+          : action === 'reject'
+            ? await rejectProposal(api, proposal.id)
+            : await autoApplyProposal(api, proposal.id);
+
+      notice = `The proposal is now ${resolved.status}.`;
+      onresolved?.(resolved);
+    } catch (caught) {
+      actionError = describeFailure(caught);
+    } finally {
+      resolving = false;
+    }
+  }
+</script>
+
+<article aria-labelledby="proposal-heading" class="space-y-4">
+  <header>
+    <div class="flex flex-wrap items-center gap-2">
+      <h2 id="proposal-heading" class="text-base font-semibold tracking-tight">
+        {proposal.kind === 'MERGE' ? 'Merge proposal' : 'Edit proposal'}
+      </h2>
+      <span class="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-ink-muted">
+        {proposal.status}
+      </span>
+    </div>
+
+    <dl class="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+      <dt class="text-ink-muted">Target</dt>
+      <dd>
+        {proposal.targetType}
+        {#if target?.label}
+          <span class="text-ink-muted">— {target.label}</span>
+        {/if}
+        <span class="block font-mono text-xs break-all text-ink-muted">{proposal.targetId}</span>
+      </dd>
+
+      <dt class="text-ink-muted">Author</dt>
+      <dd class="font-mono text-xs break-all">{proposal.proposerHash}</dd>
+
+      <dt class="text-ink-muted">Created</dt>
+      <dd>
+        {new Date(proposal.createdAt).toISOString().slice(0, 10)}
+        <span class="text-ink-muted">({ageDays} days ago)</span>
+      </dd>
+
+      {#if proposal.resolvedAt}
+        <dt class="text-ink-muted">Resolved</dt>
+        <dd>
+          {new Date(proposal.resolvedAt).toISOString().slice(0, 10)}
+          {#if proposal.resolvedBy}
+            <span class="block font-mono text-xs break-all text-ink-muted">{proposal.resolvedBy}</span>
+          {/if}
+        </dd>
+      {/if}
+    </dl>
+
+    {#if proposal.justification}
+      <p class="mt-2 text-sm">{proposal.justification}</p>
+    {/if}
+  </header>
+
+  <section aria-labelledby="proposal-delta-heading">
+    <h3 id="proposal-delta-heading" class="text-xs font-semibold tracking-wide uppercase">
+      Proposed change
+    </h3>
+    <div class="mt-1">
+      <ProposalDelta {proposal} mergeTargetLabel={mergeLabel} />
+    </div>
+  </section>
+
+  <section aria-labelledby="proposal-vote-heading">
+    <h3 id="proposal-vote-heading" class="text-xs font-semibold tracking-wide uppercase">Vote</h3>
+    <div class="mt-1">
+      <VoteButtons
+        {ledger}
+        targetId={proposal.id}
+        targetType="PROPOSAL"
+        score={proposal.communityScore}
+        label="this proposal"
+        reconcile={reconcileScore}
+      />
+    </div>
+  </section>
+
+  <section aria-labelledby="proposal-resolution-heading">
+    <h3 id="proposal-resolution-heading" class="text-xs font-semibold tracking-wide uppercase">
+      Resolution
+    </h3>
+
+    {#if notice}
+      <p role="status" class="mt-1 rounded-md border border-line bg-surface-muted p-2 text-sm">
+        {notice}
+      </p>
+    {/if}
+
+    {#if actionError}
+      <p role="alert" class="mt-1 rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+        <span class="font-mono">{actionError.code}</span> — {actionError.message}
+      </p>
+    {/if}
+
+    {#if permissions === null}
+      <p role="status" class="mt-1 text-sm text-ink-muted">Reading the target of the proposal…</p>
+    {:else if proposal.status !== 'PENDING'}
+      <p class="mt-1 text-sm text-ink-muted">
+        This proposal is {proposal.status}: it is not open for a resolution.
+      </p>
+    {:else}
+      <div class="mt-1 flex flex-wrap items-center gap-2">
+        {#if permissions.canResolve}
+          <button
+            type="button"
+            class="rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={resolving}
+            onclick={() => void resolve('approve')}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={resolving}
+            onclick={() => void resolve('reject')}
+          >
+            Reject
+          </button>
+        {/if}
+
+        {#if permissions.canAutoApply}
+          <button
+            type="button"
+            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={resolving}
+            onclick={() => void resolve('auto-apply')}
+          >
+            Auto-apply
+          </button>
+        {/if}
+      </div>
+
+      {#if !permissions.canResolve}
+        <p class="mt-1 text-sm text-ink-muted">
+          Resolving a proposal belongs to the maintainer of its target.
+        </p>
+      {/if}
+
+      {#if !permissions.canAutoApply}
+        <p class="mt-1 text-sm text-ink-muted">
+          The auto-apply is not available:
+          {#if permissions.autoApplyBlocker === 'score'}
+            the community score is below {AUTO_APPLY_MIN_SCORE}.
+          {:else if permissions.autoApplyBlocker === 'age'}
+            the proposal is younger than {AUTO_APPLY_MIN_AGE_DAYS} days.
+          {:else if permissions.autoApplyBlocker === 'role'}
+            the role in this workspace is not a moderator or an administrator.
+          {:else}
+            the proposal is not open.
+          {/if}
+        </p>
+      {/if}
+    {/if}
+  </section>
+
+  <DiscussionPanel
+    targetId={proposal.id}
+    targetType="PROPOSAL"
+    {ledger}
+    heading="Discussion of this proposal"
+  />
+</article>

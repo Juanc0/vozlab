@@ -180,6 +180,7 @@ export class NodeController {
           targetNodeId: edge.targetNodeId,
           relationKey: edge.relationKey,
           status: edge.status,
+          communityScore: edge.communityScore,
         })),
       } satisfies SubgraphResponseDto);
     } catch (error) {

@@ -206,6 +206,7 @@ export class DrizzleNodeRepository implements INodeRepository {
         targetNodeId: edges.targetNodeId,
         relationKey: edges.relationKey,
         status: edges.status,
+        communityScore: edges.communityScore,
       })
       .from(edges)
       .where(
@@ -227,6 +228,7 @@ export class DrizzleNodeRepository implements INodeRepository {
         // The column is text; the domain vocabulary is the edge status union
         // (the same mapping the edge repository does for a full edge).
         status: row.status as EdgeStatus,
+        communityScore: row.communityScore,
       })),
     };
   }

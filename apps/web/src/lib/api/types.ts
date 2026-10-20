@@ -30,8 +30,18 @@ export type {
   EdgeStatus,
   /** `GET /api/v1/proposals`, `GET /api/v1/proposals/:id`. */
   ProposalDto,
+  /** The states of a proposal (`PENDING` … `AUTO_APPLIED`). */
+  ProposalStatus,
+  /** The kind of a proposal (`EDIT` | `MERGE`, ADR-0026). */
+  ProposalKind,
+  /** The kinds of object a proposal may target (`NODE` | `EDGE` | `ONTOLOGY`). */
+  TargetType,
   /** `GET /api/v1/discussions`, `PUT /api/v1/discussions/:threadId/close`. */
   ThreadDto,
+  /** The states of a discussion thread (`OPEN` | `CLOSED`). */
+  ThreadStatus,
+  /** The kinds of object a discussion may target. */
+  DiscussionTargetType,
   /** `GET /api/v1/discussions/:threadId/posts`. */
   PostDto,
   /** `GET /api/v1/ontology` (classes). */
@@ -48,6 +58,14 @@ export type {
   CreateNodeInput,
   /** `POST /api/v1/edges` — the body of an edge creation. */
   CreateEdgeInput,
+  /** `POST /api/v1/discussions` — the body of a thread creation. */
+  CreateThreadInput,
+  /** `POST /api/v1/discussions/:threadId/posts` — the body of a post. */
+  CreatePostInput,
   /** `POST /api/v1/interactions` — the body of a cast vote. */
   InteractionDto,
+  /** The kinds of object a vote may target. */
+  InteractionTargetType,
+  /** The kinds of vote (`UPVOTE` | `DOWNVOTE` | `SUPPORT` | `VALIDATE`). */
+  InteractionType,
 } from '@vozlab/shared-types';

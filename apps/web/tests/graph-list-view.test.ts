@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import GraphListView from '$lib/components/GraphListView.svelte';
+import { ApiClient } from '$lib/api/client';
+import { API_CLIENT_CONTEXT_KEY } from '$lib/state/context';
+import { SessionState } from '$lib/state/session.svelte';
+import { WorkspaceState } from '$lib/state/workspace.svelte';
+import { VoteLedger } from '$lib/governance/vote.svelte';
 import { EDGE, NODE_A, NODE_B } from './fixtures/graph';
 
 describe('the list view of the subgraph', () => {
@@ -78,5 +83,42 @@ describe('the list view of the subgraph', () => {
     expect(details).not.toBeNull();
     expect(details?.open).toBe(true);
     expect(details?.querySelector('summary')?.textContent).toContain('The subgraph as a list');
+  });
+
+  it('offers no vote on a relation without a ledger', () => {
+    render(GraphListView, { props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+
+    const [, relationTable] = screen.getAllByRole('table');
+
+    expect(within(relationTable).queryByRole('button', { name: /upvote/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the optimistic vote on a relation when a ledger is given', () => {
+    render(GraphListView, {
+      props: {
+        nodes: [NODE_A, NODE_B],
+        edges: [EDGE],
+        ledger: new VoteLedger()
+      },
+      context: new Map<unknown, unknown>([
+        [
+          API_CLIENT_CONTEXT_KEY,
+          new ApiClient({
+            baseUrl: 'http://localhost:3000/api/v1',
+            session: new SessionState(),
+            workspace: new WorkspaceState()
+          })
+        ]
+      ])
+    });
+
+    const [, relationTable] = screen.getAllByRole('table');
+
+    expect(
+      within(relationTable).getByRole('button', { name: /upvote/i })
+    ).toBeInTheDocument();
+    expect(
+      within(relationTable).getByRole('button', { name: /downvote/i })
+    ).toBeInTheDocument();
   });
 });

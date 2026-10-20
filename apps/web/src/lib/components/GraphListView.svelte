@@ -1,5 +1,7 @@
 <script lang="ts">
+  import VoteButtons from '$lib/components/VoteButtons.svelte';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
+  import type { VoteLedger } from '$lib/governance/vote.svelte';
 
   interface Props {
     /** The nodes of the bounded subgraph. */
@@ -10,9 +12,27 @@
     selectedNodeId?: string | null;
     /** Called when the user selects a node in the list. */
     onselect?: (nodeId: string | null) => void;
+    /** The session-local state of the votes, for the relations. */
+    ledger?: VoteLedger;
+    /**
+     * Re-reads the score of a relation after the API counted the vote.
+     *
+     * The API has no read for the interactions, so the client cannot know
+     * whether a vote was counted — the same type is idempotent and does not
+     * move the counter again. The owner of the relation reads its score back
+     * and the ledger adopts it: the server stays the authority.
+     */
+    reconcileEdge?: (edgeId: string) => Promise<number | null>;
   }
 
-  let { nodes = [], edges = [], selectedNodeId = null, onselect }: Props = $props();
+  let {
+    nodes = [],
+    edges = [],
+    selectedNodeId = null,
+    onselect,
+    ledger,
+    reconcileEdge
+  }: Props = $props();
 
   /** The title of a node of the subgraph; the endpoints of a relation are always in it. */
   function titleOf(nodeId: string): string {
@@ -89,7 +109,7 @@
     <div class="mt-2 overflow-x-auto rounded-card border border-line">
       <table class="w-full border-collapse text-left text-sm">
         <caption class="sr-only">
-          The relations of the subgraph: relation key, endpoints and status.
+          The relations of the subgraph: relation key, endpoints, status and score.
         </caption>
         <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
           <tr>
@@ -97,6 +117,9 @@
             <th scope="col" class="px-3 py-2 font-semibold">From</th>
             <th scope="col" class="px-3 py-2 font-semibold">To</th>
             <th scope="col" class="px-3 py-2 font-semibold">Status</th>
+            {#if ledger}
+              <th scope="col" class="px-3 py-2 font-semibold">Score</th>
+            {/if}
           </tr>
         </thead>
         <tbody>
@@ -122,10 +145,28 @@
                 </button>
               </td>
               <td class="px-3 py-2 text-ink-muted">{edge.status}</td>
+              {#if ledger}
+                <td class="px-3 py-2">
+                  <VoteButtons
+                    {ledger}
+                    targetId={edge.id}
+                    targetType="EDGE"
+                    score={edge.communityScore}
+                    label={`the relation ${edge.relationKey}`}
+                    reconcile={
+                      reconcileEdge
+                        ? () => reconcileEdge(edge.id)
+                        : undefined
+                    }
+                  />
+                </td>
+              {/if}
             </tr>
           {:else}
             <tr>
-              <td colspan="4" class="px-3 py-2 text-ink-muted">The subgraph has no relation.</td>
+              <td colspan={ledger ? 5 : 4} class="px-3 py-2 text-ink-muted">
+                The subgraph has no relation.
+              </td>
             </tr>
           {/each}
         </tbody>

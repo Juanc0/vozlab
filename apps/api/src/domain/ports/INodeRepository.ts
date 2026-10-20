@@ -12,6 +12,8 @@ export interface SubgraphEdge {
   targetNodeId: string;
   relationKey: string;
   status: EdgeStatus;
+  /** The community score, so a canvas can draw and vote on a relation. */
+  communityScore: number;
 }
 
 export interface SubgraphResult {

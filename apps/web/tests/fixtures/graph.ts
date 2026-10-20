@@ -42,7 +42,8 @@ export const EDGE: SubgraphEdgeDto = {
   sourceNodeId: NODE_A.id,
   targetNodeId: NODE_B.id,
   relationKey: 'SUGGESTS',
-  status: 'ACTIVE'
+  status: 'ACTIVE',
+  communityScore: 3
 };
 
 export const PROPOSAL: ProposalDto = {

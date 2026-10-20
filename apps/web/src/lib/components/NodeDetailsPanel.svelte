@@ -112,15 +112,28 @@
         {/if}
       </p>
 
-      {#if onrelate}
-        <button
-          type="button"
-          class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
-          onclick={() => onrelate(node)}
+      <div class="mt-3 flex flex-wrap gap-2">
+        {#if onrelate}
+          <button
+            type="button"
+            class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+            onclick={() => onrelate(node)}
+          >
+            Relate to another node
+          </button>
+        {/if}
+
+        <!--
+          The discussion of a node lives in the discussions screen; the
+          target is named in the query string (the workspace never is).
+        -->
+        <a
+          href="/discussions?target={node.id}&type=NODE"
+          class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
         >
-          Relate to another node
-        </button>
-      {/if}
+          Discuss this node
+        </a>
+      </div>
     </div>
 
     <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">

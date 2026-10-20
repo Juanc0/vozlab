@@ -14,7 +14,7 @@ It has **three jobs**.
 
 `build` type-checks `src`; `type-check` covers API tests, database scripts and
 the web app (`svelte-check`); `test` runs the Vitest unit suite (31 API files /
-165 tests plus 22 web files / 163 tests). The Python job runs the worker runtime
+165 tests plus 28 web files / 218 tests). The Python job runs the worker runtime
 suite (105 tests) and the format/lint gate for the Python code. The image job
 proves the worker Dockerfiles still build — the images are not pushed anywhere.
 

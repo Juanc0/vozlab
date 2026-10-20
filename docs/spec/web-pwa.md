@@ -213,10 +213,11 @@ itself carries `role="img"` and a short description of what it shows, for
 the case where the list is collapsed.
 
 **The subgraph edges are narrower than `EdgeDto`.** The API returns
-`{ id, sourceNodeId, targetNodeId, relationKey, status }` — the topology
-only, not the attributes, the author or the score. That shape is
-`SubgraphEdgeDto` in `@vozlab/shared-types`; the canvas must not expect a
-full edge.
+`{ id, sourceNodeId, targetNodeId, relationKey, status, communityScore }` —
+the topology and the score, not the attributes, the author or the
+timestamps. That shape is `SubgraphEdgeDto` in `@vozlab/shared-types`; the
+canvas must not expect a full edge. The score is there so the canvas can
+vote on a relation without a second read.
 
 Selecting a node opens details and its edit-proposal history. The history is
 filtered **client-side**: the API's proposal list accepts `status`,
@@ -237,7 +238,7 @@ explicit; a failed fetch must not leave a blank canvas.
 | Node details | Title, description, ontology attributes, author pseudonym, status, score. |
 | Proposals | List/filter by status; open a proposal to see the delta and discussion. |
 | Discussions | Threaded posts, replies, close-thread action for the creator. |
-| Voting | Upvote/downvote on proposals, posts and relationships. |
+| Voting | Upvote/downvote on proposals, posts and relationships. The relations of the subgraph carry their score, so the canvas votes on a relation without a second read. |
 
 Voting is **optimistic**: update the local score immediately, send
 `POST /api/v1/interactions`, and roll back on error with a visible message. The
@@ -284,8 +285,10 @@ Minimal manifest:
   the instance is created once, the elements are patched on a change and the
   instance is destroyed on unmount; `dagre` is registered once at module
   level and the layout is deterministic, with no physics.)*
-- [ ] Proposals/discussions/votes use the real API, including optimistic vote
-  rollback. *(3.5.)*
+- [x] Proposals/discussions/votes use the real API, including optimistic vote
+  rollback. *(3.5 — the score moves before the request leaves and a refusal
+  restores the exact previous value; the server stays the authority and the
+  score is read back after a counted vote.)*
 - [x] No SSE; no placeholder that implies live updates. *(Asserted by a test
   on the graph page: no polling, no auto-refresh, no "live" wording.)*
 

@@ -169,11 +169,16 @@ Milestones:
       screen reader. The refresh is serialised across tabs (Web Locks) so
       the rotating refresh cookie cannot log out two tabs at once.
       124 web tests.
-- [ ] 3.5 Node/edge creation, proposal review (approve/reject), discussions and
-      voting UI with optimistic updates. *Half done: the creation forms are in
-      place — the node form is built from the ACTIVE `datatype_properties` and
-      the relation picker only offers the relations valid for the source class.
-      The governance half (proposal review, discussions, voting) is next.*
+- [x] 3.5 Node/edge creation, proposal review (approve/reject), discussions and
+      voting UI with optimistic updates. Result: the node form is built from
+      the ACTIVE `datatype_properties` (and the relation picker only offers
+      the relations valid for the source class); the proposals page lists,
+      filters, pages and resolves proposals; the discussions page threads,
+      replies, closes and deletes; the vote is optimistic and rolls back to
+      the exact previous value on a refusal. The approve/reject gate is the
+      **target's** maintainer, as the API decides it. The API gained the
+      active `datatype_properties` and the edge score in the subgraph.
+      218 web tests.
 - [ ] 3.6 PWA/offline shell, install prompt, accessibility pass.
 - [ ] 3.7 Playwright E2E for the critical journeys (see `spec/web-pwa.md`).
 

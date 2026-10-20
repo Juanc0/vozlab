@@ -221,6 +221,7 @@ export async function createEdge(
     sourceNodeId: body.sourceNodeId,
     targetNodeId: body.targetNodeId,
     relationKey: body.relationKey,
-    status: body.status
+    status: body.status,
+    communityScore: body.communityScore
   };
 }

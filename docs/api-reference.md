@@ -146,7 +146,7 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/nodes` | `typeKey` 1–100; `title` 3–255; `description?`; `attributes?` object | `201 { id, workspaceId, typeKey, title, description, status }`, `PENDING` | `422` unknown/inactive `typeKey` or schema |
 | `GET` | `/api/v1/nodes` | `limit`, `cursor` | `200 { nodes, nextCursor }` | `422` cursor/query |
-| `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
+| `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status, communityScore }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
@@ -157,6 +157,10 @@ Notes:
 - The node list returns every non-deleted node, regardless of status.
 - Creation requires an **ACTIVE** ontology class (`typeKey`); nodes are born
   `PENDING`.
+- The subgraph returns a **narrower edge** than `EdgeDto`: the topology, the
+  relation key, the status and the community score — no attributes, no author
+  pseudonym, no timestamps. The score is there so the canvas can vote on a
+  relation without a second read.
 - `subgraph` is registered **before** `/nodes/:id`; traversal is undirected,
   workspace-scoped, `depth <= 3`, `limit <= 200`, and uses the bounded
   recursive SQL CTE (not Apache AGE).
@@ -185,7 +189,7 @@ Notes:
 
 | Method | Path | Input | Success | Route errors |
 | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/edges` | `sourceNodeId` UUID; `targetNodeId` UUID; `relationKey` 1–100; `attributes?` object | `201 { id, sourceNodeId, targetNodeId, relationKey, status }`, `PENDING` | `404 ERR_NODE_NOT_FOUND` endpoint missing/foreign; `422 ERR_INVALID_RELATION_DOMAIN_RANGE` |
+| `POST` | `/api/v1/edges` | `sourceNodeId` UUID; `targetNodeId` UUID; `relationKey` 1–100; `attributes?` object | `201 { id, sourceNodeId, targetNodeId, relationKey, status, communityScore }`, `PENDING` | `404 ERR_NODE_NOT_FOUND` endpoint missing/foreign; `422 ERR_INVALID_RELATION_DOMAIN_RANGE` |
 | `GET` | `/api/v1/edges` | `limit`, `cursor` | `200 { edges, nextCursor }` | `422` cursor/query |
 | `GET` | `/api/v1/edges/:id` | path UUID | `200 { "edge": EdgeDto }` | `404 ERR_EDGE_NOT_FOUND` |
 | `PATCH` | `/api/v1/edges/:id` | optional `relationKey`, optional `attributes` | `200 { "edge": EdgeDto }` | `403` non-author; `404 ERR_EDGE_NOT_FOUND` |

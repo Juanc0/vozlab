@@ -22,6 +22,7 @@
   import GraphListView from '$lib/components/GraphListView.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
   import NodeDetailsPanel from '$lib/components/NodeDetailsPanel.svelte';
+  import { VoteLedger } from '$lib/governance/vote.svelte';
   import { getApiClient, getWorkspaceState } from '$lib/state/context';
   import type { PageProps } from './$types';
 
@@ -42,6 +43,9 @@
   /** The bounded subgraph on the canvas. */
   let graphNodes = $state.raw<NodeDto[]>([]);
   let graphEdges = $state.raw<SubgraphEdgeDto[]>([]);
+
+  /** The session-local state of the votes on the relations. */
+  const ledger = new VoteLedger();
   let graphLoaded = $state(false);
   let graphLoading = $state(false);
   let graphError = $state<ApiFailure | null>(null);
@@ -263,6 +267,41 @@
   function selectRoot(id: string): void {
     rootId = id;
     selectedNodeId = id;
+  }
+
+  /**
+   * Re-reads the score of a relation after the API counted a vote.
+   *
+   * The API has no read for the interactions, so the client cannot know
+   * whether a vote was counted — the same type is idempotent and does not
+   * move the counter again. The relation is read back through the subgraph
+   * and the ledger adopts the server's number: the server stays the
+   * authority.
+   */
+  async function reconcileEdgeScore(edgeId: string): Promise<number | null> {
+    if (rootId === null) {
+      return null;
+    }
+
+    try {
+      const subgraph = await loadSubgraph(api, {
+        rootId,
+        depth,
+        limit
+      });
+
+      const edge = subgraph.edges.find((candidate) => candidate.id === edgeId);
+      if (!edge) {
+        return null;
+      }
+
+      ledger.sync(edgeId, edge.communityScore);
+      return edge.communityScore;
+    } catch {
+      // The score of the relation stays as it was shown; the vote itself
+      // already reported its own outcome.
+      return null;
+    }
   }
 
   /** The user selected a node — in the canvas or in the list. */
@@ -491,6 +530,8 @@
                 edges={graphEdges}
                 selectedNodeId={selectedNodeId}
                 onselect={selectNode}
+                {ledger}
+                reconcileEdge={reconcileEdgeScore}
               />
             </div>
           {/if}

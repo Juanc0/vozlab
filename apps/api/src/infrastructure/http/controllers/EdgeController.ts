@@ -76,6 +76,10 @@ export class EdgeController {
         targetNodeId: edge.targetNodeId,
         relationKey: edge.relationKey,
         status: edge.status,
+        // A new relation starts at zero, but the field belongs to the shape:
+        // the subgraph returns the same projection, so a client that just
+        // created a relation and one that read it back speak one contract.
+        communityScore: edge.communityScore,
       });
     } catch (error) {
       return this.handleError(req, reply, error, 'createEdge failed');
