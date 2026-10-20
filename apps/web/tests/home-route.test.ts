@@ -8,7 +8,8 @@ import {
 } from '$lib/state/context';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
-import { EDGE, NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
+import { EDGE, NEW_NODE, NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
+import { ONTOLOGY } from './fixtures/ontology';
 import Home from '../src/routes/(app)/+page.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
@@ -47,11 +48,16 @@ interface Answers {
   nodes?: () => Response | Promise<Response>;
   subgraph?: (call: number) => Response | Promise<Response>;
   proposals?: () => Response | Promise<Response>;
+  ontology?: () => Response | Promise<Response>;
+  createNode?: () => Response | Promise<Response>;
+  getNode?: () => Response | Promise<Response>;
+  createEdge?: () => Response | Promise<Response>;
 }
 
 function stubFetch(answers: Answers): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    const method = init?.method ?? 'GET';
 
     if (url.includes('/nodes/subgraph')) {
       const call = fetchMock.mock.calls.filter((entry) => String(entry[0]).includes('/nodes/subgraph'))
@@ -60,14 +66,34 @@ function stubFetch(answers: Answers): ReturnType<typeof vi.fn> {
       return answers.subgraph(call);
     }
 
+    if (url.includes('/proposals')) {
+      if (!answers.proposals) throw new Error(`unexpected request: ${url}`);
+      return answers.proposals();
+    }
+
+    if (url.includes('/ontology')) {
+      // The metamodel drives the creation forms; the fixture is the active
+      // ontology of the dev seed.
+      return answers.ontology ? answers.ontology() : json(ONTOLOGY);
+    }
+
+    if (/\/nodes\/[0-9a-f-]{36}$/.test(url)) {
+      if (!answers.getNode) throw new Error(`unexpected request: ${url}`);
+      return answers.getNode();
+    }
+
     if (url.includes('/nodes')) {
+      if (method === 'POST') {
+        if (!answers.createNode) throw new Error(`unexpected request: ${url}`);
+        return answers.createNode();
+      }
       if (!answers.nodes) throw new Error(`unexpected request: ${url}`);
       return answers.nodes();
     }
 
-    if (url.includes('/proposals')) {
-      if (!answers.proposals) throw new Error(`unexpected request: ${url}`);
-      return answers.proposals();
+    if (url.includes('/edges')) {
+      if (!answers.createEdge) throw new Error(`unexpected request: ${url}`);
+      return answers.createEdge();
     }
 
     throw new Error(`unexpected request: ${url}`);
@@ -221,5 +247,86 @@ describe('the graph page', () => {
 
     expect(screen.queryByText(/live/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/realtime/i)).not.toBeInTheDocument();
+  });
+
+  it('opens the node form from the toolbar', async () => {
+    stubFetch({ nodes: () => json({ nodes: [NODE_A, NODE_B], nextCursor: null }) });
+
+    renderPage();
+
+    const button = screen.getByRole('button', { name: 'New node' });
+    await waitFor(() => {
+      expect(button).toBeEnabled();
+    });
+
+    await fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Ontology class')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Title/)).toBeInTheDocument();
+  });
+
+  it('shows a created node in the list of the workspace', async () => {
+    stubFetch({
+      nodes: () => json({ nodes: [NODE_A, NODE_B], nextCursor: null }),
+      proposals: () => json({ proposals: [], nextCursor: null }),
+      createNode: () =>
+        json(
+          {
+            id: NEW_NODE.id,
+            workspaceId: WORKSPACE_ID,
+            typeKey: NEW_NODE.typeKey,
+            title: NEW_NODE.title,
+            description: null,
+            status: 'PENDING'
+          },
+          201
+        ),
+      getNode: () => json({ node: NEW_NODE })
+    });
+
+    renderPage();
+
+    const button = screen.getByRole('button', { name: 'New node' });
+    await waitFor(() => {
+      expect(button).toBeEnabled();
+    });
+
+    await fireEvent.click(button);
+    await fireEvent.input(screen.getByLabelText(/Title/), { target: { value: NEW_NODE.title } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Create the node' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: NEW_NODE.title })).toBeInTheDocument();
+    });
+  });
+
+  it('relates the selected node to another one', async () => {
+    stubFetch({
+      nodes: () => json({ nodes: [NODE_A, NODE_B], nextCursor: null }),
+      subgraph: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
+      proposals: () => json({ proposals: [], nextCursor: null })
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    const relate = await screen.findByRole('button', { name: 'Relate to another node' });
+    await fireEvent.click(relate);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // Only the relations of the class of the source are offered.
+    const picker = screen.getByLabelText('Relation (required)') as HTMLSelectElement;
+    expect(Array.from(picker.options).map((option) => option.value)).toEqual(['RELATES_TO']);
   });
 });

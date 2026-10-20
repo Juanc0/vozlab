@@ -66,8 +66,11 @@ The identity model, guard chain and pseudonym rules are in
 
 - **FR-06 — Dynamic node creation.** Nodes (Problems, Ideas, Resources) are
   created with a form built dynamically from the active ontology's
-  `datatype_properties`. *(Implemented: the API validates `typeKey` and
-  attributes against the active class.)*
+  `datatype_properties`. *(Implemented: the API validates `typeKey` against the
+  active class. The **attributes** are stored as JSONB and are not validated
+  by the API — the client that builds the form validates them against the
+  ontology. `GET /api/v1/ontology` exposes the active `datatype_properties`
+  that drive the form.)*
 - **FR-07 — Maintainer/author assignment.** Every node, edge and ontology
   proposal records its creator's `author_hash`, granting non-waivable maintainer
   rights over that object. *(Implemented.)*

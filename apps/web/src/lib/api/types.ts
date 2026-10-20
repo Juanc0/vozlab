@@ -38,6 +38,16 @@ export type {
   OntologyClassDto,
   /** `GET /api/v1/ontology` (object properties). */
   ObjectPropertyDto,
+  /** `GET /api/v1/ontology` (datatype properties — the attributes). */
+  DatatypePropertyDto,
+  /** `GET /api/v1/ontology` — the body of the ontology response. */
+  OntologyResponseDto,
+  /** The scalar kind of a datatype property (`string` … `enum`). */
+  DatatypeKind,
+  /** `POST /api/v1/nodes` — the body of a node creation. */
+  CreateNodeInput,
+  /** `POST /api/v1/edges` — the body of an edge creation. */
+  CreateEdgeInput,
   /** `POST /api/v1/interactions` — the body of a cast vote. */
   InteractionDto,
 } from '@vozlab/shared-types';

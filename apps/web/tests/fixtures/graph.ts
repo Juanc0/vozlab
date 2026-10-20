@@ -67,3 +67,18 @@ export const OTHER_PROPOSAL: ProposalDto = {
   id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   targetId: NODE_B.id
 };
+
+/** A node that was just created by the user. */
+export const NEW_NODE: NodeDto = {
+  id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  workspaceId: WORKSPACE_ID,
+  typeKey: 'Problem',
+  title: 'The lab closes at six',
+  description: null,
+  attributes: { severity: 2 },
+  authorHash: 'd'.repeat(64),
+  status: 'PENDING',
+  communityScore: 0,
+  createdAt: '2026-10-20T10:00:00.000Z',
+  updatedAt: '2026-10-20T10:00:00.000Z'
+};

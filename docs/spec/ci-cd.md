@@ -13,8 +13,8 @@ It has **three jobs**.
 | `images` (worker images) | `actions/checkout@v4` → `docker build` of the embedder, Relator and Extractor images |
 
 `build` type-checks `src`; `type-check` covers API tests, database scripts and
-the web app (`svelte-check`); `test` runs the Vitest unit suite (29 API files /
-159 tests plus 19 web files / 124 tests). The Python job runs the worker runtime
+the web app (`svelte-check`); `test` runs the Vitest unit suite (31 API files /
+165 tests plus 22 web files / 163 tests). The Python job runs the worker runtime
 suite (105 tests) and the format/lint gate for the Python code. The image job
 proves the worker Dockerfiles still build — the images are not pushed anywhere.
 

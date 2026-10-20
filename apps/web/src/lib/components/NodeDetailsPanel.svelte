@@ -9,9 +9,11 @@
   interface Props {
     /** The selected node, or `null` when nothing is selected. */
     node?: NodeDto | null;
+    /** Called when the user wants to relate this node to another one. */
+    onrelate?: (node: NodeDto) => void;
   }
 
-  let { node = null }: Props = $props();
+  let { node = null, onrelate }: Props = $props();
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
@@ -109,6 +111,16 @@
           <span class="italic">No description.</span>
         {/if}
       </p>
+
+      {#if onrelate}
+        <button
+          type="button"
+          class="mt-3 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+          onclick={() => onrelate(node)}
+        >
+          Relate to another node
+        </button>
+      {/if}
     </div>
 
     <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
@@ -149,7 +161,6 @@
       <h4 id="node-proposals-heading" class="text-xs font-semibold tracking-wide uppercase">
         Edit-proposal history
       </h4>
-
       {#if loadingHistory}
         <p role="status" class="mt-1 text-sm text-ink-muted">Loading the proposals…</p>
       {:else if historyError}

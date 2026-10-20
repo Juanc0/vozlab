@@ -6,10 +6,21 @@
  * of 0 to 3 and at most 200 nodes. The canvas is a reader of that window —
  * it never pretends the graph is complete — so the clamps live here, next to
  * the call that would be rejected by a `422` otherwise.
+ *
+ * The module also owns the two **writes** of the graph: the creation of a
+ * node (FR-06) and the creation of a relation (FR-08). Both are born
+ * `PENDING`: the governance flow decides their fate.
  */
 
 import { cursorQuery, type ApiClient, type CursorPage, type QueryValue } from './client';
-import type { NodeDto, SubgraphResponseDto } from './types';
+import type {
+  CreateEdgeInput,
+  CreateNodeInput,
+  NodeDto,
+  NodeStatus,
+  SubgraphEdgeDto,
+  SubgraphResponseDto
+} from './types';
 
 /** The deepest traversal the API accepts. */
 export const SUBGRAPH_MAX_DEPTH = 3;
@@ -121,4 +132,95 @@ export async function listWorkspaceNodes(
     resourceKey: 'nodes',
     query: cursorQuery(limit, options.cursor ?? null)
   });
+}
+
+/**
+ * The answer of `POST /api/v1/nodes`.
+ *
+ * The route answers with a **projection** of the new node: the fields the
+ * caller needs to show it. It is not the whole {@link NodeDto} — the
+ * attributes, the author pseudonym and the timestamps are not in it — so the
+ * caller reads the node back when it needs the full shape.
+ */
+export interface CreatedNode {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly typeKey: string;
+  readonly title: string;
+  readonly description: string | null;
+  readonly status: NodeStatus;
+}
+
+/**
+ * Creates a node (FR-06).
+ *
+ * The API checks the `typeKey` against the active ontology and stores the
+ * `attributes` as they are: **the attributes are not validated by the
+ * server**, so the form validates them before the request leaves the app.
+ * The node is born `PENDING` — the governance flow decides its fate.
+ */
+export async function createNode(client: ApiClient, input: CreateNodeInput): Promise<CreatedNode> {
+  const body = await client.request<CreatedNode>({
+    method: 'POST',
+    path: '/nodes',
+    body: {
+      typeKey: input.typeKey,
+      title: input.title,
+      description: input.description,
+      attributes: input.attributes ?? {}
+    }
+  });
+
+  return {
+    id: body.id,
+    workspaceId: body.workspaceId,
+    typeKey: body.typeKey,
+    title: body.title,
+    description: body.description ?? null,
+    status: body.status
+  };
+}
+
+/** Reads one node by its id — the full {@link NodeDto}. */
+export async function getNode(client: ApiClient, nodeId: string): Promise<NodeDto> {
+  const body = await client.request<{ node: NodeDto }>({
+    path: `/nodes/${encodeURIComponent(nodeId)}`
+  });
+
+  return body.node;
+}
+
+/**
+ * Creates a directed edge between two existing nodes (FR-08).
+ *
+ * The answer is the topology of the relation — the same shape the subgraph
+ * returns — so a created relation can be drawn without a second read.
+ *
+ * The API enforces the domain/range rule **only when the relation key
+ * resolves to an active object property**; otherwise it answers `422
+ * ERR_INVALID_RELATION_DOMAIN_RANGE`. The server stays authoritative: the
+ * form only offers the relations it knows to be valid.
+ */
+export async function createEdge(
+  client: ApiClient,
+  input: CreateEdgeInput
+): Promise<SubgraphEdgeDto> {
+  const body = await client.request<SubgraphEdgeDto>({
+    method: 'POST',
+    path: '/edges',
+    body: {
+      sourceNodeId: input.sourceNodeId,
+      targetNodeId: input.targetNodeId,
+      relationKey: input.relationKey,
+      attributes: input.attributes ?? {}
+    }
+  });
+
+  return {
+    id: body.id,
+    sourceNodeId: body.sourceNodeId,
+    targetNodeId: body.targetNodeId,
+    relationKey: body.relationKey,
+    status: body.status
+  };
 }

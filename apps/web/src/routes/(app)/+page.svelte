@@ -9,13 +9,18 @@
     SUBGRAPH_MAX_NODES,
     clampDepth,
     clampSubgraphLimit,
+    getNode,
     listWorkspaceNodes,
-    loadSubgraph
+    loadSubgraph,
+    type CreatedNode
   } from '$lib/api/graph';
-  import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
+  import { loadOntology } from '$lib/api/ontology';
+  import type { NodeDto, OntologyResponseDto, SubgraphEdgeDto } from '$lib/api/types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
+  import EdgeCreateDialog from '$lib/components/EdgeCreateDialog.svelte';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
+  import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
   import NodeDetailsPanel from '$lib/components/NodeDetailsPanel.svelte';
   import { getApiClient, getWorkspaceState } from '$lib/state/context';
   import type { PageProps } from './$types';
@@ -49,9 +54,23 @@
   /** The selected node — the one the details panel shows. */
   let selectedNodeId = $state<string | null>(null);
 
+  /** The active metamodel — it drives the creation forms. */
+  let ontology = $state.raw<OntologyResponseDto | null>(null);
+  let ontologyLoading = $state(false);
+  let ontologyError = $state<ApiFailure | null>(null);
+
+  /** The creation forms. */
+  let nodeDialogOpen = $state(false);
+  let edgeDialogOpen = $state(false);
+  let edgeSource = $state<NodeDto | null>(null);
+
+  /** The outcome of the last creation — announced to the user. */
+  let notice = $state<string | null>(null);
+
   /** The counters that discard the answer of a superseded request. */
   let rootsRequest = 0;
   let graphRequest = 0;
+  let ontologyRequest = 0;
 
   /** The selected node of the current subgraph. */
   const selectedNode = $derived(
@@ -76,6 +95,7 @@
     // The answers of the requests of the previous workspace are discarded.
     rootsRequest += 1;
     graphRequest += 1;
+    ontologyRequest += 1;
 
     rootId = null;
     selectedNodeId = null;
@@ -83,6 +103,11 @@
     graphEdges = [];
     graphLoaded = false;
     graphError = null;
+    ontology = null;
+    ontologyError = null;
+    nodeDialogOpen = false;
+    edgeDialogOpen = false;
+    edgeSource = null;
   });
 
   /** Reads the newest nodes of the workspace (the root picker). */
@@ -94,6 +119,17 @@
     }
 
     void loadRoots(null);
+  });
+
+  /** Reads the active metamodel — it drives the creation forms. */
+  $effect(() => {
+    const workspaceId = workspace.currentWorkspaceId;
+
+    if (workspaceId === '') {
+      return;
+    }
+
+    void loadOntologyOnce();
   });
 
   /** Reads the bounded subgraph of the root. */
@@ -138,6 +174,38 @@
     } finally {
       if (current === rootsRequest) {
         rootsLoading = false;
+      }
+    }
+  }
+
+  /**
+   * Reads the active metamodel of the workspace.
+   *
+   * The ontology drives the creation forms: the classes the user can pick
+   * and the attributes each of them declares. It is read once per workspace.
+   */
+  async function loadOntologyOnce(): Promise<void> {
+    const current = (ontologyRequest += 1);
+    ontologyLoading = true;
+    ontologyError = null;
+
+    try {
+      const active = await loadOntology(api);
+      if (current !== ontologyRequest) {
+        return;
+      }
+      ontology = active;
+    } catch (caught) {
+      if (current !== ontologyRequest) {
+        return;
+      }
+      if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
+        return;
+      }
+      ontologyError = describeFailure(caught);
+    } finally {
+      if (current === ontologyRequest) {
+        ontologyLoading = false;
       }
     }
   }
@@ -202,6 +270,52 @@
     selectedNodeId = id;
   }
 
+  /** Opens the node creation form. */
+  function openNodeDialog(): void {
+    notice = null;
+    nodeDialogOpen = true;
+  }
+
+  /** Opens the relation creation form, with the selected node as the source. */
+  function openEdgeDialog(node: NodeDto): void {
+    notice = null;
+    edgeSource = node;
+    edgeDialogOpen = true;
+  }
+
+  /**
+   * The node was created: the list shows it at the top.
+   *
+   * The creation answers with a projection of the node, so the full node is
+   * read back; when that read fails the list is refreshed instead — the node
+   * exists either way.
+   */
+  async function handleNodeCreated(created: CreatedNode): Promise<void> {
+    try {
+      const node = await getNode(api, created.id);
+      rootNodes = [node, ...rootNodes.filter((candidate) => candidate.id !== node.id)];
+      notice = `The node “${node.title}” was created and is pending review.`;
+    } catch {
+      await loadRoots(null);
+      notice = `The node “${created.title}” was created and is pending review.`;
+    }
+  }
+
+  /**
+   * The relation was created: the subgraph is read again.
+   *
+   * The canvas shows the window the API answers, never a relation the API
+   * did not return: a relation whose endpoints fall outside the current
+   * window is simply not in it.
+   */
+  function handleEdgeCreated(edge: SubgraphEdgeDto): void {
+    notice = `The relation “${edge.relationKey}” was created and is pending review.`;
+
+    if (rootId !== null) {
+      void loadGraph(rootId, depth, limit);
+    }
+  }
+
   function handleDepthChange(event: Event): void {
     const select = event.currentTarget;
     if (!(select instanceof HTMLSelectElement)) {
@@ -222,14 +336,38 @@
 </script>
 
 <section class="space-y-6">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Graph</h1>
-    <p class="mt-2 max-w-prose text-ink-muted">
-      The canvas draws a <strong>bounded</strong> subgraph: at most {SUBGRAPH_MAX_NODES} nodes and
-      {SUBGRAPH_MAX_DEPTH} hops from the root. The whole content is also listed below the canvas,
-      because a canvas is a picture a screen reader cannot see.
-    </p>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Graph</h1>
+      <p class="mt-2 max-w-prose text-ink-muted">
+        The canvas draws a <strong>bounded</strong> subgraph: at most {SUBGRAPH_MAX_NODES} nodes and
+        {SUBGRAPH_MAX_DEPTH} hops from the root. The whole content is also listed below the canvas,
+        because a canvas is a picture a screen reader cannot see.
+      </p>
+    </div>
+
+    <div class="flex flex-col items-start gap-1 sm:items-end">
+      <button
+        type="button"
+        class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={ontology === null}
+        onclick={openNodeDialog}
+      >
+        New node
+      </button>
+      {#if ontologyError !== null}
+        <p role="alert" class="text-xs text-negative">
+          <span class="font-mono">{ontologyError.code}</span> — {ontologyError.message}
+        </p>
+      {:else if ontologyLoading}
+        <p class="text-xs text-ink-muted">Reading the ontology…</p>
+      {/if}
+    </div>
   </div>
+
+  {#if notice !== null}
+    <p role="status" class="rounded-md border border-line bg-surface px-4 py-3 text-sm">{notice}</p>
+  {/if}
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="min-w-0 space-y-6">
@@ -364,7 +502,7 @@
       <section class="rounded-card border border-line bg-surface p-4">
         <h2 id="details-heading" class="text-base font-semibold tracking-tight">Node details</h2>
         <div class="mt-3">
-          <NodeDetailsPanel node={selectedNode} />
+          <NodeDetailsPanel node={selectedNode} onrelate={openEdgeDialog} />
         </div>
       </section>
 
@@ -373,4 +511,25 @@
       </p>
     </aside>
   </div>
+
+  <NodeCreateDialog
+    open={nodeDialogOpen}
+    {ontology}
+    {ontologyError}
+    onclose={() => {
+      nodeDialogOpen = false;
+    }}
+    oncreated={handleNodeCreated}
+  />
+
+  <EdgeCreateDialog
+    open={edgeDialogOpen}
+    {ontology}
+    source={edgeSource}
+    nodes={rootNodes}
+    onclose={() => {
+      edgeDialogOpen = false;
+    }}
+    oncreated={handleEdgeCreated}
+  />
 </section>
