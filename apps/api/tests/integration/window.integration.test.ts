@@ -224,9 +224,50 @@ describe('the exploration window integration', () => {
       'targetNodeId',
       'relationKey',
       'relationDisplayNames',
+      'attributes',
+      'authorHash',
       'status',
       'communityScore',
+      'createdAt',
     ]);
+  });
+
+  it('carries the same relation the full edge carries', async () => {
+    const response = await windowOf('10');
+    const body = response.json() as {
+      edges: Array<{
+        id: string;
+        attributes: Record<string, unknown>;
+        authorHash: string;
+        createdAt: string;
+      }>;
+    };
+
+    const relation = body.edges[0];
+    expect(relation).toBeDefined();
+
+    const full = await app!.inject({
+      method: 'GET',
+      url: `/api/v1/edges/${relation!.id}`,
+      headers: {
+        authorization: `Bearer ${maintainerToken}`,
+        'x-workspace-id': workspaceId,
+      },
+    });
+    expect(full.statusCode).toBe(200);
+
+    const edge = (full.json() as { edge: Record<string, unknown> }).edge;
+
+    // The graph's relation and the full relation are the **same** relation:
+    // the same attributes, the same pseudonym and the same instant.
+    expect(relation!.attributes).toEqual(edge['attributes']);
+    expect(relation!.authorHash).toEqual(edge['authorHash']);
+    expect(relation!.createdAt).toEqual(edge['createdAt']);
+
+    // The attributes of a relation without attributes are an empty object,
+    // never `null`.
+    expect(relation!.attributes).not.toBeNull();
+    expect(typeof relation!.attributes).toBe('object');
   });
 
   it('carries the display names of the class and of the relation', async () => {

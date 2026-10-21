@@ -37,8 +37,11 @@ function edge(id: string, sourceNodeId: string, targetNodeId: string): SubgraphE
     sourceNodeId,
     targetNodeId,
     relationKey: 'RELATES_TO',
+    attributes: {},
+    authorHash: 'a'.repeat(64),
     status: 'PENDING',
     communityScore: 0,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 }
 

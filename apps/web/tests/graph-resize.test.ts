@@ -175,6 +175,7 @@ describe('the canvas follows the size of its container', () => {
     const instance = createExplorationInstance({
       container: container(),
       onselect: () => {},
+      onselectedge: () => {},
       onpreview: () => {},
       ondrag: () => {},
       onrender: () => {}

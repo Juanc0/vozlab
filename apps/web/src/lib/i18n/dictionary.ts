@@ -122,8 +122,12 @@ export function interpolate(template: string, params?: TranslationParams): strin
  *
  * The thousand separator and the decimal mark follow the locale: `1.234,5`
  * in Spanish, `1,234.5` in English.
+ *
+ * The locale is a **string** and not the union of the locales of the
+ * interface: the pure modules of the graph read the language of the reader
+ * as it is — `es-MX` is a language too — and `Intl` knows it.
  */
-export function formatNumber(locale: Locale, value: number): string {
+export function formatNumber(locale: string, value: number): string {
   return new Intl.NumberFormat(locale).format(value);
 }
 
@@ -182,7 +186,7 @@ export function richSegments(template: string): RichSegment[] {
  * A value that is not a date is returned as it is: the reader must see what
  * the API sent, not an empty string.
  */
-export function formatDate(locale: Locale, value: string): string {
+export function formatDate(locale: string, value: string): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {

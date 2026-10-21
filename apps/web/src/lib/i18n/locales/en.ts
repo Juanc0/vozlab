@@ -197,6 +197,7 @@ export const en: Dictionary<typeof es> = {
     columnTo: 'To',
     columnScore: 'Score',
     columnCorrection: 'Correction',
+    columnAttributes: 'Attributes',
     suggestCorrection: 'Suggest a correction',
     suggestCorrectionOfRelation:
       'Suggest a correction of the relation {relationKey}',
@@ -238,6 +239,9 @@ export const en: Dictionary<typeof es> = {
     expandBadge: 'Expand “{title}”',
     collapseBadge: 'Collapse “{title}”',
     badgesLabel: 'The nodes of the window',
+    expandRelationBadge: 'Expand the relation “{name}”',
+    collapseRelationBadge: 'Collapse the relation “{name}”',
+    relationBadgesLabel: 'The relations of the window',
     canvasLabel: 'Exploration window canvas',
     canvasDescription:
       '{nodes} nodes and {edges} relations of the exploration window, drawn with a deterministic dagre layout.',

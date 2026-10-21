@@ -105,6 +105,8 @@ function createFakeCore() {
     id: () => edge.id,
     source: () => (nodes.get(edge.sourceId) as FakeNode).api,
     target: () => (nodes.get(edge.targetId) as FakeNode).api,
+    // The middle of the line: the badge of a relation is placed on it.
+    renderedMidpoint: () => ({ x: 30, y: 40 }),
     style: (properties: Record<string, unknown>) => {
       Object.assign(edge.style, properties);
     },
@@ -338,6 +340,56 @@ describe('the exploration view', () => {
     });
     expect(screen.getByText(RELATION_NAMES.SUGGESTS.es)).toBeInTheDocument();
     expect(screen.getByText(`De «${NODE_A.title}» a «${NODE_B.title}»`)).toBeInTheDocument();
+  });
+
+  it('shows the content of the relation in the preview, without asking for it', async () => {
+    await renderView();
+
+    fire(core.handlers, 'mouseover', 'edge', {
+      target: { id: () => EDGE.id, data: () => undefined },
+      renderedPosition: { x: 12, y: 24 }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    // The window carries the content of the relation: the preview shows the
+    // attributes, the author and the date.
+    expect(screen.getByText('weight')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText(/Autoría:/)).toBeInTheDocument();
+    expect(screen.getByText(/Creado:/)).toBeInTheDocument();
+  });
+
+  it('expands a relation when its badge is clicked, and draws its card', async () => {
+    await renderView();
+
+    const badge = screen.getByRole('button', {
+      name: `Expandir la relación «${RELATION_NAMES.SUGGESTS.es}»`
+    });
+
+    expect(badge).toHaveAttribute('aria-pressed', 'false');
+
+    await fireEvent.click(badge);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: `Contraer la relación «${RELATION_NAMES.SUGGESTS.es}»` })
+      ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    // The card of the relation is an element of the picture: it carries the
+    // name of the relation and the content of it.
+    const card = core.nodes.get(`${EDGE.id}#card`);
+
+    expect(card).toBeDefined();
+    expect(card?.data['label']).toBe(RELATION_NAMES.SUGGESTS.es);
+
+    const body = core.nodes.get(`${EDGE.id}#body`);
+
+    expect(String(body?.data['label'])).toContain('weight: 3');
+    expect(String(body?.data['label'])).toContain('Autoría:');
   });
 
   it('expands a node when its badge is clicked, and the layout runs again', async () => {

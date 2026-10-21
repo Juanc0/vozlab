@@ -61,3 +61,53 @@ test('the exploration view is next to the subgraph, presents a node and expands 
   await page.getByText('Subgrafo', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Nodo raíz' })).toBeVisible();
 });
+
+test('a relation expands into a card, and the list shows its content', async ({
+  page,
+  api
+}) => {
+  const source = await api.createNode({
+    typeKey: 'Problem',
+    title: `${api.marker} relation source`
+  });
+  const target = await api.createNode({
+    typeKey: 'Idea',
+    title: `${api.marker} relation target`
+  });
+
+  const relation = await api.createEdge({
+    sourceNodeId: source.id,
+    targetNodeId: target.id,
+    relationKey: 'RELATES_TO',
+    attributes: { sector: api.marker }
+  });
+
+  await page.goto('/');
+  await waitForApp(page);
+
+  await page.getByText('Explorar', { exact: true }).click();
+
+  // The list view is the text alternative of the canvas: the content of the
+  // relation is in the list, not only in the picture.
+  const relations = page.getByRole('region', { name: 'Las relaciones del subgrafo' });
+  const row = relations.getByRole('row').filter({ hasText: api.marker });
+
+  await expect(row).toBeVisible();
+  await expect(row.getByText('sector')).toBeVisible();
+
+  // Selecting the relation in the list shows its badge on its line.
+  await row.getByRole('button', { name: 'Se relaciona con', exact: true }).click();
+
+  const badge = page.locator(`[data-edge-id="${relation.id}"]`);
+
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveAttribute('aria-pressed', 'false');
+
+  // The badge expands the relation: it becomes a card.
+  await badge.click();
+
+  await expect(badge).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByRole('button', { name: 'Contraer la relación «Se relaciona con»' })
+  ).toBeVisible();
+});

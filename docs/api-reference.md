@@ -147,7 +147,7 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | `POST` | `/api/v1/nodes` | `typeKey` 1–100; `title` 3–255; `description?`; `attributes?` object | `201 { id, workspaceId, typeKey, title, description, status }`, `PENDING` | `422` unknown/inactive `typeKey` or schema |
 | `GET` | `/api/v1/nodes` | `limit`, `cursor` | `200 { nodes, nextCursor }` | `422` cursor/query |
 | `GET` | `/api/v1/nodes/window` | `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: SubgraphEdgeDto[] }` — the most recent nodes of the workspace and the relations **among them**; a relation whose other endpoint is outside the window is not returned |
-| `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: { id, sourceNodeId, targetNodeId, relationKey, status, communityScore }[] }` | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
+| `GET` | `/api/v1/nodes/subgraph` | `rootId` UUID; `depth` 0–3 (1); `limit` 1–200 (100) | `200 { nodes: NodeDto[], edges: SubgraphEdgeDto[] }` — the edge carries the attributes, the author pseudonym and the creation instant | `404 ERR_NODE_NOT_FOUND` for a missing/foreign/deleted root |
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
@@ -158,10 +158,14 @@ Notes:
 - The node list returns every non-deleted node, regardless of status.
 - Creation requires an **ACTIVE** ontology class (`typeKey`); nodes are born
   `PENDING`.
-- The subgraph returns a **narrower edge** than `EdgeDto`: the topology, the
-  relation key, the status and the community score — no attributes, no author
-  pseudonym, no timestamps. The score is there so the canvas can vote on a
-  relation without a second read.
+- The subgraph's edge is **enriched**: the topology, the relation key, the
+  relation's display names, the status, the community score, the
+  **attributes** (the same JSONB `GET /api/v1/edges/:id` returns), the
+  **author pseudonym** and the **creation instant**. It has no `updatedAt`:
+  the `public.edges` table has no such column. The payload grows a
+  constant **135 B per relation**. The score is there so the canvas can
+  vote on a relation without a second read, and the content is there so a
+  relation can be **expanded** in the picture without a second read either.
 - `subgraph` is registered **before** `/nodes/:id`; traversal is undirected,
   workspace-scoped, `depth <= 3`, `limit <= 200`, and uses the bounded
   recursive SQL CTE (not Apache AGE).

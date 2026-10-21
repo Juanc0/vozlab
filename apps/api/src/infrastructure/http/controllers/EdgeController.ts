@@ -85,8 +85,8 @@ export class EdgeController {
         relationDisplayNames,
         status: edge.status,
         // A new relation starts at zero, but the field belongs to the shape:
-        // the subgraph returns the same projection, so a client that just
-        // created a relation and one that read it back speak one contract.
+        // the receipt of the creation and the relation of the graph speak
+        // about the same relation.
         communityScore: edge.communityScore,
       });
     } catch (error) {

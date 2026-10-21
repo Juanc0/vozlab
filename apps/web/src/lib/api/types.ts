@@ -16,10 +16,11 @@ export type {
   /** The lifecycle states of a node (`DRAFT` … `REJECTED`). */
   NodeStatus,
   /**
-   * `GET /api/v1/nodes/subgraph` — the edge projection of a subgraph.
+   * `GET /api/v1/nodes/subgraph` — the relation of the graph.
    *
-   * Narrower than {@link EdgeDto}: it carries the topology only (the
-   * endpoints, the relation key and the status).
+   * It carries the topology, the display names of the relation, its
+   * attributes, the pseudonym of its author, its status, its score and the
+   * instant it was created: the same values the full edge carries.
    */
   SubgraphEdgeDto,
   /** `GET /api/v1/nodes/subgraph` — the body of the subgraph response. */

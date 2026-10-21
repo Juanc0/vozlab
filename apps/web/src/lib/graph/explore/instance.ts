@@ -30,6 +30,8 @@ import {
   cardLayoutOptions,
   cardNodes,
   prepareCardText,
+  relationCardNodes,
+  relationIdOf,
   syncCardText,
   toGraphElements
 } from '../elements';
@@ -38,6 +40,7 @@ import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
 import { exploreLayoutOptions, pinTransform } from './layout';
 import { routeOrthogonal, type Box } from './orthogonal';
+import { relationCardPlacement } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
 /** What the pointer is over. */
@@ -58,6 +61,8 @@ export interface ExplorationInstanceOptions {
   container: HTMLElement;
   /** Called with the id of the tapped node, or `null` for the background. */
   onselect: (nodeId: string | null) => void;
+  /** Called with the id of the relation whose card was tapped. */
+  onselectedge: (edgeId: string) => void;
   /** Called with what the pointer is over, or `null` when it leaves. */
   onpreview: (preview: ExplorationPreview | null, related: EventTarget | null) => void;
   /** Called when the user drops a node in another place. */
@@ -70,6 +75,8 @@ export interface ExplorationInstanceOptions {
 export interface ExplorationElementsOptions {
   /** The nodes that are drawn as a card. */
   expandedIds: ReadonlySet<string>;
+  /** The relations that are drawn as a card with their whole content. */
+  expandedEdgeIds: ReadonlySet<string>;
   /** The shape the relations are drawn with. */
   edgeStyle: EdgeStyle;
   /** The node the view presents. */
@@ -97,6 +104,25 @@ export interface RenderedBox {
   readonly height: number;
 }
 
+/**
+ * A relation as the picture shows it: where its line is and which way it
+ * goes.
+ *
+ * The badge of a relation is on its line, so the view needs the **middle**
+ * of the line and the **perpendicular** of it: the badge is placed beside
+ * the line and not on it.
+ */
+export interface RenderedRelation {
+  /** The middle of the line, in the rendered coordinates of the canvas. */
+  readonly x: number;
+  /** The middle of the line, in the rendered coordinates of the canvas. */
+  readonly y: number;
+  /** The unit vector perpendicular to the line, on the x axis. */
+  readonly nx: number;
+  /** The unit vector perpendicular to the line, on the y axis. */
+  readonly ny: number;
+}
+
 /** The exploration instance. */
 export interface ExplorationInstance {
   /** Replaces the elements of the graph, runs the layout again. */
@@ -115,6 +141,10 @@ export interface ExplorationInstance {
   refreshRoutes(): void;
   /** Where every node is, in the rendered coordinates of the canvas. */
   positions(): Map<string, RenderedBox>;
+  /** Where the line of every relation is, in the rendered coordinates. */
+  relationPositions(): Map<string, RenderedRelation>;
+  /** Where the card of every expanded relation is, in the rendered coordinates. */
+  relationCards(): Map<string, RenderedBox>;
   /** Destroys the instance and releases the canvas. */
   destroy(): void;
 }
@@ -178,6 +208,15 @@ export function createExplorationInstance(
   let pinned = new Map<string, Position>();
 
   core.on('tap', 'node', (event) => {
+    // The card of a relation is a node of its own: a tap on it is a tap on
+    // the relation, not on a node of the window.
+    const relation = relationIdOf(event.target);
+
+    if (relation !== null) {
+      options.onselectedge(relation);
+      return;
+    }
+
     options.onselect(cardIdOf(event.target));
   });
 
@@ -216,8 +255,10 @@ export function createExplorationInstance(
     options.ondrag(cardIdOf(event.target), event.target.position());
   });
 
-  // The text of a card follows the card while the user drags it.
+  // The text of a card follows the card while the user drags it, and the
+  // card of a relation follows its line.
   core.on('drag', 'node', () => {
+    syncRelationCards();
     syncCardText(core);
   });
 
@@ -240,6 +281,60 @@ export function createExplorationInstance(
     });
 
     return boxes;
+  }
+
+  /**
+   * Puts the cards of the relations beside their lines.
+   *
+   * The card of a relation is **not** arranged by the layout: it belongs to
+   * a line, and a line has no place in the arrangement of the nodes. So the
+   * card is placed by hand, at the middle of its line and beside it, and it
+   * is pushed further away when the place it chose is occupied by a node.
+   *
+   * The card never covers the nodes it connects: they are among the
+   * obstacles.
+   */
+  function syncRelationCards(): void {
+    const cards = relationCardNodes(core.elements());
+
+    // Nothing to place: the picture does not pay for a relation that is not
+    // expanded.
+    if (cards.length === 0) {
+      return;
+    }
+
+    const boxes = nodeBoxes();
+    const obstacles = [...boxes.values()];
+
+    cards.forEach((card) => {
+      const relation = relationIdOf(card);
+
+      if (relation === null) {
+        return;
+      }
+
+      const line = core.getElementById(relation);
+
+      if (line.length === 0) {
+        return;
+      }
+
+      const source = boxes.get(line.source().id());
+      const target = boxes.get(line.target().id());
+
+      if (source === undefined || target === undefined) {
+        return;
+      }
+
+      const place = relationCardPlacement(
+        { x: source.cx, y: source.cy },
+        { x: target.cx, y: target.cy },
+        { width: card.outerWidth(), height: card.outerHeight() },
+        obstacles
+      );
+
+      card.position(place);
+    });
   }
 
   /**
@@ -317,6 +412,10 @@ export function createExplorationInstance(
     // moves every node, and the pinned places are put back after it.
     applyPinnedPlaces();
 
+    // The card of a relation is placed beside its line: the layout moved
+    // the nodes, and the lines moved with them.
+    syncRelationCards();
+
     // The text of a card hangs under the card: the layout moved the cards,
     // and the text goes with them.
     syncCardText(core);
@@ -365,6 +464,7 @@ export function createExplorationInstance(
       core.add(
         toGraphElements(nodes, edges, {
           expandedIds: elementOptions.expandedIds,
+          expandedEdgeIds: elementOptions.expandedEdgeIds,
           locale: elementOptions.locale
         })
       );
@@ -428,6 +528,60 @@ export function createExplorationInstance(
       });
 
       return boxes;
+    },
+
+    relationPositions() {
+      const relations = new Map<string, RenderedRelation>();
+
+      core.edges().forEach((edge) => {
+        const source = edge.source().renderedPosition();
+        const target = edge.target().renderedPosition();
+        const middle = edge.renderedMidpoint();
+
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const length = Math.hypot(dx, dy);
+
+        // The perpendicular of the line: the badge of a relation is placed
+        // beside the line and not on it, and the line has no direction when
+        // its two ends are in the same place.
+        const nx = length === 0 ? 0 : -dy / length;
+        const ny = length === 0 ? 1 : dx / length;
+
+        relations.set(edge.id(), {
+          x: middle.x,
+          y: middle.y,
+          nx,
+          ny
+        });
+      });
+
+      return relations;
+    },
+
+    relationCards() {
+      const cards = new Map<string, RenderedBox>();
+
+      // The card of a relation is a node of the picture: it is drawn in the
+      // canvas and it moves with it.
+      relationCardNodes(core.elements()).forEach((card) => {
+        const relation = relationIdOf(card);
+
+        if (relation === null) {
+          return;
+        }
+
+        const position = card.renderedPosition();
+
+        cards.set(relation, {
+          x: position.x,
+          y: position.y,
+          width: card.renderedWidth(),
+          height: card.renderedHeight()
+        });
+      });
+
+      return cards;
     },
 
     destroy() {

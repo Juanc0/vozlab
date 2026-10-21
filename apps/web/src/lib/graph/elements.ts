@@ -39,9 +39,15 @@ import {
   TITLE_FONT_FAMILY,
   TITLE_FONT_SIZE,
   TITLE_LINE_HEIGHT,
+  formatAttributeValue,
   nodeCardSize,
   type TextMeasurer
 } from './node-card';
+import {
+  RELATION_CARD_WIDTH,
+  relationCardContent,
+  type RelationCardContent
+} from './relation-card';
 
 /** The fill of a card: the surface of the design system. */
 export const CARD_COLOR = '#ffffff';
@@ -139,6 +145,8 @@ export interface GraphEdgeElement {
     label: string;
     status: string;
     color: string;
+    /** Whether the relation is drawn as a card with its whole content. */
+    expanded: boolean;
   };
 }
 
@@ -158,6 +166,19 @@ export const META_CLASS = 'vozlab-meta';
 export const BODY_CLASS = 'vozlab-body';
 
 /**
+ * The class of the **card of a relation**.
+ *
+ * It is a class of its own: the card of a relation is not a node of the
+ * window, so it takes no part in the layout — it is placed by hand, beside
+ * the line it belongs to — and it has no badge of its own in the layer of
+ * the controls.
+ */
+export const RELATION_CARD_CLASS = 'vozlab-relation-card';
+
+/** The suffix of the id of the card of a relation. */
+export const RELATION_CARD_SUFFIX = '#card';
+
+/**
  * The cards of the graph — the nodes that are **not** the text of a card.
  *
  * The text of a card is an element of its own, and it never takes part in
@@ -165,6 +186,37 @@ export const BODY_CLASS = 'vozlab-body';
  */
 export function cardNodes(eles: Collection): Collection {
   return eles.nodes().filter((node) => node.hasClass(CARD_CLASS));
+}
+
+/**
+ * The cards of the relations that are expanded.
+ *
+ * They are **not** the cards of the nodes: they are not arranged by the
+ * layout and they are not the subject of a badge — the badge of a relation
+ * is on its line.
+ */
+export function relationCardNodes(eles: Collection): Collection {
+  return eles.nodes().filter((node) => node.hasClass(RELATION_CARD_CLASS));
+}
+
+/**
+ * The id of the relation a card belongs to.
+ *
+ * The card of a relation and the text that hangs under it are elements of
+ * their own: a click on the text is a click on the card, and a click on the
+ * card is a click on the relation.
+ *
+ * @returns The id of the relation, or `null` when the element is not part
+ *   of the card of a relation.
+ */
+export function relationIdOf(element: NodeSingular): string | null {
+  const cardId = cardIdOf(element);
+
+  if (!cardId.endsWith(RELATION_CARD_SUFFIX)) {
+    return null;
+  }
+
+  return cardId.slice(0, cardId.length - RELATION_CARD_SUFFIX.length);
 }
 
 /**
@@ -187,11 +239,18 @@ export function cardLayoutOptions<T extends object>(options: T, core: Core): T &
  * The text is a node of its own, so it has to be placed by hand: it hangs
  * under its card, at the offset the card computed, and it follows the card
  * when the layout moves it or when the user drags it.
+ *
+ * The cards of the relations are cards too: their text hangs under them the
+ * same way.
  */
 export function syncCardText(core: Core): void {
   const cards = new Map<string, { x: number; y: number }>();
 
   cardNodes(core.elements()).forEach((card) => {
+    cards.set(card.id(), card.position());
+  });
+
+  relationCardNodes(core.elements()).forEach((card) => {
     cards.set(card.id(), card.position());
   });
 
@@ -223,12 +282,19 @@ export function syncCardText(core: Core): void {
  *
  * The text of a card is the writing on the card: dragging it would leave
  * the card without its type.
+ *
+ * The card of a **relation** is not a thing the user can move either: it
+ * belongs to its line, and it follows it.
  */
 export function prepareCardText(core: Core): void {
   core.nodes().forEach((node) => {
     if (node.hasClass(META_CLASS) || node.hasClass(BODY_CLASS)) {
       node.ungrabify();
     }
+  });
+
+  relationCardNodes(core.elements()).forEach((card) => {
+    card.ungrabify();
   });
 
   syncCardText(core);
@@ -253,28 +319,10 @@ export function cardIdOf(element: NodeSingular): string {
 /**
  * Formats the value of an attribute for the card of a node.
  *
- * A value that is not a text is written as JSON: the reader must see what
- * the API sent, not an empty cell.
+ * The rule lives in `./node-card`: the card of a node and the card of a
+ * relation show the attributes in the same format.
  */
-export function formatAttributeValue(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-
-  if (value === null || value === undefined) {
-    return '—';
-  }
-
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
-}
+export { formatAttributeValue };
 
 /** The content of the **card** of a node. */
 export interface NodeCardContent {
@@ -357,6 +405,15 @@ const EDGE_COLORS: Record<EdgeStatus, string> = {
   DRAFT: '#5f6672',
   REJECTED: '#c4242a'
 };
+
+/**
+ * The border of the card of a relation.
+ *
+ * It is the `--color-border` of the design system: the card of a relation is
+ * separated from the ground of the canvas by a **tone step**, exactly like
+ * the cards of the interface are.
+ */
+export const RELATION_CARD_BORDER = '#e5e7eb';
 
 /** The colour of a node of an unknown status. */
 const FALLBACK_COLOR = '#5f6672';
@@ -486,12 +543,17 @@ export function toNodeElement(node: NodeDto, options: NodeElementOptions = {}): 
  * language of the interface: the label is what the reader reads, and the key
  * of the system (`RELATES_TO`) is the last resort — a relation whose
  * property is not in the ontology keeps its key.
+ *
+ * A relation that is **expanded** is drawn as a card and not as a label:
+ * the name of the relation is in the card, and the line is left bare. The
+ * line of a relation is not a text field: it is a line.
  */
 export function toEdgeElement(
   edge: SubgraphEdgeDto,
-  options: { locale?: string } = {}
+  options: { locale?: string; expanded?: boolean } = {}
 ): GraphEdgeElement {
   const locale = options.locale ?? DEFAULT_LOCALE;
+  const expanded = options.expanded === true;
 
   return {
     group: 'edges',
@@ -499,17 +561,115 @@ export function toEdgeElement(
       id: edge.id,
       source: edge.sourceNodeId,
       target: edge.targetNodeId,
-      label: displayName(edge.relationDisplayNames, locale, edge.relationKey),
+      label: expanded ? '' : displayName(edge.relationDisplayNames, locale, edge.relationKey),
       status: edge.status,
-      color: edgeColor(edge.status)
+      color: edgeColor(edge.status),
+      expanded
     }
   };
+}
+
+/** How a relation is drawn. */
+export interface RelationElementOptions {
+  /** Whether the relation is drawn as a card with its whole content. */
+  expanded?: boolean;
+  /** The measurer of the text of the card. */
+  measure?: TextMeasurer;
+  /** The language of the interface. */
+  locale?: string;
+}
+
+/**
+ * The elements of the **card of a relation**, and of the text that hangs
+ * under it.
+ *
+ * The card is a card of a node: the same measurement, the same padding and
+ * the same radius. What it holds is the **relation**: its name, its
+ * attributes, its author and its date.
+ *
+ * The text is not one label: Cytoscape draws one label per element with one
+ * ink, and the card needs three — the title in the ink of the interface,
+ * the meta line and the body in the muted one. So the card is the element
+ * that carries the title and the two lines are elements of their own, hung
+ * under it, exactly like the card of a node.
+ */
+export function toRelationCardElements(
+  edge: SubgraphEdgeDto,
+  options: RelationElementOptions = {}
+): GraphElement[] {
+  const content: RelationCardContent = relationCardContent(edge, {
+    locale: options.locale
+  });
+
+  const card = nodeCardSize(content.title, {
+    measure: options.measure,
+    width: RELATION_CARD_WIDTH,
+    meta: content.meta,
+    body: content.body
+  });
+
+  const cardId = `${edge.id}${RELATION_CARD_SUFFIX}`;
+
+  const elements: GraphElement[] = [
+    {
+      group: 'nodes',
+      data: {
+        id: cardId,
+        label: card.text,
+        typeKey: edge.relationKey,
+        status: edge.status,
+        borderColor: CARD_META_INK,
+        borderWidth: 0,
+        expanded: true,
+        width: card.width,
+        height: card.height,
+        innerWidth: card.innerWidth
+      },
+      classes: [RELATION_CARD_CLASS]
+    }
+  ];
+
+  if (content.meta !== '') {
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: `${edge.id}#meta`,
+        cardId,
+        label: card.meta,
+        width: card.metaWidth + 2,
+        height: card.metaHeight,
+        dx: 0,
+        dy: card.metaY
+      },
+      classes: [META_CLASS]
+    });
+  }
+
+  if (content.body !== '') {
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: `${edge.id}#body`,
+        cardId,
+        label: card.body,
+        width: card.innerWidth,
+        height: card.bodyHeight,
+        dx: 0,
+        dy: card.bodyY
+      },
+      classes: [BODY_CLASS]
+    });
+  }
+
+  return elements;
 }
 
 /** How the elements of a graph are drawn. */
 export interface GraphElementOptions {
   /** The nodes that are drawn with their whole content. */
   expandedIds?: ReadonlySet<string>;
+  /** The relations that are drawn as a card with their whole content. */
+  expandedEdgeIds?: ReadonlySet<string>;
   /** The measurer of the text of the cards. */
   measure?: TextMeasurer;
   /**
@@ -528,6 +688,10 @@ export interface GraphElementOptions {
  *
  * The text of a card comes **after** the card it belongs to: Cytoscape needs
  * the parent to be in the graph before a child can hang under it.
+ *
+ * A relation that is expanded brings its **card**: the card comes right
+ * after the line it belongs to, so the picture reads the line and then the
+ * writing of the relation.
  */
 export function toGraphElements(
   nodes: readonly NodeDto[],
@@ -535,6 +699,7 @@ export function toGraphElements(
   options: GraphElementOptions = {}
 ): GraphElement[] {
   const expanded = options.expandedIds ?? new Set<string>();
+  const expandedEdges = options.expandedEdgeIds ?? new Set<string>();
   const locale = options.locale ?? DEFAULT_LOCALE;
 
   const elements: GraphElement[] = [];
@@ -550,7 +715,18 @@ export function toGraphElements(
   }
 
   for (const edge of edges) {
-    elements.push(toEdgeElement(edge, { locale }));
+    const isExpanded = expandedEdges.has(edge.id);
+
+    elements.push(toEdgeElement(edge, { locale, expanded: isExpanded }));
+
+    if (isExpanded) {
+      elements.push(
+        ...toRelationCardElements(edge, {
+          measure: options.measure,
+          locale
+        })
+      );
+    }
   }
 
   return elements;
@@ -585,6 +761,20 @@ export const CARD_NODE_STYLE: Css.Node = {
   'text-wrap': 'wrap',
   'text-max-width': 'data(innerWidth)',
   'overlay-opacity': 0
+};
+
+/**
+ * The style of the **card of a relation**.
+ *
+ * It is a card of the design system: a white surface with the radius of the
+ * cards of the interface. It wears a **border** of one pixel, and the card
+ * of a node wears none: the card of a relation is not a node of the graph,
+ * and the border says so.
+ */
+export const RELATION_CARD_NODE_STYLE: Css.Node = {
+  ...CARD_NODE_STYLE,
+  'border-width': '1px',
+  'border-color': RELATION_CARD_BORDER
 };
 
 /**
@@ -628,6 +818,10 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
   {
     selector: `node.${CARD_CLASS}`,
     style: CARD_NODE_STYLE
+  },
+  {
+    selector: `node.${RELATION_CARD_CLASS}`,
+    style: RELATION_CARD_NODE_STYLE
   },
   {
     selector: `node.${META_CLASS}`,

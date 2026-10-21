@@ -19,6 +19,7 @@ import type {
   CreateEdgeInput,
   CreateNodeInput,
   EdgeDto,
+  EdgeStatus,
   NodeDto,
   NodeStatus,
   SubgraphEdgeDto,
@@ -144,7 +145,12 @@ function withTypeNames(node: NodeDto): NodeDto {
 
 /** The names of the relation — the same rule as the names of the class. */
 function withRelationNames(edge: SubgraphEdgeDto): SubgraphEdgeDto {
-  return { ...edge, relationDisplayNames: edge.relationDisplayNames ?? {} };
+  return {
+    ...edge,
+    relationDisplayNames: edge.relationDisplayNames ?? {},
+    // A relation without attributes carries an empty object, never `null`.
+    attributes: edge.attributes ?? {}
+  };
 }
 
 /**
@@ -256,10 +262,10 @@ export async function getNode(client: ApiClient, nodeId: string): Promise<NodeDt
 /**
  * Reads one relation by its id — the full {@link EdgeDto}.
  *
- * The subgraph carries the **narrower** projection of a relation (the
- * topology, the key, the status and the score): it has no attributes. A
- * screen that shows the attributes of a relation — the correction form —
- * reads the relation itself.
+ * The window and the subgraph carry the relation of the graph: its
+ * attributes, its pseudonym and its date. The full edge carries the
+ * workspace too, and it is the **authority** of the relation: the inspector
+ * and the correction form read it when they edit it.
  */
 export async function getEdge(client: ApiClient, edgeId: string): Promise<EdgeDto> {
   const body = await client.request<{ edge: EdgeDto }>({
@@ -270,10 +276,30 @@ export async function getEdge(client: ApiClient, edgeId: string): Promise<EdgeDt
 }
 
 /**
+ * The receipt of the creation of a relation.
+ *
+ * It is the **narrower** projection the route answers with: the topology
+ * of the new relation, its status and its score. The route does not answer
+ * with the whole relation — the attributes, the author pseudonym and the
+ * instant are read with `GET /api/v1/edges/:id`, or with the window, which
+ * carries them for every relation it answers.
+ */
+export interface CreatedEdge {
+  readonly id: string;
+  readonly sourceNodeId: string;
+  readonly targetNodeId: string;
+  readonly relationKey: string;
+  /** The display names of the relation, by language. */
+  readonly relationDisplayNames: Record<string, string>;
+  readonly status: EdgeStatus;
+  readonly communityScore: number;
+}
+
+/**
  * Creates a directed edge between two existing nodes (FR-08).
  *
- * The answer is the topology of the relation — the same shape the subgraph
- * returns — so a created relation can be drawn without a second read.
+ * The answer is the topology of the relation — the receipt of the creation —
+ * so a created relation can be drawn without a second read.
  *
  * The API enforces the domain/range rule **only when the relation key
  * resolves to an active object property**; otherwise it answers `422
@@ -283,8 +309,8 @@ export async function getEdge(client: ApiClient, edgeId: string): Promise<EdgeDt
 export async function createEdge(
   client: ApiClient,
   input: CreateEdgeInput
-): Promise<SubgraphEdgeDto> {
-  const body = await client.request<SubgraphEdgeDto>({
+): Promise<CreatedEdge> {
+  const body = await client.request<CreatedEdge>({
     method: 'POST',
     path: '/edges',
     body: {

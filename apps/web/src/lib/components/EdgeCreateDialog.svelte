@@ -16,8 +16,8 @@
    */
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import { formatNumber } from '$lib/i18n';
-  import { createEdge } from '$lib/api/graph';
-  import type { NodeDto, OntologyResponseDto, SubgraphEdgeDto } from '$lib/api/types';
+  import { createEdge, type CreatedEdge } from '$lib/api/graph';
+  import type { NodeDto, OntologyResponseDto } from '$lib/api/types';
   import {
     displayNameOf,
     relationAccepts,
@@ -39,7 +39,7 @@
     /** Called when the dialog must close. */
     onclose: () => void;
     /** Called with the relation the API created. */
-    oncreated?: (edge: SubgraphEdgeDto) => void;
+    oncreated?: (edge: CreatedEdge) => void;
   }
 
   let { open, ontology, source, nodes = [], onclose, oncreated }: Props = $props();
@@ -153,7 +153,7 @@
 
     submitting = true;
 
-    let created: SubgraphEdgeDto;
+    let created: CreatedEdge;
     try {
       created = await createEdge(api, {
         sourceNodeId: currentSource.id,

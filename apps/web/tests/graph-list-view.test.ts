@@ -6,7 +6,7 @@ import { API_CLIENT_CONTEXT_KEY } from '$lib/state/context';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { VoteLedger } from '$lib/governance/vote.svelte';
-import { EDGE, NODE_A, NODE_B } from './fixtures/graph';
+import { EDGE, EDGE_B, NODE_A, NODE_B } from './fixtures/graph';
 import { contextWithLocale, localeContext } from './harness/locale';
 
 describe('the list view of the subgraph', () => {
@@ -33,6 +33,29 @@ describe('the list view of the subgraph', () => {
     expect(within(relationTable).getByRole('rowheader', { name: 'Sugiere' })).toBeInTheDocument();
     expect(within(relationTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     expect(within(relationTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
+  });
+
+  it('lists the attributes of every relation, in the format of the card', () => {
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
+
+    const [, relationTable] = screen.getAllByRole('table');
+
+    // The list is the text alternative of the canvas: the content of the
+    // relation is here and not only in the picture.
+    expect(within(relationTable).getByText('weight')).toBeInTheDocument();
+    expect(within(relationTable).getByText('3')).toBeInTheDocument();
+    expect(within(relationTable).getByText('source')).toBeInTheDocument();
+    expect(within(relationTable).getByText('runbook')).toBeInTheDocument();
+  });
+
+  it('says so when a relation has no attributes', () => {
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE_B] } });
+
+    const [, relationTable] = screen.getAllByRole('table');
+
+    expect(
+      within(relationTable).getByText('Este objeto no lleva ningún atributo.')
+    ).toBeInTheDocument();
   });
 
   it('reports the selection of the node', () => {

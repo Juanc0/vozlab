@@ -377,6 +377,36 @@ export interface CardSize {
 }
 
 /**
+ * Formats the value of an attribute for a card.
+ *
+ * A value that is not a text is written as JSON: the reader must see what
+ * the API sent, not an empty cell.
+ *
+ * The rule is the same for the card of a node and for the card of a
+ * relation: the two cards show the attributes in the same format, so the
+ * reader does not have to learn two ways of reading the same thing.
+ */
+export function formatAttributeValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (value === null || value === undefined) {
+    return '—';
+  }
+
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
  * The size of the card that holds a title.
  *
  * The width of the card is the nominal one, unless a word of the title — or

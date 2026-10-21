@@ -4,11 +4,10 @@
    * views.
    *
    * The selection is a **union** — a node or a relation — and the column
-   * shows whichever is selected. A relation is **not** in the subgraph
-   * response (the subgraph carries the topology only), so the inspector
-   * reads the relation itself with `GET /api/v1/edges/:id` when a relation
-   * is selected: the attributes, the author pseudonym and the status are
-   * only in the relation itself.
+   * shows whichever is selected. The window carries the relation of the
+   * graph — its attributes, its author pseudonym and its date — but the
+   * inspector reads the relation itself with `GET /api/v1/edges/:id`: it is
+   * the authority of the relation, and it is the one that can be edited.
    *
    * The column is **collapsible**: the canvas needs the room, and the
    * toggle announces its state (`aria-expanded`).

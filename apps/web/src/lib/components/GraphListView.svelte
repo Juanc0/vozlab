@@ -5,6 +5,7 @@
   import type { TranslationKey } from '$lib/i18n';
   import { displayName } from '$lib/i18n/display-name';
   import { formatNumber } from '$lib/i18n';
+  import { formatAttributeValue } from '$lib/graph/elements';
   import { edgeSelection, nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { getLocaleState } from '$lib/state/context';
 
@@ -82,6 +83,16 @@
   /** `true` when the selection is the given relation. */
   function isSelectedEdge(edgeId: string): boolean {
     return selection?.kind === 'edge' && selection.id === edgeId;
+  }
+
+  /**
+   * The attributes of a relation, as key/value rows.
+   *
+   * The window carries them: the list shows the content of the relation
+   * without asking the API for it.
+   */
+  function attributeRows(edge: SubgraphEdgeDto): Array<[string, unknown]> {
+    return Object.entries(edge.attributes ?? {});
   }
 </script>
 
@@ -185,6 +196,7 @@
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnFrom')}</th>
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnTo')}</th>
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnStatus')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnAttributes')}</th>
             {#if ledger}
               <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnScore')}</th>
             {/if}
@@ -230,6 +242,24 @@
                 </button>
               </td>
               <td class="px-3 py-2 text-muted">{locale.status('edge', edge.status)}</td>
+              <!--
+                The attributes of the relation: the content of it, in the
+                same format the card of the canvas uses. The list is the
+                text alternative of the picture, so nothing of the relation
+                may be reachable only by pointing at it.
+              -->
+              <td class="px-3 py-2">
+                {#if attributeRows(edge).length > 0}
+                  <dl class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                    {#each attributeRows(edge) as [key, value] (key)}
+                      <dt class="font-medium text-text">{key}</dt>
+                      <dd class="text-muted">{formatAttributeValue(value)}</dd>
+                    {/each}
+                  </dl>
+                {:else}
+                  <span class="text-muted">{t('inspector.noAttributes')}</span>
+                {/if}
+              </td>
               {#if ledger}
                 <td class="px-3 py-2">
                   <VoteButtons
@@ -265,7 +295,7 @@
             </tr>
           {:else}
             <tr>
-              <td colspan={4 + (ledger ? 1 : 0) + (onpropose ? 1 : 0)} class="px-3 py-2 text-muted">
+              <td colspan={5 + (ledger ? 1 : 0) + (onpropose ? 1 : 0)} class="px-3 py-2 text-muted">
                 {t('graph.listNoRelations')}
               </td>
             </tr>

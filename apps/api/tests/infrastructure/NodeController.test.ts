@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
-import type { NodeWindowResponseDto } from '@vozlab/shared-types';
+import type { NodeWindowResponseDto, SubgraphResponseDto } from '@vozlab/shared-types';
 import { ActivateOntologyClassUseCase } from '../../src/application/use_cases/ActivateOntologyClassUseCase.js';
 import { AddPostUseCase } from '../../src/application/use_cases/AddPostUseCase.js';
 import { ApproveProposalUseCase } from '../../src/application/use_cases/ApproveProposalUseCase.js';
@@ -93,8 +93,11 @@ function edge(id: string, sourceNodeId: string, targetNodeId: string): SubgraphE
     sourceNodeId,
     targetNodeId,
     relationKey: 'RELATES_TO',
+    attributes: { weight: 3 },
+    authorHash: 'a'.repeat(64),
     status: 'PENDING',
     communityScore: 0,
+    createdAt: new Date('2026-01-03T00:00:00.000Z'),
   };
 }
 
@@ -187,6 +190,15 @@ async function getWindow(
 ): Promise<{ statusCode: number; body: unknown }> {
   const captured = { statusCode: 0, body: undefined as unknown };
   await controller.getWindowHandler(makeRequest(query), makeReply(captured));
+  return captured;
+}
+
+async function getSubgraph(
+  controller: NodeController,
+  query: unknown = {}
+): Promise<{ statusCode: number; body: unknown }> {
+  const captured = { statusCode: 0, body: undefined as unknown };
+  await controller.getSubgraphHandler(makeRequest(query), makeReply(captured));
   return captured;
 }
 
@@ -302,10 +314,28 @@ describe('NodeController — GET /api/v1/nodes/window', () => {
         targetNodeId: 'n-2',
         relationKey: 'RELATES_TO',
         relationDisplayNames: { en: 'Relates to', es: 'Se relaciona con' },
+        // The relation of the graph carries its content: the attributes, the
+        // pseudonym of its author and the instant it was created.
+        attributes: { weight: 3 },
+        authorHash: 'a'.repeat(64),
         status: 'PENDING',
         communityScore: 0,
+        createdAt: '2026-01-03T00:00:00.000Z',
       },
     ]);
+  });
+
+  it('carries the attributes of a relation without attributes as an empty object', async () => {
+    const { controller } = makeController(
+      [node('n-1', '2026-01-01T00:00:00.000Z'), node('n-2', '2026-01-02T00:00:00.000Z')],
+      [{ ...edge('e-1', 'n-1', 'n-2'), attributes: {} }]
+    );
+
+    const captured = await getWindow(controller);
+
+    const body = captured.body as NodeWindowResponseDto;
+    expect(body.edges[0]?.attributes).toEqual({});
+    expect(body.edges[0]?.attributes).not.toBeNull();
   });
 
   it('never leaks a node of another workspace', async () => {
@@ -350,8 +380,54 @@ describe('NodeController — GET /api/v1/nodes/window', () => {
   });
 });
 
-describe('the route /api/v1/nodes/window', () => {
-  it('is answered by the window handler, not by /nodes/:id', async () => {
+describe('NodeController — GET /api/v1/nodes/subgraph', () => {
+  /** The root of the subgraph: the API takes a UUID. */
+  const ROOT = '11111111-1111-4111-8111-111111111111';
+  const NEIGHBOUR = '22222222-2222-4222-8222-222222222222';
+
+  it('answers with the content of every relation of the subgraph', async () => {
+    const { controller } = makeController(
+      [
+        node(ROOT, '2026-01-01T00:00:00.000Z'),
+        node(NEIGHBOUR, '2026-01-02T00:00:00.000Z'),
+      ],
+      [edge('e-1', ROOT, NEIGHBOUR)]
+    );
+
+    const captured = await getSubgraph(controller, { rootId: ROOT });
+
+    expect(captured.statusCode).toBe(200);
+
+    const body = captured.body as SubgraphResponseDto;
+    const relation = body.edges[0];
+
+    // The relation of the graph carries its content: the attributes, the
+    // pseudonym of its author and the instant it was created — the same
+    // values the full edge carries.
+    expect(relation?.attributes).toEqual({ weight: 3 });
+    expect(relation?.authorHash).toBe('a'.repeat(64));
+    expect(relation?.createdAt).toBe('2026-01-03T00:00:00.000Z');
+  });
+
+  it('carries the attributes of a relation without attributes as an empty object', async () => {
+    const { controller } = makeController(
+      [
+        node(ROOT, '2026-01-01T00:00:00.000Z'),
+        node(NEIGHBOUR, '2026-01-02T00:00:00.000Z'),
+      ],
+      [{ ...edge('e-1', ROOT, NEIGHBOUR), attributes: {} }]
+    );
+
+    const captured = await getSubgraph(controller, { rootId: ROOT });
+
+    const body = captured.body as SubgraphResponseDto;
+
+    expect(body.edges[0]?.attributes).toEqual({});
+    expect(body.edges[0]?.attributes).not.toBeNull();
+  });
+});
+
+describe('the route /api/v1/nodes/window', () => {  it('is answered by the window handler, not by /nodes/:id', async () => {
     const fake = makeNodeRepository(
       [node('n-1', '2026-01-01T00:00:00.000Z')],
       { status: 'NOT_FOUND' },

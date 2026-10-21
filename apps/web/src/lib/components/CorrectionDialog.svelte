@@ -150,9 +150,10 @@
   /**
    * Reads the target of the correction.
    *
-   * A node is already in memory; a relation is not — the subgraph carries
-   * the **narrower** projection of a relation, without its attributes — so
-   * the relation itself is read.
+   * A node is already in memory; a relation is read whole, with
+   * `GET /api/v1/edges/:id`: the relation of the graph carries the
+   * attributes, but the **authority** of the relation — the one the form
+   * edits — is the full edge.
    */
   $effect(() => {
     const id = targetId;

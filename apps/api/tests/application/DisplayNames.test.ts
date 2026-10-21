@@ -106,8 +106,11 @@ function subgraphEdge(
     sourceNodeId,
     targetNodeId,
     relationKey,
+    attributes: {},
+    authorHash: 'a'.repeat(64),
     status: 'PENDING',
     communityScore: 0,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 }
 

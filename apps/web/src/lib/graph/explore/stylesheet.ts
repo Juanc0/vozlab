@@ -20,6 +20,8 @@ import {
   CARD_TEXT_STYLE,
   META_CLASS,
   PRESENTED_COLOR,
+  RELATION_CARD_CLASS,
+  RELATION_CARD_NODE_STYLE,
   SELECTION_COLOR
 } from '../elements';
 
@@ -34,6 +36,12 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
   {
     selector: `node.${CARD_CLASS}`,
     style: CARD_NODE_STYLE
+  },
+  {
+    // The card of a relation: a card of the design system, with a border of
+    // one pixel — it is not a node of the window.
+    selector: `node.${RELATION_CARD_CLASS}`,
+    style: RELATION_CARD_NODE_STYLE
   },
   {
     selector: `node.${META_CLASS}`,

@@ -15,6 +15,7 @@
     listWorkspaceNodes,
     loadNodeWindow,
     loadSubgraph,
+    type CreatedEdge,
     type CreatedNode
   } from '$lib/api/graph';
   import { loadOntology } from '$lib/api/ontology';
@@ -33,7 +34,7 @@
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { displayName } from '$lib/i18n/display-name';
   import { formatNumber } from '$lib/i18n';
-  import { nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
+  import { nodeSelection, edgeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { MediaQuery } from '$lib/layout/media.svelte';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import RichText from '$lib/components/RichText.svelte';
@@ -184,6 +185,9 @@
 
   /** The selected node — it is the one the canvas and the list highlight. */
   const selectedNodeId = $derived(selection?.kind === 'node' ? selection.id : null);
+
+  /** The selected relation — it is the one the canvas and the list highlight. */
+  const selectedEdgeId = $derived(selection?.kind === 'edge' ? selection.id : null);
 
   /** The nodes the list view shows: the ones of the view on screen. */
   const listNodes = $derived(viewMode === 'explore' ? windowNodes : graphNodes);
@@ -515,6 +519,16 @@
   }
 
   /**
+   * The user selected a relation — by tapping its card in the canvas.
+   *
+   * The relation is one of the window: the canvas draws it and the
+   * inspector reads it whole.
+   */
+  function selectEdge(id: string): void {
+    selection = edgeSelection(id);
+  }
+
+  /**
    * The user selected a thing in the list: a node or a relation.
    *
    * The list is the text alternative of the canvas and it offers the same
@@ -562,7 +576,7 @@
    * did not return: a relation whose endpoints fall outside the current
    * window is simply not in it.
    */
-  function handleEdgeCreated(edge: SubgraphEdgeDto): void {
+  function handleEdgeCreated(edge: CreatedEdge): void {
     notice = { text: t('graph.edgeCreated', { relationKey: edge.relationKey }) };
 
     if (rootId !== null) {
@@ -928,7 +942,9 @@
               loading={windowLoading}
               error={windowError}
               selectedNodeId={selectedNodeId}
+              selectedEdgeId={selectedEdgeId}
               onselect={selectNode}
+              onselectedge={selectEdge}
             />
           </div>
         {/if}

@@ -369,8 +369,21 @@ Decided, and not to be re-opened without evidence:
       typed with `satisfies Record<NodeStatus, string>`, so a missing status
       is a **compile error** in both languages. Nothing in the interface
       prints `RELATES_TO` or `REJECTED_BY_AUTHOR` any more.
-- [ ] 3.19 The enriched relation: the graph DTO carries the attributes, the
-      author and the dates, and a relation expands like a node.
+- [x] 3.19 The enriched relation: the graph DTO carries the attributes, the
+      author and the dates, and a relation expands like a node. Result:
+      `SubgraphEdgeDto` carries the relation's **attributes** (the same
+      JSONB the full edge returns), its **author** (the pseudonym, never an
+      identity) and its **creation instant** — `updatedAt` does not exist:
+      `public.edges` has no such column and `EdgeDto` does not carry it
+      either, so the API did not invent one. The payload grows a **constant
+      135 B per relation** (+16.8% on the demo, +3.7% gzipped), which does
+      not compound. A relation **expands into a card** like a node — its
+      name, its attributes, its author and its date — with a **leader** in
+      the relation's colour joining the card to the middle of its line, so
+      it reads as the writing of that relation and not as a box dropped on
+      the picture. The badge of a relation is a **square** (the node's is a
+      circle) with the same 44 px hit area. The cost of an expanded
+      relation is the layout that runs again, not the card.
 - [ ] 3.20 The ranked traversal and the two missing indexes: the nearest
       nodes become the strongest ones, and the window stops sorting the whole
       workspace.

@@ -212,8 +212,11 @@ export class DrizzleNodeRepository implements INodeRepository {
         sourceNodeId: edges.sourceNodeId,
         targetNodeId: edges.targetNodeId,
         relationKey: edges.relationKey,
+        attributes: edges.attributes,
+        authorHash: edges.authorHash,
         status: edges.status,
         communityScore: edges.communityScore,
+        createdAt: edges.createdAt,
       })
       .from(edges)
       .where(
@@ -270,8 +273,11 @@ export class DrizzleNodeRepository implements INodeRepository {
         sourceNodeId: edges.sourceNodeId,
         targetNodeId: edges.targetNodeId,
         relationKey: edges.relationKey,
+        attributes: edges.attributes,
+        authorHash: edges.authorHash,
         status: edges.status,
         communityScore: edges.communityScore,
+        createdAt: edges.createdAt,
       })
       .from(edges)
       .where(
@@ -589,25 +595,37 @@ function toDomain(row: typeof nodes.$inferSelect): Node {
 }
 
 /**
- * Map a `public.edges` row to the narrow projection the subgraph and the
- * window share: the topology a canvas needs, nothing else.
+ * Map a `public.edges` row to the projection the subgraph and the window
+ * share: the relation of the graph — the topology, its attributes, its
+ * author pseudonym, its status, its score and its creation instant.
+ *
+ * The attributes are the **same JSONB** the full edge returns: the graph
+ * does not have a second shape of them.
  */
 function toSubgraphEdge(row: {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
   relationKey: string;
+  attributes: unknown;
+  authorHash: string;
   status: string;
   communityScore: number;
+  createdAt: Date;
 }): SubgraphEdge {
   return {
     id: row.id,
     sourceNodeId: row.sourceNodeId,
     targetNodeId: row.targetNodeId,
     relationKey: row.relationKey,
+    // The column is JSONB and it is nullable in the database: a relation
+    // without attributes carries an empty object, never `null`.
+    attributes: (row.attributes ?? {}) as Record<string, unknown>,
+    authorHash: row.authorHash,
     // The column is text; the domain vocabulary is the edge status union
     // (the same mapping the edge repository does for a full edge).
     status: row.status as EdgeStatus,
     communityScore: row.communityScore,
+    createdAt: row.createdAt,
   };
 }

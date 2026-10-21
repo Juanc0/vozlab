@@ -3,17 +3,36 @@ import { Node } from '../entities/Node.js';
 import { EdgeStatus } from '../entities/Edge.js';
 
 /**
- * A connecting edge in a subgraph projection. Deliberately narrow: the
- * view does not need edge attributes/author, only the topology.
+ * A connecting edge in a subgraph projection.
+ *
+ * It is the **relation of the graph**: the topology, the attributes of the
+ * relation, the pseudonym of its author, its status, its score and the
+ * instant it was created — the same values the full edge carries, so the
+ * canvas reads one relation and not two shapes of it.
  */
 export interface SubgraphEdge {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
   relationKey: string;
+  /**
+   * The attributes of the relation (the JSONB of the row).
+   *
+   * A relation without attributes carries an **empty object**, never `null`.
+   */
+  attributes: Record<string, unknown>;
+  /**
+   * The opaque per-user pseudonym of the author (ADR-0013).
+   *
+   * The pseudonym, never the identity: the projection never carries the
+   * user, the email or the id of the author.
+   */
+  authorHash: string;
   status: EdgeStatus;
   /** The community score, so a canvas can draw and vote on a relation. */
   communityScore: number;
+  /** The instant the relation was created. */
+  createdAt: Date;
 }
 
 export interface SubgraphResult {

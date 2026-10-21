@@ -62,8 +62,11 @@ export const EDGE: SubgraphEdgeDto = {
   targetNodeId: NODE_B.id,
   relationKey: 'SUGGESTS',
   relationDisplayNames: RELATION_NAMES.SUGGESTS,
+  attributes: { weight: 3, source: 'runbook' },
+  authorHash: 'c'.repeat(64),
   status: 'ACTIVE',
-  communityScore: 3
+  communityScore: 3,
+  createdAt: '2026-10-19T10:10:00.000Z'
 };
 
 /** A third node of the window — it has one relation of its own. */
@@ -90,8 +93,11 @@ export const EDGE_B: SubgraphEdgeDto = {
   targetNodeId: NODE_C.id,
   relationKey: 'INFORMS',
   relationDisplayNames: RELATION_NAMES.INFORMS,
+  attributes: {},
+  authorHash: 'd'.repeat(64),
   status: 'ACTIVE',
-  communityScore: 5
+  communityScore: 5,
+  createdAt: '2026-10-19T11:10:00.000Z'
 };
 
 /** A relation between the first node and the third one. */
@@ -101,8 +107,11 @@ export const EDGE_C: SubgraphEdgeDto = {
   targetNodeId: NODE_C.id,
   relationKey: 'SOLVES',
   relationDisplayNames: RELATION_NAMES.SOLVES,
+  attributes: { since: '2026' },
+  authorHash: 'e'.repeat(64),
   status: 'PENDING',
-  communityScore: 1
+  communityScore: 1,
+  createdAt: '2026-10-19T09:10:00.000Z'
 };
 
 export const PROPOSAL: ProposalDto = {

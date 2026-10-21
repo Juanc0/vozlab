@@ -8,6 +8,7 @@ import {
   SubgraphQuerySchema,
   type NodeDto,
   type NodeWindowResponseDto,
+  type SubgraphEdgeDto,
   type SubgraphResponseDto,
 } from '@vozlab/shared-types';
 import { CreateNodeUseCase } from '../../../application/use_cases/CreateNodeUseCase.js';
@@ -20,6 +21,7 @@ import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseC
 import { SetNodeEmbeddingUseCase } from '../../../application/use_cases/SetNodeEmbeddingUseCase.js';
 import type { DisplayNames } from '../../../application/use_cases/DisplayNameCatalog.js';
 import type { Node } from '../../../domain/entities/Node.js';
+import type { SubgraphEdge } from '../../../domain/ports/INodeRepository.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
 import { sendError, mapDomainError } from './errorResponse.js';
@@ -50,6 +52,36 @@ function toNodeDto(node: Node, typeDisplayNames: DisplayNames): NodeDto {
     communityScore: node.communityScore,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Stable JSON projection of a relation of the graph.
+ *
+ * It is the shape of `SubgraphEdgeDto`: the topology, the display names of
+ * the relation, its **attributes**, the pseudonym of its author, its status,
+ * its score and the instant it was created.
+ *
+ * The attributes are the **same JSONB** the full edge returns and the author
+ * is the **same pseudonym**: the graph does not have a second shape of the
+ * content of a relation, and it never leaks more than the full edge does
+ * (ADR-0013 — a pseudonym, never an identity).
+ */
+function toSubgraphEdgeDto(
+  relation: SubgraphEdge,
+  relationDisplayNames: DisplayNames
+): SubgraphEdgeDto {
+  return {
+    id: relation.id,
+    sourceNodeId: relation.sourceNodeId,
+    targetNodeId: relation.targetNodeId,
+    relationKey: relation.relationKey,
+    relationDisplayNames,
+    attributes: relation.attributes,
+    authorHash: relation.authorHash,
+    status: relation.status,
+    communityScore: relation.communityScore,
+    createdAt: relation.createdAt.toISOString(),
   };
 }
 
@@ -186,15 +218,9 @@ export class NodeController {
 
       return reply.status(200).send({
         nodes: nodes.map((named) => toNodeDto(named.node, named.typeDisplayNames)),
-        edges: relations.map((named) => ({
-          id: named.relation.id,
-          sourceNodeId: named.relation.sourceNodeId,
-          targetNodeId: named.relation.targetNodeId,
-          relationKey: named.relation.relationKey,
-          relationDisplayNames: named.relationDisplayNames,
-          status: named.relation.status,
-          communityScore: named.relation.communityScore,
-        })),
+        edges: relations.map((named) =>
+          toSubgraphEdgeDto(named.relation, named.relationDisplayNames)
+        ),
       } satisfies SubgraphResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getSubgraph failed');
@@ -228,15 +254,9 @@ export class NodeController {
 
       return reply.status(200).send({
         nodes: nodes.map((named) => toNodeDto(named.node, named.typeDisplayNames)),
-        edges: relations.map((named) => ({
-          id: named.relation.id,
-          sourceNodeId: named.relation.sourceNodeId,
-          targetNodeId: named.relation.targetNodeId,
-          relationKey: named.relation.relationKey,
-          relationDisplayNames: named.relationDisplayNames,
-          status: named.relation.status,
-          communityScore: named.relation.communityScore,
-        })),
+        edges: relations.map((named) =>
+          toSubgraphEdgeDto(named.relation, named.relationDisplayNames)
+        ),
       } satisfies NodeWindowResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getNodeWindow failed');

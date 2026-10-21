@@ -221,6 +221,7 @@ export const es = {
     columnTo: 'Destino',
     columnScore: 'Puntuación',
     columnCorrection: 'Corrección',
+    columnAttributes: 'Atributos',
     suggestCorrection: 'Proponer una corrección',
     suggestCorrectionOfRelation:
       'Proponer una corrección de la relación {relationKey}',
@@ -263,6 +264,9 @@ export const es = {
     expandBadge: 'Expandir «{title}»',
     collapseBadge: 'Contraer «{title}»',
     badgesLabel: 'Los nodos de la ventana',
+    expandRelationBadge: 'Expandir la relación «{name}»',
+    collapseRelationBadge: 'Contraer la relación «{name}»',
+    relationBadgesLabel: 'Las relaciones de la ventana',
     canvasLabel: 'Lienzo de la ventana de exploración',
     canvasDescription:
       '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con una disposición dagre determinista.',

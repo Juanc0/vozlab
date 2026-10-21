@@ -17,8 +17,12 @@
     edges?: SubgraphEdgeDto[];
     /** The id of the selected node, or `null` when nothing is selected. */
     selectedNodeId?: string | null;
+    /** The id of the selected relation, or `null` when nothing is selected. */
+    selectedEdgeId?: string | null;
     /** Called when the user selects a node in the view. */
     onselect?: (nodeId: string | null) => void;
+    /** Called when the user selects a relation — by tapping its card. */
+    onselectedge?: (edgeId: string) => void;
     /** Whether the window is being read. */
     loading?: boolean;
     /** The failure of the last read, if it failed. */
@@ -29,7 +33,9 @@
     nodes = [],
     edges = [],
     selectedNodeId = null,
+    selectedEdgeId = null,
     onselect,
+    onselectedge,
     loading = false,
     error = null
   }: Props = $props();
@@ -65,6 +71,15 @@
 
   /** The nodes that are drawn as a card. */
   let expandedIds = $state.raw<Set<string>>(new Set<string>());
+
+  /**
+   * The relations that are drawn as a card with their whole content.
+   *
+   * A relation of the window carries its attributes, its author and its
+   * date: the reader can ask for the whole of it, exactly as he asks for
+   * the whole of a node.
+   */
+  let expandedEdgeIds = $state.raw<Set<string>>(new Set<string>());
 
   /** The node the view presents. */
   const presented = $derived(presentedNodeId(nodes, edges, criterion, manualNodeId));
@@ -132,6 +147,24 @@
     }
 
     expandedIds = next;
+  }
+
+  /** The user expanded or collapsed a relation. */
+  function toggleEdge(edgeId: string): void {
+    const next = new Set(expandedEdgeIds);
+
+    if (next.has(edgeId)) {
+      next.delete(edgeId);
+    } else {
+      next.add(edgeId);
+    }
+
+    expandedEdgeIds = next;
+  }
+
+  /** The user selected a relation: the inspector shows it. */
+  function selectEdge(edgeId: string): void {
+    onselectedge?.(edgeId);
   }
 
   const nodeCount = $derived(formatNumber(locale.locale, nodes.length));
@@ -230,11 +263,15 @@
       {nodes}
       {edges}
       {expandedIds}
+      {expandedEdgeIds}
       {edgeStyle}
       {selectedNodeId}
+      {selectedEdgeId}
       presentedNodeId={presented}
       onselect={selectNode}
       ontoggle={toggleNode}
+      onselectedge={selectEdge}
+      ontoggleedge={toggleEdge}
     />
 
     <ul class="max-w-measure list-disc space-y-1 pl-5 text-small text-muted">
