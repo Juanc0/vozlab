@@ -1,0 +1,59 @@
+/**
+ * Journey — the exploration view.
+ *
+ * The exploration view lives **next to** the subgraph view: the switch in the
+ * toolbar changes what the body of the page shows, and both views stay
+ * reachable. The view states what the window is, presents a node, expands it
+ * with its badge, and the list view remains the text alternative of both
+ * modes.
+ */
+
+import { waitForApp } from './support/app';
+import { expect, test } from './support/fixtures';
+
+test('the exploration view is next to the subgraph, presents a node and expands it', async ({
+  page,
+  api
+}) => {
+  const node = await api.createNode({ typeKey: 'Problem', title: `${api.marker} explore node` });
+
+  await page.goto('/');
+  await waitForApp(page);
+
+  // The switch between the two views.
+  await page.getByText('Explorar', { exact: true }).click();
+
+  // The canvas of the window.
+  const canvas = page.getByRole('img', { name: 'Lienzo de la ventana de exploración' });
+  await expect(canvas).toBeVisible();
+
+  // The window says what it is: closed, ordered by creation and bounded.
+  await expect(page.getByText(/La ventana es un grafo/)).toBeVisible();
+  await expect(page.getByText(/El orden es de/)).toBeVisible();
+  await expect(page.getByText(/no tiene paginación/)).toBeVisible();
+
+  // The view presents a node: the newest one of the window.
+  await expect(page.getByText(`Se presenta «${node.title}».`)).toBeVisible();
+
+  // The criterion is the user's choice.
+  await page.getByText('El más relacionado', { exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'El más relacionado' })).toBeChecked();
+
+  // The badge of the node expands it, and the expansion is permanent.
+  const badges = page.getByRole('toolbar', { name: 'Los nodos de la ventana' }).getByRole('button');
+  const badge = badges.first();
+
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveAttribute('aria-pressed', 'true');
+
+  await badge.click();
+  await expect(badge).toHaveAttribute('aria-pressed', 'false');
+
+  // The list view is the text alternative of the window too.
+  const nodeTable = page.getByRole('region', { name: 'Los nodos del subgrafo' });
+  await expect(nodeTable.getByRole('button', { name: node.title })).toBeVisible();
+
+  // And the subgraph view is still there: it asks for its root again.
+  await page.getByText('Subgrafo', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nodo raíz' })).toBeVisible();
+});

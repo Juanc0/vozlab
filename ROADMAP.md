@@ -249,9 +249,19 @@ Requested after 3.7, to present the product to the university community.
       the canvas never meets an unknown node. The limit is clamped to 1–200
       and defaults to 100. The route is registered before `/nodes/:id`, for
       the same reason `/nodes/subgraph` is.
-- [ ] 3.12 The exploration view, next to the subgraph view: pan, hover and
+- [x] 3.12 The exploration view, next to the subgraph view: pan, hover and
       click expansion, a selectable focus, the shape of the arrows, dragging
-      a node, and a layout that rearranges when the nodes grow.
+      a node, and a layout that rearranges when the nodes grow. Result: a
+      second mode of the graph page — "Subgrafo" / "Explorar" — that draws
+      the workspace as a landscape. There is **no root**: the view *presents*
+      a node and the criterion is the user's choice (the most recent, the
+      most related, or the one they clicked). Hovering opens a **preview**
+      with the content of a node or a relation; the badge on a node
+      **expands** it into a card and the layout rearranges around it. The
+      graph pans, a node can be dragged and keeps its place across a
+      re-layout, and the shape of the arrows is a choice — straight, an
+      orthogonal route with right angles, and four curves. The list view
+      stays the text alternative of both modes.
 - [ ] 3.13 The inspector: one right-hand sidebar with tabs (content,
       attributes, proposals, forum) shared by both graph views, where the
       selected node or relation can be edited or corrected.

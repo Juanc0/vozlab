@@ -274,6 +274,50 @@ explicit; a failed fetch must not leave a blank canvas.
 Edges are styled by relation key/status. Empty and error states are
 explicit; a failed fetch must not leave a blank canvas.
 
+## The exploration view
+
+A second mode of the graph page — "Subgrafo" / "Explorar" — that draws the
+workspace as a **landscape** instead of a neighbourhood. It reads
+`GET /api/v1/nodes/window`: the most recent nodes of the workspace and the
+relations among them.
+
+Three things about the window are not what the subgraph is, and the interface
+says so: it is a **closed graph** (a relation whose other endpoint is
+outside it is not in the answer, so a node at the border may look isolated
+while it has many relations outside), its order is a **creation** order and
+not an activity one, and it is **bounded** with no pagination.
+
+**There is no root.** The subgraph is rooted at a node the user picks; the
+exploration view *presents* one, and the criterion is a control: the most
+recently added node, the node with the most relations in the window, or the
+node the user last clicked. The presented node is expanded and the view
+centres on it.
+
+**Three different things, kept apart.** The **focus** is what the view
+presents. The **preview** is transient: pointing at a node or a relation
+opens a panel with its content and it closes with the pointer. The
+**expansion** changes the picture: a badge on the node toggles it between a
+dot and a card carrying its whole content, and the layout is recomputed so
+the nodes rearrange around the new size, with the spacing growing with the
+number of expanded cards. The layout stays deterministic — no physics.
+
+**A node can be dragged** to another place among the others; the position
+is temporary and the node **keeps it** when the layout is recomputed, which
+is why the pinning goes through the layout's `transform` hook and not
+through its `position` option — `cytoscape-dagre` does not read the latter.
+
+**The shape of the relations is a choice**: straight, an orthogonal route
+with right angles, and four curves. The orthogonal router is a pure function
+of the two endpoints and the boxes in the way; it computes the free
+channels, keeps the first route that crosses no node, and — when there is
+none — answers the route with the fewest crossings and says how many, rather
+than pretending.
+
+Two corrections against the code of Cytoscape, verified against its
+sources: it has **no `controlPoints` field** and **no `curve-style:
+'arc'`**. The orthogonal route is therefore drawn with the `taxi` style and
+`taxi-radius: 0` for the square corners, and the "arc" is a wide bezier.
+
 ## Governance UI
 
 The correction form is built from the **whitelist the API applies**: a node

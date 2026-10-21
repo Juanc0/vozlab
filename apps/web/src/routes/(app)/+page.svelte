@@ -3,6 +3,7 @@
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import {
     NODE_LIST_DEFAULT_LIMIT,
+    NODE_WINDOW_DEFAULT_LIMIT,
     SUBGRAPH_DEFAULT_DEPTH,
     SUBGRAPH_DEFAULT_NODES,
     SUBGRAPH_MAX_DEPTH,
@@ -11,6 +12,7 @@
     clampSubgraphLimit,
     getNode,
     listWorkspaceNodes,
+    loadNodeWindow,
     loadSubgraph,
     type CreatedNode
   } from '$lib/api/graph';
@@ -20,6 +22,7 @@
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
   import CorrectionDialog from '$lib/components/CorrectionDialog.svelte';
   import EdgeCreateDialog from '$lib/components/EdgeCreateDialog.svelte';
+  import ExplorationView from '$lib/components/ExplorationView.svelte';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
@@ -50,6 +53,24 @@
   /** The bounded subgraph on the canvas. */
   let graphNodes = $state.raw<NodeDto[]>([]);
   let graphEdges = $state.raw<SubgraphEdgeDto[]>([]);
+
+  /** The exploration window: the newest nodes of the workspace. */
+  let windowNodes = $state.raw<NodeDto[]>([]);
+  let windowEdges = $state.raw<SubgraphEdgeDto[]>([]);
+  let windowLoading = $state(false);
+  let windowError = $state<ApiFailure | null>(null);
+
+  /**
+   * The view the page shows.
+   *
+   * It is a piece of the state of the page, not a route: the URL stays
+   * clean (FR-04) and both views stay reachable.
+   */
+  type ViewMode = 'subgraph' | 'explore';
+  let viewMode = $state<ViewMode>('subgraph');
+
+  /** The two views of the graph, in the order the switch shows them. */
+  const VIEW_MODES: readonly ViewMode[] = ['subgraph', 'explore'];
 
   /** The session-local state of the votes on the relations. */
   const ledger = new VoteLedger();
@@ -98,11 +119,18 @@
   let rootsRequest = 0;
   let graphRequest = 0;
   let ontologyRequest = 0;
+  let windowRequest = 0;
 
   /** The selected node of the current subgraph. */
   const selectedNode = $derived(
     graphNodes.find((node) => node.id === selectedNodeId) ?? null
   );
+
+  /** The nodes the list view shows: the ones of the view on screen. */
+  const listNodes = $derived(viewMode === 'explore' ? windowNodes : graphNodes);
+
+  /** The relations the list view shows: the ones of the view on screen. */
+  const listEdges = $derived(viewMode === 'explore' ? windowEdges : graphEdges);
 
   /**
    * The workspace is the scope of every read.
@@ -123,6 +151,7 @@
     rootsRequest += 1;
     graphRequest += 1;
     ontologyRequest += 1;
+    windowRequest += 1;
 
     rootId = null;
     selectedNodeId = null;
@@ -130,6 +159,9 @@
     graphEdges = [];
     graphLoaded = false;
     graphError = null;
+    windowNodes = [];
+    windowEdges = [];
+    windowError = null;
     ontology = null;
     ontologyError = null;
     nodeDialogOpen = false;
@@ -172,6 +204,24 @@
     }
 
     void loadGraph(id, currentDepth, currentLimit);
+  });
+
+  /**
+   * Reads the exploration window — when the view asks for it.
+   *
+   * The window is only read when the exploration view is on screen: the
+   * other view does not need it, and a read that nobody looks at is a read
+   * the API does not have to answer.
+   */
+  $effect(() => {
+    const workspaceId = workspace.currentWorkspaceId;
+    const mode = viewMode;
+
+    if (workspaceId === '' || mode !== 'explore') {
+      return;
+    }
+
+    void loadWindow();
   });
 
   /**
@@ -295,6 +345,46 @@
   }
 
   /**
+   * Reads the exploration window of the workspace.
+   *
+   * A failed read keeps the previous window on the canvas: the error is
+   * shown next to it, never instead of it.
+   */
+  async function loadWindow(): Promise<void> {
+    const current = (windowRequest += 1);
+    windowLoading = true;
+    windowError = null;
+
+    try {
+      const answer = await loadNodeWindow(api, { limit: NODE_WINDOW_DEFAULT_LIMIT });
+
+      if (current !== windowRequest) {
+        return;
+      }
+
+      windowNodes = answer.nodes;
+      windowEdges = answer.edges;
+
+      // The selection may not exist in the new window.
+      if (selectedNodeId !== null && !answer.nodes.some((node) => node.id === selectedNodeId)) {
+        selectedNodeId = null;
+      }
+    } catch (caught) {
+      if (current !== windowRequest) {
+        return;
+      }
+      if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
+        return;
+      }
+      windowError = describeFailure(caught, t);
+    } finally {
+      if (current === windowRequest) {
+        windowLoading = false;
+      }
+    }
+  }
+
+  /**
    * Re-reads the score of a relation after the API counted a vote.
    *
    * The API has no read for the interactions, so the client cannot know
@@ -304,11 +394,23 @@
    * authority.
    */
   async function reconcileEdgeScore(edgeId: string): Promise<number | null> {
-    if (rootId === null) {
-      return null;
-    }
-
     try {
+      if (viewMode === 'explore') {
+        const answer = await loadNodeWindow(api, { limit: NODE_WINDOW_DEFAULT_LIMIT });
+        const edge = answer.edges.find((candidate) => candidate.id === edgeId);
+
+        if (!edge) {
+          return null;
+        }
+
+        ledger.sync(edgeId, edge.communityScore);
+        return edge.communityScore;
+      }
+
+      if (rootId === null) {
+        return null;
+      }
+
       const subgraph = await loadSubgraph(api, {
         rootId,
         depth,
@@ -487,147 +589,211 @@
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="min-w-0 space-y-6">
-      <section aria-labelledby="root-picker-heading" class="rounded-card border border-line bg-surface p-4">
-        <h2 id="root-picker-heading" class="text-base font-semibold tracking-tight">
-          {t('graph.rootHeading')}
-        </h2>
-        <p class="mt-1 text-sm text-ink-muted">
-          {t('graph.rootHelp')}
-        </p>
-
-        {#if rootsError}
-          <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-            <span class="font-mono">{rootsError.code}</span> — {rootsError.message}
+      <!--
+        The root picker belongs to the subgraph view: the exploration view
+        has no root — it presents a node and lets the user choose which one.
+      -->
+      {#if viewMode === 'subgraph'}
+        <section aria-labelledby="root-picker-heading" class="rounded-card border border-line bg-surface p-4">
+          <h2 id="root-picker-heading" class="text-base font-semibold tracking-tight">
+            {t('graph.rootHeading')}
+          </h2>
+          <p class="mt-1 text-sm text-ink-muted">
+            {t('graph.rootHelp')}
           </p>
-        {:else if rootsLoading && rootNodes.length === 0}
-          <p role="status" class="mt-3 text-sm text-ink-muted">{t('graph.loadingNodes')}</p>
-        {:else if rootNodes.length === 0}
-          <p class="mt-3 text-sm text-ink-muted">
-            {t('graph.noNodes')}
-          </p>
-        {:else}
-          <ul class="mt-3 divide-y divide-line">
-            {#each rootNodes as node (node.id)}
-              <li class="flex flex-wrap items-baseline justify-between gap-2 py-2">
-                <button
-                  type="button"
-                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
-                  aria-current={rootId === node.id ? 'true' : undefined}
-                  onclick={() => selectRoot(node.id)}
-                >
-                  {node.title}
-                </button>
-                <span class="text-xs text-ink-muted">{node.typeKey} · {node.status}</span>
-              </li>
-            {/each}
-          </ul>
 
-          {#if rootCursor !== null}
-            <button
-              type="button"
-              class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={rootsLoading}
-              onclick={() => loadRoots(rootCursor)}
-            >
-              {rootsLoading ? t('common.loading') : t('graph.showOlderNodes')}
-            </button>
+          {#if rootsError}
+            <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+              <span class="font-mono">{rootsError.code}</span> — {rootsError.message}
+            </p>
+          {:else if rootsLoading && rootNodes.length === 0}
+            <p role="status" class="mt-3 text-sm text-ink-muted">{t('graph.loadingNodes')}</p>
+          {:else if rootNodes.length === 0}
+            <p class="mt-3 text-sm text-ink-muted">
+              {t('graph.noNodes')}
+            </p>
+          {:else}
+            <ul class="mt-3 divide-y divide-line">
+              {#each rootNodes as node (node.id)}
+                <li class="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                  <button
+                    type="button"
+                    class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
+                    aria-current={rootId === node.id ? 'true' : undefined}
+                    onclick={() => selectRoot(node.id)}
+                  >
+                    {node.title}
+                  </button>
+                  <span class="text-xs text-ink-muted">{node.typeKey} · {node.status}</span>
+                </li>
+              {/each}
+            </ul>
+
+            {#if rootCursor !== null}
+              <button
+                type="button"
+                class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={rootsLoading}
+                onclick={() => loadRoots(rootCursor)}
+              >
+                {rootsLoading ? t('common.loading') : t('graph.showOlderNodes')}
+              </button>
+            {/if}
           {/if}
-        {/if}
-      </section>
+        </section>
+      {/if}
 
       <section aria-labelledby="canvas-heading" class="rounded-card border border-line bg-surface p-4">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="canvas-heading" class="text-base font-semibold tracking-tight">
-            {t('graph.subgraphHeading')}
+            {viewMode === 'explore' ? t('explore.heading') : t('graph.subgraphHeading')}
           </h2>
 
           <div class="flex flex-wrap items-end gap-3 text-sm">
-            <div>
-              <label for="subgraph-depth" class="block text-xs text-ink-muted">
-                {t('graph.depthLabel')}
-              </label>
-              <select
-                id="subgraph-depth"
-                class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
-                value={depth}
-                onchange={handleDepthChange}
-              >
-                {#each depthOptions as option (option)}
-                  <option value={option}>{option}</option>
-                {/each}
-              </select>
-            </div>
+            <!--
+              The switch between the two views of the graph. It is a piece of
+              the state of the page: the URL stays clean and both views stay
+              reachable.
 
-            <div>
-              <label for="subgraph-limit" class="block text-xs text-ink-muted">
-                {t('graph.maxNodesLabel')}
-              </label>
-              <input
-                id="subgraph-limit"
-                type="number"
-                min="1"
-                max={SUBGRAPH_MAX_NODES}
-                class="mt-0.5 w-24 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
-                value={limit}
-                onchange={handleLimitChange}
-              />
-            </div>
+              The radio is the control and the label is its face: the focus
+              is shown on the label (`peer-focus-visible`), because the radio
+              itself is hidden from the sight.
+            -->
+            <fieldset>
+              <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
+              <div class="flex flex-wrap gap-1">
+                {#each VIEW_MODES as mode (mode)}
+                  <input
+                    type="radio"
+                    id="graph-view-{mode}"
+                    name="graph-view-mode"
+                    value={mode}
+                    class="peer sr-only"
+                    bind:group={viewMode}
+                  />
+                  <label
+                    for="graph-view-{mode}"
+                    class="cursor-pointer rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+                  >
+                    {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
+
+            {#if viewMode === 'subgraph'}
+              <div>
+                <label for="subgraph-depth" class="block text-xs text-ink-muted">
+                  {t('graph.depthLabel')}
+                </label>
+                <select
+                  id="subgraph-depth"
+                  class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+                  value={depth}
+                  onchange={handleDepthChange}
+                >
+                  {#each depthOptions as option (option)}
+                    <option value={option}>{option}</option>
+                  {/each}
+                </select>
+              </div>
+
+              <div>
+                <label for="subgraph-limit" class="block text-xs text-ink-muted">
+                  {t('graph.maxNodesLabel')}
+                </label>
+                <input
+                  id="subgraph-limit"
+                  type="number"
+                  min="1"
+                  max={SUBGRAPH_MAX_NODES}
+                  class="mt-0.5 w-24 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+                  value={limit}
+                  onchange={handleLimitChange}
+                />
+              </div>
+            {/if}
           </div>
         </div>
 
-        <p class="mt-1 text-xs text-ink-muted">
-          {t('graph.bounds', {
-            depth: formatNumber(locale.locale, depth),
-            limit: formatNumber(locale.locale, limit),
-            maxDepth: formatNumber(locale.locale, SUBGRAPH_MAX_DEPTH),
-            maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES)
-          })}
-        </p>
+        <p class="mt-1 text-xs text-ink-muted">{t('graph.modeHint')}</p>
 
-        {#if graphError}
-          <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-            <span class="font-mono">{graphError.code}</span> — {graphError.message}
-            {#if graphLoaded}
-              <span class="mt-1 block text-ink-muted">
-                {t('graph.staleGraph')}
-              </span>
-            {/if}
+        {#if viewMode === 'subgraph'}
+          <p class="mt-1 text-xs text-ink-muted">
+            {t('graph.bounds', {
+              depth: formatNumber(locale.locale, depth),
+              limit: formatNumber(locale.locale, limit),
+              maxDepth: formatNumber(locale.locale, SUBGRAPH_MAX_DEPTH),
+              maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES)
+            })}
           </p>
-        {/if}
 
-        <div class="mt-4">
-          {#if rootId === null}
-            <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-              {t('graph.pickRoot')}
+          {#if graphError}
+            <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+              <span class="font-mono">{graphError.code}</span> — {graphError.message}
+              {#if graphLoaded}
+                <span class="mt-1 block text-ink-muted">
+                  {t('graph.staleGraph')}
+                </span>
+              {/if}
             </p>
-          {:else if graphLoading && !graphLoaded}
-            <p role="status" class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-              {t('graph.loadingSubgraph')}
-            </p>
-          {:else if graphLoaded}
-            <GraphCanvas
-              nodes={graphNodes}
-              edges={graphEdges}
-              selectedNodeId={selectedNodeId}
-              onselect={selectNode}
-              description={t('graph.canvasDescription', {
-                nodes: formatNumber(locale.locale, graphNodes.length),
-                edges: formatNumber(locale.locale, graphEdges.length)
-              })}
-            />
+          {/if}
 
-            <div class="mt-6">
-              <GraphListView
+          <div class="mt-4">
+            {#if rootId === null}
+              <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+                {t('graph.pickRoot')}
+              </p>
+            {:else if graphLoading && !graphLoaded}
+              <p role="status" class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+                {t('graph.loadingSubgraph')}
+              </p>
+            {:else if graphLoaded}
+              <GraphCanvas
                 nodes={graphNodes}
                 edges={graphEdges}
                 selectedNodeId={selectedNodeId}
                 onselect={selectNode}
-                {ledger}
-                reconcileEdge={reconcileEdgeScore}
-                onpropose={openEdgeCorrection}
+                description={t('graph.canvasDescription', {
+                  nodes: formatNumber(locale.locale, graphNodes.length),
+                  edges: formatNumber(locale.locale, graphEdges.length)
+                })}
               />
-            </div>
+            {/if}
+          </div>
+        {:else}
+          <div class="mt-4">
+            <ExplorationView
+              nodes={windowNodes}
+              edges={windowEdges}
+              loading={windowLoading}
+              error={windowError}
+              selectedNodeId={selectedNodeId}
+              onselect={selectNode}
+            />
+          </div>
+        {/if}
+
+        <!--
+          The list view is the text alternative of **both** modes: the canvas
+          is a picture a screen reader cannot see, and the list carries the
+          same content with the same selection.
+        -->
+        <div class="mt-6">
+          {#if viewMode === 'explore'}
+            <p class="mb-2 text-xs text-ink-muted">{t('graph.exploreListNote')}</p>
           {/if}
+
+          <GraphListView
+            summaryKey={viewMode === 'explore' ? 'explore.listSummary' : 'graph.listSummary'}
+            nodes={listNodes}
+            edges={listEdges}
+            selectedNodeId={selectedNodeId}
+            onselect={selectNode}
+            {ledger}
+            reconcileEdge={reconcileEdgeScore}
+            onpropose={openEdgeCorrection}
+          />
         </div>
       </section>
     </div>

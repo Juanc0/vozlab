@@ -46,6 +46,41 @@ export const EDGE: SubgraphEdgeDto = {
   communityScore: 3
 };
 
+/** A third node of the window — it has one relation of its own. */
+export const NODE_C: NodeDto = {
+  id: '99999999-9999-4999-8999-999999999999',
+  workspaceId: WORKSPACE_ID,
+  typeKey: 'Task',
+  title: 'Publish the timetable in the halls',
+  description: 'The faculties agreed to print it.',
+  attributes: { owner: 'library' },
+  authorHash: 'e'.repeat(64),
+  status: 'ACTIVE',
+  communityScore: 5,
+  createdAt: '2026-10-19T09:00:00.000Z',
+  updatedAt: '2026-10-19T09:30:00.000Z'
+};
+
+/** A second relation: it gives `NODE_B` more relations than the others. */
+export const EDGE_B: SubgraphEdgeDto = {
+  id: 'abababab-abab-4bab-8bab-abababababab',
+  sourceNodeId: NODE_B.id,
+  targetNodeId: NODE_C.id,
+  relationKey: 'INFORMS',
+  status: 'ACTIVE',
+  communityScore: 5
+};
+
+/** A relation between the first node and the third one. */
+export const EDGE_C: SubgraphEdgeDto = {
+  id: 'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',
+  sourceNodeId: NODE_A.id,
+  targetNodeId: NODE_C.id,
+  relationKey: 'SOLVES',
+  status: 'PENDING',
+  communityScore: 1
+};
+
 export const PROPOSAL: ProposalDto = {
   id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   workspaceId: WORKSPACE_ID,

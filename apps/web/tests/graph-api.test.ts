@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient } from '$lib/api/client';
 import { ApiError } from '$lib/api/errors';
 import {
+  NODE_WINDOW_MAX_LIMIT,
   SUBGRAPH_MAX_DEPTH,
   SUBGRAPH_MAX_NODES,
   buildSubgraphQuery,
   clampDepth,
+  clampNodeWindowLimit,
   clampSubgraphLimit,
   listWorkspaceNodes,
+  loadNodeWindow,
   loadSubgraph
 } from '$lib/api/graph';
 import { SessionState } from '$lib/state/session.svelte';
@@ -128,8 +131,46 @@ describe('loading a subgraph', () => {
   });
 });
 
-describe('listing the newest nodes', () => {
+describe('loading the exploration window', () => {
   beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('asks the API for the window of the workspace', async () => {
+    const { client, fetchMock } = harness();
+    fetchMock.mockResolvedValue(json({ nodes: [NODE_A, NODE_B], edges: [] }));
+
+    const answer = await loadNodeWindow(client, { limit: 100 });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${BASE_URL}/nodes/window?limit=100`);
+    expect(answer.nodes).toHaveLength(2);
+    expect(answer.edges).toEqual([]);
+  });
+
+  it('clamps the window before the request leaves the app', async () => {
+    const { client, fetchMock } = harness();
+    fetchMock.mockResolvedValue(json({ nodes: [], edges: [] }));
+
+    await loadNodeWindow(client, { limit: 9000 });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `${BASE_URL}/nodes/window?limit=${NODE_WINDOW_MAX_LIMIT}`
+    );
+  });
+
+  it('clamps a size that is not a number', () => {
+    expect(clampNodeWindowLimit(Number.NaN)).toBe(100);
+    expect(clampNodeWindowLimit(0)).toBe(1);
+    expect(clampNodeWindowLimit(-3)).toBe(1);
+  });
+});
+
+describe('listing the newest nodes', () => {  beforeEach(() => {
     sessionStorage.clear();
   });
 

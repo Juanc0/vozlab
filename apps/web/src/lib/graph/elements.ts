@@ -18,7 +18,11 @@ export interface GraphNodeElement {
     typeKey: string;
     status: string;
     color: string;
+    /** Whether the node is drawn as a card instead of a dot. */
+    expanded: boolean;
   };
+  /** The classes of the element — the stylesheet keys on them. */
+  classes?: string[];
 }
 
 /** The element of a relation, ready for `cy.add()`. */
@@ -36,6 +40,67 @@ export interface GraphEdgeElement {
 
 /** Any element of the graph. */
 export type GraphElement = GraphNodeElement | GraphEdgeElement;
+
+/** The class of a node that is drawn as a card. */
+export const EXPANDED_CLASS = 'vozlab-expanded';
+
+/** The size of a node that is drawn as a dot. */
+export const NODE_DOT_SIZE = 28;
+
+/** The width of a node that is drawn as a card. */
+export const NODE_CARD_WIDTH = 240;
+
+/** The height of a node that is drawn as a card. */
+export const NODE_CARD_HEIGHT = 150;
+
+/**
+ * Formats the value of an attribute for the card of a node.
+ *
+ * A value that is not a text is written as JSON: the reader must see what
+ * the API sent, not an empty cell.
+ */
+export function formatAttributeValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (value === null || value === undefined) {
+    return '—';
+  }
+
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * The text of the **card** of a node.
+ *
+ * The card carries the whole content of the node: its title, its class and
+ * its status, its description and its attributes. It is the difference
+ * between a node that is expanded and a node that is a dot.
+ */
+export function nodeCardText(node: NodeDto): string {
+  const lines: string[] = [node.title, `${node.typeKey} · ${node.status}`];
+
+  const description = node.description?.trim() ?? '';
+
+  if (description !== '') {
+    lines.push(description);
+  }
+
+  for (const [key, value] of Object.entries(node.attributes ?? {})) {
+    lines.push(`${key}: ${formatAttributeValue(value)}`);
+  }
+
+  return lines.join('\n');
+}
 
 /** The colour of a node, by its status. */
 const NODE_COLORS: Record<NodeStatus, string> = {
@@ -68,17 +133,28 @@ export function edgeColor(status: EdgeStatus): string {
   return EDGE_COLORS[status] ?? FALLBACK_COLOR;
 }
 
+/** How a node is drawn. */
+export interface NodeElementOptions {
+  /** Whether the node is drawn as a card instead of a dot. */
+  expanded?: boolean;
+}
+
 /** The element of one node. */
-export function toNodeElement(node: NodeDto): GraphNodeElement {
+export function toNodeElement(node: NodeDto, options: NodeElementOptions = {}): GraphNodeElement {
+  const expanded = options.expanded === true;
+
   return {
     group: 'nodes',
     data: {
       id: node.id,
-      label: node.title,
+      // The card carries the content of the node; the dot carries its title.
+      label: expanded ? nodeCardText(node) : node.title,
       typeKey: node.typeKey,
       status: node.status,
-      color: nodeColor(node.status)
-    }
+      color: nodeColor(node.status),
+      expanded
+    },
+    ...(expanded ? { classes: [EXPANDED_CLASS] } : {})
   };
 }
 
@@ -97,12 +173,24 @@ export function toEdgeElement(edge: SubgraphEdgeDto): GraphEdgeElement {
   };
 }
 
+/** How the elements of a graph are drawn. */
+export interface GraphElementOptions {
+  /** The nodes that are drawn as a card. */
+  expandedIds?: ReadonlySet<string>;
+}
+
 /** The elements of a subgraph: the nodes first, then the relations. */
 export function toGraphElements(
   nodes: readonly NodeDto[],
-  edges: readonly SubgraphEdgeDto[]
+  edges: readonly SubgraphEdgeDto[],
+  options: GraphElementOptions = {}
 ): GraphElement[] {
-  return [...nodes.map(toNodeElement), ...edges.map(toEdgeElement)];
+  const expanded = options.expandedIds ?? new Set<string>();
+
+  return [
+    ...nodes.map((node) => toNodeElement(node, { expanded: expanded.has(node.id) })),
+    ...edges.map(toEdgeElement)
+  ];
 }
 
 /**

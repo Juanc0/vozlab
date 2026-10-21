@@ -1,25 +1,22 @@
 /**
  * The Cytoscape runtime.
  *
- * This module is imported **dynamically**, from the browser only: Cytoscape
+ * The module is imported **dynamically**, from the browser only: Cytoscape
  * draws to a `<canvas>`, so the server pass must never evaluate it. The
- * `dagre` layout is registered **once, at module level** — `cytoscape.use` is
- * a global registration, not something to repeat on every render.
+ * `dagre` layout is registered **once, at module level** (in
+ * `./cytoscape-runtime`) — `cytoscape.use` is a global registration, not
+ * something to repeat on every render.
  *
  * The instance is created once and **patched** afterwards: the elements are
  * removed and added again, never re-created, so the canvas keeps its
  * viewport, its zoom and its listeners.
  */
 
-import cytoscape from 'cytoscape';
-import dagre from 'cytoscape-dagre';
 import type { DagreLayoutOptions } from 'cytoscape-dagre';
 import type { Core } from 'cytoscape';
 import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
 import { GRAPH_STYLESHEET, toGraphElements } from './elements';
-
-/** Registered once, at module level: the layout the canvas draws with. */
-cytoscape.use(dagre);
+import { cytoscape } from './cytoscape-runtime';
 
 /** The class of the selected node. */
 const SELECTED_CLASS = 'vozlab-selected';

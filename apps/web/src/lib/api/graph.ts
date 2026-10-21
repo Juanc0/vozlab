@@ -47,6 +47,12 @@ export const NODE_LIST_MAX_LIMIT = 100;
 /** The default page of the node list. */
 export const NODE_LIST_DEFAULT_LIMIT = 20;
 
+/** The largest window the API returns for the exploration view. */
+export const NODE_WINDOW_MAX_LIMIT = 200;
+
+/** The default window of the exploration view. */
+export const NODE_WINDOW_DEFAULT_LIMIT = 100;
+
 /**
  * Clamps a depth to the window the API accepts.
  *
@@ -74,6 +80,14 @@ export function clampNodeListLimit(limit: number): number {
     return NODE_LIST_DEFAULT_LIMIT;
   }
   return Math.min(NODE_LIST_MAX_LIMIT, Math.max(1, Math.trunc(limit)));
+}
+
+/** Clamps the size of the exploration window to the one the API accepts. */
+export function clampNodeWindowLimit(limit: number): number {
+  if (!Number.isFinite(limit)) {
+    return NODE_WINDOW_DEFAULT_LIMIT;
+  }
+  return Math.min(NODE_WINDOW_MAX_LIMIT, Math.max(1, Math.trunc(limit)));
 }
 
 /**
@@ -133,6 +147,34 @@ export async function listWorkspaceNodes(
     resourceKey: 'nodes',
     query: cursorQuery(limit, options.cursor ?? null)
   });
+}
+
+/**
+ * Reads the **exploration window** of the workspace.
+ *
+ * The window has no root: it is the most recent nodes of the workspace and
+ * the relations among them. It is a **closed** graph — a relation whose
+ * other endpoint is outside the window is not in the answer — and it has no
+ * pagination: it is a landscape, not a list.
+ *
+ * The limit is clamped here, so the request that leaves the app is always
+ * one the API accepts.
+ */
+export async function loadNodeWindow(
+  client: ApiClient,
+  options: { limit?: number } = {}
+): Promise<SubgraphResponseDto> {
+  const limit = clampNodeWindowLimit(options.limit ?? NODE_WINDOW_DEFAULT_LIMIT);
+
+  const body = await client.request<SubgraphResponseDto>({
+    path: '/nodes/window',
+    query: { limit }
+  });
+
+  return {
+    nodes: Array.isArray(body?.nodes) ? body.nodes : [],
+    edges: Array.isArray(body?.edges) ? body.edges : []
+  };
 }
 
 /**

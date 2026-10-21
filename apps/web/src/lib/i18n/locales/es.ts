@@ -203,7 +203,61 @@ export const es = {
     suggestCorrection: 'Proponer una corrección',
     suggestCorrectionOfRelation:
       'Proponer una corrección de la relación {relationKey}',
-    voteRelationLabel: 'la relación {relationKey}'
+    voteRelationLabel: 'la relación {relationKey}',
+    viewModeLabel: 'Vista del grafo',
+    modeSubgraph: 'Subgrafo',
+    modeExplore: 'Explorar',
+    modeHint:
+      'Las dos vistas leen el mismo espacio de trabajo: el subgrafo alrededor de una raíz, y la ventana de exploración. La vista es una elección de la pantalla, no de la URL.',
+    exploreListNote:
+      'La lista de abajo es la ventana de exploración: los nodos más recientes del espacio de trabajo y las relaciones entre ellos.'
+  },
+
+  /** The exploration view: the window, the focus and the expansion. */
+  explore: {
+    heading: 'Explorar',
+    listSummary: 'La ventana de exploración en forma de lista',
+    intro:
+      'La ventana de exploración dibuja el espacio de trabajo como un paisaje: los nodos más recientes y las relaciones entre ellos. No hay un nodo raíz — la vista presenta uno y lo centra.',
+    windowClosed:
+      'La ventana es un grafo **cerrado**: una relación cuyo otro extremo queda fuera de la ventana no viene en la respuesta, así que un nodo del borde puede parecer aislado y tener muchas relaciones fuera.',
+    windowOrder:
+      'El orden es de **creación**, no de actividad: el primero es el último creado, no el último modificado.',
+    windowBounds:
+      'La ventana trae {nodes} nodos y {edges} relaciones. La API la acota a {max} nodos y **no tiene paginación**: lo que no está en la ventana, no está.',
+    focusLabel: 'Nodo presentado',
+    focusRecent: 'El más reciente',
+    focusRelated: 'El más relacionado',
+    focusManual: 'El elegido a mano',
+    focusHint:
+      'La vista no exige que elijas una raíz: presenta un nodo y lo centra. Con «el elegido a mano» y sin que hayas hecho clic, presenta el más relacionado.',
+    presented: 'Se presenta «{title}».',
+    edgeStyleLabel: 'Forma de las flechas',
+    edgeStraight: 'Una línea recta',
+    edgeOrthogonal: 'En ángulo recto',
+    edgeBezier: 'Curva suave',
+    edgeUnbundled: 'Curva abierta',
+    edgeArc: 'Arco',
+    edgeHaystack: 'Pajarera',
+    expandBadge: 'Expandir «{title}»',
+    collapseBadge: 'Contraer «{title}»',
+    badgesLabel: 'Los nodos de la ventana',
+    canvasLabel: 'Lienzo de la ventana de exploración',
+    canvasDescription:
+      '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con una disposición dagre determinista.',
+    previewNoDescription: 'Sin descripción.',
+    previewNoAttributes: 'Sin atributos.',
+    previewEndpoints: 'De «{source}» a «{target}»',
+    previewScore: 'Puntuación {score}',
+    empty:
+      'La ventana está vacía: este espacio de trabajo todavía no tiene ningún nodo.',
+    loading: 'Cargando la ventana…',
+    hintHover:
+      'Pasa el puntero por un nodo o una relación para ver su contenido un momento; el botón del nodo lo expande o lo contrae.',
+    hintPan:
+      'Arrastra el fondo para mover el lienzo y usa la rueda para acercar o alejar.',
+    hintDrag:
+      'Arrastra un nodo para colocarlo en otro sitio entre los demás: la posición dura hasta que se recarga la página.'
   },
 
   /** The node: its form, its details and its history. */

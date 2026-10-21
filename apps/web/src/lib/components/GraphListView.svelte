@@ -2,10 +2,19 @@
   import VoteButtons from '$lib/components/VoteButtons.svelte';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
+  import type { TranslationKey } from '$lib/i18n';
   import { formatNumber } from '$lib/i18n';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
+    /**
+     * The key of the summary of the disclosure.
+     *
+     * The list is the text alternative of **both** views, so its summary
+     * follows the mode: "the subgraph as a list" or "the exploration
+     * window as a list".
+     */
+    summaryKey?: TranslationKey;
     /** The nodes of the bounded subgraph. */
     nodes?: NodeDto[];
     /** The relations of the bounded subgraph. */
@@ -34,6 +43,7 @@
   }
 
   let {
+    summaryKey = 'graph.listSummary',
     nodes = [],
     edges = [],
     selectedNodeId = null,
@@ -70,7 +80,7 @@
 -->
 <details open class="space-y-6">
   <summary class="cursor-pointer text-sm font-semibold tracking-tight">
-    {t('graph.listSummary')}
+    {t(summaryKey)}
   </summary>
 
   <div class="mt-4 space-y-6">

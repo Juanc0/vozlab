@@ -188,7 +188,58 @@ export const en: Dictionary<typeof es> = {
     suggestCorrection: 'Suggest a correction',
     suggestCorrectionOfRelation:
       'Suggest a correction of the relation {relationKey}',
-    voteRelationLabel: 'the relation {relationKey}'
+    voteRelationLabel: 'the relation {relationKey}',
+    viewModeLabel: 'Graph view',
+    modeSubgraph: 'Subgraph',
+    modeExplore: 'Explore',
+    modeHint:
+      'Both views read the same workspace: the subgraph around a root, and the exploration window. The view is a choice of the screen, not of the URL.',
+    exploreListNote:
+      'The list below is the exploration window: the newest nodes of the workspace and the relations among them.'
+  },
+
+  explore: {
+    heading: 'Explore',
+    listSummary: 'The exploration window as a list',
+    intro:
+      'The exploration window draws the workspace as a landscape: the newest nodes and the relations among them. There is no root node — the view presents one and centres on it.',
+    windowClosed:
+      'The window is a **closed** graph: a relation whose other end falls outside the window is not in the answer, so a node on the edge may look isolated and have many relations outside.',
+    windowOrder:
+      'The order is **creation** order, not activity order: the first one is the last created, not the last touched.',
+    windowBounds:
+      'The window holds {nodes} nodes and {edges} relations. The API caps it at {max} nodes and it has **no pagination**: what is not in the window is not there.',
+    focusLabel: 'Presented node',
+    focusRecent: 'The most recent',
+    focusRelated: 'The most related',
+    focusManual: 'The one you picked',
+    focusHint:
+      'The view does not ask you for a root: it presents a node and centres on it. With “the one you picked” and no click yet, it presents the most related one.',
+    presented: 'It presents “{title}”.',
+    edgeStyleLabel: 'Shape of the arrows',
+    edgeStraight: 'A straight line',
+    edgeOrthogonal: 'At right angles',
+    edgeBezier: 'Soft curve',
+    edgeUnbundled: 'Open curve',
+    edgeArc: 'Arc',
+    edgeHaystack: 'Haystack',
+    expandBadge: 'Expand “{title}”',
+    collapseBadge: 'Collapse “{title}”',
+    badgesLabel: 'The nodes of the window',
+    canvasLabel: 'Exploration window canvas',
+    canvasDescription:
+      '{nodes} nodes and {edges} relations of the exploration window, drawn with a deterministic dagre layout.',
+    previewNoDescription: 'No description.',
+    previewNoAttributes: 'No attributes.',
+    previewEndpoints: 'From “{source}” to “{target}”',
+    previewScore: 'Score {score}',
+    empty: 'The window is empty: this workspace has no node yet.',
+    loading: 'Loading the window…',
+    hintHover:
+      'Point at a node or a relation to see its content for a moment; the button of the node expands or collapses it.',
+    hintPan: 'Drag the background to move the canvas and use the wheel to zoom in or out.',
+    hintDrag:
+      'Drag a node to place it somewhere else among the others: the position lasts until the page is reloaded.'
   },
 
   node: {
