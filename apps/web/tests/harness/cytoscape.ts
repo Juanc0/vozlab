@@ -202,7 +202,9 @@ export function createFakeCore(): FakeCore {
     },
     layout: (options: Record<string, unknown>) => {
       layouts.push(options);
-      return { run: () => undefined };
+      // The layout is an emitter: the instance listens to `layoutstop` to
+      // report how long the layout took.
+      return { run: () => undefined, one: vi.fn() };
     },
     nodes: () => collection([...nodes.values()]),
     edges: () => collection([...edges.values()]),

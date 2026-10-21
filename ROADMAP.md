@@ -356,8 +356,19 @@ Decided, and not to be re-opened without evidence:
       The cost is nothing: 200 wrapped cards cost ~1.1 ms of a 16.7 ms frame.
       The spacing was inflated by a `spacingFactor` that turned out to be a
       Cytoscape core option and not a dagre one — removed.
-- [ ] 3.17 The two engines side by side: a development-only comparison of
+- [x] 3.17 The two engines side by side: a development-only comparison of
       Cytoscape and Sigma.js on the same data and the same interactions.
+      Result: a **development-only** surface at `/engines` that draws the
+      same window in **three** pictures — Cytoscape + dagre, Cytoscape +
+      fcose and Sigma.js + Graphology — with the same cards, the same
+      relations and the same interactions, and it measures them: the
+      layout takes **44 ms / 807 ms / 1046 ms** and the median frame is
+      **16.6 ms** in all three (the slowest is 30.2 / 23.7 / 21.4 ms). All
+      three settle and stop. The surface does not exist in a production
+      build: the code is behind `import.meta.env.DEV` and a dynamic
+      import, and the bundle holds no renderer, no graph store and no
+      layout — only the copy of the labels, because the dictionary is one
+      shared module.
 - [x] 3.18 The names in the interface's language: the API returns the
       display-name map of the class and of the relation. Result: the
       diagnosis was neither the ontology's schema nor the edge creation —

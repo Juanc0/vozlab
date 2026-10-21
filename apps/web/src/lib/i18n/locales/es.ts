@@ -290,6 +290,60 @@ export const es = {
     loading: 'Cargando la ventana…'
   },
 
+  /**
+   * The comparison of the engines — a **development** surface.
+   *
+   * The copy of the names of the engines is the same in the two languages:
+   * they are proper nouns, and a proper noun is not translated.
+   */
+  engines: {
+    heading: 'Los motores, lado a lado',
+    intro:
+      'La misma ventana, los mismos nodos y las mismas relaciones en los tres motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
+    pageTitle: 'Los motores, lado a lado',
+    panelDagreName: 'Cytoscape + dagre',
+    panelDagreNote:
+      'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
+    panelFcoseName: 'Cytoscape + fcose',
+    panelFcoseNote:
+      'El mismo lienzo con la fuerza de CoSE: una simulación que se asienta y se detiene.',
+    panelSigmaName: 'Sigma.js + Graphology',
+    panelSigmaNote:
+      'El motor que dibuja con WebGL y guarda el grafo en el cliente, con la fuerza de ForceAtlas2.',
+    canvasLabel: 'El lienzo de la comparación',
+    sizeLabel: 'Tamaño de la imagen',
+    sizeDemo: 'La demostración ({count} nodos)',
+    sizeStress: 'El techo de la API ({count} nodos)',
+    edgeStyleLabel: 'Forma de las flechas',
+    measure: 'Medir los tres motores',
+    measuring: 'Midiendo…',
+    rerun: 'Repetir la disposición',
+    listToggle: 'Ver la lista',
+    listHeading: 'La imagen en forma de lista',
+    counts: 'La imagen tiene {nodes} nodos y {edges} relaciones.',
+    frameLabel: 'Marco',
+    frameValue: '{value} ms (mediana)',
+    framePeak: 'El más lento: {value} ms',
+    frameCount: 'Cuadros medidos: {count}',    layoutLabel: 'Disposición',
+    layoutValue: '{value} ms en total',
+    settledLabel: 'Asentada',
+    settledYes: 'Sí',
+    settledNo: 'Todavía no',
+    loading: 'Cargando la ventana…',
+    empty: 'La ventana está vacía: no hay nada que comparar.',
+    badgesLabel: 'Los nodos de la ventana',
+    sigmaUnavailable: 'Este navegador no pudo dibujar el lienzo WebGL.',
+    findingsHeading: 'Lo que los motores no hacen igual',
+    findingSigmaLabel:
+      'Sigma no escribe un título de varias líneas dentro de la figura de un nodo: la tarjeta es una imagen pintada sobre un lienzo 2D, con el mismo módulo puro de la tarjeta.',
+    findingSigmaEdges:
+      'Los programas de arista de Sigma no aceptan puntos de paso: solo reciben los dos extremos de la relación. Ninguna forma necesita ya una ruta, pero Sigma dibuja las cinco igual —una recta con flecha—, así que la elección de la forma no se reproduce.',
+    findingSigmaDashes:
+      'Sigma no tiene programa de arista discontinua: el estado pendiente de una relación se ve solo en el color.',
+    findingFcoseSeed:
+      'fcose no tiene randomSeed: su paso espectral sortea las posiciones de partida, y la misma imagen no sale igual dos veces.'
+  },
+
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
     heading: 'Inspección',

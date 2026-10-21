@@ -155,7 +155,7 @@ describe('the graph page', () => {
       on: vi.fn(),
       elements: vi.fn(() => ({ length: 0, remove: vi.fn() })),
       add: vi.fn(),
-      layout: vi.fn(() => ({ run: vi.fn() })),
+      layout: vi.fn(() => ({ run: vi.fn(), one: vi.fn() })),
       nodes: vi.fn(() => ({ length: 0, removeClass: vi.fn() })),
       getElementById: vi.fn(() => ({ length: 0, addClass: vi.fn() })),
       destroy: vi.fn()

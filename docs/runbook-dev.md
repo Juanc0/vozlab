@@ -523,3 +523,26 @@ computes vectors for new nodes, but there is no backfill for older ones and
 nothing queries `nodes.embedding` yet. See [testing.md](testing.md) for scope
 and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
 [ADR-0021](decisions/ADR-0021-python-worker-runtime.md) for the design.
+
+## The comparison of the engines
+
+A **development-only** surface at `/engines` draws the same window of the
+workspace in three pictures at once — **Cytoscape + dagre** (the layout of
+the app), **Cytoscape + fcose** (the spring) and **Sigma.js + Graphology**
+(the WebGL renderer with the graph store in the client) — and measures
+them: the time the layout takes to settle, and the frame time of each
+picture while it moves.
+
+It exists to settle a question with the eyes instead of with an argument.
+It is **not** in a production build: the code is behind `import.meta.env.DEV`
+and a dynamic import, so the bundle of the app holds no renderer, no graph
+store and no layout.
+
+```bash
+pnpm --filter @vozlab/web dev
+# then open http://localhost:5173/engines
+```
+
+The button *Medir los tres motores* runs the measurement: it asks each
+picture to move and records the time between its frames, one engine after
+the other, so the frame that is measured belongs to the engine under test.

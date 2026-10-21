@@ -89,7 +89,7 @@ describe('the workspace of the graph', () => {
       elements: vi.fn(() => ({ length: 0, remove: vi.fn(), forEach: vi.fn() })),
       edges: vi.fn(() => ({ length: 0, forEach: vi.fn() })),
       add: vi.fn(),
-      layout: vi.fn(() => ({ run: vi.fn() })),
+      layout: vi.fn(() => ({ run: vi.fn(), one: vi.fn() })),
       nodes: vi.fn(() => ({ length: 0, removeClass: vi.fn(), forEach: vi.fn() })),
       getElementById: vi.fn(() => ({ length: 0, addClass: vi.fn() })),
       destroy: vi.fn(),

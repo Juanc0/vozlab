@@ -264,6 +264,61 @@ export const en: Dictionary<typeof es> = {
     loading: 'Loading the window…'
   },
 
+  /**
+   * The comparison of the engines — a **development** surface.
+   *
+   * The copy of the names of the engines is the same in the two languages:
+   * they are proper nouns, and a proper noun is not translated.
+   */
+  engines: {
+    heading: 'The engines, side by side',
+    intro:
+      'The same window, the same nodes and the same relations in the three engines. This is a development surface: it does not exist in a production build.',
+    pageTitle: 'The engines, side by side',
+    panelDagreName: 'Cytoscape + dagre',
+    panelDagreNote:
+      'The incumbent: a hierarchical, deterministic layout, computed in one go.',
+    panelFcoseName: 'Cytoscape + fcose',
+    panelFcoseNote:
+      'The same canvas with the force of CoSE: a simulation that settles and stops.',
+    panelSigmaName: 'Sigma.js + Graphology',
+    panelSigmaNote:
+      'The engine that draws with WebGL and keeps the graph in the client, with the force of ForceAtlas2.',
+    canvasLabel: 'The canvas of the comparison',
+    sizeLabel: 'Size of the picture',
+    sizeDemo: 'The demo ({count} nodes)',
+    sizeStress: 'The ceiling of the API ({count} nodes)',
+    edgeStyleLabel: 'Shape of the arrows',
+    measure: 'Measure the three engines',
+    measuring: 'Measuring…',
+    rerun: 'Run the layout again',
+    listToggle: 'See the list',
+    listHeading: 'The picture as a list',
+    counts: 'The picture holds {nodes} nodes and {edges} relations.',
+    frameLabel: 'Frame',
+    frameValue: '{value} ms (median)',
+    framePeak: 'The slowest one: {value} ms',
+    frameCount: 'Frames measured: {count}',
+    layoutLabel: 'Layout',
+    layoutValue: '{value} ms in total',
+    settledLabel: 'Settled',
+    settledYes: 'Yes',
+    settledNo: 'Not yet',
+    loading: 'Loading the window…',
+    empty: 'The window is empty: there is nothing to compare.',
+    badgesLabel: 'The nodes of the window',
+    sigmaUnavailable: 'This browser could not draw the WebGL canvas.',
+    findingsHeading: 'What the engines do not do alike',
+    findingSigmaLabel:
+      'Sigma does not write a multi-line title inside the shape of a node: the card is a picture painted on a 2D canvas, with the same pure module of the card.',
+    findingSigmaEdges:
+      'The edge programs of Sigma take no waypoints: they only receive the two ends of the relation. No shape needs a route any more, but Sigma draws the five of them the same —a straight line with an arrow—, so the choice of shape is not reproduced.',
+    findingSigmaDashes:
+      'Sigma has no dashed edge program: the pending status of a relation is only carried by its colour.',
+    findingFcoseSeed:
+      'fcose has no randomSeed: its spectral step draws the starting places, and the same picture does not come out twice.'
+  },
+
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
     heading: 'Inspector',

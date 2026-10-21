@@ -18,9 +18,18 @@ function flat(node: unknown, prefix = '', into: Record<string, string> = {}): Re
  * The copy that is the same in the two languages.
  *
  * They are the names of the languages (each one is written in its own
- * language) and the dash of an empty value. Everything else is translated.
+ * language), the dash of an empty value and the **names of the engines** of
+ * the comparison: they are proper nouns, and a proper noun is not
+ * translated. Everything else is translated.
  */
-const IDENTICAL: readonly string[] = ['common.emptyValue', 'locale.es', 'locale.en'];
+const IDENTICAL: readonly string[] = [
+  'common.emptyValue',
+  'locale.es',
+  'locale.en',
+  'engines.panelDagreName',
+  'engines.panelFcoseName',
+  'engines.panelSigmaName'
+];
 
 describe('the two dictionaries', () => {
   it('have exactly the same keys', () => {

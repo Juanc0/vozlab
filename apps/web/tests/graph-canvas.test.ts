@@ -57,7 +57,7 @@ function createFakeCore(): FakeCore {
     on: vi.fn(),
     elements: vi.fn(() => collection()),
     add: vi.fn(),
-    layout: vi.fn(() => ({ run: vi.fn() })),
+    layout: vi.fn(() => ({ run: vi.fn(), one: vi.fn() })),
     nodes: vi.fn(() => collection()),
     edges: vi.fn(() => collection()),
     getElementById: vi.fn(() => collection()),

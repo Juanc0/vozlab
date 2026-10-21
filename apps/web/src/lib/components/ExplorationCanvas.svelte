@@ -2,7 +2,8 @@
   import type { Position } from 'cytoscape';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
-  import type { ExplorationInstance, RenderedBox, RenderedRelation } from '$lib/graph/explore/instance';
+  import type { ExplorationInstance, LayoutReport, RenderedBox, RenderedRelation } from '$lib/graph/explore/instance';
+  import type { GraphLayout } from '$lib/graph/explore/layout';
   import { edgeColor, formatAttributeValue } from '$lib/graph/elements';
   import { shortPseudonym } from '$lib/graph/relation-card';
   import { ensureTitleFont } from '$lib/graph/node-card';
@@ -21,6 +22,28 @@
     expandedEdgeIds?: ReadonlySet<string>;
     /** The shape the relations are drawn with. */
     edgeStyle?: EdgeStyle;
+    /**
+     * The accessible name of the picture.
+     *
+     * The default is the name of the window of exploration. The comparison
+     * of the engines draws three pictures at once, and each one needs a
+     * name of its own.
+     */
+    label?: string;
+    /**
+     * The layout the picture is arranged with.
+     *
+     * The default is `dagre`: the deterministic layout of the app. The
+     * **force** layout is additive — the development surface that compares
+     * the engines is the only thing that asks for the spring.
+     */
+    layout?: GraphLayout;
+    /**
+     * The smallest zoom the picture is fitted to.
+     *
+     * The default is the zoom in which the title of a card can be read.
+     */
+    readableZoom?: number;
     /** The id of the selected node, or `null` when nothing is selected. */
     selectedNodeId?: string | null;
     /** The id of the selected relation, or `null` when nothing is selected. */
@@ -44,6 +67,13 @@
     onselectedge?: (edgeId: string) => void;
     /** Called when the user expands or collapses a relation. */
     ontoggleedge?: (edgeId: string) => void;
+    /**
+     * Called when a layout has run and the picture has come to rest.
+     *
+     * The graph of the app does not read the report: the development
+     * surface that compares the engines is the only reader.
+     */
+    onlayout?: (report: LayoutReport) => void;
   }
 
   let {
@@ -52,6 +82,9 @@
     expandedIds = new Set<string>(),
     expandedEdgeIds = new Set<string>(),
     edgeStyle = 'bezier',
+    layout = 'dagre',
+    readableZoom = undefined,
+    label = undefined,
     selectedNodeId = null,
     selectedEdgeId = null,
     presentedNodeId = null,
@@ -59,7 +92,8 @@
     onnavigate,
     ontoggle,
     onselectedge,
-    ontoggleedge
+    ontoggleedge,
+    onlayout
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -177,6 +211,7 @@
   let toggleHandler: ((nodeId: string) => void) | undefined;
   let selectEdgeHandler: ((edgeId: string) => void) | undefined;
   let toggleEdgeHandler: ((edgeId: string) => void) | undefined;
+  let layoutHandler: ((report: LayoutReport) => void) | undefined;
 
   $effect(() => {
     selectHandler = onselect;
@@ -184,6 +219,7 @@
     toggleHandler = ontoggle;
     selectEdgeHandler = onselectedge;
     toggleEdgeHandler = ontoggleedge;
+    layoutHandler = onlayout;
   });
 
   /**
@@ -254,6 +290,9 @@
           pinned.set(nodeId, { x: position.x, y: position.y });
           created?.refreshEdgeStyles();
         },
+        onlayout: (report) => {
+          layoutHandler?.(report);
+        },
         onrender: () => {
           if (created !== null) {
             moveBadges(created.positions());
@@ -281,6 +320,8 @@
     const currentExpanded = expandedIds;
     const currentExpandedEdges = expandedEdgeIds;
     const currentStyle = edgeStyle;
+    const currentLayout = layout;
+    const currentReadableZoom = readableZoom;
     const currentPresented = presentedNodeId;
     const currentLocale = locale.locale;
 
@@ -292,6 +333,8 @@
       expandedIds: currentExpanded,
       expandedEdgeIds: currentExpandedEdges,
       edgeStyle: currentStyle,
+      layout: currentLayout,
+      readableZoom: currentReadableZoom,
       presentedNodeId: currentPresented,
       pinned,
       locale: currentLocale
@@ -640,7 +683,7 @@
   <div
     bind:this={container}
     role="img"
-    aria-label={t('explore.canvasLabel')}
+    aria-label={label ?? t('explore.canvasLabel')}
     aria-describedby={descriptionId}
     class="h-full w-full overflow-hidden bg-ground"
   ></div>

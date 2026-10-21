@@ -38,7 +38,12 @@ import {
 import { observeContainerSize } from '../resize';
 import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
-import { exploreLayoutOptions, pinTransform } from './layout';
+import {
+  explorationLayoutOptions,
+  pinTransform,
+  seedCirclePositions,
+  type GraphLayout
+} from './layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
@@ -52,6 +57,24 @@ export interface ExplorationPreview {
   readonly x: number;
   /** Where the pointer is, in the rendered coordinates of the canvas. */
   readonly y: number;
+}
+
+/**
+ * What a layout that ran tells about itself.
+ *
+ * The report is **additive**: the graph of the app does not ask for it, and
+ * the development surface that compares the engines is the only thing that
+ * reads it.
+ */
+export interface LayoutReport {
+  /** The layout that ran. */
+  readonly layout: GraphLayout;
+  /** The instant the layout took, in milliseconds. */
+  readonly ms: number;
+  /** Whether the picture stopped moving. */
+  readonly settled: boolean;
+  /** The greatest movement of the last step, in pixels. */
+  readonly movement: number;
 }
 
 /** What the exploration instance reports. */
@@ -77,6 +100,13 @@ export interface ExplorationInstanceOptions {
   ondrag: (nodeId: string, position: Position) => void;
   /** Called when the picture changed and the badges have to be moved. */
   onrender: () => void;
+  /**
+   * Called when a layout has run and the picture has come to rest.
+   *
+   * The graph of the app does not ask for the report: the development
+   * surface that compares the engines is the only reader.
+   */
+  onlayout?: (report: LayoutReport) => void;
 }
 
 /** How the elements of the exploration view are drawn. */
@@ -91,6 +121,23 @@ export interface ExplorationElementsOptions {
   presentedNodeId: string | null;
   /** The places the user put the dragged nodes in. */
   pinned: ReadonlyMap<string, Position>;
+  /**
+   * The layout the picture is arranged with.
+   *
+   * The default is `dagre`: the deterministic one, the layout of the app.
+   * The **force** layout is additive — the development surface that compares
+   * the engines is the only thing that asks for the spring.
+   */
+  layout?: GraphLayout;
+  /**
+   * The smallest zoom the picture is fitted to.
+   *
+   * The default is the zoom in which the title of a card can be read: a
+   * card whose title cannot be read is not a card. The comparison of the
+   * engines draws three pictures at once and asks for a smaller one, so
+   * that the three pictures can be seen whole.
+   */
+  readableZoom?: number;
   /**
    * The language of the interface.
    *
@@ -215,6 +262,56 @@ export function createExplorationInstance(
 
   let edgeStyle: EdgeStyle = 'bezier';
   let pinned = new Map<string, Position>();
+  let layout: GraphLayout = 'dagre';
+  let readableZoom = MIN_READABLE_ZOOM;
+
+  /**
+   * The greatest movement of the picture, in pixels.
+   *
+   * It is the distance a card travelled since the last time the picture was
+   * drawn. A picture whose cards do not move any more has **settled**: the
+   * layout is done and nothing keeps running.
+   */
+  let movement = Number.POSITIVE_INFINITY;
+
+  /** Whether the picture has come to rest. */
+  let settled = false;
+
+  /** The places the cards were in the last time the picture was drawn. */
+  let lastPositions = new Map<string, Position>();
+
+  /**
+   * How far a card may travel and still be said to have moved, in pixels.
+   *
+   * It is a pixel and a half: below it the picture is at rest, and the
+   * layout is stopped.
+   */
+  const SETTLE_MOVEMENT = 1.5;
+
+  /** The greatest distance a card travelled since the last picture. */
+  function greatestMovement(): number {
+    const cards = cardNodes(core.elements());
+    const positions = new Map<string, Position>();
+
+    let greatest = 0;
+
+    cards.forEach((card) => {
+      const position = card.position();
+      positions.set(card.id(), position);
+
+      const last = lastPositions.get(card.id());
+
+      if (last === undefined) {
+        return;
+      }
+
+      greatest = Math.max(greatest, Math.hypot(position.x - last.x, position.y - last.y));
+    });
+
+    lastPositions = positions;
+
+    return greatest;
+  }
 
   core.on('tap', 'node', (event) => {
     // The card of a relation is a node of its own: a tap on it is a tap on
@@ -277,6 +374,12 @@ export function createExplorationInstance(
   });
 
   core.on('render', () => {
+    movement = greatestMovement();
+
+    if (movement < SETTLE_MOVEMENT) {
+      settled = true;
+    }
+
     options.onrender();
   });
 
@@ -407,7 +510,64 @@ export function createExplorationInstance(
 
   /** Runs the layout and puts the picture back where it belongs. */
   function runLayout(presentedNodeId: string | null, fit: boolean): void {
-    core.layout(cardLayoutOptions(exploreLayoutOptions(), core)).run();
+    const layoutOptions = explorationLayoutOptions(layout);
+
+    if (layout === 'fcose') {
+      // The **force** layout needs a start: a simulation that begins with
+      // every node in the same place has nothing to push apart. The nodes
+      // are placed on a circle, deterministically, so the same graph always
+      // starts from the same picture.
+      const cards = cardNodes(core.elements());
+      const seeds = seedCirclePositions(cards.length);
+
+      cards.forEach((card, index) => {
+        const seed = seeds[index];
+
+        if (seed !== undefined) {
+          card.position(seed);
+        }
+      });
+
+      // The nodes the user dragged keep their place. The force layout is
+      // **told** about them: its glide would fight a place set by hand.
+      const constraints = [...pinned.entries()].map(([nodeId, position]) => ({
+        nodeId,
+        position
+      }));
+
+      if (constraints.length > 0 && 'fixedNodeConstraint' in layoutOptions) {
+        layoutOptions.fixedNodeConstraint = constraints;
+      }
+    }
+
+    // The picture is about to move: it has not settled yet.
+    settled = false;
+    movement = Number.POSITIVE_INFINITY;
+    lastPositions = new Map<string, Position>();
+
+    const started = Date.now();
+    const runner = core.layout(cardLayoutOptions(layoutOptions, core));
+
+    // The report is **additive**: the graph of the app does not read it, and
+    // the development surface that compares the engines is the only reader.
+    runner.one('layoutstop', () => {
+      // The layout is done: the picture is measured one last time, and it
+      // has come to rest.
+      movement = greatestMovement();
+
+      if (movement < SETTLE_MOVEMENT) {
+        settled = true;
+      }
+
+      options.onlayout?.({
+        layout,
+        ms: Date.now() - started,
+        settled,
+        movement
+      });
+    });
+
+    runner.run();
 
     // The nodes the user dragged keep the place they were put: the layout
     // moves every node, and the pinned places are put back after it.
@@ -436,8 +596,8 @@ export function createExplorationInstance(
       // move the picture under the user's feet.
       core.fit(undefined, 30);
 
-      if (core.zoom() < MIN_READABLE_ZOOM) {
-        core.zoom(MIN_READABLE_ZOOM);
+      if (core.zoom() < readableZoom) {
+        core.zoom(readableZoom);
       }
     }
 
@@ -454,6 +614,8 @@ export function createExplorationInstance(
     setElements(nodes, edges, elementOptions) {
       edgeStyle = elementOptions.edgeStyle;
       pinned = new Map(elementOptions.pinned);
+      layout = elementOptions.layout ?? 'dagre';
+      readableZoom = elementOptions.readableZoom ?? MIN_READABLE_ZOOM;
 
       // The picture is fitted again only when the window itself changed: a
       // layout that runs because a node grew keeps the viewport.
