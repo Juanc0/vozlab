@@ -56,6 +56,13 @@
      * not say the same thing twice.
      */
     showHeading?: boolean;
+    /**
+     * `true` when the inspector is **inside a floating panel**.
+     *
+     * The panel is already a surface: the inspector does not draw a card
+     * of its own inside it — it is flat, and the panel is what floats.
+     */
+    flat?: boolean;
     /** Called when the user wants to propose a correction of the selection. */
     onsuggest?: (target: CorrectionTarget) => void;
     /** Called when the user wants to relate the selected node to another one. */
@@ -78,6 +85,7 @@
     ledger,
     panelId: givenPanelId,
     showHeading = true,
+    flat = false,
     onsuggest,
     onrelate,
     onsaved,
@@ -254,8 +262,11 @@
     The panel is **flat**: a white surface on the ground, with no border
     and no shadow at rest. The rule of the tabs is what separates the
     chrome from the content they choose.
+
+    Inside a **floating panel** there is no second surface: the panel
+    itself is the surface, and the inspector is flat inside it.
   -->
-  <div class="mt-2 rounded-card bg-surface p-4">
+  <div class={flat ? 'mt-3' : 'mt-2 rounded-card bg-surface p-4'}>
     <div
       role="tablist"
       aria-label={t('inspector.tabsLabel')}

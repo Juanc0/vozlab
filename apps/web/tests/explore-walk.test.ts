@@ -169,6 +169,20 @@ describe('walking the graph by clicking a node', () => {
     );
   }
 
+  /**
+   * Opens the **list** — the text alternative of the canvas.
+   *
+   * It is the other half of the workspace: the toggle of the toolbar swaps
+   * the picture and the list.
+   */
+  async function openList(): Promise<void> {
+    await fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
+    });
+  }
+
   it('asks the API for the subgraph of the clicked node, at the selected depth', async () => {
     const fetchMock = stubFetch({
       window: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
@@ -205,16 +219,19 @@ describe('walking the graph by clicking a node', () => {
 
     fire(core.handlers, 'tap', 'node', nodeTarget(NODE_C.id));
 
-    await waitFor(() => {
-      const [nodeTable] = screen.getAllByRole('table');
+    await openList();
 
-      // The node that was in the window is still in the picture…
-      expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-      // …and the node that was walked to joined it.
+    const [nodeTable] = screen.getAllByRole('table');
+
+    // The node that was in the window is still in the picture…
+    expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
+
+    // …and the node that was walked to joined it.
+    await waitFor(() => {
       expect(within(nodeTable).getByRole('button', { name: NODE_C.title })).toBeInTheDocument();
     });
 
-    const [nodeTable, relationTable] = screen.getAllByRole('table');
+    const [, relationTable] = screen.getAllByRole('table');
 
     expect(within(nodeTable).getAllByRole('row')).toHaveLength(4);
     expect(within(relationTable).getAllByRole('row')).toHaveLength(3);
@@ -242,6 +259,8 @@ describe('walking the graph by clicking a node', () => {
     await waitFor(() => {
       expect(screen.getByText(/Recuperando el entorno/)).toBeInTheDocument();
     });
+
+    await openList();
 
     const [nodeTable] = screen.getAllByRole('table');
 
@@ -273,6 +292,8 @@ describe('walking the graph by clicking a node', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Node not found');
 
     // The picture is still there: the error is shown next to it.
+    await openList();
+
     const [nodeTable] = screen.getAllByRole('table');
 
     expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
@@ -368,6 +389,8 @@ describe('walking the graph by clicking a node', () => {
       ).toBeInTheDocument();
     });
 
+    await openList();
+
     const [nodeTable] = screen.getAllByRole('table');
 
     expect(within(nodeTable).queryByRole('button', { name: NODE_A.title })).toBeNull();
@@ -383,7 +406,7 @@ describe('walking the graph by clicking a node', () => {
     await openExploration();
 
     // The depth of the exploration view is the depth of the whole app.
-    await fireEvent.change(screen.getByLabelText('Profundidad', { selector: '#explore-depth' }), {
+    await fireEvent.change(screen.getByLabelText('Profundidad'), {
       target: { value: '2' }
     });
 
@@ -403,6 +426,8 @@ describe('walking the graph by clicking a node', () => {
     });
 
     await openExploration();
+
+    await openList();
 
     const [nodeTable] = screen.getAllByRole('table');
     const walk = within(nodeTable).getAllByRole('button', { name: 'Caminar' })[1];

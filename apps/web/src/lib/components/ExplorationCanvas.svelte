@@ -630,7 +630,7 @@
 -->
 <div
   role="presentation"
-  class="relative h-[60svh] min-h-72 w-full"
+  class="relative h-full w-full"
   onmouseleave={() => {
     // The pointer left the canvas: the badge of the relation it was over
     // goes away with it.
@@ -642,7 +642,7 @@
     role="img"
     aria-label={t('explore.canvasLabel')}
     aria-describedby={descriptionId}
-    class="h-full min-h-72 w-full overflow-hidden rounded-card bg-ground"
+    class="h-full w-full overflow-hidden bg-ground"
   ></div>
 
   <!--
@@ -884,6 +884,11 @@
   {/if}
 </div>
 
-<p id={descriptionId} class="mt-2 text-body text-muted">
+<!--
+  The description of the picture. It is read by the screen reader through
+  `aria-describedby`, and it is not painted under the canvas: the canvas
+  is the workspace.
+-->
+<p id={descriptionId} class="sr-only">
   {t('explore.canvasDescription', { nodes: nodeCount, edges: edgeCount })}
 </p>

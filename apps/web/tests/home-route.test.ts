@@ -130,6 +130,21 @@ function renderPage(): void {
   });
 }
 
+/**
+ * Opens the **list** — the text alternative of the canvas.
+ *
+ * The list is the other half of the workspace: the toggle of the toolbar
+ * swaps the picture and the list, and both carry the same working set and
+ * the same selection.
+ */
+async function openList(): Promise<void> {
+  await fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+
+  await waitFor(() => {
+    expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
+  });
+}
+
 describe('the graph page', () => {
   beforeEach(() => {
     sessionStorage.clear();
@@ -203,11 +218,11 @@ describe('the graph page', () => {
     expect(String(subgraphCall?.[0])).toContain('depth=1');
     expect(String(subgraphCall?.[0])).toContain('limit=100');
 
-    // The list view shows the whole subgraph.
-    await waitFor(() => {
-      const nodeTable = screen.getAllByRole('table')[0];
-      expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
-    });
+    // The list view shows the whole subgraph — it is one click away.
+    await openList();
+
+    const nodeTable = screen.getAllByRole('table')[0];
+    expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
   });
 
   it('keeps the graph on the canvas when a reload fails', async () => {
@@ -228,10 +243,10 @@ describe('the graph page', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
 
-    await waitFor(() => {
-      const nodeTable = screen.getAllByRole('table')[0];
-      expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
-    });
+    await openList();
+
+    const nodeTable = screen.getAllByRole('table')[0];
+    expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
 
     // A deeper window fails: the error is shown and the graph stays.
     await fireEvent.change(screen.getByLabelText('Profundidad'), { target: { value: '2' } });
@@ -241,8 +256,8 @@ describe('the graph page', () => {
     });
     expect(screen.getByRole('alert')).toHaveTextContent('Node not found');
 
-    const nodeTable = screen.getAllByRole('table')[0];
-    expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
+    // The graph stays on the canvas: the error is shown next to it.
+    expect(within(screen.getAllByRole('table')[0]).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
   });
 
   it('does not imply a live update stream', async () => {
@@ -382,6 +397,8 @@ describe('the graph page', () => {
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
 
     // The relation row of the list is selectable too.
+    await openList();
+
     const relation = await screen.findByRole('button', { name: RELATION_NAMES.SUGGESTS.es });
     await fireEvent.click(relation);
 

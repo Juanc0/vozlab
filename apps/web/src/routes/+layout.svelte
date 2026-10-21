@@ -12,6 +12,7 @@
   import { provideAppState } from '$lib/state/context';
   import { SessionState } from '$lib/state/session.svelte';
   import { WorkspaceState } from '$lib/state/workspace.svelte';
+  import { isWorkspacePath } from '$lib/layout/workspace';
   import type { LayoutProps } from './$types';
 
   let { data, children }: LayoutProps = $props();
@@ -40,6 +41,14 @@
    * of the URL, and the URL stays clean (FR-04).
    */
   const navigation = $derived(page.route.id?.startsWith('/(app)') ?? false);
+
+  /**
+   * Whether the page is a **workspace**.
+   *
+   * A workspace fills the window and does not scroll: the shell gives it
+   * the whole area between the bar and the bottom of the screen.
+   */
+  const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
 
   /**
    * The name of the active workspace — the **scope** of the screen.
@@ -71,6 +80,6 @@
   });
 </script>
 
-<AppShell title="VozLab" {navigation} {scope}>
+<AppShell title="VozLab" {navigation} {scope} workspace={isWorkspace}>
   {@render children?.()}
 </AppShell>

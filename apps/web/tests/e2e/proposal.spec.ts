@@ -10,7 +10,7 @@
  * only a status on the screen.
  */
 
-import { waitForApp } from './support/app';
+import { openList, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('a correction is proposed through the UI and the target is unchanged until the maintainer approves it', async ({
@@ -110,9 +110,11 @@ test('a correction of a relation is proposed through the UI', async ({ page, api
   await waitForApp(page);
 
   await page
-    .getByRole('region', { name: 'Nodo raíz' })
+    .getByRole('region', { name: 'El nodo raíz del subgrafo' })
     .getByRole('button', { name: source.title })
     .click();
+
+  await openList(page);
 
   const table = page.getByRole('region', { name: 'Las relaciones del subgrafo' });
   // The relation is named in the language of the interface.

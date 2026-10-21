@@ -6,7 +6,7 @@
  * window (3 hops, 200 nodes) is stated to the user.
  */
 
-import { waitForApp } from './support/app';
+import { canvasDescription, openList, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('the graph lists the nodes, draws the bounded subgraph and states its bound', async ({
@@ -31,7 +31,6 @@ test('the graph lists the nodes, draws the bounded subgraph and states its bound
   await expect(page.getByRole('button', { name: root.title })).toBeVisible();
 
   // The bound of the window is stated, not implied.
-  await expect(page.getByText('como máximo 200 nodos y 3 saltos desde la raíz')).toBeVisible();
   await expect(
     page.getByText('La API acota la ventana a 3 saltos y 200 nodos')
   ).toBeVisible();
@@ -43,14 +42,17 @@ test('the graph lists the nodes, draws the bounded subgraph and states its bound
   await expect(canvas).toBeVisible();
 
   // The canvas says what it shows; the list view must say the same.
-  const description = page.getByText(/nodos y \d+ relaciones en el subgrafo/);
-  await expect(description).toBeVisible();
+  const description = await canvasDescription(page, 'Lienzo del subgrafo');
 
-  const counted = /(\d+) nodos y (\d+) relaciones/.exec((await description.textContent()) ?? '');
+  const counted = /(\d+) nodos y (\d+) relaciones/.exec(description);
   expect(counted).not.toBeNull();
 
   const nodeCount = counted?.[1] ?? '';
   const relationCount = counted?.[2] ?? '';
+
+  // The list is the text alternative of the canvas, and it is one click
+  // away.
+  await openList(page);
 
   await expect(
     page.getByRole('heading', { name: `Nodos del subgrafo (${nodeCount})`, exact: true })

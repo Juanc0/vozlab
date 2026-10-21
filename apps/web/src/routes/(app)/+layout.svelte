@@ -11,6 +11,7 @@
   import AppSidebar from '$lib/components/AppSidebar.svelte';
   import Drawer from '$lib/components/Drawer.svelte';
   import { MediaQuery } from '$lib/layout/media.svelte';
+  import { isWorkspacePath } from '$lib/layout/workspace';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { shellState } from '$lib/state/shell.svelte';
@@ -32,6 +33,15 @@
    * the graph.
    */
   const navWide = new MediaQuery('(min-width: 1024px)');
+
+  /**
+   * Whether the page is a **workspace**.
+   *
+   * A workspace fills the window: the column of the navigation and the
+   * page are as tall as the area the shell leaves them, and neither of
+   * them scrolls.
+   */
+  const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
 
   onMount(() => {
     navWide.attach();
@@ -158,7 +168,11 @@
     </Drawer>
   {/if}
 
-  <div class="grid {navWide.matches ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7' : ''}">
+  <div
+    class="grid {navWide.matches
+      ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7'
+      : ''} {isWorkspace ? 'h-full min-h-0' : ''}"
+  >
     {#if navWide.matches}
       <!--
         The column of the navigation.
@@ -167,16 +181,22 @@
         rule divides it from the content. It sticks under the bar of the
         shell, so the destinations and the session are always within reach
         of the pointer.
+
+        In a **workspace** the column is not sticky: the window does not
+        scroll, the column is as tall as the window and it scrolls inside
+        itself.
       -->
       <aside
         aria-label={t('app.workspaceAndSections')}
-        class="hidden min-w-0 border-r border-rule pr-6 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:overflow-y-auto"
+        class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
+          ? 'h-full pl-4 pr-6 sm:pl-6'
+          : 'sticky top-16 h-[calc(100dvh-4rem)] pr-6'}"
       >
         <AppSidebar />
       </aside>
     {/if}
 
-    <div class="min-w-0">
+    <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : ''}">
       {#if status === 'no-membership'}
         <section class="rounded-card bg-surface p-6">
           <h1>{t('app.noWorkspaceHeading')}</h1>

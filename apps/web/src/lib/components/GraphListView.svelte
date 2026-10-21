@@ -112,15 +112,12 @@
   view is the real alternative — every node and every relation of the
   subgraph, in real tables, with the selection kept in sync with the canvas.
 
-  It is a disclosure: a long list can be collapsed, and the canvas then
-  carries the short description of what it shows.
+  It is not a disclosure any more: the list is the **other half of the
+  workspace**, and the toggle of the toolbar swaps it with the canvas.
 -->
-<details open class="space-y-6">
-  <summary class="cursor-pointer font-semibold">
-    {t(summaryKey)}
-  </summary>
+<div class="space-y-6">
+  <h2 class="text-section">{t(summaryKey)}</h2>
 
-  <div class="mt-4 space-y-6">
   <section aria-labelledby="subgraph-nodes-heading">
     <h3 id="subgraph-nodes-heading">
       {t('graph.listNodesHeading')}
@@ -339,5 +336,4 @@
       </table>
     </div>
   </section>
-  </div>
-</details>
+</div>

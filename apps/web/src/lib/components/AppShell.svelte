@@ -27,16 +27,75 @@
      * still being restored).
      */
     scope?: string | null;
+    /**
+     * `true` when the page is a **workspace**.
+     *
+     * A workspace fills the window: the area between the bar of the shell
+     * and the bottom of the screen is the page, the page does not scroll
+     * and the footer has no room. The graph page is the one.
+     */
+    workspace?: boolean;
     children?: Snippet;
   }
 
-  let { title = 'VozLab', navigation = false, scope = null, children }: Props = $props();
+  let { title = 'VozLab', navigation = false, scope = null, workspace = false, children }: Props =
+    $props();
 
   const locale = getLocaleState();
   const t = locale.t;
+
+  /** The element of the notices of the shell — it is measured. */
+  let notices: HTMLDivElement | undefined = $state();
+
+  /**
+   * The height of the notices.
+   *
+   * The panels of a workspace float over the picture, and the notices are
+   * a banner over it too: the panels move below the banner, and the height
+   * of the banner is published as a custom property for them.
+   */
+  let noticeHeight = $state(0);
+
+  $effect(() => {
+    const element = notices;
+
+    if (element === undefined) {
+      return;
+    }
+
+    const report = (): void => {
+      noticeHeight = element.offsetHeight;
+    };
+
+    report();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(report);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  });
 </script>
 
-<div class="flex min-h-dvh flex-col bg-ground text-text">
+<!--
+  The shell of the application.
+
+  A **workspace** is the window itself: the shell is exactly as tall as
+  the visual viewport (`100dvh`, not `100vh` — the chrome of a mobile
+  browser changes the height of `vh`) and it never scrolls. Every other
+  page is a document that may be longer than the window.
+-->
+<div
+  style="--notice-h: {noticeHeight}px"
+  class="flex flex-col bg-ground text-text {workspace
+    ? 'relative h-dvh overflow-hidden'
+    : 'min-h-dvh'}"
+>
   <a
     href="#main-content"
     class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
@@ -135,24 +194,51 @@
     update are the things the user must know about before reading anything
     else. Each notice renders nothing at all when it does not apply — an
     empty strip is never left behind.
+
+    In a **workspace** they do not take height from the picture: a notice
+    that appears would resize the canvas, and the picture would be cut by
+    its own edge. They are a toast **over** the picture instead, in the
+    corner the panels of the workspace leave free, and the panels leave
+    room for it.
   -->
-  <OfflineBanner />
-  <PwaStatus />
-  <InstallPrompt />
-  <UpdatePrompt />
+  <div
+    bind:this={notices}
+    class={workspace
+      ? 'absolute bottom-0 right-4 z-20 w-[min(32rem,calc(100%-27rem))] max-[47.99rem]:left-0 max-[47.99rem]:right-0 max-[47.99rem]:w-auto'
+      : ''}
+  >
+    <OfflineBanner />
+    <PwaStatus />
+    <InstallPrompt />
+    <UpdatePrompt />
+  </div>
 
   <!--
     The content of the shell is **not** capped: the graph page needs the
     whole window for its canvas and its inspector. The pages that read
     better in a narrow column cap themselves.
+
+    A workspace takes the whole area: the canvas is that area, and the
+    panels float over it.
   -->
-  <main id="main-content" class="mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8">
+  <main
+    id="main-content"
+    class="w-full flex-1 {workspace
+      ? 'min-h-0 overflow-hidden'
+      : 'mx-auto px-4 py-6 sm:px-6 sm:py-8'}"
+  >
     {@render children?.()}
   </main>
 
-  <footer class="border-t border-rule">
-    <div class="mx-auto w-full px-4 py-4 text-small text-muted sm:px-6">
-      {t('shell.footer')}
-    </div>
-  </footer>
+  <!--
+    The footer has no room in a workspace: the window belongs to the
+    picture.
+  -->
+  {#if !workspace}
+    <footer class="border-t border-rule">
+      <div class="mx-auto w-full px-4 py-4 text-small text-muted sm:px-6">
+        {t('shell.footer')}
+      </div>
+    </footer>
+  {/if}
 </div>

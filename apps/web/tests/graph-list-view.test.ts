@@ -124,14 +124,18 @@ describe('the list view of the subgraph', () => {
     expect(screen.getByText('El subgrafo no tiene ninguna relación.')).toBeInTheDocument();
   });
 
-  it('is a disclosure: the long list can be collapsed', () => {
+  it('is the other half of the workspace: it is not a disclosure any more', () => {
     const { container } = render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
 
-    const details = container.querySelector('details');
+    // The list is swapped with the canvas by the toggle of the toolbar:
+    // there is nothing to collapse, and the page does not scroll.
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.querySelector('summary')).toBeNull();
 
-    expect(details).not.toBeNull();
-    expect(details?.open).toBe(true);
-    expect(details?.querySelector('summary')?.textContent).toContain('El subgrafo en forma de lista');
+    // It says what it is.
+    expect(
+      screen.getByRole('heading', { name: 'El subgrafo en forma de lista' })
+    ).toBeInTheDocument();
   });
 
   it('offers no vote on a relation without a ledger', () => {

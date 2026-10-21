@@ -145,7 +145,11 @@ export const en: Dictionary<typeof es> = {
     pageTitle: 'Graph — VozLab',
     heading: 'Graph',
     intro:
-      'The canvas draws a **bounded** subgraph: at most {maxNodes} nodes and {maxDepth} hops from the root. The whole content is also listed below the canvas, because a canvas is a picture a screen reader cannot see.',
+      'The canvas draws a **bounded** subgraph: at most {maxNodes} nodes and {maxDepth} hops from the root. The “List” switch shows the same content as text, because a canvas is a picture a screen reader cannot see.',
+    toolbarLabel: 'The tools of the graph',
+    listToggle: 'List',
+    rootToggle: 'Root',
+    rootPanelLabel: 'The root node of the subgraph',
     newNode: 'New node',
     readingOntology: 'Reading the ontology…',
     nodeCreated: 'The node “{title}” was created and is pending review.',
@@ -168,12 +172,12 @@ export const en: Dictionary<typeof es> = {
     maxNodesLabel: 'Max. nodes',
     bounds:
       'Depth {depth} · up to {limit} nodes. The API caps the window at {maxDepth} hops and {maxNodes} nodes: this is a window on the graph, not the whole graph.',
-    staleGraph: 'The subgraph below is the one that was loaded last.',
-    pickRoot: 'Pick a root node above to draw the subgraph around it.',
+    staleGraph: 'The subgraph on the canvas is the one that was loaded last.',
+    pickRoot: 'Pick a root node to draw the subgraph around it.',
     loadingSubgraph: 'Loading the subgraph…',
     canvasLabel: 'Subgraph canvas',
     canvasDefaultDescription:
-      'The subgraph is drawn on a canvas; the same content is listed below.',
+      'The subgraph is drawn on a canvas; the same content is listed.',
     canvasDescription:
       '{nodes} nodes and {edges} relations in the subgraph around the selected root, drawn with a deterministic dagre layout.',
     apiOrigin: 'The graph is read from `{apiBaseUrl}`.',
@@ -208,28 +212,22 @@ export const en: Dictionary<typeof es> = {
     modeSubgraph: 'Subgraph',
     modeExplore: 'Explore',
     modeHint:
-      'Both views read the same workspace: the subgraph around a root, and the exploration window. The view is a choice of the screen, not of the URL.',
-    exploreListNote:
-      'The list below is the exploration window: the newest nodes of the workspace and the relations among them.'
+      'Both views read the same workspace: the subgraph around a root, and the exploration window. The view is a choice of the screen, not of the URL.'
   },
 
   explore: {
     heading: 'Explore',
     listSummary: 'The exploration window as a list',
-    intro:
-      'The exploration window draws the workspace as a landscape: the newest nodes and the relations among them. There is no root node — the view presents one and centres on it.',
-    windowClosed:
-      'The window is a **closed** graph: a relation whose other end falls outside the window is not in the answer, so a node on the edge may look isolated and have many relations outside.',
-    windowOrder:
-      'The order is **creation** order, not activity order: the first one is the last created, not the last touched.',
-    windowBounds:
-      'The window holds {nodes} nodes and {edges} relations. The API caps it at {max} nodes and it has **no pagination**: what is not in the window is not there.',
+    controlsLabel: 'The controls of the exploration',
+    readoutLabel: 'The state of the picture',
+    windowNote:
+      'The window is a **closed** graph, it comes in **creation** order and the API bounds it to {max} nodes, with no pagination.',
+    hint:
+      'Drag the background to pan the canvas, use the wheel to zoom in or out and click a node to walk to it.',
     focusLabel: 'Presented node',
     focusRecent: 'The most recent',
     focusRelated: 'The most related',
     focusManual: 'The one you picked',
-    focusHint:
-      'The view does not ask you for a root: it presents a node and centres on it. With “the one you picked” and no click yet, it presents the most related one.',
     presented: 'It presents “{title}”.',
     focusActive: 'Active criterion: {label}.',
     depthLabel: 'Depth',
@@ -264,14 +262,7 @@ export const en: Dictionary<typeof es> = {
     previewEndpoints: 'From “{source}” to “{target}”',
     previewScore: 'Score {score}',
     empty: 'The window is empty: this workspace has no node yet.',
-    loading: 'Loading the window…',
-    hintHover:
-      'Point at a node or a relation to see its content for a moment; the button of the node expands or collapses it.',
-    hintPan: 'Drag the background to move the canvas and use the wheel to zoom in or out.',
-    hintDrag:
-      'Drag a node to place it somewhere else among the others: the position lasts until the page is reloaded.',
-    hintWalk:
-      'Click a node to walk to it: its neighbours are recovered at the chosen depth and the picture centres on it.'
+    loading: 'Loading the window…'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

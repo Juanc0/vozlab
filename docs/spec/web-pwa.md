@@ -361,6 +361,33 @@ falls back to the raw value for an unknown one.
 The API's error `code` is a contract identifier and stays in English; the
 API's `message` is the API's own copy and stays as it is.
 
+## The workspace
+
+The graph page is a **workspace**, not a page: it fills the viewport
+(`100dvh`, the visual viewport — the mobile browser's chrome changes the
+height of `vh`), and **the page does not scroll**.
+
+The canvas is that whole area, on an **even ground** — `--color-ground`,
+with no grid, no dots and no texture. An even surface is the point; the
+house rules ban grids and crosshairs.
+
+The **panels float over the canvas**: the toolbar with the title, the mode
+switch and the controls at the top, the inspector on the right. A floating
+panel is the one thing the design system allows a shadow on — it truly
+floats — and it is a **solid** surface: no glass, no backdrop blur. It has
+a border, because the canvas behind it is the same ground and a tone step
+cannot separate them. The panels are `absolute`, so **opening one does not
+resize the canvas**, and the canvas still follows the window.
+
+The **app's** navigation stays a column: the panels that float are the
+workspace's, not the app's.
+
+The **list view** is the canvas's text alternative and it is the other half
+of the same area — the toolbar's toggle swaps the picture for the list and
+back, the canvas stays mounted (its zoom and its pan survive) and is
+`inert` and `aria-hidden` behind it. The alternative is never hidden behind
+a hover or a gesture.
+
 ## Walking the graph
 
 Clicking a node in the canvas is a **walk**: one request per click to the

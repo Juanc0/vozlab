@@ -421,8 +421,21 @@ Decided, and not to be re-opened without evidence:
       keyboard.
 - [ ] 3.22 The optimistic concurrency: the version column, the
       compare-and-set, the conflict and its copy.
-- [ ] 3.23 The graph page as a full-bleed canvas: the panels over it, and the
-      even background of the exploration view.
+- [x] 3.23 The graph page as a full-bleed canvas: the panels over it, and the
+      even background of the exploration view. Result: the graph page is a
+      **workspace**, not a page — it fills the viewport (`100dvh`), the page
+      does not scroll, and the canvas is the whole area on an **even
+      ground** (no grid, no dots, no texture). The title, the mode switch
+      and the controls live in a **floating toolbar** over the canvas, the
+      way Excalidraw keeps its controls, and the **inspector floats** on the
+      right. A floating panel is the one thing the design system allows a
+      shadow on: it truly floats, it is a solid surface (no glass, no
+      backdrop blur) and it has a border, because the canvas behind it is
+      the same ground. The panels are `absolute`, so opening one does not
+      resize the canvas. The **list view** — the canvas's text alternative —
+      is the other half of the same area, one click away, and the canvas
+      stays mounted and `inert` behind it. The app's own navigation stays a
+      column: the panels that float are the workspace's, not the app's.
 
 ## Phase 4 — Platform, QA and operations
 

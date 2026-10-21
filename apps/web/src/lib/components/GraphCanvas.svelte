@@ -183,26 +183,27 @@
 
 <!--
   The canvas is a picture: a screen reader cannot see it. The container
-  therefore carries an accessible name and points at a short description, and
-  the list view below is the real alternative.
+  therefore carries an accessible name and points at a short description,
+  and the list view is the real alternative — one click away.
 
-  Its height is a fraction of the **visual** viewport (`svh`, not `vh`: the
-  chrome of a mobile browser changes the height of `vh`, and a canvas that
-  is taller than the screen is a canvas that cannot be seen).
-
-  The canvas is the one surface of the app that is **not** white: it is the
-  ground, and the cards of the graph are the surfaces that sit on it. The
-  card is separated from its background by a tone step, exactly like the
-  cards of the interface are.
+  The canvas is the **whole workspace**: it takes the space its container
+  gives it, and it is painted with the ground of the design system. There
+  is no edge, no radius and no texture around it: the picture is the
+  background of the screen, exactly as it is in a drawing application.
 -->
 <div
   bind:this={container}
   role="img"
   aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
-  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card bg-ground"
+  class="h-full w-full overflow-hidden bg-ground"
 ></div>
 
-<p id={descriptionId} class="mt-2 text-body text-muted">
+<!--
+  The description of the picture. It is read by the screen reader through
+  `aria-describedby`, and it is not painted under the canvas: the canvas
+  is the workspace.
+-->
+<p id={descriptionId} class="sr-only">
   {description ?? t('graph.canvasDefaultDescription')}
 </p>

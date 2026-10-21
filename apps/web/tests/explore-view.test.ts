@@ -59,31 +59,43 @@ describe('the exploration view', () => {
     return result;
   }
 
-  it('draws the window and says what the window is', async () => {
+  it('draws the window on the canvas of the workspace', async () => {
     await renderView();
 
-    expect(screen.getByRole('img', { name: 'Lienzo de la ventana de exploración' })).toBeInTheDocument();
-    expect(screen.getByText(/La ventana es un grafo/)).toBeInTheDocument();
-    expect(screen.getByText(/El orden es de/)).toBeInTheDocument();
-    expect(screen.getByText(/no tiene paginación/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Lienzo de la ventana de exploración' })
+    ).toBeInTheDocument();
   });
 
   it('presents a node and centres on it', async () => {
-    await renderView({ nodes: [NODE_A, NODE_C, NEW_NODE], edges: [EDGE_C] });
+    await renderView({
+      nodes: [NODE_A, NODE_C, NEW_NODE],
+      edges: [EDGE_C],
+      presentedNodeId: NEW_NODE.id
+    });
 
-    // The newest node of the window is the one that is presented.
-    expect(screen.getByText(`Se presenta «${NEW_NODE.title}».`)).toBeInTheDocument();
+    // The node the view presents is expanded: it is a card the reader can
+    // read from the picture itself.
+    expect(
+      screen.getByRole('button', { name: `Contraer «${NEW_NODE.title}»` })
+    ).toBeInTheDocument();
+
     expect(core.core.center).toHaveBeenCalled();
   });
 
-  it('changes the presented node when the criterion changes', async () => {
-    await renderView({ nodes: [NODE_A, NODE_C, NEW_NODE], edges: [EDGE_C] });
-
-    await fireEvent.click(screen.getByRole('radio', { name: 'El más relacionado' }));
-
-    await waitFor(() => {
-      expect(screen.getByText(`Se presenta «${NODE_A.title}».`)).toBeInTheDocument();
+  it('shows only the neighbourhood of the focus when the reader asks for it', async () => {
+    await renderView({
+      nodes: [NODE_A, NODE_B, NODE_C],
+      edges: [EDGE, EDGE_C],
+      presentedNodeId: NODE_C.id,
+      onlyNeighbourhood: true,
+      depth: 0
     });
+
+    // The picture is the neighbourhood of the focus: at depth zero it is
+    // the focus alone.
+    expect(core.nodes.has(NODE_A.id)).toBe(false);
+    expect(core.nodes.has(NODE_C.id)).toBe(true);
   });
 
   it('opens a preview when the pointer is over a node and closes it when it leaves', async () => {
@@ -217,12 +229,8 @@ describe('the exploration view', () => {
     expect(core.nodes.get(NODE_C.id)?.position).toEqual({ x: 300, y: 400 });
   });
 
-  it('draws the relations with the shape the user chooses', async () => {
-    await renderView();
-
-    await fireEvent.change(screen.getByLabelText('Forma de las flechas'), {
-      target: { value: 'straight' }
-    });
+  it('draws the relations with the shape the view is given', async () => {
+    await renderView({ edgeStyle: 'straight' });
 
     await waitFor(() => {
       expect(core.edges.get(EDGE.id)?.style['curve-style']).toBe('straight');
@@ -230,11 +238,7 @@ describe('the exploration view', () => {
   });
 
   it('routes the relations with right angles when the orthogonal shape is chosen', async () => {
-    await renderView();
-
-    await fireEvent.change(screen.getByLabelText('Forma de las flechas'), {
-      target: { value: 'orthogonal' }
-    });
+    await renderView({ edgeStyle: 'orthogonal' });
 
     await waitFor(() => {
       expect(core.edges.get(EDGE.id)?.style['curve-style']).toBe('taxi');

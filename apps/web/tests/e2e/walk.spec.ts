@@ -15,7 +15,7 @@
  */
 
 import type { Page } from '@playwright/test';
-import { waitForApp } from './support/app';
+import { openList, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 /**
@@ -82,7 +82,9 @@ test('the exploration view walks the graph by clicking a node', async ({ page, a
   await expect(page.getByRole('radio', { name: 'El más reciente' })).toBeChecked();
 
   // The node the view presents is the newest of the window: the first row
-  // of the list is the same node.
+  // of the list is the same node. The list is one click away.
+  await openList(page);
+
   const nodeTable = page.getByRole('region', { name: 'Los nodos del subgrafo' });
   const presentedId = await nodeTable
     .getByRole('button', { name: 'Caminar' })
@@ -90,6 +92,9 @@ test('the exploration view walks the graph by clicking a node', async ({ page, a
     .getAttribute('data-node-id');
 
   expect(presentedId).toBeTruthy();
+
+  // The picture comes back: the walk happens on the canvas.
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
 
   // The click asks for the subgraph rooted at the node that was clicked.
   const asked = page.waitForRequest((request) => request.url().includes('/nodes/subgraph'));
@@ -117,6 +122,9 @@ test('the exploration view walks the graph by clicking a node', async ({ page, a
 
   const shown = await scopeNumber(page, /tiene (\d+)/);
   expect(shown).toBeGreaterThan(0);
+
+  // The list follows the picture: it is the text alternative of the canvas.
+  await openList(page);
 
   // The header row is not a node.
   await expect(nodeTable.getByRole('row')).toHaveCount(shown + 1);
@@ -150,6 +158,8 @@ test('the list walks to a node too: it is the way a keyboard reaches it', async 
   await waitForApp(page);
 
   await page.getByText('Explorar', { exact: true }).click();
+
+  await openList(page);
 
   const nodeTable = page.getByRole('region', { name: 'Los nodos del subgrafo' });
   const walk = nodeTable.getByRole('button', { name: 'Caminar' }).first();

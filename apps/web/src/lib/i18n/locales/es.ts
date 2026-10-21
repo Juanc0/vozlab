@@ -167,7 +167,11 @@ export const es = {
     pageTitle: 'Grafo — VozLab',
     heading: 'Grafo',
     intro:
-      'El lienzo dibuja un subgrafo **acotado**: como máximo {maxNodes} nodos y {maxDepth} saltos desde la raíz. Todo el contenido aparece también en la lista de debajo del lienzo, porque un lienzo es una imagen que un lector de pantalla no puede ver.',
+      'El lienzo dibuja un subgrafo **acotado**: como máximo {maxNodes} nodos y {maxDepth} saltos desde la raíz. El conmutador «Lista» muestra el mismo contenido en texto, porque un lienzo es una imagen que un lector de pantalla no puede ver.',
+    toolbarLabel: 'Las herramientas del grafo',
+    listToggle: 'Lista',
+    rootToggle: 'Raíz',
+    rootPanelLabel: 'El nodo raíz del subgrafo',
     newNode: 'Nuevo nodo',
     readingOntology: 'Leyendo la ontología…',
     nodeCreated: 'El nodo «{title}» se ha creado y está pendiente de revisión.',
@@ -191,13 +195,13 @@ export const es = {
     maxNodesLabel: 'Máx. nodos',
     bounds:
       'Profundidad {depth} · hasta {limit} nodos. La API acota la ventana a {maxDepth} saltos y {maxNodes} nodos: esto es una ventana del grafo, no el grafo entero.',
-    staleGraph: 'El subgrafo de abajo es el que se cargó por última vez.',
+    staleGraph: 'El subgrafo del lienzo es el que se cargó por última vez.',
     pickRoot:
-      'Elige un nodo raíz arriba para dibujar el subgrafo a su alrededor.',
+      'Elige un nodo raíz para dibujar el subgrafo a su alrededor.',
     loadingSubgraph: 'Cargando el subgrafo…',
     canvasLabel: 'Lienzo del subgrafo',
     canvasDefaultDescription:
-      'El subgrafo está dibujado en un lienzo; el mismo contenido aparece en la lista de debajo.',
+      'El subgrafo está dibujado en un lienzo; el mismo contenido aparece en la lista.',
     canvasDescription:
       '{nodes} nodos y {edges} relaciones en el subgrafo alrededor de la raíz elegida, dibujados con una disposición dagre determinista.',
     apiOrigin: 'El grafo se lee de `{apiBaseUrl}`.',
@@ -232,29 +236,23 @@ export const es = {
     modeSubgraph: 'Subgrafo',
     modeExplore: 'Explorar',
     modeHint:
-      'Las dos vistas leen el mismo espacio de trabajo: el subgrafo alrededor de una raíz, y la ventana de exploración. La vista es una elección de la pantalla, no de la URL.',
-    exploreListNote:
-      'La lista de abajo es la ventana de exploración: los nodos más recientes del espacio de trabajo y las relaciones entre ellos.'
+      'Las dos vistas leen el mismo espacio de trabajo: el subgrafo alrededor de una raíz, y la ventana de exploración. La vista es una elección de la pantalla, no de la URL.'
   },
 
   /** The exploration view: the window, the focus and the expansion. */
   explore: {
     heading: 'Explorar',
     listSummary: 'La ventana de exploración en forma de lista',
-    intro:
-      'La ventana de exploración dibuja el espacio de trabajo como un paisaje: los nodos más recientes y las relaciones entre ellos. No hay un nodo raíz — la vista presenta uno y lo centra.',
-    windowClosed:
-      'La ventana es un grafo **cerrado**: una relación cuyo otro extremo queda fuera de la ventana no viene en la respuesta, así que un nodo del borde puede parecer aislado y tener muchas relaciones fuera.',
-    windowOrder:
-      'El orden es de **creación**, no de actividad: el primero es el último creado, no el último modificado.',
-    windowBounds:
-      'La ventana trae {nodes} nodos y {edges} relaciones. La API la acota a {max} nodos y **no tiene paginación**: lo que no está en la ventana, no está.',
+    controlsLabel: 'Los controles de la exploración',
+    readoutLabel: 'El estado de la imagen',
+    windowNote:
+      'La ventana es un grafo **cerrado**, viene en orden de **creación** y la API la acota a {max} nodos, sin paginación.',
+    hint:
+      'Arrastra el fondo para mover el lienzo, usa la rueda para acercar o alejar y haz clic en un nodo para caminar hacia él.',
     focusLabel: 'Nodo presentado',
     focusRecent: 'El más reciente',
     focusRelated: 'El más relacionado',
     focusManual: 'El elegido a mano',
-    focusHint:
-      'La vista no exige que elijas una raíz: presenta un nodo y lo centra. Con «el elegido a mano» y sin que hayas hecho clic, presenta el más relacionado.',
     presented: 'Se presenta «{title}».',
     focusActive: 'Criterio activo: {label}.',
     depthLabel: 'Profundidad',
@@ -290,15 +288,7 @@ export const es = {
     previewScore: 'Puntuación {score}',
     empty:
       'La ventana está vacía: este espacio de trabajo todavía no tiene ningún nodo.',
-    loading: 'Cargando la ventana…',
-    hintHover:
-      'Pasa el puntero por un nodo o una relación para ver su contenido un momento; el botón del nodo lo expande o lo contrae.',
-    hintPan:
-      'Arrastra el fondo para mover el lienzo y usa la rueda para acercar o alejar.',
-    hintDrag:
-      'Arrastra un nodo para colocarlo en otro sitio entre los demás: la posición dura hasta que se recarga la página.',
-    hintWalk:
-      'Haz clic en un nodo para caminar hacia él: se recuperan sus vecinos a la profundidad elegida y la imagen se centra en él.'
+    loading: 'Cargando la ventana…'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

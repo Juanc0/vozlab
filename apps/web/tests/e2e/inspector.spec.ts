@@ -6,7 +6,7 @@
  * the signed-in user created can be edited directly, a node never can.
  */
 
-import { waitForApp } from './support/app';
+import { openList, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('the inspector shows the node and the relation, and the relation can be edited directly', async ({
@@ -42,6 +42,7 @@ test('the inspector shows the node and the relation, and the relation can be edi
   await expect(inspector.getByText('A problem with a description.')).toBeVisible();
 
   // The relation is picked in the list: the inspector shows it.
+  await openList(page);
   await page.getByRole('button', { name: 'Se relaciona con' }).first().click();
 
   await expect(inspector.getByRole('heading', { name: 'Se relaciona con' })).toBeVisible();
