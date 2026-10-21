@@ -32,10 +32,14 @@ trade-offs before coding.
   guard and the workspace selector (3.3); the Cytoscape canvas with its
   bounded subgraph (3.4); the ontology-driven creation forms, the proposal
   review, the discussions and the optimistic voting (3.5); the offline shell,
-  the install and update prompts and the accessibility pass (3.6); and a
-  Playwright suite of 10 tests (3.7). The API grew three things for it: the
-  published response DTOs, the active `datatype_properties` and the edge
-  score in the subgraph.
+  the install and update prompts and the accessibility pass (3.6); a
+  Playwright suite of 14 tests (3.7); and the presentation round: a Spanish
+  demo graph of 24 nodes and 35 relations in three clusters (3.8), the
+  development sign-in (3.9), the interface in Spanish and English (3.10), the
+  workspace window (3.11), the exploration view (3.12), the inspector
+  (3.13) and the mobile-first layout (3.14). The API grew three things for
+  it: the published response DTOs, the active `datatype_properties` and the
+  edge score in the subgraph.
 - Known debt: `pnpm lint` is red (24 pre-existing `@typescript-eslint/no-explicit-any`
   errors); `PATCH`-style limitations are documented in the ADRs.
 
