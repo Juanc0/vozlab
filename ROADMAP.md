@@ -481,6 +481,15 @@ Decided, and not to be re-opened without evidence:
       is the other half of the same area, one click away, and the canvas
       stays mounted and `inert` behind it. The app's own navigation stays a
       column: the panels that float are the workspace's, not the app's.
+- [ ] 3.25 The clone of dagre that uses `d3-dag`: a parallel candidate, with
+      the cycles broken **visibly** rather than in silence.
+- [ ] 3.26 The living spring: the picture stays half organised and keeps
+      drifting between the clusters, and the simulation sleeps when the
+      window is hidden.
+- [ ] 3.27 The card as one object: the text becomes a child of the card
+      instead of a loose element resynchronised on every frame of a drag.
+- [ ] 3.28 A third painter in the comparison: `d3` and a hand-written SVG
+      painter, with the card as one `<g>`.
 
 ## Phase 4 — Platform, QA and operations
 
