@@ -268,7 +268,6 @@ export const es = {
     isolated: '«{title}» no tiene relaciones: su entorno está vacío.',
     edgeStyleLabel: 'Forma de las flechas',
     edgeStraight: 'Una línea recta',
-    edgeOrthogonal: 'En ángulo recto',
     edgeBezier: 'Curva suave',
     edgeUnbundled: 'Curva abierta',
     edgeArc: 'Arco',

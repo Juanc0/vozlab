@@ -243,7 +243,6 @@ export const en: Dictionary<typeof es> = {
     isolated: '“{title}” has no relations: its neighbourhood is empty.',
     edgeStyleLabel: 'Shape of the arrows',
     edgeStraight: 'A straight line',
-    edgeOrthogonal: 'At right angles',
     edgeBezier: 'Soft curve',
     edgeUnbundled: 'Open curve',
     edgeArc: 'Arc',

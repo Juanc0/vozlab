@@ -252,7 +252,7 @@
           // The node keeps the place it was put; the next layout keeps it
           // there too.
           pinned.set(nodeId, { x: position.x, y: position.y });
-          created?.refreshRoutes();
+          created?.refreshEdgeStyles();
         },
         onrender: () => {
           if (created !== null) {

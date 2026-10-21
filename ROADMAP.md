@@ -321,6 +321,11 @@ Decided, and not to be re-opened without evidence:
   from every managed PostgreSQL allow-list. The concurrency work is done with
   a version column instead. The trigger that would reopen the question is
   written down in ADR-0027.
+- **The shape with right angles is gone.** The user did not like the square
+  corners: they read as a diagram of pipes rather than as relations, and a
+  relation that turns draws the eye to the turn instead of to what it joins.
+  The shape is out of both graphs and the router that computed the turn went
+  with it — no shape is routed any more.
 
 - [x] 3.15 The design system: the tokens of the accent ladder, the type, the
       shell, the bars and the page frames. Result: the direction is the

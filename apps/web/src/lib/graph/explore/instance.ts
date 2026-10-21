@@ -11,8 +11,8 @@
  *   picture rearranges around the new space;
  * - a node can be **dragged** to another place among the others, and the
  *   place it was put survives the next layout;
- * - the relations are drawn with the shape the user chose, and the
- *   orthogonal shape is routed by the pure router of `./orthogonal`;
+ * - the relations are drawn with the shape the user chose; no shape is
+ *   routed, so every one of them is a curve and nothing more;
  * - the pointer over a node or a relation opens a **preview** of it.
  *
  * The instance also **follows the size of its container**: a
@@ -39,8 +39,7 @@ import { observeContainerSize } from '../resize';
 import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
 import { exploreLayoutOptions, pinTransform } from './layout';
-import { routeOrthogonal, type Box } from './orthogonal';
-import { relationCardPlacement } from '../relation-card';
+import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
 /** What the pointer is over. */
@@ -147,7 +146,8 @@ export interface ExplorationInstance {
   /** Draws the relations with another shape. */
   setEdgeStyle(style: EdgeStyle): void;
   /** Draws the relations again — after a drag, for instance. */
-  refreshRoutes(): void;
+  /** Draws the relations again, with the shape that is selected. */
+  refreshEdgeStyles(): void;
   /** Where every node is, in the rendered coordinates of the canvas. */
   positions(): Map<string, RenderedBox>;
   /** Where the line of every relation is, in the rendered coordinates. */
@@ -281,8 +281,8 @@ export function createExplorationInstance(
   });
 
   /** The boxes of the nodes, in the model coordinates of the canvas. */
-  function nodeBoxes(): Map<string, Box> {
-    const boxes = new Map<string, Box>();
+  function nodeBoxes(): Map<string, CardBox> {
+    const boxes = new Map<string, CardBox>();
 
     cardNodes(core.elements()).forEach((node) => {
       const position = node.position();
@@ -378,27 +378,14 @@ export function createExplorationInstance(
   /**
    * Draws the relations again.
    *
-   * The orthogonal shape is routed by the pure router: the turn it answers
-   * is the channel between the two nodes that no card stands in.
+   * Every shape is a curve style and nothing more: **no shape is routed**,
+   * so there is nothing to compute here beyond the style itself.
    */
-  function refreshRoutes(): void {
-    const boxes = nodeBoxes();
-    const all = [...boxes.values()];
+  function refreshEdgeStyles(): void {
+    const properties = edgeStyleProperties(edgeStyle);
 
     core.edges().forEach((edge) => {
-      const source = boxes.get(edge.source().id());
-      const target = boxes.get(edge.target().id());
-
-      if (source === undefined || target === undefined) {
-        return;
-      }
-
-      const obstacles = all.filter(
-        (box) => box !== source && box !== target
-      );
-
-      const route = routeOrthogonal(source, target, obstacles);
-      edge.style(edgeStyleProperties(edgeStyle, route));
+      edge.style(properties);
     });
   }
 
@@ -434,7 +421,7 @@ export function createExplorationInstance(
     // and the text goes with them.
     syncCardText(core);
 
-    refreshRoutes();
+    refreshEdgeStyles();
 
     // The view centres on the node it presents — but only when that node
     // changes. A layout that runs because a card appeared rearranges the
@@ -521,10 +508,10 @@ export function createExplorationInstance(
 
     setEdgeStyle(style) {
       edgeStyle = style;
-      refreshRoutes();
+      refreshEdgeStyles();
     },
 
-    refreshRoutes,
+    refreshEdgeStyles,
 
     positions() {
       const boxes = new Map<string, RenderedBox>();

@@ -160,9 +160,8 @@ function formatValue(value: unknown): string {
 /**
  * A rectangle of the canvas, in the model coordinates.
  *
- * The centre and the size: the same shape the router of the orthogonal
- * lines uses, so the boxes of the nodes can be handed to the two without a
- * translation.
+ * The centre and the size: the same shape the rest of the canvas uses, so
+ * the boxes of the nodes are handed over without a translation.
  */
 export interface CardBox {
   /** The centre of the box on the x axis. */

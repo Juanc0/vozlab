@@ -471,17 +471,21 @@ is temporary and the node **keeps it** when the layout is recomputed, which
 is why the pinning goes through the layout's `transform` hook and not
 through its `position` option — `cytoscape-dagre` does not read the latter.
 
-**The shape of the relations is a choice**: straight, an orthogonal route
-with right angles, and four curves. The orthogonal router is a pure function
-of the two endpoints and the boxes in the way; it computes the free
-channels, keeps the first route that crosses no node, and — when there is
-none — answers the route with the fewest crossings and says how many, rather
-than pretending.
+**The shape of the relations is a choice**: a single line and four curves —
+the smooth one, the open one, the wide arc and the haystack.
+
+**There is no route with right angles.** The shape was in the interface and
+the user did not like it: the square corners read as a diagram of pipes
+rather than as the relations of a knowledge graph, and a relation that turns
+at right angles draws the eye to the turn instead of to what it joins. The
+shape is gone from both graphs, and the pure router that computed the turn
+is gone with it: no shape is routed any more, so every one of them is a
+curve and nothing more.
 
 Two corrections against the code of Cytoscape, verified against its
 sources: it has **no `controlPoints` field** and **no `curve-style:
-'arc'`**. The orthogonal route is therefore drawn with the `taxi` style and
-`taxi-radius: 0` for the square corners, and the "arc" is a wide bezier.
+'arc'`**. The "arc" is therefore a wide bezier, and the curve styles that
+are left are `straight`, `bezier`, `unbundled-bezier` and `haystack`.
 
 ## Governance UI
 

@@ -236,13 +236,4 @@ describe('the exploration view', () => {
       expect(core.edges.get(EDGE.id)?.style['curve-style']).toBe('straight');
     });
   });
-
-  it('routes the relations with right angles when the orthogonal shape is chosen', async () => {
-    await renderView({ edgeStyle: 'orthogonal' });
-
-    await waitFor(() => {
-      expect(core.edges.get(EDGE.id)?.style['curve-style']).toBe('taxi');
-    });
-    expect(core.edges.get(EDGE.id)?.style['taxi-direction']).toBeTypeOf('string');
-  });
 });

@@ -61,7 +61,6 @@
   /** The label of every shape of the relations. */
   const EDGE_STYLE_LABELS: Record<EdgeStyle, TranslationKey> = {
     straight: 'explore.edgeStraight',
-    orthogonal: 'explore.edgeOrthogonal',
     bezier: 'explore.edgeBezier',
     unbundled: 'explore.edgeUnbundled',
     arc: 'explore.edgeArc',
