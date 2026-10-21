@@ -18,7 +18,8 @@ import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUs
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../../application/use_cases/SetNodeEmbeddingUseCase.js';
-import { Node } from '../../../domain/entities/Node.js';
+import type { DisplayNames } from '../../../application/use_cases/DisplayNameCatalog.js';
+import type { Node } from '../../../domain/entities/Node.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
 import { sendError, mapDomainError } from './errorResponse.js';
@@ -29,12 +30,18 @@ import { sendError, mapDomainError } from './errorResponse.js';
  *
  * The shape itself lives in `@vozlab/shared-types` (`NodeDto`) so the PWA
  * can type the responses it consumes.
+ *
+ * The node carries the **display names** of its class: the API does not
+ * negotiate the language, it sends the whole map and the client picks the
+ * name of its language. A class that is not in the ontology carries an
+ * empty map and the client falls back to the key.
  */
-function toNodeDto(node: Node): NodeDto {
+function toNodeDto(node: Node, typeDisplayNames: DisplayNames): NodeDto {
   return {
     id: node.id,
     workspaceId: node.workspaceId,
     typeKey: node.typeKey,
+    typeDisplayNames,
     title: node.title,
     description: node.description,
     attributes: node.attributes,
@@ -78,7 +85,7 @@ export class NodeController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const node = await this.createNodeUseCase.execute({
+      const { node, typeDisplayNames } = await this.createNodeUseCase.execute({
         ...parsed.data,
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
@@ -90,6 +97,7 @@ export class NodeController {
         id: node.id,
         workspaceId: node.workspaceId,
         typeKey: node.typeKey,
+        typeDisplayNames,
         title: node.title,
         description: node.description,
         status: node.status,
@@ -111,12 +119,12 @@ export class NodeController {
     const nodeId = (req.params as { id: string }).id;
 
     try {
-      const node = await this.getNodeUseCase.execute({
+      const { node, typeDisplayNames } = await this.getNodeUseCase.execute({
         nodeId,
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
       });
-      return reply.status(200).send({ node: toNodeDto(node) });
+      return reply.status(200).send({ node: toNodeDto(node, typeDisplayNames) });
     } catch (error) {
       return this.handleError(req, reply, error, 'getNode failed');
     }
@@ -144,7 +152,7 @@ export class NodeController {
       });
 
       return reply.status(200).send({
-        nodes: items.map(toNodeDto),
+        nodes: items.map((named) => toNodeDto(named.node, named.typeDisplayNames)),
         nextCursor,
       });
     } catch (error) {
@@ -168,7 +176,7 @@ export class NodeController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const { nodes, edges } = await this.getSubgraphUseCase.execute({
+      const { nodes, relations } = await this.getSubgraphUseCase.execute({
         rootId: parsed.data.rootId,
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
@@ -177,14 +185,15 @@ export class NodeController {
       });
 
       return reply.status(200).send({
-        nodes: nodes.map(toNodeDto),
-        edges: edges.map((edge) => ({
-          id: edge.id,
-          sourceNodeId: edge.sourceNodeId,
-          targetNodeId: edge.targetNodeId,
-          relationKey: edge.relationKey,
-          status: edge.status,
-          communityScore: edge.communityScore,
+        nodes: nodes.map((named) => toNodeDto(named.node, named.typeDisplayNames)),
+        edges: relations.map((named) => ({
+          id: named.relation.id,
+          sourceNodeId: named.relation.sourceNodeId,
+          targetNodeId: named.relation.targetNodeId,
+          relationKey: named.relation.relationKey,
+          relationDisplayNames: named.relationDisplayNames,
+          status: named.relation.status,
+          communityScore: named.relation.communityScore,
         })),
       } satisfies SubgraphResponseDto);
     } catch (error) {
@@ -211,21 +220,22 @@ export class NodeController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const { nodes, edges } = await this.getNodeWindowUseCase.execute({
+      const { nodes, relations } = await this.getNodeWindowUseCase.execute({
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
         limit: parsed.data.limit,
       });
 
       return reply.status(200).send({
-        nodes: nodes.map(toNodeDto),
-        edges: edges.map((edge) => ({
-          id: edge.id,
-          sourceNodeId: edge.sourceNodeId,
-          targetNodeId: edge.targetNodeId,
-          relationKey: edge.relationKey,
-          status: edge.status,
-          communityScore: edge.communityScore,
+        nodes: nodes.map((named) => toNodeDto(named.node, named.typeDisplayNames)),
+        edges: relations.map((named) => ({
+          id: named.relation.id,
+          sourceNodeId: named.relation.sourceNodeId,
+          targetNodeId: named.relation.targetNodeId,
+          relationKey: named.relation.relationKey,
+          relationDisplayNames: named.relationDisplayNames,
+          status: named.relation.status,
+          communityScore: named.relation.communityScore,
         })),
       } satisfies NodeWindowResponseDto);
     } catch (error) {

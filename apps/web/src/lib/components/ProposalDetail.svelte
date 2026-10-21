@@ -122,7 +122,7 @@
 
     target = null;
 
-    void resolveProposalTarget(api, proposal).then((resolved) => {
+    void resolveProposalTarget(api, proposal, locale.locale).then((resolved) => {
       if (current !== targetRequest) {
         return;
       }
@@ -226,7 +226,7 @@
             ? await rejectProposal(api, proposal.id)
             : await autoApplyProposal(api, proposal.id);
 
-      notice = t('proposals.nowStatus', { status: resolved.status });
+      notice = t('proposals.nowStatus', { status: locale.status('proposal', resolved.status) });
       onresolved?.(resolved);
     } catch (caught) {
       actionError = describeFailure(caught, t);
@@ -243,7 +243,7 @@
         {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
       <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
-        {proposal.status}
+        {locale.status('proposal', proposal.status)}
       </span>
     </div>
 
@@ -334,7 +334,7 @@
       <p role="status" class="mt-1 text-body text-muted">{t('proposals.readingTarget')}</p>
     {:else if proposal.status !== 'PENDING'}
       <p class="mt-1 text-body text-muted">
-        {t('proposals.notOpen', { status: proposal.status })}
+        {t('proposals.notOpen', { status: locale.status('proposal', proposal.status) })}
       </p>
     {:else}
       <div class="mt-1 flex flex-wrap items-center gap-2">

@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { SubgraphEdgeDto } from '$lib/api/types';
 import {
   CARD_CLASS,
   CARD_COLOR,
@@ -20,11 +21,13 @@ import {
   toGraphElements,
   toNodeElement,
   toNodeElements,
+  type GraphEdgeElement,
   type GraphNodeElement,
   type GraphTextElement
 } from '$lib/graph/elements';
 import { CARD_PADDING_X, META_LINE_HEIGHT, TITLE_LINE_HEIGHT } from '$lib/graph/node-card';
-import { NODE_A, NODE_B } from './fixtures/graph';
+import { statusLabel } from '$lib/i18n/statuses';
+import { EDGE, NODE_A, NODE_B, NODE_C, PROBLEM_NAMES } from './fixtures/graph';
 
 /**
  * A deterministic measurer: every glyph is six pixels wide.
@@ -88,28 +91,40 @@ describe('the card of a node', () => {
 
 describe('the meta line of a card', () => {
   it('is the type of the node, under the title', () => {
-    const [, meta] = toNodeElements(NODE_A, { measure }) as [GraphNodeElement, GraphTextElement];
+    const [, meta] = toNodeElements(NODE_A, { measure, locale: 'es' }) as [
+      GraphNodeElement,
+      GraphTextElement
+    ];
 
-    expect(meta.data.label).toBe(NODE_A.typeKey);
+    expect(meta.data.label).toBe(PROBLEM_NAMES.es);
     expect(meta.classes).toContain(META_CLASS);
   });
 
   it('is the **display name** of the class, in the language of the interface', () => {
     const [, meta] = toNodeElements(NODE_A, {
       measure,
-      typeName: 'Problema'
+      locale: 'es'
     }) as [GraphNodeElement, GraphTextElement];
 
     expect(meta.data.label).toBe('Problema');
   });
 
+  it('is the display name of the class in the language the reader chose', () => {
+    const [, meta] = toNodeElements(NODE_A, {
+      measure,
+      locale: 'en'
+    }) as [GraphNodeElement, GraphTextElement];
+
+    expect(meta.data.label).toBe('Problem');
+  });
+
   it('keeps the status of the node when the card is expanded', () => {
-    const [, meta] = toNodeElements(NODE_A, { expanded: true, measure }) as [
+    const [, meta] = toNodeElements(NODE_A, { expanded: true, measure, locale: 'es' }) as [
       GraphNodeElement,
       GraphTextElement
     ];
 
-    expect(meta.data.label).toBe(`${NODE_A.typeKey} · ${NODE_A.status}`);
+    expect(meta.data.label).toBe(`${PROBLEM_NAMES.es} · ${statusLabel('es', 'node', NODE_A.status)}`);
   });
 
   it('hangs under the card it belongs to', () => {
@@ -217,7 +232,7 @@ describe('the elements of the exploration window', () => {
   it('writes the name of the type in the language of the interface', () => {
     const elements = toGraphElements([NODE_A], [], {
       measure,
-      typeNames: new Map([['Problem', 'Problema']])
+      locale: 'es'
     }) as GraphTextElement[];
 
     const meta = elements.find((element) => element.classes?.includes(META_CLASS));
@@ -226,13 +241,61 @@ describe('the elements of the exploration window', () => {
   });
 
   it('keeps the key of a type that the ontology does not know', () => {
-    const elements = toGraphElements([NODE_A], [], {
+    const elements = toGraphElements([NODE_C], [], {
       measure,
-      typeNames: new Map([['Idea', 'Idea']])
+      locale: 'es'
     }) as GraphTextElement[];
 
     const meta = elements.find((element) => element.classes?.includes(META_CLASS));
 
-    expect(meta?.data.label).toBe('Problem');
+    expect(meta?.data.label).toBe('Task');
+  });
+
+  it('writes the name of the relation in the language of the interface', () => {
+    const elements = toGraphElements([NODE_A, NODE_B], [EDGE], {
+      measure,
+      locale: 'es'
+    }) as GraphEdgeElement[];
+
+    const edge = elements.find((element) => element.group === 'edges');
+
+    expect(edge?.data.label).toBe('Sugiere');
+  });
+
+  it('never paints the key of the system as the label of a relation', () => {
+    // The seeded ontology: the relation is `RELATES_TO` and its display
+    // name is "Se relaciona con".
+    const seeded: SubgraphEdgeDto = {
+      ...EDGE,
+      relationKey: 'RELATES_TO',
+      relationDisplayNames: { en: 'Relates to', es: 'Se relaciona con' }
+    };
+
+    const elements = toGraphElements([NODE_A, NODE_B], [seeded], {
+      measure,
+      locale: 'es'
+    }) as GraphEdgeElement[];
+
+    const edge = elements.find((element) => element.group === 'edges');
+
+    expect(edge?.data.label).toBe('Se relaciona con');
+    expect(edge?.data.label).not.toBe('RELATES_TO');
+  });
+
+  it('paints the name of the relation in the language the reader chose', () => {
+    const seeded: SubgraphEdgeDto = {
+      ...EDGE,
+      relationKey: 'RELATES_TO',
+      relationDisplayNames: { en: 'Relates to', es: 'Se relaciona con' }
+    };
+
+    const elements = toGraphElements([NODE_A, NODE_B], [seeded], {
+      measure,
+      locale: 'en'
+    }) as GraphEdgeElement[];
+
+    const edge = elements.find((element) => element.group === 'edges');
+
+    expect(edge?.data.label).toBe('Relates to');
   });
 });

@@ -127,9 +127,24 @@ export async function loadSubgraph(
   });
 
   return {
-    nodes: Array.isArray(body?.nodes) ? body.nodes : [],
-    edges: Array.isArray(body?.edges) ? body.edges : []
+    nodes: (Array.isArray(body?.nodes) ? body.nodes : []).map(withTypeNames),
+    edges: (Array.isArray(body?.edges) ? body.edges : []).map(withRelationNames)
   };
+}
+
+/**
+ * The names of the class of a node.
+ *
+ * The API sends the whole map; an empty map is the answer for a class that
+ * is not in the ontology, and the client falls back to the key.
+ */
+function withTypeNames(node: NodeDto): NodeDto {
+  return { ...node, typeDisplayNames: node.typeDisplayNames ?? {} };
+}
+
+/** The names of the relation — the same rule as the names of the class. */
+function withRelationNames(edge: SubgraphEdgeDto): SubgraphEdgeDto {
+  return { ...edge, relationDisplayNames: edge.relationDisplayNames ?? {} };
 }
 
 /**
@@ -174,8 +189,8 @@ export async function loadNodeWindow(
   });
 
   return {
-    nodes: Array.isArray(body?.nodes) ? body.nodes : [],
-    edges: Array.isArray(body?.edges) ? body.edges : []
+    nodes: (Array.isArray(body?.nodes) ? body.nodes : []).map(withTypeNames),
+    edges: (Array.isArray(body?.edges) ? body.edges : []).map(withRelationNames)
   };
 }
 
@@ -191,6 +206,8 @@ export interface CreatedNode {
   readonly id: string;
   readonly workspaceId: string;
   readonly typeKey: string;
+  /** The display names of the class, by language — the API sends the whole map. */
+  readonly typeDisplayNames: Record<string, string>;
   readonly title: string;
   readonly description: string | null;
   readonly status: NodeStatus;
@@ -220,6 +237,7 @@ export async function createNode(client: ApiClient, input: CreateNodeInput): Pro
     id: body.id,
     workspaceId: body.workspaceId,
     typeKey: body.typeKey,
+    typeDisplayNames: body.typeDisplayNames ?? {},
     title: body.title,
     description: body.description ?? null,
     status: body.status
@@ -282,6 +300,7 @@ export async function createEdge(
     sourceNodeId: body.sourceNodeId,
     targetNodeId: body.targetNodeId,
     relationKey: body.relationKey,
+    relationDisplayNames: body.relationDisplayNames ?? {},
     status: body.status,
     communityScore: body.communityScore
   };

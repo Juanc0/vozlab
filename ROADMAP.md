@@ -353,8 +353,22 @@ Decided, and not to be re-opened without evidence:
       Cytoscape core option and not a dagre one — removed.
 - [ ] 3.17 The two engines side by side: a development-only comparison of
       Cytoscape and Sigma.js on the same data and the same interactions.
-- [ ] 3.18 The names in the interface's language: the API returns the
-      display-name map of the class and of the relation.
+- [x] 3.18 The names in the interface's language: the API returns the
+      display-name map of the class and of the relation. Result: the
+      diagnosis was neither the ontology's schema nor the edge creation —
+      the ontology always carried `{"en": "Problem", "es": "Problema"}` and
+      `{"en": "Relates to", "es": "Se relaciona con"}`. The **graph DTOs**
+      carried only the system's keys (`typeKey`, `relationKey`), and the
+      canvas painted the key. So `NodeDto` and the two edge DTOs now carry
+      the whole `display_names` **map** and the client picks its language —
+      the API does not negotiate one, and a missing map is `{}`. The names
+      come from a **composition** in the application layer, not a join, so
+      neither repository knows the other's schema and there is **no N+1**
+      (two reads whatever the size of the answer, proved with 200 nodes).
+      The **statuses** are a vocabulary, not a copy string: a map per scope
+      typed with `satisfies Record<NodeStatus, string>`, so a missing status
+      is a **compile error** in both languages. Nothing in the interface
+      prints `RELATES_TO` or `REJECTED_BY_AUTHOR` any more.
 - [ ] 3.19 The enriched relation: the graph DTO carries the attributes, the
       author and the dates, and a relation expands like a node.
 - [ ] 3.20 The ranked traversal and the two missing indexes: the nearest

@@ -8,7 +8,7 @@ import {
 } from '$lib/state/context';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
-import { EDGE, NEW_NODE, NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
+import { EDGE, NEW_NODE, NODE_A, NODE_B, RELATION_NAMES, WORKSPACE_ID } from './fixtures/graph';
 import { EDGE_DTO } from './fixtures/inspector';
 import { ONTOLOGY } from './fixtures/ontology';
 import Home from '../src/routes/(app)/+page.svelte';
@@ -382,11 +382,13 @@ describe('the graph page', () => {
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
 
     // The relation row of the list is selectable too.
-    const relation = await screen.findByRole('button', { name: 'SUGGESTS' });
+    const relation = await screen.findByRole('button', { name: RELATION_NAMES.SUGGESTS.es });
     await fireEvent.click(relation);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: EDGE_DTO.relationKey })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: RELATION_NAMES.SUGGESTS.es })
+      ).toBeInTheDocument();
     });
 
     // The relation is not in the subgraph response: it was read.

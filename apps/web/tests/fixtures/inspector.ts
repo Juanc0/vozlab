@@ -21,6 +21,7 @@ export const EDGE_DTO: EdgeDto = {
   sourceNodeId: NODE_A.id,
   targetNodeId: NODE_B.id,
   relationKey: EDGE.relationKey,
+  relationDisplayNames: EDGE.relationDisplayNames,
   attributes: { weight: 3 },
   authorHash: 'a'.repeat(64),
   status: 'ACTIVE',

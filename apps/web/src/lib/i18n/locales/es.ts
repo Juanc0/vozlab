@@ -15,6 +15,13 @@
  * a leftover key is a compile error.
  */
 
+import type {
+  EdgeStatus,
+  NodeStatus,
+  ProposalStatus,
+  ThreadStatus,
+} from '@vozlab/shared-types';
+
 export const es = {
   /** The copy several screens share. */
   common: {
@@ -444,10 +451,6 @@ export const es = {
     filterStatus: 'Estado',
     filterTarget: 'Objetivo',
     filterKind: 'Tipo',
-    statusPending: 'Pendiente',
-    statusApproved: 'Aprobada por la autoría',
-    statusRejected: 'Rechazada por la autoría',
-    statusAutoApplied: 'Aplicada automáticamente',
     targetNode: 'Nodo',
     targetRelation: 'Relación',
     targetOntology: 'Clase de la ontología',
@@ -647,5 +650,54 @@ export const es = {
     duplicateAttributeKey: 'Dos filas llevan la misma clave.',
     attributeCannotBeEmptied:
       'Un atributo existente no puede quedar vacío: la API fusiona los atributos, no puede quitar ninguno.'
+  },
+
+  /**
+   * The labels of the **statuses**.
+   *
+   * A status is a **value of the domain**, not a sentence: it cannot live in
+   * the copy of the interface as a key of the dictionary — `t('status.node.PENDING')`
+   * would be a dynamic key, and the union of the keys cannot type it.
+   *
+   * So the statuses live in a **map per scope**, and each map is typed
+   * against the vocabulary of the shared contract (`NodeStatus`,
+   * `EdgeStatus`, `ProposalStatus`, `ThreadStatus`): a status that is missing
+   * is a **compile error**, here and in the English dictionary alike.
+   *
+   * The maps are declared with `satisfies` and not with `as`: an assertion
+   * only *believes* the type, while `satisfies` **checks** it. A status of
+   * the contract that is missing here is refused by the compiler:
+   *
+   * ```
+   * Type '{ DRAFT: string; … }' does not satisfy the expected type
+   *   'Record<"DRAFT" | "PENDING" | "ACTIVE" | "MERGED" | …, string>'.
+   *   Property 'MERGED' is missing in type '{ … }'
+   * ```
+   */
+  statuses: {
+    node: {
+      DRAFT: 'Borrador',
+      PENDING: 'Pendiente',
+      ACTIVE: 'Activo',
+      MERGED: 'Fusionado',
+      DEPRECATED: 'Obsoleto',
+      REJECTED: 'Rechazado'
+    } satisfies Record<NodeStatus, string>,
+    edge: {
+      DRAFT: 'Borrador',
+      PENDING: 'Pendiente',
+      ACTIVE: 'Activo',
+      REJECTED: 'Rechazado'
+    } satisfies Record<EdgeStatus, string>,
+    proposal: {
+      PENDING: 'Pendiente',
+      APPROVED_BY_AUTHOR: 'Aprobada por la autoría',
+      REJECTED_BY_AUTHOR: 'Rechazada por la autoría',
+      AUTO_APPLIED: 'Aplicada automáticamente'
+    } satisfies Record<ProposalStatus, string>,
+    thread: {
+      OPEN: 'Abierto',
+      CLOSED: 'Cerrado'
+    } satisfies Record<ThreadStatus, string>
   }
 } as const;

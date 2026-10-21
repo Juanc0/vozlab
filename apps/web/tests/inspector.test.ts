@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Inspector from '$lib/components/Inspector.svelte';
 import { VoteLedger } from '$lib/governance/vote.svelte';
 import { json, renderGovernance, requestedUrls, BASE_URL } from './harness/governance';
-import { EDGE, NODE_A, NODE_B, OTHER_PROPOSAL, PROPOSAL } from './fixtures/graph';
+import { EDGE, NODE_A, NODE_B, OTHER_PROPOSAL, PROPOSAL, RELATION_NAMES } from './fixtures/graph';
 import { EDGE_DTO, POST, REPLY, THREAD } from './fixtures/inspector';
 
 vi.mock('$app/environment', () => ({
@@ -103,13 +103,15 @@ describe('the inspector', () => {
     expect(screen.getByRole('tab', { name: 'Contenido' })).toHaveAttribute('tabindex', '-1');
   });
 
-  it('reads the selected relation with the API and shows its key, its ends and its score', async () => {
+  it('reads the selected relation with the API and shows its name, its ends and its score', async () => {
     const fetchMock = vi.fn(async () => json({ edge: EDGE_DTO }));
 
     renderInspector({}, { selection: { kind: 'edge', id: EDGE.id } }, fetchMock);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: EDGE_DTO.relationKey })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: RELATION_NAMES.SUGGESTS.es })
+      ).toBeInTheDocument();
     });
 
     // The relation is not in the subgraph response: the inspector reads it.

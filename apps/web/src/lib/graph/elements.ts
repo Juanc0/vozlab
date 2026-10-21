@@ -26,6 +26,9 @@
 
 import type { EdgeStatus, NodeDto, NodeStatus, SubgraphEdgeDto } from '$lib/api/types';
 import type { Collection, Core, Css, NodeSingular, StylesheetJson } from 'cytoscape';
+import { displayName } from '$lib/i18n/display-name';
+import { DEFAULT_LOCALE } from '$lib/i18n/dictionary';
+import { statusLabel } from '$lib/i18n/statuses';
 import {
   CARD_PADDING_Y,
   CARD_RADIUS,
@@ -284,24 +287,31 @@ export interface NodeCardContent {
 }
 
 /**
- * The content of the card of a node.
+ * The content of the **card** of a node.
  *
  * The **meta line** is the type of the node, in the language of the
  * interface: the type is the categorical series of the graph — the
  * difference between a problem and an idea — and it is the first thing a
- * reader needs. When the card is **expanded**, the line keeps the status of
- * the node too: the expanded card is the whole node, and the status is part
- * of it.
+ * reader needs. The name is the **display name** of the class, which the
+ * DTO carries: the API sends the whole map and the client picks the name of
+ * its language. A class that the ontology does not know keeps its key: the
+ * card must say something, and the key is what the API sent.
+ *
+ * When the card is **expanded**, the line keeps the status of the node too:
+ * the expanded card is the whole node, and the status is part of it. The
+ * status is a label of the dictionary, not the value of the system.
  *
  * The **body** is the description and the attributes of the node. It is only
  * there when the card is expanded.
  */
 export function nodeCardContent(
   node: NodeDto,
-  options: { typeName?: string; expanded?: boolean } = {}
+  options: { locale?: string; expanded?: boolean } = {}
 ): NodeCardContent {
   const expanded = options.expanded === true;
-  const typeName = options.typeName ?? node.typeKey;
+  const locale = options.locale ?? DEFAULT_LOCALE;
+  const typeName = displayName(node.typeDisplayNames, locale, node.typeKey);
+  const status = statusLabel(locale, 'node', node.status);
 
   const paragraphs: string[] = [];
 
@@ -319,7 +329,7 @@ export function nodeCardContent(
 
   return {
     title: node.title,
-    meta: expanded ? `${typeName} · ${node.status}` : typeName,
+    meta: expanded ? `${typeName} · ${status}` : typeName,
     body: paragraphs.join('\n')
   };
 }
@@ -376,8 +386,12 @@ export interface NodeElementOptions {
   expanded?: boolean;
   /** The measurer of the text of the card. */
   measure?: TextMeasurer;
-  /** The name of the type of the node, in the language of the interface. */
-  typeName?: string;
+  /**
+   * The language of the interface.
+   *
+   * The names of the class and the status of the node are read in it.
+   */
+  locale?: string;
 }
 
 /** The element of one node, and the elements of its text. */
@@ -387,7 +401,7 @@ export function toNodeElements(
 ): GraphElement[] {
   const expanded = options.expanded === true;
   const content = nodeCardContent(node, {
-    typeName: options.typeName,
+    locale: options.locale,
     expanded
   });
 
@@ -465,15 +479,27 @@ export function toNodeElement(node: NodeDto, options: NodeElementOptions = {}): 
   return card;
 }
 
-/** The element of one relation. */
-export function toEdgeElement(edge: SubgraphEdgeDto): GraphEdgeElement {
+/**
+ * The element of one relation.
+ *
+ * The label of a relation is the **display name** of its property, in the
+ * language of the interface: the label is what the reader reads, and the key
+ * of the system (`RELATES_TO`) is the last resort — a relation whose
+ * property is not in the ontology keeps its key.
+ */
+export function toEdgeElement(
+  edge: SubgraphEdgeDto,
+  options: { locale?: string } = {}
+): GraphEdgeElement {
+  const locale = options.locale ?? DEFAULT_LOCALE;
+
   return {
     group: 'edges',
     data: {
       id: edge.id,
       source: edge.sourceNodeId,
       target: edge.targetNodeId,
-      label: edge.relationKey,
+      label: displayName(edge.relationDisplayNames, locale, edge.relationKey),
       status: edge.status,
       color: edgeColor(edge.status)
     }
@@ -487,13 +513,14 @@ export interface GraphElementOptions {
   /** The measurer of the text of the cards. */
   measure?: TextMeasurer;
   /**
-   * The name of every type, in the language of the interface.
+   * The language of the interface.
    *
-   * The key is the type key of the node and the value is the **display
-   * name** of the class of the ontology. A type that is not in the map keeps
-   * its key: the card must say something, and the key is what the API sent.
+   * The name of the class of a node, the name of the relation of an edge
+   * and the status of a node are read in it. The API does not negotiate the
+   * language: it sends the whole map of the names and the client picks the
+   * one of its language.
    */
-  typeNames?: ReadonlyMap<string, string>;
+  locale?: string;
 }
 
 /**
@@ -508,7 +535,7 @@ export function toGraphElements(
   options: GraphElementOptions = {}
 ): GraphElement[] {
   const expanded = options.expandedIds ?? new Set<string>();
-  const typeNames = options.typeNames;
+  const locale = options.locale ?? DEFAULT_LOCALE;
 
   const elements: GraphElement[] = [];
 
@@ -517,13 +544,13 @@ export function toGraphElements(
       ...toNodeElements(node, {
         expanded: expanded.has(node.id),
         measure: options.measure,
-        typeName: typeNames?.get(node.typeKey)
+        locale
       })
     );
   }
 
   for (const edge of edges) {
-    elements.push(toEdgeElement(edge));
+    elements.push(toEdgeElement(edge, { locale }));
   }
 
   return elements;
@@ -631,9 +658,11 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       width: '1.5px',
-      'font-size': '8px',
-      // The label of a relation is a key of the system, not a sentence: it
-      // is written in the muted ink.
+      // The relation's name is a phrase, not a key: it has to be read at
+      // a glance, so it is set at the small size and not smaller.
+      'font-size': '11px',
+      // The name of a relation is a secondary text: it is written in the
+      // muted ink, not in the full one.
       color: CARD_META_INK,
       // The label of a relation sits on the **ground** of the canvas: a
       // white plate on a grey canvas would be a hole in the picture.

@@ -61,13 +61,18 @@
   /** The counter that discards the answer of a superseded read. */
   let focusRequest = 0;
 
-  /** The statuses the API accepts (`ListProposalQuerySchema`). */
-  const statusOptions: { value: ProposalStatus; label: string }[] = $derived([
-    { value: 'PENDING', label: t('proposals.statusPending') },
-    { value: 'APPROVED_BY_AUTHOR', label: t('proposals.statusApproved') },
-    { value: 'REJECTED_BY_AUTHOR', label: t('proposals.statusRejected') },
-    { value: 'AUTO_APPLIED', label: t('proposals.statusAutoApplied') }
-  ]);
+  /**
+   * The statuses the API accepts (`ListProposalQuerySchema`).
+   *
+   * The label of a status is the one of the **vocabulary** — the same one
+   * the table of the proposals shows — so the filter and the list never
+   * disagree about the name of a status.
+   */
+  const statusOptions: { value: ProposalStatus; label: string }[] = $derived(
+    (
+      ['PENDING', 'APPROVED_BY_AUTHOR', 'REJECTED_BY_AUTHOR', 'AUTO_APPLIED'] as ProposalStatus[]
+    ).map((value) => ({ value, label: locale.status('proposal', value) }))
+  );
 
   /** The kinds of target the API accepts. */
   const targetTypeOptions: { value: TargetType; label: string }[] = $derived([
@@ -401,7 +406,7 @@
                   </th>
                   <td class="px-3 py-2">
                     <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
-                      {proposal.status}
+                      {locale.status('proposal', proposal.status)}
                     </span>
                   </td>
                   <td class="px-3 py-2 text-right tabular-nums text-muted">

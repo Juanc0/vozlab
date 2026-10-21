@@ -44,9 +44,12 @@ describe('CreateEdgeUseCase', () => {
     const edge = await useCase.execute(input);
 
     expect(edgeRepo.saved).toHaveLength(1);
-    expect(edgeRepo.saved[0]).toBe(edge);
-    expect(edge.sourceNodeId).toBe('node-src');
-    expect(edge.targetNodeId).toBe('node-tgt');
+    expect(edgeRepo.saved[0]).toBe(edge.edge);
+    expect(edge.edge.sourceNodeId).toBe('node-src');
+    expect(edge.edge.targetNodeId).toBe('node-tgt');
+    // The relation is not in the ontology of the workspace: the names are
+    // empty and the client falls back to the key.
+    expect(edge.relationDisplayNames).toEqual({});
     expect(events).toEqual(['EDGE_CREATED']);
   });
 

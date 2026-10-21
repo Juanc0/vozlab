@@ -441,7 +441,7 @@
               {thread.title}
             </button>
             <span class="text-small text-muted">
-              {thread.status}
+              {locale.status('thread', thread.status)}
               {#if thread.status === 'CLOSED'}
                 {t('discussion.closedSuffix')}
               {/if}

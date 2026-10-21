@@ -10,7 +10,8 @@ import { GetEdgeUseCase } from '../../../application/use_cases/GetEdgeUseCase.js
 import { ListEdgesUseCase } from '../../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../../application/use_cases/DeleteEdgeUseCase.js';
-import { Edge } from '../../../domain/entities/Edge.js';
+import type { DisplayNames } from '../../../application/use_cases/DisplayNameCatalog.js';
+import type { Edge } from '../../../domain/entities/Edge.js';
 import { log } from '../../../shared/logger/index.js';
 import { getRequestContext } from './requestContext.js';
 import { sendError, mapDomainError } from './errorResponse.js';
@@ -21,14 +22,20 @@ import { sendError, mapDomainError } from './errorResponse.js';
  *
  * The shape itself lives in `@vozlab/shared-types` (`EdgeDto`) so the PWA
  * can type the responses it consumes.
+ *
+ * The edge carries the **display names** of its relation: the API does not
+ * negotiate the language, it sends the whole map and the client picks the
+ * name of its language. A relation that is not in the ontology carries an
+ * empty map and the client falls back to the key.
  */
-function toEdgeDto(edge: Edge): EdgeDto {
+function toEdgeDto(edge: Edge, relationDisplayNames: DisplayNames): EdgeDto {
   return {
     id: edge.id,
     workspaceId: edge.workspaceId,
     sourceNodeId: edge.sourceNodeId,
     targetNodeId: edge.targetNodeId,
     relationKey: edge.relationKey,
+    relationDisplayNames,
     attributes: edge.attributes,
     authorHash: edge.authorHash.toString(),
     status: edge.status,
@@ -62,7 +69,7 @@ export class EdgeController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const edge = await this.createEdgeUseCase.execute({
+      const { edge, relationDisplayNames } = await this.createEdgeUseCase.execute({
         ...parsed.data,
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
@@ -75,6 +82,7 @@ export class EdgeController {
         sourceNodeId: edge.sourceNodeId,
         targetNodeId: edge.targetNodeId,
         relationKey: edge.relationKey,
+        relationDisplayNames,
         status: edge.status,
         // A new relation starts at zero, but the field belongs to the shape:
         // the subgraph returns the same projection, so a client that just
@@ -98,12 +106,12 @@ export class EdgeController {
     const edgeId = (req.params as { id: string }).id;
 
     try {
-      const edge = await this.getEdgeUseCase.execute({
+      const { edge, relationDisplayNames } = await this.getEdgeUseCase.execute({
         edgeId,
         workspaceId: ctx.workspaceId,
         tid: ctx.tid,
       });
-      return reply.status(200).send({ edge: toEdgeDto(edge) });
+      return reply.status(200).send({ edge: toEdgeDto(edge, relationDisplayNames) });
     } catch (error) {
       return this.handleError(req, reply, error, 'getEdge failed');
     }
@@ -131,7 +139,7 @@ export class EdgeController {
       });
 
       return reply.status(200).send({
-        edges: items.map(toEdgeDto),
+        edges: items.map((named) => toEdgeDto(named.edge, named.relationDisplayNames)),
         nextCursor,
       });
     } catch (error) {
@@ -156,7 +164,7 @@ export class EdgeController {
     const edgeId = (req.params as { id: string }).id;
 
     try {
-      const edge = await this.updateEdgeUseCase.execute({
+      const { edge, relationDisplayNames } = await this.updateEdgeUseCase.execute({
         ...parsed.data,
         edgeId,
         workspaceId: ctx.workspaceId,
@@ -164,7 +172,7 @@ export class EdgeController {
         authorHash: ctx.authorHash,
         reqId: ctx.reqId,
       });
-      return reply.status(200).send({ edge: toEdgeDto(edge) });
+      return reply.status(200).send({ edge: toEdgeDto(edge, relationDisplayNames) });
     } catch (error) {
       return this.handleError(req, reply, error, 'updateEdge failed');
     }

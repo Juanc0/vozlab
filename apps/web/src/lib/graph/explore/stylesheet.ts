@@ -77,9 +77,11 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       width: '1.5px',
-      'font-size': '8px',
-      // The label of a relation is a key of the system, not a sentence: it
-      // is written in the muted ink.
+      // The relation's name is a phrase, not a key: it has to be read at
+      // a glance, so it is set at the small size and not smaller.
+      'font-size': '11px',
+      // The name of a relation is a secondary text: it is written in the
+      // muted ink, not in the full one.
       color: CARD_META_INK,
       'text-background-color': '#f9fafb',
       'text-background-opacity': 0.75,

@@ -236,7 +236,9 @@ describe('the resolution controls of a proposal', () => {
     await fireEvent.click(await screen.findByRole('button', { name: 'Aprobar' }));
 
     await waitFor(() => {
-      expect(screen.getByText('La propuesta está ahora en APPROVED_BY_AUTHOR.')).toBeInTheDocument();
+      expect(
+        screen.getByText('La propuesta está ahora en Aprobada por la autoría.')
+      ).toBeInTheDocument();
     });
   });
 });

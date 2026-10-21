@@ -3,7 +3,11 @@ import { GetNodeWindowUseCase } from '../../src/application/use_cases/GetNodeWin
 import { Node } from '../../src/domain/entities/Node.js';
 import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import type { SubgraphEdge } from '../../src/domain/ports/INodeRepository.js';
-import { makeNodeRepository } from '../support/fakes.js';
+import {
+  makeDisplayNameCatalog,
+  makeNodeRepository,
+  makeOntologyRepository,
+} from '../support/fakes.js';
 
 const WS = 'ws-1';
 const OTHER_WS = 'ws-2';
@@ -38,57 +42,64 @@ function edge(id: string, sourceNodeId: string, targetNodeId: string): SubgraphE
   };
 }
 
+/** The use case under test, with the catalog of the names wired in. */
+function makeUseCase(
+  nodes: Node[] = [],
+  edges: SubgraphEdge[] = []
+): {
+  useCase: GetNodeWindowUseCase;
+  reads: { classes: number; properties: number; workspaces: string[] };
+  windowCalls: Array<{ workspaceId: string; limit: number; tid: string }>;
+} {
+  const { repo, windowCalls } = makeNodeRepository(nodes, { status: 'NOT_FOUND' }, edges);
+  const ontology = makeOntologyRepository();
+  const useCase = new GetNodeWindowUseCase(repo, makeDisplayNameCatalog(ontology));
+  return { useCase, reads: ontology.reads, windowCalls };
+}
+
 describe('GetNodeWindowUseCase', () => {
   it('returns the most recent nodes of the workspace, newest first', async () => {
-    const { repo } = makeNodeRepository([
+    const { useCase } = makeUseCase([
       node('n-1', '2026-01-01T00:00:00.000Z'),
       node('n-3', '2026-01-03T00:00:00.000Z'),
       node('n-2', '2026-01-02T00:00:00.000Z'),
     ]);
-    const useCase = new GetNodeWindowUseCase(repo);
 
     const result = await useCase.execute({ workspaceId: WS, tid: TID });
 
-    expect(result.nodes.map((n) => n.id)).toEqual(['n-3', 'n-2', 'n-1']);
+    expect(result.nodes.map((n) => n.node.id)).toEqual(['n-3', 'n-2', 'n-1']);
   });
 
   it('never leaks a node of another workspace', async () => {
-    const { repo } = makeNodeRepository([
+    const { useCase } = makeUseCase([
       node('mine', '2026-01-02T00:00:00.000Z'),
       node('foreign', '2026-01-03T00:00:00.000Z', OTHER_WS),
     ]);
-    const useCase = new GetNodeWindowUseCase(repo);
 
     const result = await useCase.execute({ workspaceId: WS, tid: TID });
 
-    expect(result.nodes.map((n) => n.id)).toEqual(['mine']);
+    expect(result.nodes.map((n) => n.node.id)).toEqual(['mine']);
   });
 
   it('returns only the relations whose both endpoints are in the window', async () => {
-    const { repo } = makeNodeRepository(
+    const { useCase } = makeUseCase(
       [
         node('n-1', '2026-01-03T00:00:00.000Z'),
         node('n-2', '2026-01-02T00:00:00.000Z'),
         node('n-3', '2026-01-01T00:00:00.000Z'),
       ],
-      { status: 'NOT_FOUND' },
-      [
-        edge('e-inside', 'n-1', 'n-2'),
-        edge('e-dangling', 'n-1', 'n-3'),
-      ]
+      [edge('e-inside', 'n-1', 'n-2'), edge('e-dangling', 'n-1', 'n-3')]
     );
-    const useCase = new GetNodeWindowUseCase(repo);
 
     // The window holds the two newest nodes; `n-3` stays outside it.
     const result = await useCase.execute({ workspaceId: WS, tid: TID, limit: 2 });
 
-    expect(result.nodes.map((n) => n.id)).toEqual(['n-1', 'n-2']);
-    expect(result.edges.map((e) => e.id)).toEqual(['e-inside']);
+    expect(result.nodes.map((n) => n.node.id)).toEqual(['n-1', 'n-2']);
+    expect(result.relations.map((e) => e.relation.id)).toEqual(['e-inside']);
   });
 
   it('clamps the limit to 1..200 and defaults to 100', async () => {
-    const { repo, windowCalls } = makeNodeRepository([]);
-    const useCase = new GetNodeWindowUseCase(repo);
+    const { useCase, windowCalls } = makeUseCase();
 
     await useCase.execute({ workspaceId: WS, tid: TID });
     await useCase.execute({ workspaceId: WS, tid: TID, limit: 0 });
@@ -98,8 +109,7 @@ describe('GetNodeWindowUseCase', () => {
   });
 
   it('scopes the window to the workspace and the tenant', async () => {
-    const { repo, windowCalls } = makeNodeRepository([]);
-    const useCase = new GetNodeWindowUseCase(repo);
+    const { useCase, windowCalls } = makeUseCase();
 
     await useCase.execute({ workspaceId: WS, tid: TID });
 
@@ -107,11 +117,25 @@ describe('GetNodeWindowUseCase', () => {
   });
 
   it('answers an empty workspace with an empty window, not an error', async () => {
-    const { repo } = makeNodeRepository([]);
-    const useCase = new GetNodeWindowUseCase(repo);
+    const { useCase } = makeUseCase();
 
     const result = await useCase.execute({ workspaceId: WS, tid: TID });
 
-    expect(result).toEqual({ nodes: [], edges: [] });
+    expect(result).toEqual({ nodes: [], relations: [] });
+  });
+
+  it('reads the names of the metamodel once, whatever the number of nodes is', async () => {
+    const nodes = Array.from({ length: 200 }, (_, index) =>
+      node(`n-${index}`, `2026-01-01T00:00:${String(index % 60).padStart(2, '0')}.000Z`)
+    );
+    const { useCase, reads } = makeUseCase(nodes);
+
+    await useCase.execute({ workspaceId: WS, tid: TID, limit: 200 });
+
+    // Two reads of the metamodel for two hundred nodes: the names are not
+    // read per node.
+    expect(reads.classes).toBe(1);
+    expect(reads.properties).toBe(1);
+    expect(reads.workspaces).toEqual([WS, WS]);
   });
 });

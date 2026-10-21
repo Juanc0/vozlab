@@ -32,5 +32,14 @@ export {
   resolveLocale,
   writeLocaleCookie
 } from './locale.svelte';
+export { displayName } from './display-name';
+export {
+  statusDictionaries,
+  statusLabel,
+  type StatusDictionary,
+  type StatusLabels,
+  type StatusScope,
+  type StatusValue
+} from './statuses';
 export { en } from './locales/en';
 export { es } from './locales/es';

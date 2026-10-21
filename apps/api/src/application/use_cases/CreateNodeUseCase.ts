@@ -6,9 +6,14 @@ import { INodeRepository } from '../../domain/ports/INodeRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import { CreateNodeInput } from '@vozlab/shared-types';
+import type { NamedNode } from './DisplayNameCatalog.js';
 
 /**
  * Use Case: Create a new Node in the knowledge graph.
+ *
+ * The node carries the display names of its class: the class was read to
+ * validate the creation, so the names come with it and the answer speaks
+ * the language of the reader.
  */
 export class CreateNodeUseCase {
   constructor(
@@ -24,7 +29,7 @@ export class CreateNodeUseCase {
       tid: string;
       reqId?: string;
     }
-  ): Promise<Node> {
+  ): Promise<NamedNode> {
     // FR-06 / US-01 AC#1: the type must exist and be ACTIVE in the
     // workspace's ontology. Validation is ontology-scoped, not identity-scoped,
     // so system agents posting nodes are subject to the same rule.
@@ -63,6 +68,6 @@ export class CreateNodeUseCase {
       title: node.title,
     });
 
-    return node;
+    return { node, typeDisplayNames: { ...cls.displayNames } };
   }
 }

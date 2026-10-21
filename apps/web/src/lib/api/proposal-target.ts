@@ -23,6 +23,8 @@
 
 import type { ApiClient } from './client';
 import type { ProposalDto } from './types';
+import { displayName } from '$lib/i18n/display-name';
+import { DEFAULT_LOCALE } from '$lib/i18n/dictionary';
 
 /** What the app could learn about the target of a proposal. */
 export interface ProposalTarget {
@@ -50,10 +52,16 @@ const UNKNOWN_TARGET: ProposalTarget = { maintainerHash: null, label: null, know
  * A failed read is **not** an error the caller has to handle: the target is
  * simply unknown, and the UI degrades to the weaker hint. The caller shows
  * the read failure separately when it wants to.
+ *
+ * The label is the **name** of the target in the language of the interface:
+ * the display name of the relation, the display name of the class of the
+ * ontology, and the title of the node. The API sends the whole map of the
+ * names and the client picks the one of its language.
  */
 export async function resolveProposalTarget(
   client: ApiClient,
-  proposal: ProposalDto
+  proposal: ProposalDto,
+  locale: string = DEFAULT_LOCALE
 ): Promise<ProposalTarget> {
   try {
     switch (proposal.targetType) {
@@ -67,23 +75,42 @@ export async function resolveProposalTarget(
           : UNKNOWN_TARGET;
       }
       case 'EDGE': {
-        const body = await client.request<{ edge: { authorHash: string; relationKey: string } }>({
+        const body = await client.request<{
+          edge: {
+            authorHash: string;
+            relationKey: string;
+            relationDisplayNames: Record<string, string>;
+          };
+        }>({
           path: `/edges/${encodeURIComponent(proposal.targetId)}`
         });
         const edge = body.edge;
         return edge
-          ? { maintainerHash: edge.authorHash, label: edge.relationKey, known: true }
+          ? {
+              maintainerHash: edge.authorHash,
+              label: displayName(edge.relationDisplayNames, locale, edge.relationKey),
+              known: true
+            }
           : UNKNOWN_TARGET;
       }
       case 'ONTOLOGY': {
         const body = await client.request<{
-          classes?: { id: string; proposedBy: string; systemKey: string }[];
+          classes?: {
+            id: string;
+            proposedBy: string;
+            systemKey: string;
+            displayNames: Record<string, string>;
+          }[];
         }>({
           path: '/ontology'
         });
         const found = (body.classes ?? []).find((entry) => entry.id === proposal.targetId);
         return found
-          ? { maintainerHash: found.proposedBy, label: found.systemKey, known: true }
+          ? {
+              maintainerHash: found.proposedBy,
+              label: displayName(found.displayNames, locale, found.systemKey),
+              known: true
+            }
           : UNKNOWN_TARGET;
       }
       default:

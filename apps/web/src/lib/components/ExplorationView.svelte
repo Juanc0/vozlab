@@ -17,13 +17,6 @@
     edges?: SubgraphEdgeDto[];
     /** The id of the selected node, or `null` when nothing is selected. */
     selectedNodeId?: string | null;
-    /**
-     * The name of every type, in the language of the interface.
-     *
-     * The key is the type key of the node and the value is the **display
-     * name** of the class of the ontology.
-     */
-    typeNames?: ReadonlyMap<string, string>;
     /** Called when the user selects a node in the view. */
     onselect?: (nodeId: string | null) => void;
     /** Whether the window is being read. */
@@ -36,7 +29,6 @@
     nodes = [],
     edges = [],
     selectedNodeId = null,
-    typeNames = new Map<string, string>(),
     onselect,
     loading = false,
     error = null
@@ -240,7 +232,6 @@
       {expandedIds}
       {edgeStyle}
       {selectedNodeId}
-      {typeNames}
       presentedNodeId={presented}
       onselect={selectNode}
       ontoggle={toggleNode}

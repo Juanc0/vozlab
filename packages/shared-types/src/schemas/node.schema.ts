@@ -102,6 +102,19 @@ export interface NodeDto {
   id: string;
   workspaceId: string;
   typeKey: string;
+  /**
+   * The **display names** of the class of the node, by language.
+   *
+   * The API does not negotiate the language: it sends the whole map and the
+   * client picks the name of its own language (and falls back to
+   * `typeKey`). The shape is the one the ontology already uses
+   * (`meta.ontology_classes.display_names`).
+   *
+   * A node whose class is not in the active ontology of the workspace — a
+   * class that is still `PROPOSED`, or a `typeKey` with no row at all —
+   * carries an **empty map**, never `null` and never a partial map.
+   */
+  typeDisplayNames: Record<string, string>;
   title: string;
   description: string | null;
   attributes: Record<string, unknown>;

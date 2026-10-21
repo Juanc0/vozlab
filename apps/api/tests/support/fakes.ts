@@ -2,6 +2,7 @@ import type { Edge } from '../../src/domain/entities/Edge.js';
 import type { Node } from '../../src/domain/entities/Node.js';
 import type { DatatypeProperty } from '../../src/domain/entities/DatatypeProperty.js';
 import type { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
+import type { OntologyClass } from '../../src/domain/entities/OntologyClass.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 import type { IEdgeRepository } from '../../src/domain/ports/IEdgeRepository.js';
 import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
@@ -9,6 +10,7 @@ import type { INodeRepository } from '../../src/domain/ports/INodeRepository.js'
 import type { NearestNeighborsResult, SubgraphEdge } from '../../src/domain/ports/INodeRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
+import { DisplayNameCatalog } from '../../src/application/use_cases/DisplayNameCatalog.js';
 
 /**
  * Shared in-memory fakes for application-layer use-case tests.
@@ -96,11 +98,36 @@ export function makeNodeRepository(
       const node = byId.get(id);
       return node && node.workspaceId === workspaceId ? node : null;
     },
-    async listByWorkspace() {
-      return { items: [], nextCursor: null };
+    async listByWorkspace(workspaceId, opts) {
+      const items = nodes
+        .filter((node) => node.workspaceId === workspaceId)
+        .sort(
+          (a, b) =>
+            b.createdAt.getTime() - a.createdAt.getTime() ||
+            (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
+        )
+        .slice(0, opts.limit);
+
+      return { items, nextCursor: null };
     },
-    async getSubgraph() {
-      return { nodes: [], edges: [] };
+    async getSubgraph(rootId, workspaceId, opts) {
+      const root = byId.get(rootId);
+
+      if (!root || root.workspaceId !== workspaceId) {
+        return { nodes: [], edges: [] };
+      }
+
+      const covered = nodes
+        .filter((node) => node.workspaceId === workspaceId)
+        .slice(0, opts.limit);
+      const inCovered = new Set(covered.map((node) => node.id));
+
+      return {
+        nodes: covered,
+        edges: edges.filter(
+          (edge) => inCovered.has(edge.sourceNodeId) && inCovered.has(edge.targetNodeId)
+        ),
+      };
     },
     // The exploration window: the newest nodes of the workspace and the
     // relations among them (both endpoints inside the window).
@@ -168,21 +195,27 @@ export function makeEdgeRepository(): FakeEdgeRepository {
   const saved: Edge[] = [];
   const appliedDeltas: FakeEdgeRepository['appliedDeltas'] = [];
   const repointed: FakeEdgeRepository['repointed'] = [];
+  const byId = new Map<string, Edge>();
   const repo: IEdgeRepository = {
-    async findById() {
-      return null;
+    async findById(id) {
+      return byId.get(id) ?? null;
     },
-    async findByIdInWorkspace() {
-      return null;
+    async findByIdInWorkspace(id, workspaceId) {
+      const edge = byId.get(id);
+      return edge && edge.workspaceId === workspaceId ? edge : null;
     },
-    async listAllByWorkspace() {
-      return [];
+    async listAllByWorkspace(workspaceId) {
+      return saved.filter((edge) => edge.workspaceId === workspaceId);
     },
-    async listByWorkspace() {
-      return { items: [], nextCursor: null };
+    async listByWorkspace(workspaceId) {
+      return {
+        items: saved.filter((edge) => edge.workspaceId === workspaceId),
+        nextCursor: null,
+      };
     },
     async save(edge) {
       saved.push(edge);
+      byId.set(edge.id, edge);
     },
     async update() {},
     async softDelete() {},
@@ -201,21 +234,37 @@ export interface FakeOntologyRepository {
   repo: IOntologyRepository;
   activated: string[];
   deltasApplied: string[];
+  /**
+   * The reads of the active metamodel.
+   *
+   * The counters are the proof that the names of the ontology are read
+   * **once** per answer: a window of two hundred nodes reads the classes
+   * once and the properties once.
+   */
+  reads: {
+    classes: number;
+    properties: number;
+    /** The workspace of every read — the scoping is visible. */
+    workspaces: string[];
+  };
 }
 
 /**
- * In-memory `IOntologyRepository`; only `findObjectProperty` and
- * `findActiveDatatypeProperties` are behaviourful.
+ * In-memory `IOntologyRepository`; the metamodel reads are behaviourful.
  *
- * `findActiveDatatypeProperties` mirrors the adapter: only the ACTIVE rows
- * are visible to the consumers, a proposal awaiting approval stays hidden.
+ * `findActiveClasses` and `findActiveObjectProperties` mirror the adapter:
+ * only the ACTIVE rows of the **request workspace** are visible — a class
+ * of another workspace never leaks, and a proposal stays hidden.
  */
 export function makeOntologyRepository(
   objectProperty: ObjectProperty | null = null,
-  datatypeProperties: DatatypeProperty[] = []
+  datatypeProperties: DatatypeProperty[] = [],
+  classes: OntologyClass[] = [],
+  objectProperties: ObjectProperty[] = []
 ): FakeOntologyRepository {
   const activated: string[] = [];
   const deltasApplied: string[] = [];
+  const reads = { classes: 0, properties: 0, workspaces: [] as string[] };
   const repo: IOntologyRepository = {
     async findClassById() {
       return null;
@@ -223,8 +272,12 @@ export function makeOntologyRepository(
     async findClassByKey() {
       return null;
     },
-    async findActiveClasses() {
-      return [];
+    async findActiveClasses(workspaceId) {
+      reads.classes += 1;
+      reads.workspaces.push(workspaceId);
+      return classes.filter(
+        (cls) => cls.status === 'ACTIVE' && cls.workspaceId === workspaceId
+      );
     },
     async findDatatypeProperties() {
       return datatypeProperties;
@@ -235,8 +288,12 @@ export function makeOntologyRepository(
     async findObjectProperty() {
       return objectProperty;
     },
-    async findActiveObjectProperties() {
-      return [];
+    async findActiveObjectProperties(workspaceId) {
+      reads.properties += 1;
+      reads.workspaces.push(workspaceId);
+      return objectProperties.filter(
+        (property) => property.status === 'ACTIVE' && property.workspaceId === workspaceId
+      );
     },
     async saveClass() {},
     async saveDatatypeProperty() {},
@@ -248,5 +305,16 @@ export function makeOntologyRepository(
       activated.push(targetId);
     },
   };
-  return { repo, activated, deltasApplied };
+  return { repo, activated, deltasApplied, reads };
+}
+
+/**
+ * The catalog of the display names, over the fake ontology.
+ *
+ * The tests wire it exactly as the composition root does.
+ */
+export function makeDisplayNameCatalog(
+  ontology: FakeOntologyRepository
+): DisplayNameCatalog {
+  return new DisplayNameCatalog(ontology.repo);
 }

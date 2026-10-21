@@ -416,10 +416,6 @@ export const en: Dictionary<typeof es> = {
     filterStatus: 'Status',
     filterTarget: 'Target',
     filterKind: 'Kind',
-    statusPending: 'Pending',
-    statusApproved: 'Approved by the author',
-    statusRejected: 'Rejected by the author',
-    statusAutoApplied: 'Auto-applied',
     targetNode: 'Node',
     targetRelation: 'Relation',
     targetOntology: 'Ontology class',
@@ -602,5 +598,40 @@ export const en: Dictionary<typeof es> = {
     duplicateAttributeKey: 'Two rows carry the same key.',
     attributeCannotBeEmptied:
       'An existing attribute cannot be emptied: the API merges the attributes, it cannot remove one.'
+  },
+
+  /**
+   * The labels of the **statuses**.
+   *
+   * A status is a value of the domain, not a sentence: the labels live in a
+   * map per scope, and each map is typed against the vocabulary of the shared
+   * contract. A status that is missing is a **compile error**, here and in
+   * the Spanish dictionary alike.
+   */
+  statuses: {
+    node: {
+      DRAFT: 'Draft',
+      PENDING: 'Pending',
+      ACTIVE: 'Active',
+      MERGED: 'Merged',
+      DEPRECATED: 'Deprecated',
+      REJECTED: 'Rejected'
+    },
+    edge: {
+      DRAFT: 'Draft',
+      PENDING: 'Pending',
+      ACTIVE: 'Active',
+      REJECTED: 'Rejected'
+    },
+    proposal: {
+      PENDING: 'Pending',
+      APPROVED_BY_AUTHOR: 'Approved by the author',
+      REJECTED_BY_AUTHOR: 'Rejected by the author',
+      AUTO_APPLIED: 'Applied automatically'
+    },
+    thread: {
+      OPEN: 'Open',
+      CLOSED: 'Closed'
+    }
   }
 };

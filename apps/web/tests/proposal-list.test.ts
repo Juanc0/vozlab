@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildProposalQuery } from '$lib/api/proposals';
 import { json, renderGovernance, requestedUrls } from './harness/governance';
@@ -130,6 +130,25 @@ describe('the proposal list', () => {
       expect(screen.getByText('The description names the wrong faculty.')).toBeInTheDocument();
     });
     expect(screen.getByText('The title names the wrong building.')).toBeInTheDocument();
+  });
+
+  it('shows the status of a proposal in the language of the interface', async () => {
+    const rejected = {
+      ...PROPOSAL,
+      id: '16161616-1616-4161-8161-161616161616',
+      status: 'REJECTED_BY_AUTHOR'
+    };
+    const fetchMock = vi.fn(async () => json({ proposals: [rejected], nextCursor: null }));
+    renderGovernance(Proposals, { fetch: fetchMock });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Propuesta de edición de nodo/i })).toBeInTheDocument();
+    });
+
+    // The label of the status, not the value of the system.
+    const table = within(screen.getByRole('table'));
+    expect(table.getByText('Rechazada por la autoría')).toBeInTheDocument();
+    expect(table.queryByText('REJECTED_BY_AUTHOR')).not.toBeInTheDocument();
   });
 
   it('says so when no proposal matches', async () => {

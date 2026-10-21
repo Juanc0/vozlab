@@ -21,7 +21,8 @@ export type SubgraphQueryInput = z.infer<typeof SubgraphQuerySchema>;
  *
  * This is deliberately narrower than `EdgeDto`: the subgraph projection
  * carries only what a canvas needs to draw and vote on a relation — the
- * endpoints, the relation key, the status and the community score. The workspace, the attributes, the author
+ * endpoints, the relation key, the display names of the relation, the status
+ * and the community score. The workspace, the attributes, the author
  * pseudonym, the score and the timestamps are not part of it.
  *
  * The PWA draws the subgraph, so the shape has to be shared rather than
@@ -32,6 +33,14 @@ export interface SubgraphEdgeDto {
   sourceNodeId: string;
   targetNodeId: string;
   relationKey: string;
+  /**
+   * The **display names** of the relation, by language.
+   *
+   * The same map the full edge carries (`EdgeDto.relationDisplayNames`): the
+   * canvas paints the label of a relation, and the label is a name in the
+   * language of the reader, not the key of the system.
+   */
+  relationDisplayNames: Record<string, string>;
   status: EdgeStatus;
   /** The community score of the relation; the canvas votes on it. */
   communityScore: number;

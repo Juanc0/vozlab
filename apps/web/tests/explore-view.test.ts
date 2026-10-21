@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ExplorationView from '$lib/components/ExplorationView.svelte';
-import { EDGE, EDGE_C, NEW_NODE, NODE_A, NODE_B, NODE_C } from './fixtures/graph';
+import { EDGE, EDGE_C, NEW_NODE, NODE_A, NODE_B, NODE_C, RELATION_NAMES } from './fixtures/graph';
 import { localeContext } from './harness/locale';
 
 /**
@@ -336,7 +336,7 @@ describe('the exploration view', () => {
     await waitFor(() => {
       expect(screen.getByRole('status')).toBeInTheDocument();
     });
-    expect(screen.getByText(EDGE.relationKey)).toBeInTheDocument();
+    expect(screen.getByText(RELATION_NAMES.SUGGESTS.es)).toBeInTheDocument();
     expect(screen.getByText(`De «${NODE_A.title}» a «${NODE_B.title}»`)).toBeInTheDocument();
   });
 

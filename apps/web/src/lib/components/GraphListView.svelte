@@ -3,6 +3,7 @@
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
   import type { TranslationKey } from '$lib/i18n';
+  import { displayName } from '$lib/i18n/display-name';
   import { formatNumber } from '$lib/i18n';
   import { edgeSelection, nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { getLocaleState } from '$lib/state/context';
@@ -146,8 +147,10 @@
                   {node.title}
                 </button>
               </th>
-              <td class="px-3 py-2 text-muted">{node.typeKey}</td>
-              <td class="px-3 py-2 text-muted">{node.status}</td>
+              <td class="px-3 py-2 text-muted">
+                {displayName(node.typeDisplayNames, locale.locale, node.typeKey)}
+              </td>
+              <td class="px-3 py-2 text-muted">{locale.status('node', node.status)}</td>
             </tr>
           {:else}
             <tr>
@@ -205,7 +208,7 @@
                   aria-current={isSelectedEdge(edge.id) ? 'true' : undefined}
                   onclick={() => onselect?.(edgeSelection(edge.id))}
                 >
-                  {edge.relationKey}
+                  {displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)}
                 </button>
               </th>
               <td class="px-3 py-2">
@@ -226,7 +229,7 @@
                   {titleOf(edge.targetNodeId)}
                 </button>
               </td>
-              <td class="px-3 py-2 text-muted">{edge.status}</td>
+              <td class="px-3 py-2 text-muted">{locale.status('edge', edge.status)}</td>
               {#if ledger}
                 <td class="px-3 py-2">
                   <VoteButtons
@@ -234,7 +237,9 @@
                     targetId={edge.id}
                     targetType="EDGE"
                     score={edge.communityScore}
-                    label={t('graph.voteRelationLabel', { relationKey: edge.relationKey })}
+                    label={t('graph.voteRelationLabel', {
+                      relationKey: displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)
+                    })}
                     reconcile={
                       reconcileEdge
                         ? () => reconcileEdge(edge.id)
@@ -248,7 +253,9 @@
                   <button
                     type="button"
                     class="btn btn-secondary"
-                    aria-label={t('graph.suggestCorrectionOfRelation', { relationKey: edge.relationKey })}
+                    aria-label={t('graph.suggestCorrectionOfRelation', {
+                      relationKey: displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)
+                    })}
                     onclick={() => onpropose(edge)}
                   >
                     {t('graph.suggestCorrection')}

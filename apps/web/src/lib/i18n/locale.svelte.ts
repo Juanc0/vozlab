@@ -27,6 +27,7 @@ import {
   type TranslationParams,
   type Translate
 } from './dictionary';
+import { statusLabel, type StatusScope } from './statuses';
 import { en } from './locales/en';
 import { es } from './locales/es';
 
@@ -98,6 +99,22 @@ export class LocaleState {
     (): Translate =>
       (key: TranslationKey, params?: TranslationParams): string =>
         interpolate(dictionaries[this.locale][key], params)
+  );
+
+  /**
+   * The label of a **status**, in the language of the interface.
+   *
+   * A status is a value of the domain, not a sentence: it is read from the
+   * map of its scope (`statuses.node`, `statuses.proposal`, …) and not from
+   * the copy of the dictionary.
+   *
+   * An unknown scope or an unknown value falls back to the **raw value**:
+   * a status that was added to the contract before the dictionary was
+   * updated must not break the interface.
+   */
+  status = $derived.by(
+    (): ((scope: StatusScope, value: string) => string) =>
+      (scope: StatusScope, value: string): string => statusLabel(this.locale, scope, value)
   );
 
   /**

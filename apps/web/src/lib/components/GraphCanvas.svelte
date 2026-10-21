@@ -12,14 +12,6 @@
     /** The id of the selected node, or `null` when nothing is selected. */
     selectedNodeId?: string | null;
     /**
-     * The name of every type, in the language of the interface.
-     *
-     * The key is the type key of the node and the value is the **display
-     * name** of the class of the ontology: the meta line of a card says
-     * "Problema", not "Problem".
-     */
-    typeNames?: ReadonlyMap<string, string>;
-    /**
      * The id of the node the view centres on when the picture does not fit.
      *
      * It is the root of the subgraph: the card of the node the reader chose
@@ -36,7 +28,6 @@
     nodes = [],
     edges = [],
     selectedNodeId = null,
-    typeNames = new Map<string, string>(),
     rootNodeId = null,
     onselect,
     description
@@ -116,7 +107,7 @@
     const currentNodes = nodes;
     const currentEdges = edges;
     const currentRoot = rootNodeId;
-    const currentTypeNames = typeNames;
+    const currentLocale = locale.locale;
 
     if (graph === null) {
       return;
@@ -124,7 +115,7 @@
 
     graph.setElements(currentNodes, currentEdges, {
       focusNodeId: currentRoot,
-      typeNames: currentTypeNames
+      locale: currentLocale
     });
   });
 

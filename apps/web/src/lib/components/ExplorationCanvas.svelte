@@ -5,6 +5,7 @@
   import type { ExplorationInstance, RenderedBox } from '$lib/graph/explore/instance';
   import { formatAttributeValue } from '$lib/graph/elements';
   import { ensureTitleFont } from '$lib/graph/node-card';
+  import { displayName } from '$lib/i18n/display-name';
   import { formatNumber } from '$lib/i18n';
   import { getLocaleState } from '$lib/state/context';
 
@@ -21,14 +22,6 @@
     selectedNodeId?: string | null;
     /** The id of the node the view presents. */
     presentedNodeId?: string | null;
-    /**
-     * The name of every type, in the language of the interface.
-     *
-     * The key is the type key of the node and the value is the **display
-     * name** of the class of the ontology: the meta line of a card says
-     * "Problema", not "Problem".
-     */
-    typeNames?: ReadonlyMap<string, string>;
     /** Called when the user selects (or clears) a node in the canvas. */
     onselect?: (nodeId: string | null) => void;
     /** Called when the user expands or collapses a node. */
@@ -42,7 +35,6 @@
     edgeStyle = 'bezier',
     selectedNodeId = null,
     presentedNodeId = null,
-    typeNames = new Map<string, string>(),
     onselect,
     ontoggle
   }: Props = $props();
@@ -213,7 +205,7 @@
     const currentExpanded = expandedIds;
     const currentStyle = edgeStyle;
     const currentPresented = presentedNodeId;
-    const currentTypeNames = typeNames;
+    const currentLocale = locale.locale;
 
     if (graph === null) {
       return;
@@ -224,7 +216,7 @@
       edgeStyle: currentStyle,
       presentedNodeId: currentPresented,
       pinned,
-      typeNames: currentTypeNames
+      locale: currentLocale
     });
 
     moveBadges(graph.positions());
@@ -332,10 +324,21 @@
    * The name of the type of a node, in the language of the interface.
    *
    * It is the **display name** of the class of the ontology: the card and
-   * the preview say the same thing.
+   * the preview say the same thing. The DTO carries the whole map of the
+   * names and the client picks the one of its language.
    */
   function typeNameOf(node: NodeDto): string {
-    return typeNames.get(node.typeKey) ?? node.typeKey;
+    return displayName(node.typeDisplayNames, locale.locale, node.typeKey);
+  }
+
+  /**
+   * The name of the relation of an edge, in the language of the interface.
+   *
+   * The same rule as the class of a node: the display name of the property,
+   * and the key of the system when the ontology does not know it.
+   */
+  function relationNameOf(edge: SubgraphEdgeDto): string {
+    return displayName(edge.relationDisplayNames, locale.locale, edge.relationKey);
   }
 
   /** The attributes of the node of the preview. */
@@ -492,7 +495,9 @@
     >
       {#if previewNode !== null}
         <p class="font-semibold">{previewNode.title}</p>
-        <p class="mt-0.5 text-muted">{typeNameOf(previewNode)} · {previewNode.status}</p>
+        <p class="mt-0.5 text-muted">
+          {typeNameOf(previewNode)} · {locale.status('node', previewNode.status)}
+        </p>
         <p class="mt-2 whitespace-pre-line">
           {previewNode.description?.trim() !== ''
             ? previewNode.description
@@ -509,7 +514,7 @@
           <p class="mt-2 text-muted">{t('explore.previewNoAttributes')}</p>
         {/if}
       {:else if previewEdge !== null}
-        <p class="font-semibold">{previewEdge.relationKey}</p>
+        <p class="font-semibold">{relationNameOf(previewEdge)}</p>
         <p class="mt-0.5 text-muted">
           {t('explore.previewEndpoints', {
             source: titleOf(previewEdge.sourceNodeId),
@@ -517,7 +522,7 @@
           })}
         </p>
         <p class="mt-2 text-muted">
-          {previewEdge.status} · {t('explore.previewScore', {
+          {locale.status('edge', previewEdge.status)} · {t('explore.previewScore', {
             score: formatNumber(locale.locale, previewEdge.communityScore)
           })}
         </p>

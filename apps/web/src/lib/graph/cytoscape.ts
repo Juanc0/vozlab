@@ -103,12 +103,12 @@ export interface GraphElementsOptions {
    */
   focusNodeId?: string | null;
   /**
-   * The name of every type, in the language of the interface.
+   * The language of the interface.
    *
-   * The key is the type key of the node and the value is the **display
-   * name** of the class of the ontology.
+   * The name of the class of a node, the name of the relation of an edge
+   * and the status of a node are read in it.
    */
-  typeNames?: ReadonlyMap<string, string>;
+  locale?: string;
 }
 
 /** The options of {@link createGraphInstance}. */
@@ -169,7 +169,7 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
       // The elements are patched, not re-created: the instance (and its
       // viewport) survives a new subgraph.
       core.elements().remove();
-      core.add(toGraphElements(nodes, edges, { typeNames: elementOptions.typeNames }));
+      core.add(toGraphElements(nodes, edges, { locale: elementOptions.locale }));
 
       // The text of a card hangs under the card: it is placed before the
       // layout, and the layout moves the card and its text together.

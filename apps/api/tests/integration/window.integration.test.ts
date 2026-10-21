@@ -208,6 +208,7 @@ describe('the exploration window integration', () => {
       'id',
       'workspaceId',
       'typeKey',
+      'typeDisplayNames',
       'title',
       'description',
       'attributes',
@@ -222,8 +223,31 @@ describe('the exploration window integration', () => {
       'sourceNodeId',
       'targetNodeId',
       'relationKey',
+      'relationDisplayNames',
       'status',
       'communityScore',
     ]);
+  });
+
+  it('carries the display names of the class and of the relation', async () => {
+    const response = await windowOf('10');
+    const body = response.json() as {
+      nodes: Array<{ typeKey: string; typeDisplayNames: Record<string, string> }>;
+      edges: Array<{ relationKey: string; relationDisplayNames: Record<string, string> }>;
+    };
+
+    // The seeded ontology of the workspace: `Problem` is "Problema" and
+    // `RELATES_TO` is "Se relaciona con".
+    for (const node of body.nodes) {
+      expect(node.typeDisplayNames).toEqual(
+        expect.objectContaining({ en: expect.any(String), es: expect.any(String) })
+      );
+    }
+
+    for (const edge of body.edges) {
+      expect(edge.relationDisplayNames).toEqual(
+        expect.objectContaining({ en: expect.any(String), es: expect.any(String) })
+      );
+    }
   });
 });

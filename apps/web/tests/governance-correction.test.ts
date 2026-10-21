@@ -43,6 +43,7 @@ const RELATION: CorrectionSnapshot = edgeSnapshot({
   sourceNodeId: EDGE.sourceNodeId,
   targetNodeId: EDGE.targetNodeId,
   relationKey: EDGE.relationKey,
+  relationDisplayNames: EDGE.relationDisplayNames,
   attributes: { weight: 2, confident: true },
   authorHash: 'a'.repeat(64),
   status: EDGE.status,

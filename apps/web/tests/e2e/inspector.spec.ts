@@ -42,9 +42,9 @@ test('the inspector shows the node and the relation, and the relation can be edi
   await expect(inspector.getByText('A problem with a description.')).toBeVisible();
 
   // The relation is picked in the list: the inspector shows it.
-  await page.getByRole('button', { name: 'RELATES_TO' }).first().click();
+  await page.getByRole('button', { name: 'Se relaciona con' }).first().click();
 
-  await expect(inspector.getByRole('heading', { name: 'RELATES_TO' })).toBeVisible();
+  await expect(inspector.getByRole('heading', { name: 'Se relaciona con' })).toBeVisible();
   await expect(inspector.getByText(node.title)).toBeVisible();
   await expect(inspector.getByText(idea.title)).toBeVisible();
 

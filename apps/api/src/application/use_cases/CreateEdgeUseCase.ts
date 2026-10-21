@@ -7,6 +7,7 @@ import { IEdgeRepository } from '../../domain/ports/IEdgeRepository.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import type { NamedEdge } from './DisplayNameCatalog.js';
 
 export type CreateEdgeInput = CreateEdgeDto & {
   workspaceId: string;
@@ -19,6 +20,9 @@ export type CreateEdgeInput = CreateEdgeDto & {
  * Use Case: connect two existing nodes with a typed, directed edge (RF-08).
  * Validates the relation against the active ontology's domain/range before
  * persisting; the edge is born in `PENDING` (governance applies).
+ *
+ * The relation carries the display names of its property: the property was
+ * read to validate the creation, so the names come with it.
  */
 export class CreateEdgeUseCase {
   constructor(
@@ -28,7 +32,7 @@ export class CreateEdgeUseCase {
     private readonly eventPublisher: IEventPublisher
   ) {}
 
-  async execute(input: CreateEdgeInput): Promise<Edge> {
+  async execute(input: CreateEdgeInput): Promise<NamedEdge> {
     const source = await this.nodeRepo.findById(input.sourceNodeId, input.tid);
     const target = await this.nodeRepo.findById(input.targetNodeId, input.tid);
     if (!source || !target) {
@@ -78,6 +82,14 @@ export class CreateEdgeUseCase {
       workspaceId: edge.workspaceId,
     });
 
-    return edge;
+    return {
+      edge,
+      // Only an ACTIVE property has names: a relation whose property is
+      // still a proposal carries an empty map, exactly as the catalog says.
+      relationDisplayNames:
+        property !== null && property.status === 'ACTIVE'
+          ? { ...property.displayNames }
+          : {},
+    };
   }
 }

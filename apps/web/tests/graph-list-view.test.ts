@@ -17,18 +17,20 @@ describe('the list view of the subgraph', () => {
 
     expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
-    expect(within(nodeTable).getByText('Problem')).toBeInTheDocument();
+    // The **display names** of the classes, in the language of the interface.
+    expect(within(nodeTable).getByText('Problema')).toBeInTheDocument();
     expect(within(nodeTable).getByText('Idea')).toBeInTheDocument();
-    expect(within(nodeTable).getByText('ACTIVE')).toBeInTheDocument();
-    expect(within(nodeTable).getByText('PENDING')).toBeInTheDocument();
+    // The **labels** of the statuses, not the values of the system.
+    expect(within(nodeTable).getByText('Activo')).toBeInTheDocument();
+    expect(within(nodeTable).getByText('Pendiente')).toBeInTheDocument();
   });
 
-  it('lists every relation with its key and its endpoints', () => {
+  it('lists every relation with its name and its endpoints', () => {
     render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE] } });
 
     const [, relationTable] = screen.getAllByRole('table');
 
-    expect(within(relationTable).getByRole('rowheader', { name: 'SUGGESTS' })).toBeInTheDocument();
+    expect(within(relationTable).getByRole('rowheader', { name: 'Sugiere' })).toBeInTheDocument();
     expect(within(relationTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     expect(within(relationTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
   });
@@ -56,7 +58,7 @@ describe('the list view of the subgraph', () => {
 
     const [, relationTable] = screen.getAllByRole('table');
 
-    expect(within(relationTable).getByRole('button', { name: 'SUGGESTS' })).toHaveAttribute(
+    expect(within(relationTable).getByRole('button', { name: 'Sugiere' })).toHaveAttribute(
       'aria-current',
       'true'
     );
@@ -77,7 +79,7 @@ describe('the list view of the subgraph', () => {
     render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
 
     const [, relationTable] = screen.getAllByRole('table');
-    await fireEvent.click(within(relationTable).getByRole('button', { name: 'SUGGESTS' }));
+    await fireEvent.click(within(relationTable).getByRole('button', { name: 'Sugiere' }));
 
     expect(onselect).toHaveBeenCalledWith({ kind: 'edge', id: EDGE.id });
   });

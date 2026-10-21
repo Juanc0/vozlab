@@ -85,7 +85,7 @@ test('a correction is proposed through the UI and the target is unchanged until 
 
   // The maintainer of the target resolves it.
   await page.getByRole('button', { name: 'Aprobar' }).click();
-  await expect(page.getByText('La propuesta está ahora en APPROVED_BY_AUTHOR.')).toBeVisible();
+  await expect(page.getByText('La propuesta está ahora en Aprobada por la autoría.')).toBeVisible();
 
   // The target is really changed — read back through the API.
   const updated = await api.getNode(node.id);
@@ -115,10 +115,11 @@ test('a correction of a relation is proposed through the UI', async ({ page, api
     .click();
 
   const table = page.getByRole('region', { name: 'Las relaciones del subgrafo' });
-  await expect(table.getByRole('rowheader', { name: 'RELATES_TO' })).toBeVisible();
+  // The relation is named in the language of the interface.
+  await expect(table.getByRole('rowheader', { name: 'Se relaciona con' })).toBeVisible();
 
   await table
-    .getByRole('button', { name: 'Proponer una corrección de la relación RELATES_TO' })
+    .getByRole('button', { name: 'Proponer una corrección de la relación Se relaciona con' })
     .click();
 
   const dialog = page.getByRole('dialog', { name: 'Proponer una corrección' });
@@ -145,7 +146,7 @@ test('a correction of a relation is proposed through the UI', async ({ page, api
   await expect(page.getByRole('heading', { name: 'Cambio propuesto' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Aprobar' }).click();
-  await expect(page.getByText('La propuesta está ahora en APPROVED_BY_AUTHOR.')).toBeVisible();
+  await expect(page.getByText('La propuesta está ahora en Aprobada por la autoría.')).toBeVisible();
 
   const updated = await api.getEdge(edge.id);
   expect(updated.attributes).toEqual({ weight: 5 });

@@ -51,6 +51,19 @@ export interface EdgeDto {
   sourceNodeId: string;
   targetNodeId: string;
   relationKey: string;
+  /**
+   * The **display names** of the relation, by language.
+   *
+   * The API does not negotiate the language: it sends the whole map and the
+   * client picks the name of its own language (and falls back to
+   * `relationKey`). The shape is the one the ontology already uses
+   * (`meta.object_properties.display_names`).
+   *
+   * A relation whose property is not in the active ontology of the
+   * workspace carries an **empty map**, never `null` and never a partial
+   * map.
+   */
+  relationDisplayNames: Record<string, string>;
   attributes: Record<string, unknown>;
   /** The opaque per-user pseudonym of the author (ADR-0013). */
   authorHash: string;

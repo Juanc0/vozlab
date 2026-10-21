@@ -9,10 +9,28 @@ import type { NodeDto, ProposalDto, SubgraphEdgeDto } from '$lib/api/types';
 
 export const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 
+/**
+ * The display names of the classes of the seeded ontology.
+ *
+ * The API sends the **whole map** and the client picks the name of its
+ * language: the card of a node says "Problema" in Spanish and "Problem" in
+ * English.
+ */
+export const PROBLEM_NAMES = { en: 'Problem', es: 'Problema' };
+export const IDEA_NAMES = { en: 'Idea', es: 'Idea' };
+
+/** The display names of the relations of the seeded ontology. */
+export const RELATION_NAMES = {
+  SUGGESTS: { en: 'Suggests', es: 'Sugiere' },
+  INFORMS: { en: 'Informs', es: 'Informa' },
+  SOLVES: { en: 'Solves', es: 'Resuelve' }
+};
+
 export const NODE_A: NodeDto = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   workspaceId: WORKSPACE_ID,
   typeKey: 'Problem',
+  typeDisplayNames: PROBLEM_NAMES,
   title: 'The campus shuttle leaves every hour',
   description: 'Reported by the students of the faculty.',
   attributes: { source: 'runbook', severity: 3 },
@@ -27,6 +45,7 @@ export const NODE_B: NodeDto = {
   id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workspaceId: WORKSPACE_ID,
   typeKey: 'Idea',
+  typeDisplayNames: IDEA_NAMES,
   title: 'Publish the shuttle timetable',
   description: null,
   attributes: {},
@@ -34,7 +53,7 @@ export const NODE_B: NodeDto = {
   status: 'PENDING',
   communityScore: 2,
   createdAt: '2026-10-19T11:00:00.000Z',
-  updatedAt: '2026-10-19T11:00:00.000Z'
+  updatedAt: '2026-10-19T11:05:00.000Z'
 };
 
 export const EDGE: SubgraphEdgeDto = {
@@ -42,6 +61,7 @@ export const EDGE: SubgraphEdgeDto = {
   sourceNodeId: NODE_A.id,
   targetNodeId: NODE_B.id,
   relationKey: 'SUGGESTS',
+  relationDisplayNames: RELATION_NAMES.SUGGESTS,
   status: 'ACTIVE',
   communityScore: 3
 };
@@ -51,6 +71,8 @@ export const NODE_C: NodeDto = {
   id: '99999999-9999-4999-8999-999999999999',
   workspaceId: WORKSPACE_ID,
   typeKey: 'Task',
+  // A class that the ontology does not know: the card keeps its key.
+  typeDisplayNames: {},
   title: 'Publish the timetable in the halls',
   description: 'The faculties agreed to print it.',
   attributes: { owner: 'library' },
@@ -67,6 +89,7 @@ export const EDGE_B: SubgraphEdgeDto = {
   sourceNodeId: NODE_B.id,
   targetNodeId: NODE_C.id,
   relationKey: 'INFORMS',
+  relationDisplayNames: RELATION_NAMES.INFORMS,
   status: 'ACTIVE',
   communityScore: 5
 };
@@ -77,6 +100,7 @@ export const EDGE_C: SubgraphEdgeDto = {
   sourceNodeId: NODE_A.id,
   targetNodeId: NODE_C.id,
   relationKey: 'SOLVES',
+  relationDisplayNames: RELATION_NAMES.SOLVES,
   status: 'PENDING',
   communityScore: 1
 };
@@ -110,6 +134,7 @@ export const NEW_NODE: NodeDto = {
   id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
   workspaceId: WORKSPACE_ID,
   typeKey: 'Problem',
+  typeDisplayNames: PROBLEM_NAMES,
   title: 'The lab closes at six',
   description: null,
   attributes: { severity: 2 },
@@ -117,5 +142,5 @@ export const NEW_NODE: NodeDto = {
   status: 'PENDING',
   communityScore: 0,
   createdAt: '2026-10-20T10:00:00.000Z',
-  updatedAt: '2026-10-20T10:00:00.000Z'
+  updatedAt: '2026-10-20T10:05:00.000Z'
 };

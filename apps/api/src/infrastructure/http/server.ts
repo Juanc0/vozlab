@@ -48,6 +48,7 @@ import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/Prop
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
+import { DisplayNameCatalog } from '../../application/use_cases/DisplayNameCatalog.js';
 import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
 import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
 import { ListThreadsUseCase } from '../../application/use_cases/ListThreadsUseCase.js';
@@ -128,13 +129,16 @@ export async function buildServer(): Promise<FastifyInstance> {
   poolManager.startCleanupInterval();
 
   // --- Use cases (application) ---
+  // The catalog of the display names of the metamodel: the graph DTOs carry
+  // the names of the classes and of the relations, read once per answer.
+  const displayNames = new DisplayNameCatalog(ontologyRepo);
   const createNodeUseCase = new CreateNodeUseCase(nodeRepo, ontologyRepo, eventPublisher);
-  const getNodeUseCase = new GetNodeUseCase(nodeRepo);
-  const getNodeNeighborsUseCase = new GetNodeNeighborsUseCase(nodeRepo);
+  const getNodeUseCase = new GetNodeUseCase(nodeRepo, displayNames);
+  const getNodeNeighborsUseCase = new GetNodeNeighborsUseCase(nodeRepo, displayNames);
   const resolveSourceUseCase = new ResolveSourceUseCase(dataSourceRepo);
-  const listNodesUseCase = new ListNodesUseCase(nodeRepo);
-  const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo);
-  const getNodeWindowUseCase = new GetNodeWindowUseCase(nodeRepo);
+  const listNodesUseCase = new ListNodesUseCase(nodeRepo, displayNames);
+  const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo, displayNames);
+  const getNodeWindowUseCase = new GetNodeWindowUseCase(nodeRepo, displayNames);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
   const setNodeEmbeddingUseCase = new SetNodeEmbeddingUseCase(
     nodeRepo,
@@ -180,9 +184,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     ontologyRepo,
     eventPublisher
   );
-  const getEdgeUseCase = new GetEdgeUseCase(edgeRepo);
-  const listEdgesUseCase = new ListEdgesUseCase(edgeRepo);
-  const updateEdgeUseCase = new UpdateEdgeUseCase(edgeRepo, eventPublisher);
+  const getEdgeUseCase = new GetEdgeUseCase(edgeRepo, displayNames);
+  const listEdgesUseCase = new ListEdgesUseCase(edgeRepo, displayNames);
+  const updateEdgeUseCase = new UpdateEdgeUseCase(edgeRepo, eventPublisher, displayNames);
   const deleteEdgeUseCase = new DeleteEdgeUseCase(edgeRepo, eventPublisher);
   const proposeOntologyClassUseCase = new ProposeOntologyClassUseCase(
     ontologyRepo,

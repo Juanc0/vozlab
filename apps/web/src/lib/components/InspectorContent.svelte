@@ -12,6 +12,7 @@
    */
   import type { EdgeDto, NodeDto } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
+  import { displayName } from '$lib/i18n/display-name';
   import { formatDate, formatNumber } from '$lib/i18n';
   import { getLocaleState } from '$lib/state/context';
   import VoteButtons from './VoteButtons.svelte';
@@ -63,10 +64,10 @@
 
     <dl class="grid gap-x-4 gap-y-2 text-body sm:grid-cols-[auto_1fr]">
       <dt class="text-muted">{t('inspector.nodeType')}</dt>
-      <dd>{node.typeKey}</dd>
+      <dd>{displayName(node.typeDisplayNames, locale.locale, node.typeKey)}</dd>
 
       <dt class="text-muted">{t('inspector.status')}</dt>
-      <dd>{node.status}</dd>
+      <dd>{locale.status('node', node.status)}</dd>
 
       <dt class="text-muted">{t('inspector.score')}</dt>
       <dd>{formatNumber(locale.locale, node.communityScore)}</dd>
@@ -93,7 +94,9 @@
 {:else if edge !== null}
   <article class="space-y-4">
     <header>
-      <h3 class="text-section font-semibold">{edge.relationKey}</h3>
+      <h3 class="text-section font-semibold">
+        {displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)}
+      </h3>
     </header>
 
     <dl class="grid gap-x-4 gap-y-2 text-body sm:grid-cols-[auto_1fr]">
@@ -112,7 +115,7 @@
         <span class="block font-mono text-small break-all text-muted">{edge.targetNodeId}</span>
       </dd>
       <dt class="text-muted">{t('inspector.status')}</dt>
-      <dd>{edge.status}</dd>
+      <dd>{locale.status('edge', edge.status)}</dd>
 
       <dt class="text-muted">{t('inspector.score')}</dt>
       <dd>{formatNumber(locale.locale, edge.communityScore)}</dd>
@@ -136,7 +139,9 @@
           targetId={edge.id}
           targetType="EDGE"
           score={edge.communityScore}
-          label={t('graph.voteRelationLabel', { relationKey: edge.relationKey })}
+          label={t('graph.voteRelationLabel', {
+            relationKey: displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)
+          })}
           reconcile={reconcileEdge ? () => reconcileEdge(edge.id) : undefined}
         />
       </div>

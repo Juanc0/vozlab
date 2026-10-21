@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GetNodeNeighborsUseCase } from '../../src/application/use_cases/GetNodeNeighborsUseCase.js';
-import { makeNodeRepository } from '../support/fakes.js';
+import { makeNodeRepository, makeOntologyRepository, makeDisplayNameCatalog } from '../support/fakes.js';
 
 const WS = 'ws-1';
 const tid = 'tenant-1';
@@ -16,7 +16,9 @@ const source = {
 
 function makeUseCase(nearest: Parameters<typeof makeNodeRepository>[1]) {
   const { repo, nearestCalls } = makeNodeRepository([], nearest);
-  return { useCase: new GetNodeNeighborsUseCase(repo), nearestCalls };
+  const ontology = makeOntologyRepository();
+  const useCase = new GetNodeNeighborsUseCase(repo, makeDisplayNameCatalog(ontology));
+  return { useCase, nearestCalls };
 }
 
 describe('GetNodeNeighborsUseCase', () => {
@@ -38,10 +40,11 @@ describe('GetNodeNeighborsUseCase', () => {
 
     const result = await useCase.execute({ nodeId, workspaceId: WS, tid });
 
-    expect(result.source).toEqual(source);
+    expect(result.source).toEqual({ ...source, typeDisplayNames: {} });
     expect(result.neighbors).toHaveLength(1);
     expect(result.neighbors[0].id).toBe('node-2');
     expect(result.neighbors[0].similarity).toBe(0.91);
+    expect(result.neighbors[0].typeDisplayNames).toEqual({});
   });
 
   it('reports a missing node as ERR_NODE_NOT_FOUND', async () => {

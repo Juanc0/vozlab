@@ -1,4 +1,11 @@
-import { INodeRepository, SubgraphResult } from '../../domain/ports/INodeRepository.js';
+import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import {
+  DisplayNameCatalog,
+  classNames,
+  propertyNames,
+  type NamedNode,
+  type NamedRelation
+} from './DisplayNameCatalog.js';
 
 export type GetNodeWindowInput = {
   workspaceId: string;
@@ -22,18 +29,37 @@ const DEFAULT_LIMIT = 100;
  * The window is workspace-scoped: only the nodes of the request workspace
  * are in it, and the relations are the ones whose **both** endpoints are in
  * the window. An empty workspace is not an error — it is an empty window.
+ *
+ * The nodes carry the display names of their class and the relations carry
+ * the display names of their property, read **once** for the whole window.
  */
 export class GetNodeWindowUseCase {
-  constructor(private readonly nodeRepo: INodeRepository) {}
+  constructor(
+    private readonly nodeRepo: INodeRepository,
+    private readonly names: DisplayNameCatalog
+  ) {}
 
-  async execute(input: GetNodeWindowInput): Promise<SubgraphResult> {
+  async execute(input: GetNodeWindowInput): Promise<{
+    nodes: NamedNode[];
+    relations: NamedRelation[];
+  }> {
     const requested = input.limit ?? DEFAULT_LIMIT;
     const limit = Math.min(Math.max(Math.trunc(requested), 1), MAX_LIMIT);
 
-    return this.nodeRepo.getWindowInWorkspace(
-      input.workspaceId,
-      { limit },
-      input.tid
-    );
+    const [window, metamodel] = await Promise.all([
+      this.nodeRepo.getWindowInWorkspace(input.workspaceId, { limit }, input.tid),
+      this.names.read(input.workspaceId, input.tid),
+    ]);
+
+    return {
+      nodes: window.nodes.map((node) => ({
+        node,
+        typeDisplayNames: classNames(metamodel, node.typeKey),
+      })),
+      relations: window.edges.map((relation) => ({
+        relation,
+        relationDisplayNames: propertyNames(metamodel, relation.relationKey),
+      })),
+    };
   }
 }

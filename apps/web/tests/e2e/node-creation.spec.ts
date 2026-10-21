@@ -78,8 +78,10 @@ test('a valid submission creates a pending node that shows up in the list', asyn
   await expect(dialog).toBeHidden();
   await expect(page.getByText(/se ha creado y está pendiente de revisión/)).toBeVisible();
 
-  // The node is in the list of the workspace, and it is pending.
+  // The node is in the list of the workspace, and it is pending: the class
+  // and the status are the **names** of the interface, not the keys of the
+  // system.
   const entry = page.getByRole('listitem').filter({ hasText: `${api.marker} created node` });
   await expect(entry.getByRole('button', { name: `${api.marker} created node` })).toBeVisible();
-  await expect(entry).toContainText('Problem · PENDING');
+  await expect(entry).toContainText('Problema · Pendiente');
 });

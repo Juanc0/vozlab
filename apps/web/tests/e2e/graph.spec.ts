@@ -65,7 +65,9 @@ test('the graph lists the nodes, draws the bounded subgraph and states its bound
   await expect(nodeTable.getByRole('button', { name: idea.title })).toBeVisible();
 
   const relationTable = page.getByRole('region', { name: 'Las relaciones del subgrafo' });
-  await expect(relationTable.getByRole('rowheader', { name: 'RELATES_TO' })).toBeVisible();
+  // The **display name** of the relation, in the language of the interface:
+  // the key of the system (`RELATES_TO`) is not what the reader reads.
+  await expect(relationTable.getByRole('rowheader', { name: 'Se relaciona con' })).toBeVisible();
   await expect(relationTable.getByRole('button', { name: root.title })).toBeVisible();
   await expect(relationTable.getByRole('button', { name: idea.title })).toBeVisible();
 });

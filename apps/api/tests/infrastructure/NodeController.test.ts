@@ -41,6 +41,8 @@ import { SetNodeEmbeddingUseCase } from '../../src/application/use_cases/SetNode
 import { StartOidcLoginUseCase } from '../../src/application/use_cases/StartOidcLoginUseCase.js';
 import { UpdateEdgeUseCase } from '../../src/application/use_cases/UpdateEdgeUseCase.js';
 import { Node } from '../../src/domain/entities/Node.js';
+import { OntologyClass } from '../../src/domain/entities/OntologyClass.js';
+import { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
 import { AuthorHash } from '../../src/domain/value_objects/AuthorHash.js';
 import type { SubgraphEdge } from '../../src/domain/ports/INodeRepository.js';
 import { NodeController } from '../../src/infrastructure/http/controllers/NodeController.js';
@@ -57,7 +59,12 @@ import {
   makeRouterDb,
   makeTokenBlacklist,
 } from '../support/authFakes.js';
-import { makeEventPublisher, makeNodeRepository, makeOntologyRepository } from '../support/fakes.js';
+import {
+  makeDisplayNameCatalog,
+  makeEventPublisher,
+  makeNodeRepository,
+  makeOntologyRepository,
+} from '../support/fakes.js';
 
 const TID = 'tenant-1';
 const OTHER_WS = '22222222-2222-4222-8222-999999999999';
@@ -91,19 +98,56 @@ function edge(id: string, sourceNodeId: string, targetNodeId: string): SubgraphE
   };
 }
 
+/** The class of the seeded graph — the names the DTOs carry. */
+function problemClass(workspaceId = WORKSPACE_ID): OntologyClass {
+  return new OntologyClass(
+    'class-problem',
+    workspaceId,
+    'Problem',
+    { en: 'Problem', es: 'Problema' },
+    {},
+    null,
+    'ACTIVE'
+  );
+}
+
+/** The relation of the seeded graph — the names the DTOs carry. */
+function relatesToProperty(workspaceId = WORKSPACE_ID): ObjectProperty {
+  return new ObjectProperty(
+    'property-relates-to',
+    workspaceId,
+    'RELATES_TO',
+    { en: 'Relates to', es: 'Se relaciona con' },
+    {},
+    'Problem',
+    'Problem',
+    true,
+    false,
+    false,
+    'ACTIVE'
+  );
+}
+
 /** The controller under test, wired to an in-memory graph. */
 function makeController(nodes: Node[] = [], edges: SubgraphEdge[] = []) {
   const { repo, windowCalls } = makeNodeRepository(nodes, { status: 'NOT_FOUND' }, edges);
-  const { repo: ontologyRepo } = makeOntologyRepository();
+  const ontology = makeOntologyRepository(
+    null,
+    [],
+    [problemClass()],
+    [relatesToProperty()]
+  );
+  const { repo: ontologyRepo } = ontology;
   const { publisher } = makeEventPublisher();
+  const names = makeDisplayNameCatalog(ontology);
 
   const controller = new NodeController(
     new CreateNodeUseCase(repo, ontologyRepo, publisher),
-    new GetNodeUseCase(repo),
-    new GetNodeNeighborsUseCase(repo),
-    new ListNodesUseCase(repo),
-    new GetSubgraphUseCase(repo),
-    new GetNodeWindowUseCase(repo),
+    new GetNodeUseCase(repo, names),
+    new GetNodeNeighborsUseCase(repo, names),
+    new ListNodesUseCase(repo, names),
+    new GetSubgraphUseCase(repo, names),
+    new GetNodeWindowUseCase(repo, names),
     new DeleteNodeUseCase(repo, publisher),
     new SetNodeEmbeddingUseCase(repo, 'nomic-embed-text')
   );
@@ -165,6 +209,8 @@ function makeRouteDependencies(
   const { routerDb } = makeRouterDb();
   const { membershipRepo } = makeMembershipRepository();
   const { blacklist } = makeTokenBlacklist();
+  const ontology = makeOntologyRepository();
+  const names = makeDisplayNameCatalog(ontology);
   // The limiter is never connected: the middleware fails open, so no Redis
   // is needed for a routing test.
   const rateLimiter = {
@@ -182,7 +228,7 @@ function makeRouteDependencies(
     deleteNodeUseCase: unused(DeleteNodeUseCase.prototype),
     setNodeEmbeddingUseCase: unused(SetNodeEmbeddingUseCase.prototype),
     getSubgraphUseCase: unused(GetSubgraphUseCase.prototype),
-    getNodeWindowUseCase: new GetNodeWindowUseCase(nodeRepo.repo),
+    getNodeWindowUseCase: new GetNodeWindowUseCase(nodeRepo.repo, names),
     createProposalUseCase: unused(CreateProposalUseCase.prototype),
     approveProposalUseCase: unused(ApproveProposalUseCase.prototype),
     rejectProposalUseCase: unused(RejectProposalUseCase.prototype),
@@ -245,12 +291,17 @@ describe('NodeController — GET /api/v1/nodes/window', () => {
     expect(captured.statusCode).toBe(200);
     const body = captured.body as NodeWindowResponseDto;
     expect(body.nodes.map((n) => n.id)).toEqual(['n-2', 'n-1']);
+    // Every node carries the display names of its class, and every relation
+    // the ones of its property: the API sends the whole map and the client
+    // picks the name of its language.
+    expect(body.nodes[0]?.typeDisplayNames).toEqual({ en: 'Problem', es: 'Problema' });
     expect(body.edges).toEqual([
       {
         id: 'e-1',
         sourceNodeId: 'n-1',
         targetNodeId: 'n-2',
         relationKey: 'RELATES_TO',
+        relationDisplayNames: { en: 'Relates to', es: 'Se relaciona con' },
         status: 'PENDING',
         communityScore: 0,
       },

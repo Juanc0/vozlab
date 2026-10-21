@@ -200,6 +200,20 @@ If an object property with `relationKey` exists, its domain/range rules are
 enforced; endpoint node status is not checked. The list returns all
 non-deleted edges, regardless of status.
 
+
+### The display names
+
+`NodeDto.typeDisplayNames`, `SubgraphEdgeDto.relationDisplayNames` and
+`EdgeDto.relationDisplayNames` carry the **whole map** of the ontology's
+`display_names` — `{"en": "Problem", "es": "Problema"}` — and the client
+picks its language. The API does **not** negotiate one: a workspace may have
+ten languages and the client may be in any of them.
+
+A map is empty (`{}`) when the class or the relation is not in the
+workspace's ontology — a `PROPOSED` class, or a key with no row — and the
+client falls back to the key. A class of **another workspace** is never in
+the answer.
+
 ## 5. Proposals
 
 `ProposalDto`: `id`, `workspaceId`, `targetId`, `targetType`, `kind`, `status`,

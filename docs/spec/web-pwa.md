@@ -334,6 +334,33 @@ list takes `status`, `targetType`, `kind`, `limit` and `cursor`, but no
 `targetId`. The interface says when the page was truncated — the history is
 partial, and pretending otherwise would be a lie.
 
+## The names are in the interface's language
+
+The ontology carries a **map** of display names per thing
+(`{"en": "Problem", "es": "Problema"}`), and the **API returns that map** —
+the client picks the language it wants. The API does not negotiate one: a
+workspace may have ten languages and the client may be in any of them, and
+the API has no business knowing which.
+
+- `NodeDto.typeDisplayNames` — the class's names.
+- `SubgraphEdgeDto.relationDisplayNames` and `EdgeDto.relationDisplayNames`
+  — the relation's names.
+- A missing map is `{}` — a `PROPOSED` class, or a key with no row — and the
+  client falls back to the key. A class of another workspace is never in
+  the answer.
+
+The client picks with a **fallback chain**: the exact locale, then its base
+language, then the key of the system.
+
+The **statuses** are a *vocabulary*, not copy: a map per scope, typed with
+`satisfies Record<NodeStatus, string>`, so a status added to the shared
+vocabulary without a label in one of the languages is a **compile error**.
+The interface reads them through the state's `status(scope, value)`, which
+falls back to the raw value for an unknown one.
+
+The API's error `code` is a contract identifier and stays in English; the
+API's `message` is the API's own copy and stays as it is.
+
 ## The node is a card
 
 Every node of the canvas is a **card**, not a dot:

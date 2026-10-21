@@ -77,12 +77,12 @@ export interface ExplorationElementsOptions {
   /** The places the user put the dragged nodes in. */
   pinned: ReadonlyMap<string, Position>;
   /**
-   * The name of every type, in the language of the interface.
+   * The language of the interface.
    *
-   * The key is the type key of the node and the value is the **display
-   * name** of the class of the ontology.
+   * The name of the class of a node, the name of the relation of an edge
+   * and the status of a node are read in it.
    */
-  typeNames?: ReadonlyMap<string, string>;
+  locale?: string;
 }
 
 /** A node as the picture shows it: where it is and how big it is. */
@@ -365,7 +365,7 @@ export function createExplorationInstance(
       core.add(
         toGraphElements(nodes, edges, {
           expandedIds: elementOptions.expandedIds,
-          typeNames: elementOptions.typeNames
+          locale: elementOptions.locale
         })
       );
 

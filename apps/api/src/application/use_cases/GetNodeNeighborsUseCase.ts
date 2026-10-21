@@ -1,8 +1,13 @@
 import { DomainError } from '../../domain/errors/DomainError.js';
 import {
   INodeRepository,
-  NearestNeighborsResult,
+  NodeNeighbor,
 } from '../../domain/ports/INodeRepository.js';
+import {
+  DisplayNameCatalog,
+  classNames,
+  type DisplayNames,
+} from './DisplayNameCatalog.js';
 
 export type GetNodeNeighborsInput = {
   nodeId: string;
@@ -14,6 +19,22 @@ export type GetNodeNeighborsInput = {
 /** Hard cap for the neighbour lookup (ADR-0022). */
 const MAX_LIMIT = 10;
 const DEFAULT_LIMIT = 5;
+
+/** The node the search starts from, with the names of its class. */
+export interface NeighborSource {
+  id: string;
+  typeKey: string;
+  title: string;
+  description: string | null;
+  status: string;
+  typeDisplayNames: DisplayNames;
+}
+
+/** The result of the neighbour lookup, with the names of the classes. */
+export interface NeighborsResult {
+  readonly source: NeighborSource;
+  readonly neighbors: Array<NodeNeighbor & { typeDisplayNames: DisplayNames }>;
+}
 
 /**
  * Use Case: read the closest nodes of the workspace to a node
@@ -29,22 +50,29 @@ const DEFAULT_LIMIT = 5;
  *   - the node exists but has no vector yet → `409 ERR_NODE_NOT_EMBEDDED`,
  *     the retryable state ADR-0020 relies on;
  *   - otherwise the source node and its neighbours.
+ *
+ * The nodes carry the display names of their class: the names come from
+ * **one** read of the metamodel of the workspace.
  */
 export class GetNodeNeighborsUseCase {
-  constructor(private readonly nodeRepo: INodeRepository) {}
+  constructor(
+    private readonly nodeRepo: INodeRepository,
+    private readonly names: DisplayNameCatalog
+  ) {}
 
-  async execute(
-    input: GetNodeNeighborsInput
-  ): Promise<Extract<NearestNeighborsResult, { status: 'OK' }>> {
+  async execute(input: GetNodeNeighborsInput): Promise<NeighborsResult> {
     const requested = input.limit ?? DEFAULT_LIMIT;
     const limit = Math.min(Math.max(Math.trunc(requested), 1), MAX_LIMIT);
 
-    const result = await this.nodeRepo.findNearestInWorkspace(
-      input.nodeId,
-      input.workspaceId,
-      { limit },
-      input.tid
-    );
+    const [result, metamodel] = await Promise.all([
+      this.nodeRepo.findNearestInWorkspace(
+        input.nodeId,
+        input.workspaceId,
+        { limit },
+        input.tid
+      ),
+      this.names.read(input.workspaceId, input.tid),
+    ]);
 
     if (result.status === 'NOT_FOUND') {
       throw new DomainError('ERR_NODE_NOT_FOUND');
@@ -53,6 +81,17 @@ export class GetNodeNeighborsUseCase {
       throw new DomainError('ERR_NODE_NOT_EMBEDDED');
     }
 
-    return result;
+    const found = result;
+
+    return {
+      source: {
+        ...found.source,
+        typeDisplayNames: classNames(metamodel, found.source.typeKey),
+      },
+      neighbors: found.neighbors.map((neighbor) => ({
+        ...neighbor,
+        typeDisplayNames: classNames(metamodel, neighbor.typeKey),
+      })),
+    };
   }
 }
