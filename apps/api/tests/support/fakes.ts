@@ -117,16 +117,87 @@ export function makeNodeRepository(
         return { nodes: [], edges: [] };
       }
 
-      const covered = nodes
-        .filter((node) => node.workspaceId === workspaceId)
-        .slice(0, opts.limit);
+      // The ranking rule (roadmap 3.20): "the nearest" is the strongest
+      // relation first, and among equals the most recent. The fake models
+      // the adapter: the neighbours of a node are the relations that touch
+      // it, ranked by `communityScore DESC` and then by `createdAt DESC`,
+      // and the walk is bounded by the depth and the limit.
+      const limit = Math.max(1, Math.trunc(opts.limit));
+      const depth = Math.max(0, Math.trunc(opts.depth));
+
+      const relationsOf = new Map<string, SubgraphEdge[]>();
+      for (const edge of edges) {
+        for (const endpoint of [edge.sourceNodeId, edge.targetNodeId]) {
+          const list = relationsOf.get(endpoint) ?? [];
+          list.push(edge);
+          relationsOf.set(endpoint, list);
+        }
+      }
+
+      const byRank = (a: SubgraphEdge, b: SubgraphEdge) =>
+        b.communityScore - a.communityScore ||
+        b.createdAt.getTime() - a.createdAt.getTime();
+
+      const seen = new Set<string>([rootId]);
+      const depthById = new Map<string, number>([[rootId, 0]]);
+      // The score and the instant of the relation that reached a node: the
+      // strength the traversal carries along.
+      const scoreById = new Map<string, number>([[rootId, 0]]);
+      const reachedAtById = new Map<string, number>([[rootId, 0]]);
+      const covered: Node[] = [root];
+      let frontier: Node[] = [root];
+
+      for (let level = 1; level <= depth; level++) {
+        const next: Node[] = [];
+
+        for (const node of frontier) {
+          const relations = (relationsOf.get(node.id) ?? []).slice().sort(byRank);
+
+          for (const relation of relations.slice(0, limit)) {
+            const neighbourId =
+              relation.sourceNodeId === node.id ? relation.targetNodeId : relation.sourceNodeId;
+
+            if (seen.has(neighbourId)) continue;
+
+            const neighbour = byId.get(neighbourId);
+            if (!neighbour || neighbour.workspaceId !== workspaceId) continue;
+
+            seen.add(neighbourId);
+            depthById.set(neighbourId, level);
+            scoreById.set(neighbourId, relation.communityScore);
+            reachedAtById.set(neighbourId, relation.createdAt.getTime());
+            next.push(neighbour);
+
+            if (covered.length + next.length >= limit) break;
+          }
+
+          if (covered.length + next.length >= limit) break;
+        }
+
+        covered.push(...next);
+        frontier = next;
+
+        if (covered.length >= limit) break;
+      }
+
       const inCovered = new Set(covered.map((node) => node.id));
+      const coveredEdges = edges
+        .filter(
+          (edge) => inCovered.has(edge.sourceNodeId) && inCovered.has(edge.targetNodeId)
+        )
+        .sort(byRank);
+
+      covered.sort(
+        (a, b) =>
+          (depthById.get(a.id) ?? 0) - (depthById.get(b.id) ?? 0) ||
+          (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0) ||
+          (reachedAtById.get(b.id) ?? 0) - (reachedAtById.get(a.id) ?? 0) ||
+          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+      );
 
       return {
         nodes: covered,
-        edges: edges.filter(
-          (edge) => inCovered.has(edge.sourceNodeId) && inCovered.has(edge.targetNodeId)
-        ),
+        edges: coveredEdges,
       };
     },
     // The exploration window: the newest nodes of the workspace and the
@@ -144,9 +215,17 @@ export function makeNodeRepository(
       const inWindow = new Set(windowed.map((node) => node.id));
       return {
         nodes: windowed,
-        edges: edges.filter(
-          (edge) => inWindow.has(edge.sourceNodeId) && inWindow.has(edge.targetNodeId)
-        ),
+        // The ranking rule, applied consistently: the strongest relations
+        // first, and among equals the most recent.
+        edges: edges
+          .filter(
+            (edge) => inWindow.has(edge.sourceNodeId) && inWindow.has(edge.targetNodeId)
+          )
+          .sort(
+            (a, b) =>
+              b.communityScore - a.communityScore ||
+              b.createdAt.getTime() - a.createdAt.getTime()
+          ),
       };
     },
     async save() {},

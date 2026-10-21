@@ -82,6 +82,14 @@ export const nodes = pgTable(
     index('idx_nodes_workspace_status')
       .on(table.workspaceId, table.status)
       .where(sql`${table.deletedAt} IS NULL`),
+    // Roadmap 3.20: the exploration window and the keyset list both read the
+    // newest nodes of a workspace with the order
+    // `(created_at DESC, id DESC)`. Without this index PostgreSQL sorts every
+    // non-deleted node of the workspace on every request — the one read of
+    // the path that degrades linearly with the size of the workspace.
+    index('idx_nodes_workspace_created')
+      .on(table.workspaceId, table.createdAt.desc().nullsFirst(), table.id.desc().nullsFirst())
+      .where(sql`${table.deletedAt} IS NULL`),
     // Dynamic JSONB attribute filtering.
     index('idx_nodes_attributes_gin').using('gin', table.attributes),
   ]
@@ -117,11 +125,36 @@ export const edges = pgTable(
     // NFR-01: workspace-covering partial indexes for the subgraph traversal.
     // `workspace_id` leads so the recursive CTE's workspace filter is
     // index-covered; `deleted_at IS NULL` matches the partial predicate.
-    index('idx_edges_workspace_source')
-      .on(table.workspaceId, table.sourceNodeId)
+    //
+    // Roadmap 3.20: the traversal ranks the neighbours of a node by the
+    // strength of the relation that reaches them
+    // (`community_score DESC, created_at DESC` — the strongest relations
+    // first, and among equals the most recent). The ranking columns follow
+    // the two equality columns, so the ordered neighbour lookup is an index
+    // scan with no sort. `NULLS FIRST` is PostgreSQL's own default for a
+    // descending order, and it is what makes the index match the `DESC` of
+    // the query: an index declared `DESC NULLS LAST` cannot serve a plain
+    // `ORDER BY … DESC`, and the planner would fall back to a sort of every
+    // relation of the node.
+    //
+    // The two indexes **replace** the previous
+    // `(workspace_id, source_node_id)` / `(workspace_id, target_node_id)`
+    // pair: the prefix still serves every query the old ones served.
+    index('idx_edges_workspace_source_ranked')
+      .on(
+        table.workspaceId,
+        table.sourceNodeId,
+        table.communityScore.desc().nullsFirst(),
+        table.createdAt.desc().nullsFirst()
+      )
       .where(sql`${table.deletedAt} IS NULL`),
-    index('idx_edges_workspace_target')
-      .on(table.workspaceId, table.targetNodeId)
+    index('idx_edges_workspace_target_ranked')
+      .on(
+        table.workspaceId,
+        table.targetNodeId,
+        table.communityScore.desc().nullsFirst(),
+        table.createdAt.desc().nullsFirst()
+      )
       .where(sql`${table.deletedAt} IS NULL`),
   ]
 );

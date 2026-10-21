@@ -320,7 +320,7 @@ Decided, and not to be re-opened without evidence:
   beating the bounded CTE for this shape, and that the extension is absent
   from every managed PostgreSQL allow-list. The concurrency work is done with
   a version column instead. The trigger that would reopen the question is
-  written down in ADR-0028.
+  written down in ADR-0027.
 
 - [x] 3.15 The design system: the tokens of the accent ladder, the type, the
       shell, the bars and the page frames. Result: the direction is the
@@ -384,9 +384,23 @@ Decided, and not to be re-opened without evidence:
       the picture. The badge of a relation is a **square** (the node's is a
       circle) with the same 44 px hit area. The cost of an expanded
       relation is the layout that runs again, not the card.
-- [ ] 3.20 The ranked traversal and the two missing indexes: the nearest
+- [x] 3.20 The ranked traversal and the two missing indexes: the nearest
       nodes become the strongest ones, and the window stops sorting the whole
-      workspace.
+      workspace. Result: **"the nearest" is now a defined rule** — the
+      strongest relation first and, among equals, the most recent
+      (`community_score DESC, created_at DESC`) — applied to both arms of
+      the traversal, and the answer is cut by strength. The `LATERAL` had
+      **no `ORDER BY`**, so the neighbourhood was truncated by whatever the
+      index scan produced. The two missing indexes are in: the nodes by
+      `(workspace_id, created_at DESC, id DESC)` and the edges by
+      `(workspace_id, side, community_score DESC, created_at DESC)`, which
+      **replace** the old ones (same prefix, same count). The window stopped
+      sorting the workspace: **160 ms → 0.57 ms** on 50 000 nodes, and the
+      plan became an index scan. Two traps, both measured, are in the
+      decision: Drizzle's `.desc()` emits `NULLS LAST` and cannot serve a
+      plain `DESC` (495 ms), and ranking the whole recursive step instead of
+      its arms materialises the frontier (8.3 ms → 346 ms). The decision
+      and the trigger that would reopen Apache AGE are in **ADR-0027**.
 - [ ] 3.21 The navigation by clicking: the exploration view re-requests the
       subgraph rooted at the clicked node and re-centres on it.
 - [ ] 3.22 The optimistic concurrency: the version column, the

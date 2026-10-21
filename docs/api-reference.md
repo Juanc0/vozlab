@@ -166,6 +166,11 @@ Notes:
   constant **135 B per relation**. The score is there so the canvas can
   vote on a relation without a second read, and the content is there so a
   relation can be **expanded** in the picture without a second read either.
+- The subgraph's traversal is **ranked**: "the nearest" is the **strongest
+  relation first** and, among equals, the **most recent**
+  (`community_score DESC, created_at DESC`). Before the ranking the
+  traversal truncated by whatever the index scan produced, so "the nearest"
+  was an accident. See [ADR-0027](decisions/ADR-0027-ranked-traversal-and-age-trigger.md).
 - `subgraph` is registered **before** `/nodes/:id`; traversal is undirected,
   workspace-scoped, `depth <= 3`, `limit <= 200`, and uses the bounded
   recursive SQL CTE (not Apache AGE).
