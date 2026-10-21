@@ -59,7 +59,32 @@ function createFakeCore() {
 
   const nodeApi = (node: FakeNode) => ({
     id: () => node.id,
-    position: () => node.position,
+    data: (key: string) => node.data[key],
+    // The text of a card is a child of the card: it hangs under it.
+    isChild: () => node.data['parent'] !== undefined,
+    parent: () => {
+      const parentId = node.data['parent'];
+
+      if (typeof parentId !== 'string') {
+        return collection([]);
+      }
+
+      const parent = nodes.get(parentId);
+
+      return parent === undefined ? collection([]) : collection([parent]);
+    },
+    hasClass: (name: string) => node.classes.has(name),
+    // The text of a card is not a thing the user can move.
+    ungrabify: vi.fn(),
+    // The position can be read and written: the instance puts the places
+    // the user dragged back after the layout.
+    position: (next?: { x: number; y: number }) => {
+      if (next !== undefined) {
+        node.position = next;
+      }
+
+      return node.position;
+    },
     outerWidth: () => 40,
     outerHeight: () => 40,
     renderedPosition: () => ({ x: 30, y: 40 }),
@@ -95,10 +120,17 @@ function createFakeCore() {
     get length() {
       return items.length;
     },
+    items,
     forEach: (fn: (item: unknown) => void) => {
       items.forEach((item) => fn(item.api));
     },
     map: (fn: (item: unknown) => unknown) => items.map((item) => fn(item.api)),
+    // The collection knows the nodes it holds and can be narrowed: the
+    // layout arranges the cards, not the text that hangs under them.
+    nodes: () => collection(items.filter((item) => item.kind === 'node')),
+    filter: (fn: (item: unknown) => boolean) => collection(items.filter((item) => fn(item.api))),
+    union: (other: { items: Array<FakeNode | FakeEdge> }) =>
+      collection([...items, ...other.items]),
     remove: () => {
       for (const item of items) {
         if (item.kind === 'node') {
@@ -276,7 +308,7 @@ describe('the exploration view', () => {
     expect(screen.queryByRole('status')).toBeNull();
 
     fire(core.handlers, 'mouseover', 'node', {
-      target: { id: () => NODE_A.id },
+      target: { id: () => NODE_A.id, isChild: () => false, data: () => undefined },
       renderedPosition: { x: 12, y: 24 }
     });
 
@@ -297,7 +329,7 @@ describe('the exploration view', () => {
     await renderView();
 
     fire(core.handlers, 'mouseover', 'edge', {
-      target: { id: () => EDGE.id },
+      target: { id: () => EDGE.id, data: () => undefined },
       renderedPosition: { x: 12, y: 24 }
     });
 
@@ -333,6 +365,8 @@ describe('the exploration view', () => {
     fire(core.handlers, 'dragfree', 'node', {
       target: {
         id: () => NODE_C.id,
+        isChild: () => false,
+        data: () => undefined,
         position: () => ({ x: 300, y: 400 })
       }
     });
@@ -344,15 +378,9 @@ describe('the exploration view', () => {
       expect(core.layouts.length).toBeGreaterThan(before);
     });
 
-    const transform = core.layouts[core.layouts.length - 1]?.transform as
-      | ((node: { id: () => string }, position: { x: number; y: number }) => {
-          x: number;
-          y: number;
-        })
-      | undefined;
-
-    expect(transform).toBeTypeOf('function');
-    expect(transform?.({ id: () => NODE_C.id }, { x: 0, y: 0 })).toEqual({ x: 300, y: 400 });
+    // The layout moves every node: the place the user dragged the node to
+    // is put back after it.
+    expect(core.nodes.get(NODE_C.id)?.position).toEqual({ x: 300, y: 400 });
   });
 
   it('draws the relations with the shape the user chooses', async () => {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { GraphInstance } from '$lib/graph/cytoscape';
+  import { ensureTitleFont } from '$lib/graph/node-card';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
@@ -10,6 +11,21 @@
     edges?: SubgraphEdgeDto[];
     /** The id of the selected node, or `null` when nothing is selected. */
     selectedNodeId?: string | null;
+    /**
+     * The name of every type, in the language of the interface.
+     *
+     * The key is the type key of the node and the value is the **display
+     * name** of the class of the ontology: the meta line of a card says
+     * "Problema", not "Problem".
+     */
+    typeNames?: ReadonlyMap<string, string>;
+    /**
+     * The id of the node the view centres on when the picture does not fit.
+     *
+     * It is the root of the subgraph: the card of the node the reader chose
+     * is the one that has to be readable.
+     */
+    rootNodeId?: string | null;
     /** Called when the user selects (or clears) a node in the canvas. */
     onselect?: (nodeId: string | null) => void;
     /** The text alternative of the canvas. */
@@ -20,6 +36,8 @@
     nodes = [],
     edges = [],
     selectedNodeId = null,
+    typeNames = new Map<string, string>(),
+    rootNodeId = null,
     onselect,
     description
   }: Props = $props();
@@ -65,7 +83,15 @@
 
     // Cytoscape draws to a `<canvas>`: it needs a DOM. The module is
     // imported here so the server pass never evaluates it.
-    void import('$lib/graph/cytoscape').then(({ createGraphInstance }) => {
+    //
+    // The face of the title is awaited first: the card is measured with the
+    // face that is **loaded**, and a card measured with the fallback of the
+    // system would be sized for a font that is not the one that is drawn.
+    void (async () => {
+      await ensureTitleFont();
+
+      const { createGraphInstance } = await import('$lib/graph/cytoscape');
+
       if (cancelled) {
         return;
       }
@@ -75,7 +101,7 @@
         onselect: (nodeId) => selectHandler?.(nodeId)
       });
       instance = created;
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -89,12 +115,17 @@
     const graph = instance;
     const currentNodes = nodes;
     const currentEdges = edges;
+    const currentRoot = rootNodeId;
+    const currentTypeNames = typeNames;
 
     if (graph === null) {
       return;
     }
 
-    graph.setElements(currentNodes, currentEdges);
+    graph.setElements(currentNodes, currentEdges, {
+      focusNodeId: currentRoot,
+      typeNames: currentTypeNames
+    });
   });
 
   /** Reflects the selection, whether it comes from the canvas or the list. */
@@ -118,13 +149,18 @@
   Its height is a fraction of the **visual** viewport (`svh`, not `vh`: the
   chrome of a mobile browser changes the height of `vh`, and a canvas that
   is taller than the screen is a canvas that cannot be seen).
+
+  The canvas is the one surface of the app that is **not** white: it is the
+  ground, and the cards of the graph are the surfaces that sit on it. The
+  card is separated from its background by a tone step, exactly like the
+  cards of the interface are.
 -->
 <div
   bind:this={container}
   role="img"
   aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
-  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card bg-surface"
+  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card bg-ground"
 ></div>
 
 <p id={descriptionId} class="mt-2 text-body text-muted">

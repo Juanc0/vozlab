@@ -335,8 +335,22 @@ Decided, and not to be re-opened without evidence:
       is measured: **zero** leaves of text in the full accent. The contrast
       is measured, not assumed (17.7:1 for the ink, 9.5:1 for the accent
       ink on its tint). The rules live in `docs/design-system.md`.
-- [ ] 3.16 The node card: the shape, the title inside it, and the word wrap
-      that never breaks a word.
+- [x] 3.16 The node card: the shape, the title inside it, and the word wrap
+      that never breaks a word. Result: every node is a **card** — a white
+      rectangle with the sheet's 8px radius (Cytoscape 3.34 does have
+      `corner-radius`), no edge and no shadow, on the canvas's `--color-ground`
+      — with the **title inside it**, wrapped greedily at word boundaries and
+      never breaking a word; a word longer than the card widens the card
+      rather than spilling out of it. The wrapping is a pure module with the
+      measurer injected, so it is tested with a deterministic measurer; the
+      browser uses the canvas's `measureText` and falls back to an estimate
+      that over-measures by ~20 %, which is the safe direction. The card's
+      height grows with the lines, and the meta line under the title carries
+      the **type** in the ontology's own language. The status is a mark, not
+      a fill: `ACTIVE` wears nothing, the other statuses wear a 2px border.
+      The cost is nothing: 200 wrapped cards cost ~1.1 ms of a 16.7 ms frame.
+      The spacing was inflated by a `spacingFactor` that turned out to be a
+      Cytoscape core option and not a dagre one — removed.
 - [ ] 3.17 The two engines side by side: a development-only comparison of
       Cytoscape and Sigma.js on the same data and the same interactions.
 - [ ] 3.18 The names in the interface's language: the API returns the

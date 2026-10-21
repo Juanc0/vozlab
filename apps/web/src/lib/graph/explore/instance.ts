@@ -6,8 +6,9 @@
  * subgraph's. What it adds over the subgraph is the interaction:
  *
  * - the node that is **presented** (the focus) wears a ring of its own;
- * - a node can be **expanded** — drawn as a card — and the layout is run
- *   again so the picture rearranges around the new space;
+ * - a node can be **expanded** — its card grows and shows the description
+ *   and the attributes of the node — and the layout is run again so the
+ *   picture rearranges around the new space;
  * - a node can be **dragged** to another place among the others, and the
  *   place it was put survives the next layout;
  * - the relations are drawn with the shape the user chose, and the
@@ -22,13 +23,20 @@
  * draws to a `<canvas>`, so the server pass must never evaluate it.
  */
 
-import type { Core, NodeCollection, Position } from 'cytoscape';
+import type { Collection, Core, Position } from 'cytoscape';
 import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
-import { toGraphElements } from '../elements';
+import {
+  cardIdOf,
+  cardLayoutOptions,
+  cardNodes,
+  prepareCardText,
+  syncCardText,
+  toGraphElements
+} from '../elements';
 import { observeContainerSize } from '../resize';
 import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
-import { exploreLayoutOptions } from './layout';
+import { exploreLayoutOptions, pinTransform } from './layout';
 import { routeOrthogonal, type Box } from './orthogonal';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
@@ -68,6 +76,13 @@ export interface ExplorationElementsOptions {
   presentedNodeId: string | null;
   /** The places the user put the dragged nodes in. */
   pinned: ReadonlyMap<string, Position>;
+  /**
+   * The name of every type, in the language of the interface.
+   *
+   * The key is the type key of the node and the value is the **display
+   * name** of the class of the ontology.
+   */
+  typeNames?: ReadonlyMap<string, string>;
 }
 
 /** A node as the picture shows it: where it is and how big it is. */
@@ -107,11 +122,14 @@ export interface ExplorationInstance {
 /**
  * The smallest zoom the view starts at.
  *
- * A window of two hundred nodes does not fit in a canvas: the picture would
- * be a hairball of a few pixels per node. The view starts close enough to
- * read the shape of the graph, and the user pans and zooms from there.
+ * Every node is a **card** with its title inside, so a window of two
+ * hundred nodes does not fit in a canvas: the picture would be a hairball of
+ * a few pixels per node, and a card whose title cannot be read is not a
+ * card. The view starts close enough to **read** the shape of the graph —
+ * the title of a card is twelve pixels, and it has to stay readable — and
+ * the user pans and zooms from there.
  */
-const MIN_READABLE_ZOOM = 0.35;
+const MIN_READABLE_ZOOM = 0.75;
 
 /**
  * Whether the picture holds the same nodes as the ones it is given.
@@ -120,12 +138,14 @@ const MIN_READABLE_ZOOM = 0.35;
  * when a node grows: a layout that moves the picture under the user's feet
  * while a card appears is a picture that cannot be read.
  */
-function sameNodes(current: NodeCollection, nodes: readonly NodeDto[]): boolean {
-  if (current.length !== nodes.length) {
+function sameNodes(current: Collection, nodes: readonly NodeDto[]): boolean {
+  const cards = cardNodes(current);
+
+  if (cards.length !== nodes.length) {
     return false;
   }
 
-  const ids = new Set(current.map((node) => node.id()));
+  const ids = new Set(cards.map((node) => node.id()));
 
   return nodes.every((node) => ids.has(node.id));
 }
@@ -158,7 +178,7 @@ export function createExplorationInstance(
   let pinned = new Map<string, Position>();
 
   core.on('tap', 'node', (event) => {
-    options.onselect(event.target.id());
+    options.onselect(cardIdOf(event.target));
   });
 
   core.on('tap', (event) => {
@@ -170,11 +190,14 @@ export function createExplorationInstance(
   for (const kind of ['node', 'edge'] as const) {
     core.on('mouseover', kind, (event) => {
       const position = event.renderedPosition;
+      const target = event.target;
 
       options.onpreview(
         {
           kind,
-          id: event.target.id(),
+          // The text of a card is the writing on it: the pointer over it
+          // points at the card it hangs under.
+          id: kind === 'node' ? cardIdOf(target) : target.id(),
           x: position.x,
           y: position.y
         },
@@ -190,7 +213,12 @@ export function createExplorationInstance(
   }
 
   core.on('dragfree', 'node', (event) => {
-    options.ondrag(event.target.id(), event.target.position());
+    options.ondrag(cardIdOf(event.target), event.target.position());
+  });
+
+  // The text of a card follows the card while the user drags it.
+  core.on('drag', 'node', () => {
+    syncCardText(core);
   });
 
   core.on('render', () => {
@@ -201,7 +229,7 @@ export function createExplorationInstance(
   function nodeBoxes(): Map<string, Box> {
     const boxes = new Map<string, Box>();
 
-    core.nodes().forEach((node) => {
+    cardNodes(core.elements()).forEach((node) => {
       const position = node.position();
       boxes.set(node.id(), {
         cx: position.x,
@@ -212,6 +240,30 @@ export function createExplorationInstance(
     });
 
     return boxes;
+  }
+
+  /**
+   * Puts the nodes the user dragged back where they were put.
+   *
+   * The layout of `dagre` moves every node, and the `transform` hook of the
+   * layout is never called by the library: the pinned places are put back
+   * here, by hand, with the pure rule of `./layout`.
+   */
+  function applyPinnedPlaces(): void {
+    if (pinned.size === 0) {
+      return;
+    }
+
+    const transform = pinTransform(pinned);
+
+    cardNodes(core.elements()).forEach((node) => {
+      const current = node.position();
+      const place = transform(node, current);
+
+      if (place.x !== current.x || place.y !== current.y) {
+        node.position(place);
+      }
+    });
   }
 
   /**
@@ -258,14 +310,16 @@ export function createExplorationInstance(
   });
 
   /** Runs the layout and puts the picture back where it belongs. */
-  function runLayout(
-    expandedIds: ReadonlySet<string>,
-    presentedNodeId: string | null,
-    fit: boolean
-  ): void {
-    core.layout(
-      exploreLayoutOptions({ expandedCount: expandedIds.size, pinned })
-    ).run();
+  function runLayout(presentedNodeId: string | null, fit: boolean): void {
+    core.layout(cardLayoutOptions(exploreLayoutOptions(), core)).run();
+
+    // The nodes the user dragged keep the place they were put: the layout
+    // moves every node, and the pinned places are put back after it.
+    applyPinnedPlaces();
+
+    // The text of a card hangs under the card: the layout moved the cards,
+    // and the text goes with them.
+    syncCardText(core);
 
     refreshRoutes();
 
@@ -303,19 +357,28 @@ export function createExplorationInstance(
 
       // The picture is fitted again only when the window itself changed: a
       // layout that runs because a node grew keeps the viewport.
-      const fit = !sameNodes(core.nodes(), nodes);
+      const fit = !sameNodes(core.elements(), nodes);
 
       // The elements are patched, not re-created: the instance (and its
       // viewport) survives a new window.
       core.elements().remove();
-      core.add(toGraphElements(nodes, edges, { expandedIds: elementOptions.expandedIds }));
+      core.add(
+        toGraphElements(nodes, edges, {
+          expandedIds: elementOptions.expandedIds,
+          typeNames: elementOptions.typeNames
+        })
+      );
+
+      // The text of a card hangs under the card: it is placed before the
+      // layout, and the layout moves the card and its text together.
+      prepareCardText(core);
 
       this.setPresented(elementOptions.presentedNodeId);
-      runLayout(elementOptions.expandedIds, elementOptions.presentedNodeId, fit);
+      runLayout(elementOptions.presentedNodeId, fit);
     },
 
     setSelected(nodeId) {
-      core.nodes().removeClass(SELECTED_CLASS);
+      cardNodes(core.elements()).removeClass(SELECTED_CLASS);
 
       if (nodeId === null) {
         return;
@@ -329,7 +392,7 @@ export function createExplorationInstance(
     },
 
     setPresented(nodeId) {
-      core.nodes().removeClass(PRESENTED_CLASS);
+      cardNodes(core.elements()).removeClass(PRESENTED_CLASS);
 
       if (nodeId === null) {
         return;
@@ -352,7 +415,9 @@ export function createExplorationInstance(
     positions() {
       const boxes = new Map<string, RenderedBox>();
 
-      core.nodes().forEach((node) => {
+      // The badges belong to the **cards**: the text of a card is not a node
+      // of the window and has no badge of its own.
+      cardNodes(core.elements()).forEach((node) => {
         const position = node.renderedPosition();
         boxes.set(node.id(), {
           x: position.x,

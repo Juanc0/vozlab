@@ -35,11 +35,11 @@ test('the exploration view is next to the subgraph, presents a node and expands 
   // The view presents a node: the newest one of the window.
   await expect(page.getByText(`Se presenta «${node.title}».`)).toBeVisible();
 
-  // The criterion is the user's choice.
-  await page.getByText('El más relacionado', { exact: true }).click();
-  await expect(page.getByRole('radio', { name: 'El más relacionado' })).toBeChecked();
-
   // The badge of the node expands it, and the expansion is permanent.
+  //
+  // The badge is the control of the node the view **presents**: every node
+  // is a card with its title inside, so the window does not fit in a canvas
+  // at a zoom where the titles can be read — the reader pans and zooms.
   const badges = page.getByRole('toolbar', { name: 'Los nodos de la ventana' }).getByRole('button');
   const badge = badges.first();
 
@@ -48,6 +48,10 @@ test('the exploration view is next to the subgraph, presents a node and expands 
 
   await badge.click();
   await expect(badge).toHaveAttribute('aria-pressed', 'false');
+
+  // The criterion is the user's choice.
+  await page.getByText('El más relacionado', { exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'El más relacionado' })).toBeChecked();
 
   // The list view is the text alternative of the window too.
   const nodeTable = page.getByRole('region', { name: 'Los nodos del subgrafo' });

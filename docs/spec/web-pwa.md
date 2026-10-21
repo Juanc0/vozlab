@@ -334,6 +334,35 @@ list takes `status`, `targetType`, `kind`, `limit` and `cursor`, but no
 `targetId`. The interface says when the page was truncated — the history is
 partial, and pretending otherwise would be a lie.
 
+## The node is a card
+
+Every node of the canvas is a **card**, not a dot:
+
+- a white rectangle with the sheet's 8px radius, **no edge and no shadow**,
+  on the canvas's `--color-ground` — the card is separated from its
+  background by a **tone step**, the same way the sheet's cards are;
+- the **title is inside it**, wrapped greedily at word boundaries, and
+  **a word is never broken**: a word wider than the card widens the card;
+- the card's **height grows** with the number of lines, and the meta line
+  under the title carries the node's **type** in the ontology's own
+  language;
+- the **status is a mark, not a fill**: `ACTIVE` wears nothing at all, and
+  the other statuses wear a 2px border in their colour. The card is a
+  surface, so it is never painted with a state;
+- the **selection** wears the accent's ring and its pale underlay; the
+  **presented** node wears the ink's ring. The two rings are the view's,
+  not the data's, and neither is confused with a status mark.
+
+The wrapping is a **pure module** (`$lib/graph/node-card.ts`) with the text
+measurer **injected**, so it is tested with a deterministic measurer. The
+browser measures with the canvas, after the face is loaded, and falls back
+to an estimate that over-measures by about a fifth — the safe direction,
+because a card a little too tall reads and a card too short spills.
+
+The canvas **follows the window** (`ResizeObserver` → `cy.resize()`, and
+nothing else: no re-fit, no layout), so the picture stays where the reader
+left it.
+
 ## The exploration view
 
 A second mode of the graph page — "Subgrafo" / "Explorar" — that draws the

@@ -151,6 +151,40 @@
   let ontologyLoading = $state(false);
   let ontologyError = $state<ApiFailure | null>(null);
 
+  /**
+   * The name of every type, in the language of the interface.
+   *
+   * The **display name** of the class of the ontology is what the reader
+   * reads: the card of a node says "Problema", not "Problem". A class that
+   * is not in the ontology — or that has no name in the language of the
+   * interface — keeps its key: the card must say something, and the key is
+   * what the API sent.
+   *
+   * This is the **interim** of roadmap 3.18: the graph DTO will carry the
+   * display name of the class and of the relation, and the canvas will not
+   * need the ontology to speak the language of the reader.
+   */
+  const typeNames = $derived.by(() => {
+    const names = new Map<string, string>();
+    const active = ontology;
+
+    if (active === null) {
+      return names;
+    }
+
+    const language = locale.locale;
+
+    for (const cls of active.classes) {
+      const name = cls.displayNames[language] ?? cls.displayNames[language.split('-')[0] ?? ''];
+
+      if (name !== undefined && name !== '') {
+        names.set(cls.systemKey, name);
+      }
+    }
+
+    return names;
+  });
+
   /** The creation forms. */
   let nodeDialogOpen = $state(false);
   let edgeDialogOpen = $state(false);
@@ -907,6 +941,8 @@
                 nodes={graphNodes}
                 edges={graphEdges}
                 selectedNodeId={selectedNodeId}
+                {typeNames}
+                rootNodeId={rootId}
                 onselect={selectNode}
                 description={t('graph.canvasDescription', {
                   nodes: formatNumber(locale.locale, graphNodes.length),
@@ -923,6 +959,7 @@
               loading={windowLoading}
               error={windowError}
               selectedNodeId={selectedNodeId}
+              {typeNames}
               onselect={selectNode}
             />
           </div>

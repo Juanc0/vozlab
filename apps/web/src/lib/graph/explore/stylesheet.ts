@@ -1,14 +1,27 @@
 /**
  * The stylesheet of the **exploration view**.
  *
- * It is the stylesheet of the subgraph with two differences: a node that is
- * expanded is drawn as a **card** — a rectangle with the content of the
- * node — and the node that is presented wears a ring of its own, so the
- * focus of the view is visible at a glance.
+ * It is the stylesheet of the subgraph with two differences: the node the
+ * user selected wears a halo of its own and the node the view presents wears
+ * a ring of its own, so the selection and the focus of the view are visible
+ * at a glance.
+ *
+ * Every node is a **card**: a rectangle with the radius of the design
+ * system, filled with the surface of the interface, with the title wrapped
+ * inside it and the type of the node under it.
  */
 
 import type { StylesheetJson } from 'cytoscape';
-import { EXPANDED_CLASS, NODE_CARD_HEIGHT, NODE_CARD_WIDTH, NODE_DOT_SIZE } from '../elements';
+import {
+  BODY_CLASS,
+  CARD_CLASS,
+  CARD_META_INK,
+  CARD_NODE_STYLE,
+  CARD_TEXT_STYLE,
+  META_CLASS,
+  PRESENTED_COLOR,
+  SELECTION_COLOR
+} from '../elements';
 
 /** The class of the node the user selected. */
 export const SELECTED_CLASS = 'vozlab-selected';
@@ -19,61 +32,40 @@ export const PRESENTED_CLASS = 'vozlab-presented';
 /** The stylesheet of the exploration view. */
 export const EXPLORE_STYLESHEET: StylesheetJson = [
   {
-    selector: 'node',
-    style: {
-      label: 'data(label)',
-      'background-color': 'data(color)',
-      color: '#111827',
-      'font-size': '10px',
-      'text-valign': 'bottom',
-      'text-margin-y': 4,
-      'text-wrap': 'ellipsis',
-      'text-max-width': '120px',
-      width: NODE_DOT_SIZE,
-      height: NODE_DOT_SIZE,
-      'border-width': '1px',
-      'border-color': '#ffffff',
-      'overlay-opacity': 0
-    }
+    selector: `node.${CARD_CLASS}`,
+    style: CARD_NODE_STYLE
   },
   {
-    // The card: the node grows and shows its whole content.
-    selector: `node.${EXPANDED_CLASS}`,
-    style: {
-      shape: 'round-rectangle',
-      width: NODE_CARD_WIDTH,
-      height: NODE_CARD_HEIGHT,
-      'background-color': '#ffffff',
-      'border-width': '1px',
-      'border-color': '#d1d5db',
-      'text-valign': 'center',
-      'text-halign': 'center',
-      'text-margin-y': 0,
-      'text-wrap': 'wrap',
-      'text-max-width': `${NODE_CARD_WIDTH - 24}px`,
-      'font-size': '10px',
-      'line-height': 1.35,
-      color: '#111827'
-    }
+    selector: `node.${META_CLASS}`,
+    style: { ...CARD_TEXT_STYLE, color: CARD_META_INK }
   },
   {
-    // The selection is a halo **behind** the node: an overlay would be
+    selector: `node.${BODY_CLASS}`,
+    style: CARD_TEXT_STYLE
+  },
+  {
+    // The selection is a halo **behind** the card: an overlay would be
     // painted on top of it and would tint the card and its text.
     selector: `node.${SELECTED_CLASS}`,
     style: {
       'border-width': '3px',
-      'border-color': '#2563eb',
-      'underlay-color': '#2563eb',
+      'border-color': SELECTION_COLOR,
+      'underlay-color': SELECTION_COLOR,
       'underlay-opacity': 0.12,
       'underlay-padding': '6px'
     }
   },
   {
     // The node the view presents wears a ring of its own.
+    //
+    // The ring is the **ink**, and not a colour of the status: it says
+    // "this is the one the view is showing you", which is a fact about the
+    // view and not a state of the node. The ring is an outline, so it never
+    // fights with the border of the status.
     selector: `node.${PRESENTED_CLASS}`,
     style: {
-      'border-width': '3px',
-      'border-color': '#92400e'
+      'outline-width': '3px',
+      'outline-color': PRESENTED_COLOR
     }
   },
   {
@@ -83,15 +75,19 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'line-color': 'data(color)',
       'target-arrow-color': 'data(color)',
       'target-arrow-shape': 'triangle',
+      'curve-style': 'bezier',
       width: '1.5px',
       'font-size': '8px',
-      'text-background-color': '#ffffff',
+      // The label of a relation is a key of the system, not a sentence: it
+      // is written in the muted ink.
+      color: CARD_META_INK,
+      'text-background-color': '#f9fafb',
       'text-background-opacity': 0.75,
       'text-background-padding': '2px',
       'text-rotation': 'autorotate',
       // The haystack shape is the exaggerated one: the arc it draws has to
-      // be seen, not guessed. The radius is a **fraction** of the size of
-      // the node, not a number of pixels: Cytoscape refuses anything that
+      // be seen, not guessed. The radius is a **fraction** of the size of the
+      // node, not a number of pixels: Cytoscape refuses anything that
       // is not between zero and one.
       'haystack-radius': 1,
       'overlay-opacity': 0

@@ -136,6 +136,35 @@ edge of a **text field** uses `--color-control-strong`.
 | the control | 32px, a 6px radius |
 | the card | an 8px radius, **no edge**, no shadow |
 
+## The canvas and its cards
+
+The graph is drawn on a **canvas**, and the canvas is the one surface of the
+app that is **not** white: it is the **ground** (`--color-ground`). The
+nodes are **cards** — a surface (`--color-surface`) with the 8px radius, no
+edge and no shadow — so a card is separated from its background by a **tone
+step**, exactly like the cards of the interface are.
+
+A card is a **surface**, not a picture: the colour of a node is never its
+fill. A card the size of a business card painted in a saturated colour is a
+wall of colour, not a picture of a graph — and a fill by status says
+nothing, because every node of a healthy graph has the same status.
+
+The **status** of a node is a **mark** on the card: a border of two pixels
+in the colour of the status (`--color-warning`, `--color-negative`,
+`--color-muted`). The default status (`ACTIVE`) wears **no mark at all**:
+the card is the card.
+
+The **type** of the node is the categorical series of the graph — the
+difference between a problem and an idea — and it is the one thing on the
+card that says what the node *is*. It is written in the **meta line** under
+the title, in the muted ink (`--color-muted`), at the small size. A type
+that the ontology does not know keeps its key.
+
+The **rings** are the marks of the **view**, not of the data: the selection
+wears the accent — the full hue, with a pale underlay — and the node the
+view presents wears a ring in the **ink**. Neither of them is a state of the
+node, and neither of them may be mistaken for the mark of the status.
+
 ## The states
 
 Hover, focus, active, loading, empty and error are part of the design, not

@@ -31,16 +31,26 @@ interface FakeCore {
   add: ReturnType<typeof vi.fn>;
   layout: ReturnType<typeof vi.fn>;
   nodes: ReturnType<typeof vi.fn>;
+  edges: ReturnType<typeof vi.fn>;
   getElementById: ReturnType<typeof vi.fn>;
+  zoom: ReturnType<typeof vi.fn>;
+  center: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
 }
 
 function createFakeCore(): FakeCore {
   const collection = () => ({
     length: 0,
+    items: [] as unknown[],
     addClass: vi.fn(),
     removeClass: vi.fn(),
-    remove: vi.fn()
+    remove: vi.fn(),
+    forEach: vi.fn(),
+    // The collection knows the nodes it holds and can be narrowed: the
+    // layout arranges the cards, not the text that hangs under them.
+    nodes: vi.fn(() => collection()),
+    filter: vi.fn(() => collection()),
+    union: vi.fn(() => collection())
   });
 
   return {
@@ -49,18 +59,28 @@ function createFakeCore(): FakeCore {
     add: vi.fn(),
     layout: vi.fn(() => ({ run: vi.fn() })),
     nodes: vi.fn(() => collection()),
+    edges: vi.fn(() => collection()),
     getElementById: vi.fn(() => collection()),
+    // The picture is read at a zoom where the cards are still readable.
+    zoom: vi.fn(() => 1),
+    center: vi.fn(),
     destroy: vi.fn()
   };
 }
 
 /** The handler the canvas registered for a tap on a node. */
-function nodeTapHandler(core: FakeCore): (event: { target: { id: () => string } }) => void {
+function nodeTapHandler(
+  core: FakeCore
+): (event: {
+  target: { id: () => string; isChild: () => boolean; data: () => undefined };
+}) => void {
   const call = core.on.mock.calls.find((entry) => entry[1] === 'node');
   if (!call) {
     throw new Error('the canvas did not register a handler for the nodes');
   }
-  return call[2] as (event: { target: { id: () => string } }) => void;
+  return call[2] as (event: {
+    target: { id: () => string; isChild: () => boolean; data: () => undefined };
+  }) => void;
 }
 
 describe('the graph canvas', () => {
@@ -118,6 +138,17 @@ describe('the graph canvas', () => {
     // The instance survived: it was not re-created.
     expect(cytoscapeMock).toHaveBeenCalledTimes(1);
     expect(core.elements).toHaveBeenCalled();
+  });
+
+  it('is drawn on the ground of the interface, so the cards read on it', () => {
+    render(GraphCanvas, { context: localeContext(), props: { nodes: [NODE_A], edges: [] } });
+
+    // The canvas is the one surface of the app that is not white: the card
+    // is a surface, and it is separated from its background by a tone step.
+    const canvas = screen.getByRole('img', { name: 'Lienzo del subgrafo' });
+
+    expect(canvas.className).toContain('bg-ground');
+    expect(canvas.className).not.toContain('bg-surface');
   });
 
   it('destroys the instance when the canvas is unmounted', async () => {
@@ -198,7 +229,9 @@ describe('the canvas and the list view', () => {
       { timeout: 5000 }
     );
 
-    nodeTapHandler(core)({ target: { id: () => NODE_A.id } });
+    nodeTapHandler(core)({
+      target: { id: () => NODE_A.id, isChild: () => false, data: () => undefined }
+    });
 
     await waitFor(() => {
       const [nodeTable] = screen.getAllByRole('table');

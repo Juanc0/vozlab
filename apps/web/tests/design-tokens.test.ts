@@ -13,6 +13,14 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  CARD_COLOR,
+  CARD_INK,
+  CARD_META_INK,
+  PRESENTED_COLOR,
+  SELECTION_COLOR,
+  nodeStatusBorder
+} from '$lib/graph/elements';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
@@ -207,5 +215,23 @@ describe('the token layer', () => {
 
     // The licence of the faces sits next to them.
     expect(() => readFileSync(join(SRC, '../static/fonts/OFL.txt'), 'utf8')).not.toThrow();
+  });
+
+  it('paints the canvas with the roles of the ladder', () => {
+    // The card is a **surface** and its title is the **ink**: the canvas
+    // never paints a node in a colour of its own.
+    expect(CARD_COLOR).toBe(VALUES.surface);
+    expect(CARD_INK).toBe(VALUES.text);
+    expect(CARD_META_INK).toBe(VALUES.muted);
+
+    // The rings are the marks of the view: the accent for the selection,
+    // the ink for the node the view presents.
+    expect(SELECTION_COLOR).toBe(VALUES.accent);
+    expect(PRESENTED_COLOR).toBe(VALUES.text);
+
+    // The mark of a status is the colour of the status.
+    expect(nodeStatusBorder('PENDING').color).toBe(VALUES.warning);
+    expect(nodeStatusBorder('REJECTED').color).toBe(VALUES.negative);
+    expect(nodeStatusBorder('MERGED').color).toBe(VALUES.muted);
   });
 });

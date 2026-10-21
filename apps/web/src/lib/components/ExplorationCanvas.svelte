@@ -4,6 +4,7 @@
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import type { ExplorationInstance, RenderedBox } from '$lib/graph/explore/instance';
   import { formatAttributeValue } from '$lib/graph/elements';
+  import { ensureTitleFont } from '$lib/graph/node-card';
   import { formatNumber } from '$lib/i18n';
   import { getLocaleState } from '$lib/state/context';
 
@@ -20,6 +21,14 @@
     selectedNodeId?: string | null;
     /** The id of the node the view presents. */
     presentedNodeId?: string | null;
+    /**
+     * The name of every type, in the language of the interface.
+     *
+     * The key is the type key of the node and the value is the **display
+     * name** of the class of the ontology: the meta line of a card says
+     * "Problema", not "Problem".
+     */
+    typeNames?: ReadonlyMap<string, string>;
     /** Called when the user selects (or clears) a node in the canvas. */
     onselect?: (nodeId: string | null) => void;
     /** Called when the user expands or collapses a node. */
@@ -33,6 +42,7 @@
     edgeStyle = 'bezier',
     selectedNodeId = null,
     presentedNodeId = null,
+    typeNames = new Map<string, string>(),
     onselect,
     ontoggle
   }: Props = $props();
@@ -136,7 +146,15 @@
 
     // Cytoscape draws to a `<canvas>`: it needs a DOM. The module is
     // imported here so the server pass never evaluates it.
-    void import('$lib/graph/explore/instance').then(({ createExplorationInstance }) => {
+    //
+    // The face of the title is awaited first: the card is measured with the
+    // face that is **loaded**, and a card measured with the fallback of the
+    // system would be sized for a font that is not the one that is drawn.
+    void (async () => {
+      await ensureTitleFont();
+
+      const { createExplorationInstance } = await import('$lib/graph/explore/instance');
+
       if (cancelled) {
         return;
       }
@@ -178,7 +196,7 @@
       });
 
       instance = created;
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -195,6 +213,7 @@
     const currentExpanded = expandedIds;
     const currentStyle = edgeStyle;
     const currentPresented = presentedNodeId;
+    const currentTypeNames = typeNames;
 
     if (graph === null) {
       return;
@@ -204,7 +223,8 @@
       expandedIds: currentExpanded,
       edgeStyle: currentStyle,
       presentedNodeId: currentPresented,
-      pinned
+      pinned,
+      typeNames: currentTypeNames
     });
 
     moveBadges(graph.positions());
@@ -308,6 +328,16 @@
     return nodes.find((node) => node.id === nodeId)?.title ?? t('graph.unknownNode');
   }
 
+  /**
+   * The name of the type of a node, in the language of the interface.
+   *
+   * It is the **display name** of the class of the ontology: the card and
+   * the preview say the same thing.
+   */
+  function typeNameOf(node: NodeDto): string {
+    return typeNames.get(node.typeKey) ?? node.typeKey;
+  }
+
   /** The attributes of the node of the preview. */
   const previewAttributes = $derived(
     previewNode === null ? [] : Object.entries(previewNode.attributes ?? {})
@@ -374,7 +404,7 @@
     role="img"
     aria-label={t('explore.canvasLabel')}
     aria-describedby={descriptionId}
-    class="h-full min-h-72 w-full overflow-hidden rounded-card bg-surface"
+    class="h-full min-h-72 w-full overflow-hidden rounded-card bg-ground"
   ></div>
 
   <!--
@@ -462,7 +492,7 @@
     >
       {#if previewNode !== null}
         <p class="font-semibold">{previewNode.title}</p>
-        <p class="mt-0.5 text-muted">{previewNode.typeKey} · {previewNode.status}</p>
+        <p class="mt-0.5 text-muted">{typeNameOf(previewNode)} · {previewNode.status}</p>
         <p class="mt-2 whitespace-pre-line">
           {previewNode.description?.trim() !== ''
             ? previewNode.description

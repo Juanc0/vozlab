@@ -1,28 +1,129 @@
 /**
  * The mapping from the DTOs to the Cytoscape elements.
  *
- * Pure: no DOM, no Cytoscape instance, no API call. The colours are derived
- * from the **status** the API sent — the client never invents a state, it
- * only paints the one it was given.
+ * Pure: no DOM, no Cytoscape instance, no API call. The colours are the
+ * ones of the **design system**, and they say what a colour *does*:
+ *
+ * - the **card** is a surface: it is white (`--color-surface`), and the
+ *   canvas behind it is the ground (`--color-ground`). A card is separated
+ *   from its background by a **tone step**, exactly like the cards of the
+ *   interface are;
+ * - the **title** of the card is the ink of the interface (`--color-text`),
+ *   and the **meta line** under it is the muted ink (`--color-muted`);
+ * - the **status** of a node is a **mark** on the card: a border of two
+ *   pixels in the colour of the status. The default status (`ACTIVE`)
+ *   carries no mark at all — the card is the card.
+ *
+ * The status is **never** the fill of the card. A card the size of a
+ * business card painted in a saturated colour is a wall of colour, not a
+ * picture of a graph, and a fill by status says nothing: every node of a
+ * healthy graph has the same status.
+ *
+ * Every node is a **card**: its title is wrapped inside it and the card is
+ * as big as the text it holds. The size is computed by the pure module of
+ * `./node-card`, which takes the measurer of the text as an argument.
  */
 
 import type { EdgeStatus, NodeDto, NodeStatus, SubgraphEdgeDto } from '$lib/api/types';
-import type { StylesheetJson } from 'cytoscape';
+import type { Collection, Core, Css, NodeSingular, StylesheetJson } from 'cytoscape';
+import {
+  CARD_PADDING_Y,
+  CARD_RADIUS,
+  CARD_WIDTH,
+  EXPANDED_CARD_WIDTH,
+  META_FONT_SIZE,
+  META_LINE_HEIGHT,
+  TITLE_FONT_FAMILY,
+  TITLE_FONT_SIZE,
+  TITLE_LINE_HEIGHT,
+  nodeCardSize,
+  type TextMeasurer
+} from './node-card';
+
+/** The fill of a card: the surface of the design system. */
+export const CARD_COLOR = '#ffffff';
+
+/** The ink of the title of a card: the text of the interface. */
+export const CARD_INK = '#111827';
+
+/** The ink of the meta line of a card: the muted text of the interface. */
+export const CARD_META_INK = '#5f6672';
+
+/** The colour of the selection: the accent of the interface. */
+export const SELECTION_COLOR = '#2563eb';
+
+/** The colour of the ring of the node the view presents: the ink. */
+export const PRESENTED_COLOR = '#111827';
+
+/**
+ * The margin between the top of the card and the title, in pixels.
+ *
+ * Cytoscape draws the first line of a label with its **baseline** at the
+ * anchor plus the size of the font, so the text of a title sits a few
+ * pixels below the anchor. The margin takes that offset back: the title
+ * starts at the padding of the card, as the padding says it does.
+ */
+export const TITLE_TEXT_MARGIN_Y = CARD_PADDING_Y - 3;
 
 /** The element of a node, ready for `cy.add()`. */
 export interface GraphNodeElement {
   group: 'nodes';
   data: {
     id: string;
+    /** The title of the card, with a line break between the lines. */
     label: string;
+    /** The name of the type of the node, in the language of the interface. */
     typeKey: string;
     status: string;
-    color: string;
-    /** Whether the node is drawn as a card instead of a dot. */
+    /** The colour of the border of the card — the mark of the status. */
+    borderColor: string;
+    /** The width of the border of the card, in pixels. */
+    borderWidth: number;
+    /** Whether the node is drawn with its whole content. */
     expanded: boolean;
+    /** The width of the card, in pixels. */
+    width: number;
+    /** The height of the card, in pixels. */
+    height: number;
+    /** The width the title has inside the card, in pixels. */
+    innerWidth: number;
   };
   /** The classes of the element — the stylesheet keys on them. */
   classes?: string[];
+}
+
+/**
+ * An element of **text** that belongs to a card: its meta line or its body.
+ *
+ * The text of a card is not one label: the title is in the ink of the
+ * interface and the meta line is in the muted one, and Cytoscape draws one
+ * label per element with one ink. The two are therefore two elements: the
+ * card, and the line of text that hangs under it.
+ *
+ * The line is a **sibling** of the card, not its child: a compound node in
+ * Cytoscape is sized and placed by its children, and the card is the one
+ * that has to keep its own shape. The line is placed by hand, under the
+ * card it belongs to, and it follows it.
+ */
+export interface GraphTextElement {
+  group: 'nodes';
+  data: {
+    id: string;
+    /** The card the text belongs to. */
+    cardId: string;
+    /** The text, with a line break between the lines. */
+    label: string;
+    /** The width of the text, in pixels. */
+    width: number;
+    /** The height of the text, in pixels. */
+    height: number;
+    /** The x of the text, relative to the centre of the card. */
+    dx: number;
+    /** The y of the text, relative to the centre of the card. */
+    dy: number;
+  };
+  /** The classes of the element — the stylesheet keys on them. */
+  classes: string[];
 }
 
 /** The element of a relation, ready for `cy.add()`. */
@@ -39,19 +140,112 @@ export interface GraphEdgeElement {
 }
 
 /** Any element of the graph. */
-export type GraphElement = GraphNodeElement | GraphEdgeElement;
+export type GraphElement = GraphNodeElement | GraphTextElement | GraphEdgeElement;
 
-/** The class of a node that is drawn as a card. */
+/** The class of a node that is drawn with its whole content. */
 export const EXPANDED_CLASS = 'vozlab-expanded';
 
-/** The size of a node that is drawn as a dot. */
-export const NODE_DOT_SIZE = 28;
+/** The class of the **card** of a node. */
+export const CARD_CLASS = 'vozlab-card';
 
-/** The width of a node that is drawn as a card. */
-export const NODE_CARD_WIDTH = 240;
+/** The class of the meta line of a card. */
+export const META_CLASS = 'vozlab-meta';
 
-/** The height of a node that is drawn as a card. */
-export const NODE_CARD_HEIGHT = 150;
+/** The class of the body of a card. */
+export const BODY_CLASS = 'vozlab-body';
+
+/**
+ * The cards of the graph — the nodes that are **not** the text of a card.
+ *
+ * The text of a card is an element of its own, and it never takes part in
+ * the layout, in the routing or in the badges: only the cards do.
+ */
+export function cardNodes(eles: Collection): Collection {
+  return eles.nodes().filter((node) => node.hasClass(CARD_CLASS));
+}
+
+/**
+ * The options of a layout that arranges the **cards** of the graph.
+ *
+ * The text of a card is not a node of the graph: it is the writing on it,
+ * and the layout has nothing to arrange about it.
+ */
+export function cardLayoutOptions<T extends object>(options: T, core: Core): T & {
+  eles: Collection;
+} {
+  const cards = cardNodes(core.elements());
+
+  return { ...options, eles: cards.union(core.edges()) };
+}
+
+/**
+ * Puts the text of the cards under the cards they belong to.
+ *
+ * The text is a node of its own, so it has to be placed by hand: it hangs
+ * under its card, at the offset the card computed, and it follows the card
+ * when the layout moves it or when the user drags it.
+ */
+export function syncCardText(core: Core): void {
+  const cards = new Map<string, { x: number; y: number }>();
+
+  cardNodes(core.elements()).forEach((card) => {
+    cards.set(card.id(), card.position());
+  });
+
+  core.nodes().forEach((node) => {
+    if (!node.hasClass(META_CLASS) && !node.hasClass(BODY_CLASS)) {
+      return;
+    }
+
+    const cardId = String(node.data('cardId'));
+    const card = cards.get(cardId);
+
+    if (card === undefined) {
+      return;
+    }
+
+    const dx = Number(node.data('dx'));
+    const dy = Number(node.data('dy'));
+
+    node.position({
+      x: card.x + (Number.isFinite(dx) ? dx : 0),
+      y: card.y + (Number.isFinite(dy) ? dy : 0)
+    });
+  });
+}
+
+/**
+ * Prepares the text of the cards: it is placed under its card, and it is
+ * not a thing the user can move.
+ *
+ * The text of a card is the writing on the card: dragging it would leave
+ * the card without its type.
+ */
+export function prepareCardText(core: Core): void {
+  core.nodes().forEach((node) => {
+    if (node.hasClass(META_CLASS) || node.hasClass(BODY_CLASS)) {
+      node.ungrabify();
+    }
+  });
+
+  syncCardText(core);
+}
+
+/**
+ * The id of the card an element belongs to.
+ *
+ * The text of a card is an element of its own: a click on it is a click on
+ * the card it hangs under.
+ */
+export function cardIdOf(element: NodeSingular): string {
+  const cardId = element.data('cardId');
+
+  if (typeof cardId === 'string' && cardId !== '') {
+    return cardId;
+  }
+
+  return element.id();
+}
 
 /**
  * Formats the value of an attribute for the card of a node.
@@ -79,36 +273,70 @@ export function formatAttributeValue(value: unknown): string {
   }
 }
 
+/** The content of the **card** of a node. */
+export interface NodeCardContent {
+  /** The title of the node. */
+  readonly title: string;
+  /** The meta line under the title: the type of the node. */
+  readonly meta: string;
+  /** The body of the card: the description and the attributes. */
+  readonly body: string;
+}
+
 /**
- * The text of the **card** of a node.
+ * The content of the card of a node.
  *
- * The card carries the whole content of the node: its title, its class and
- * its status, its description and its attributes. It is the difference
- * between a node that is expanded and a node that is a dot.
+ * The **meta line** is the type of the node, in the language of the
+ * interface: the type is the categorical series of the graph — the
+ * difference between a problem and an idea — and it is the first thing a
+ * reader needs. When the card is **expanded**, the line keeps the status of
+ * the node too: the expanded card is the whole node, and the status is part
+ * of it.
+ *
+ * The **body** is the description and the attributes of the node. It is only
+ * there when the card is expanded.
  */
-export function nodeCardText(node: NodeDto): string {
-  const lines: string[] = [node.title, `${node.typeKey} · ${node.status}`];
+export function nodeCardContent(
+  node: NodeDto,
+  options: { typeName?: string; expanded?: boolean } = {}
+): NodeCardContent {
+  const expanded = options.expanded === true;
+  const typeName = options.typeName ?? node.typeKey;
+
+  const paragraphs: string[] = [];
 
   const description = node.description?.trim() ?? '';
 
-  if (description !== '') {
-    lines.push(description);
+  if (expanded && description !== '') {
+    paragraphs.push(description);
   }
 
-  for (const [key, value] of Object.entries(node.attributes ?? {})) {
-    lines.push(`${key}: ${formatAttributeValue(value)}`);
+  if (expanded) {
+    for (const [key, value] of Object.entries(node.attributes ?? {})) {
+      paragraphs.push(`${key}: ${formatAttributeValue(value)}`);
+    }
   }
 
-  return lines.join('\n');
+  return {
+    title: node.title,
+    meta: expanded ? `${typeName} · ${node.status}` : typeName,
+    body: paragraphs.join('\n')
+  };
 }
 
-/** The colour of a node, by its status. */
-const NODE_COLORS: Record<NodeStatus, string> = {
-  ACTIVE: '#247b50',
+/**
+ * The border of a card, by the status of the node.
+ *
+ * The default status carries **no mark**: the card is the card. The other
+ * statuses carry a border of two pixels in the colour of the status — a
+ * mark on the card, not a rule between sections.
+ */
+const STATUS_BORDER_COLORS: Record<NodeStatus, string> = {
+  ACTIVE: CARD_META_INK,
   PENDING: '#92400e',
-  DRAFT: '#5f6672',
-  MERGED: '#6b7280',
-  DEPRECATED: '#9ca3af',
+  DRAFT: CARD_META_INK,
+  MERGED: CARD_META_INK,
+  DEPRECATED: CARD_META_INK,
   REJECTED: '#c4242a'
 };
 
@@ -123,9 +351,18 @@ const EDGE_COLORS: Record<EdgeStatus, string> = {
 /** The colour of a node of an unknown status. */
 const FALLBACK_COLOR = '#5f6672';
 
-/** The colour of a node, by its status. */
-export function nodeColor(status: NodeStatus): string {
-  return NODE_COLORS[status] ?? FALLBACK_COLOR;
+/**
+ * The border of the card of a node, by its status.
+ *
+ * The default status (`ACTIVE`) has **no border at all**: the card is the
+ * card, and a mark that every card wears is not a mark.
+ */
+export function nodeStatusBorder(status: NodeStatus): { width: number; color: string } {
+  if (status === 'ACTIVE') {
+    return { width: 0, color: FALLBACK_COLOR };
+  }
+
+  return { width: 2, color: STATUS_BORDER_COLORS[status] ?? FALLBACK_COLOR };
 }
 
 /** The colour of a relation, by its status. */
@@ -135,27 +372,97 @@ export function edgeColor(status: EdgeStatus): string {
 
 /** How a node is drawn. */
 export interface NodeElementOptions {
-  /** Whether the node is drawn as a card instead of a dot. */
+  /** Whether the node is drawn with its whole content. */
   expanded?: boolean;
+  /** The measurer of the text of the card. */
+  measure?: TextMeasurer;
+  /** The name of the type of the node, in the language of the interface. */
+  typeName?: string;
+}
+
+/** The element of one node, and the elements of its text. */
+export function toNodeElements(
+  node: NodeDto,
+  options: NodeElementOptions = {}
+): GraphElement[] {
+  const expanded = options.expanded === true;
+  const content = nodeCardContent(node, {
+    typeName: options.typeName,
+    expanded
+  });
+
+  // The card carries the content of the node; a node that is not expanded
+  // carries its title and its type alone.
+  const card = nodeCardSize(content.title, {
+    measure: options.measure,
+    width: expanded ? EXPANDED_CARD_WIDTH : CARD_WIDTH,
+    meta: content.meta,
+    body: expanded ? content.body : ''
+  });
+
+  const border = nodeStatusBorder(node.status);
+
+  const cardElement: GraphNodeElement = {
+    group: 'nodes',
+    data: {
+      id: node.id,
+      label: card.text,
+      typeKey: node.typeKey,
+      status: node.status,
+      borderColor: border.color,
+      borderWidth: border.width,
+      expanded,
+      width: card.width,
+      height: card.height,
+      innerWidth: card.innerWidth
+    },
+    classes: expanded ? [CARD_CLASS, EXPANDED_CLASS] : [CARD_CLASS]
+  };
+
+  const elements: GraphElement[] = [cardElement];
+
+  // The meta line: the type of the node, under the title.
+  if (content.meta !== '') {
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: `${node.id}#meta`,
+        cardId: node.id,
+        label: content.meta,
+        width: card.metaWidth + 2,
+        height: card.metaHeight,
+        dx: 0,
+        dy: card.metaY
+      },
+      classes: [META_CLASS]
+    });
+  }
+
+  // The body: the description and the attributes, under the meta line.
+  if (content.body !== '') {
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: `${node.id}#body`,
+        cardId: node.id,
+        label: card.body,
+        width: card.innerWidth,
+        height: card.bodyHeight,
+        dx: 0,
+        dy: card.bodyY
+      },
+      classes: [BODY_CLASS]
+    });
+  }
+
+  return elements;
 }
 
 /** The element of one node. */
 export function toNodeElement(node: NodeDto, options: NodeElementOptions = {}): GraphNodeElement {
-  const expanded = options.expanded === true;
+  const [card] = toNodeElements(node, options) as [GraphNodeElement];
 
-  return {
-    group: 'nodes',
-    data: {
-      id: node.id,
-      // The card carries the content of the node; the dot carries its title.
-      label: expanded ? nodeCardText(node) : node.title,
-      typeKey: node.typeKey,
-      status: node.status,
-      color: nodeColor(node.status),
-      expanded
-    },
-    ...(expanded ? { classes: [EXPANDED_CLASS] } : {})
-  };
+  return card;
 }
 
 /** The element of one relation. */
@@ -175,23 +482,108 @@ export function toEdgeElement(edge: SubgraphEdgeDto): GraphEdgeElement {
 
 /** How the elements of a graph are drawn. */
 export interface GraphElementOptions {
-  /** The nodes that are drawn as a card. */
+  /** The nodes that are drawn with their whole content. */
   expandedIds?: ReadonlySet<string>;
+  /** The measurer of the text of the cards. */
+  measure?: TextMeasurer;
+  /**
+   * The name of every type, in the language of the interface.
+   *
+   * The key is the type key of the node and the value is the **display
+   * name** of the class of the ontology. A type that is not in the map keeps
+   * its key: the card must say something, and the key is what the API sent.
+   */
+  typeNames?: ReadonlyMap<string, string>;
 }
 
-/** The elements of a subgraph: the nodes first, then the relations. */
+/**
+ * The elements of a subgraph: the nodes first, then the relations.
+ *
+ * The text of a card comes **after** the card it belongs to: Cytoscape needs
+ * the parent to be in the graph before a child can hang under it.
+ */
 export function toGraphElements(
   nodes: readonly NodeDto[],
   edges: readonly SubgraphEdgeDto[],
   options: GraphElementOptions = {}
 ): GraphElement[] {
   const expanded = options.expandedIds ?? new Set<string>();
+  const typeNames = options.typeNames;
 
-  return [
-    ...nodes.map((node) => toNodeElement(node, { expanded: expanded.has(node.id) })),
-    ...edges.map(toEdgeElement)
-  ];
+  const elements: GraphElement[] = [];
+
+  for (const node of nodes) {
+    elements.push(
+      ...toNodeElements(node, {
+        expanded: expanded.has(node.id),
+        measure: options.measure,
+        typeName: typeNames?.get(node.typeKey)
+      })
+    );
+  }
+
+  for (const edge of edges) {
+    elements.push(toEdgeElement(edge));
+  }
+
+  return elements;
 }
+
+/**
+ * The style of the **card** of a node.
+ *
+ * The card is a surface: white, with the radius of the design system and
+ * **no shadow**. Its edge is the mark of the status of the node, and it is
+ * two pixels wide — or nothing at all when the node is active.
+ *
+ * The title is at the **top** of the card: the meta line hangs under it, and
+ * the body under the meta line.
+ */
+export const CARD_NODE_STYLE: Css.Node = {
+  label: 'data(label)',
+  shape: 'round-rectangle',
+  'corner-radius': `${CARD_RADIUS}px`,
+  width: 'data(width)',
+  height: 'data(height)',
+  'background-color': CARD_COLOR,
+  'border-width': 'data(borderWidth)',
+  'border-color': 'data(borderColor)',
+  color: CARD_INK,
+  'font-family': TITLE_FONT_FAMILY,
+  'font-size': `${TITLE_FONT_SIZE}px`,
+  'line-height': TITLE_LINE_HEIGHT / TITLE_FONT_SIZE,
+  'text-valign': 'top-inside',
+  'text-margin-y': TITLE_TEXT_MARGIN_Y,
+  'text-halign': 'center',
+  'text-wrap': 'wrap',
+  'text-max-width': 'data(innerWidth)',
+  'overlay-opacity': 0
+};
+
+/**
+ * The style of a **line of text** that belongs to a card.
+ *
+ * The line has no shape of its own: it is the text of the card, and the
+ * card is the shape. It is drawn in the ink of the interface; the meta line
+ * wears the muted one.
+ */
+export const CARD_TEXT_STYLE: Css.Node = {
+  label: 'data(label)',
+  shape: 'rectangle',
+  width: 'data(width)',
+  height: 'data(height)',
+  'background-opacity': 0,
+  'border-width': 0,
+  color: CARD_INK,
+  'font-family': TITLE_FONT_FAMILY,
+  'font-size': `${META_FONT_SIZE}px`,
+  'line-height': META_LINE_HEIGHT / META_FONT_SIZE,
+  'text-valign': 'center',
+  'text-halign': 'center',
+  'text-wrap': 'wrap',
+  'text-max-width': 'data(width)',
+  'overlay-opacity': 0
+};
 
 /**
  * The stylesheet of the canvas.
@@ -199,34 +591,35 @@ export function toGraphElements(
  * The relations are styled by their **relation key** (the label) and their
  * **status** (the colour and the dash pattern): a `PENDING` relation is
  * drawn dashed, an `ACTIVE` one solid.
+ *
+ * Every node is a **card**: a rectangle with the radius of the design
+ * system, filled with the surface of the interface, with the title wrapped
+ * inside it. The width and the height of the card are the ones the pure
+ * module of `./node-card` computed.
  */
 export const GRAPH_STYLESHEET: StylesheetJson = [
   {
-    selector: 'node',
-    style: {
-      label: 'data(label)',
-      'background-color': 'data(color)',
-      color: '#111827',
-      'font-size': '10px',
-      'text-valign': 'bottom',
-      'text-margin-y': 4,
-      'text-wrap': 'ellipsis',
-      'text-max-width': '120px',
-      width: '28px',
-      height: '28px',
-      'border-width': '1px',
-      'border-color': '#ffffff',
-      'overlay-opacity': 0
-    }
+    selector: `node.${CARD_CLASS}`,
+    style: CARD_NODE_STYLE
+  },
+  {
+    selector: `node.${META_CLASS}`,
+    style: { ...CARD_TEXT_STYLE, color: CARD_META_INK }
+  },
+  {
+    selector: `node.${BODY_CLASS}`,
+    style: CARD_TEXT_STYLE
   },
   {
     selector: 'node.vozlab-selected',
     style: {
       'border-width': '3px',
-      'border-color': '#2563eb',
-      'overlay-color': '#2563eb',
-      'overlay-opacity': 0.12,
-      'overlay-padding': '6px'
+      'border-color': SELECTION_COLOR,
+      // The halo is **behind** the card: an overlay would be painted on top
+      // of it and would tint the card and its title.
+      'underlay-color': SELECTION_COLOR,
+      'underlay-opacity': 0.12,
+      'underlay-padding': '6px'
     }
   },
   {
@@ -239,7 +632,12 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
       'curve-style': 'bezier',
       width: '1.5px',
       'font-size': '8px',
-      'text-background-color': '#ffffff',
+      // The label of a relation is a key of the system, not a sentence: it
+      // is written in the muted ink.
+      color: CARD_META_INK,
+      // The label of a relation sits on the **ground** of the canvas: a
+      // white plate on a grey canvas would be a hole in the picture.
+      'text-background-color': '#f9fafb',
       'text-background-opacity': 0.75,
       'text-background-padding': '2px',
       'text-rotation': 'autorotate'
