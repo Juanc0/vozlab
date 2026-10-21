@@ -13,7 +13,7 @@
   import { MediaQuery } from '$lib/layout/media.svelte';
   import { isWorkspacePath } from '$lib/layout/workspace';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
-  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getPanelsState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { shellState } from '$lib/state/shell.svelte';
   import type { LayoutProps } from './$types';
 
@@ -23,6 +23,7 @@
   const session = getSessionState();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
+  const panels = getPanelsState();
   const t = locale.t;
 
   /**
@@ -42,6 +43,17 @@
    * them scrolls.
    */
   const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
+
+  /**
+   * The padding of the column of the navigation.
+   *
+   * The rail is 56 pixels wide and it holds a touch target of 44: the
+   * padding has to leave room for it, or the column grows a scrollbar that
+   * nothing asked for.
+   */
+  const navPadding = $derived(
+    panels.navCollapsed ? 'px-1' : isWorkspace ? 'pl-4 pr-6 sm:pl-6' : 'pr-6'
+  );
 
   onMount(() => {
     navWide.attach();
@@ -170,8 +182,9 @@
 
   <div
     class="grid {navWide.matches
-      ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7'
+      ? 'lg:grid-cols-[var(--nav-width)_minmax(0,1fr)] lg:gap-7'
       : ''} {isWorkspace ? 'h-full min-h-0' : ''}"
+    style="--nav-width: {panels.navCollapsed ? 'var(--sidebar-rail-width)' : 'var(--sidebar-width)'}"
   >
     {#if navWide.matches}
       <!--
@@ -185,14 +198,18 @@
         In a **workspace** the column is not sticky: the window does not
         scroll, the column is as tall as the window and it scrolls inside
         itself.
+
+        The column **folds** into a rail of 56 pixels when the reader asks
+        for it: the canvas needs the room, and the sections stay reachable
+        with their names.
       -->
       <aside
         aria-label={t('app.workspaceAndSections')}
         class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
-          ? 'h-full pl-4 pr-6 sm:pl-6'
-          : 'sticky top-16 h-[calc(100dvh-4rem)] pr-6'}"
+          ? 'h-full'
+          : 'sticky top-16 h-[calc(100dvh-4rem)]'} {navPadding}"
       >
-        <AppSidebar />
+        <AppSidebar collapsible collapsed={panels.navCollapsed} />
       </aside>
     {/if}
 

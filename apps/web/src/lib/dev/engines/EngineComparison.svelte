@@ -93,7 +93,18 @@
 
   /** The instants the layouts took, by engine. */
   let layouts = $state.raw<
-    Map<string, { ms: number; settled: boolean; iterations?: number; overlaps?: number; ticks?: number; frameMs?: number }>
+    Map<
+      string,
+      {
+        ms: number;
+        settled: boolean;
+        iterations?: number;
+        overlaps?: number;
+        ticks?: number;
+        frameMs?: number;
+        reversedRelations?: readonly string[];
+      }
+    >
   >(new Map());
 
   /** Whether the measurement is running. */
@@ -225,6 +236,7 @@
       overlaps?: number;
       ticks?: number;
       frameMs?: number;
+      reversedRelations?: readonly string[];
     }
   ): void {
     queueMicrotask(() => {
@@ -245,7 +257,7 @@
     const next = new Map<string, FrameSummary>();
 
     try {
-      for (const name of ['dagre', 'd3', 'fcose', 'sigma']) {
+      for (const name of ['dagre', 'd3', 'dag', 'fcose', 'sigma']) {
         const element = panelOf(name);
 
         if (element === undefined) {
@@ -280,6 +292,74 @@
   /** The number of nodes of the picture, written with the conventions of the locale. */
   const nodeCount = $derived(formatNumber(locale.locale, picture.nodes.length));
   const edgeCount = $derived(formatNumber(locale.locale, picture.edges.length));
+
+  /**
+   * The panels of the comparison: the same picture in five arrangements.
+   *
+   * The clone of `dagre` — the layered arrangement of `d3-dag` — is one
+   * of them: it is a **candidate**, and `dagre` stays in production.
+   */
+  const panels = $derived([
+    {
+      id: 'dagre',
+      name: t('engines.panelDagreName'),
+      note: t('engines.panelDagreNote'),
+      reproducible: t('engines.reproducibleDagre')
+    },
+    {
+      id: 'd3',
+      name: t('engines.panelD3Name'),
+      note: t('engines.panelD3Note'),
+      reproducible: t('engines.reproducibleD3')
+    },
+    {
+      id: 'dag',
+      name: t('engines.panelDagName'),
+      note: t('engines.panelDagNote'),
+      reproducible: t('engines.reproducibleDag')
+    },
+    {
+      id: 'fcose',
+      name: t('engines.panelFcoseName'),
+      note: t('engines.panelFcoseNote'),
+      reproducible: t('engines.reproducibleFcose')
+    },
+    {
+      id: 'sigma',
+      name: t('engines.panelSigmaName'),
+      note: t('engines.panelSigmaNote'),
+      reproducible: t('engines.reproducibleSigma')
+    }
+  ]);
+
+  /**
+   * The names of the relations that were **reversed** by an arrangement.
+   *
+   * They are the relations whose arrow is drawn against what the relation
+   * says: the reader has to be able to see **which** ones they are, and
+   * not only how many.
+   *
+   * @param engine - The engine of the panel.
+   * @returns The names of the relations, separated by commas.
+   */
+  function reversedNames(engine: string): string {
+    const ids = layouts.get(engine)?.reversedRelations ?? [];
+
+    const names = ids.map((id) => {
+      const relation = picture.edges.find((edge) => edge.id === id);
+
+      if (relation === undefined) {
+        return id;
+      }
+
+      const source = picture.nodes.find((node) => node.id === relation.sourceNodeId);
+      const target = picture.nodes.find((node) => node.id === relation.targetNodeId);
+
+      return `${source?.title ?? '?'} → ${target?.title ?? '?'}`;
+    });
+
+    return names.join(', ');
+  }
 </script>
 
 <div class="mx-auto max-w-[90rem] space-y-6 px-4 py-6">
@@ -384,8 +464,8 @@
       The three panels, side by side. They are the same picture in three
       engines: the same nodes, the same relations and the same controls.
     -->
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
-      {#each [{ id: 'dagre', name: t('engines.panelDagreName'), note: t('engines.panelDagreNote'), reproducible: t('engines.reproducibleDagre') }, { id: 'd3', name: t('engines.panelD3Name'), note: t('engines.panelD3Note'), reproducible: t('engines.reproducibleD3') }, { id: 'fcose', name: t('engines.panelFcoseName'), note: t('engines.panelFcoseNote'), reproducible: t('engines.reproducibleFcose') }, { id: 'sigma', name: t('engines.panelSigmaName'), note: t('engines.panelSigmaNote'), reproducible: t('engines.reproducibleSigma') }] as panel (panel.id)}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      {#each panels as panel (panel.id)}
         <section class="flex flex-col rounded-card bg-surface p-3">
           <h2 class="text-body font-semibold">{panel.name}</h2>
           <p class="mt-0.5 text-small text-muted">{panel.note}</p>
@@ -472,11 +552,53 @@
 
             <!--
               Whether the same picture comes out twice. It is not the same
-              question for the four engines, and the answer says so.
+              question for the five engines, and the answer says so.
             -->
             <dt class="text-muted">{t('engines.reproducibleLabel')}</dt>
             <dd>{panel.reproducible}</dd>
+
+            <!--
+              The relations that were reversed to be able to order the
+              graph. It is the number that says the most about a layered
+              arrangement: the relations of VozLab have cycles, and the
+              arrangement has to break them.
+            -->
+            <dt class="text-muted">{t('engines.reversedLabel')}</dt>
+            <dd class="font-mono">
+              {layouts.get(panel.id)?.reversedRelations === undefined
+                ? '—'
+                : t('engines.reversedValue', {
+                    count: formatNumber(
+                      locale.locale,
+                      layouts.get(panel.id)?.reversedRelations?.length ?? 0
+                    )
+                  })}
+            </dd>
           </dl>
+
+          <!--
+            The relations that were reversed, by name: the reader has to be
+            able to see **which** ones are drawn against what they say.
+
+            The list is folded away: ten relations with the titles of their
+            cards take the whole panel, and the picture is what the panel
+            is for.
+          -->
+          {#if (layouts.get(panel.id)?.reversedRelations?.length ?? 0) > 0}
+            <details class="mt-2 text-small">
+              <summary class="cursor-pointer text-muted">
+                {t('engines.reversedToggle', {
+                  count: formatNumber(
+                    locale.locale,
+                    layouts.get(panel.id)?.reversedRelations?.length ?? 0
+                  )
+                })}
+              </summary>
+              <p class="mt-1 text-muted">
+                {t('engines.reversedDetail', { relations: reversedNames(panel.id) })}
+              </p>
+            </details>
+          {/if}
 
           <!--
             The picture of the engine. The three panels are measured one
@@ -527,7 +649,7 @@
                 {selectedNodeId}
                 presentedNodeId={presented}
                 {edgeStyle}
-                layout={panel.id === 'fcose' ? 'fcose' : panel.id === 'd3' ? 'd3' : 'dagre'}
+                layout={panel.id === 'fcose' ? 'fcose' : panel.id === 'd3' ? 'd3' : panel.id === 'dag' ? 'dag' : 'dagre'}
                 readableZoom={0.08}
                 label={`${panel.name} — ${t('engines.canvasLabel')}`}
                 onselect={(id) => {
@@ -540,7 +662,8 @@
                     settled: report.settled,
                     overlaps: report.overlaps,
                     ticks: report.ticks,
-                    frameMs: report.frameMs
+                    frameMs: report.frameMs,
+                    reversedRelations: report.reversedRelations
                   });
                 }}
               />
@@ -562,6 +685,8 @@
         <li>{t('engines.findingFcoseSeed')}</li>
         <li>{t('engines.findingD3Collision')}</li>
         <li>{t('engines.findingD3Seed')}</li>
+        <li>{t('engines.findingDagCycles')}</li>
+        <li>{t('engines.findingDagQuality')}</li>
       </ul>
     </section>
 

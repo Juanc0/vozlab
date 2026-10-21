@@ -52,6 +52,14 @@ import {
 /** The fill of a card: the surface of the design system. */
 export const CARD_COLOR = '#ffffff';
 
+/**
+ * The ground of the canvas: the colour behind everything.
+ *
+ * It is the ground of the design system (`--color-ground`), and it is the
+ * colour of the plate behind the name of a relation.
+ */
+export const GROUND_COLOR = '#f9fafb';
+
 /** The ink of the title of a card: the text of the interface. */
 export const CARD_INK = '#111827';
 
@@ -859,9 +867,11 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
       // muted ink, not in the full one.
       color: CARD_META_INK,
       // The label of a relation sits on the **ground** of the canvas: a
-      // white plate on a grey canvas would be a hole in the picture.
-      'text-background-color': '#f9fafb',
-      'text-background-opacity': 0.75,
+      // white plate on a grey canvas would be a hole in the picture. The
+      // plate is **opaque**: the line of the relation must not show through
+      // the name that names it.
+      'text-background-color': GROUND_COLOR,
+      'text-background-opacity': 1,
       'text-background-padding': '2px',
       'text-rotation': 'autorotate'
     }

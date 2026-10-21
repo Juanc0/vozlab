@@ -144,6 +144,14 @@
   --radius-control: 6px;
   --row-height: 45px;
   --sidebar-width: 230px;
+  /*
+   * The rail of the navigation: the column folded into a column of icons.
+   *
+   * Fifty-six pixels hold one icon of sixteen with the air around it and a
+   * touch target of forty-four: a rail that is narrower is a rail of
+   * targets that cannot be hit with a finger.
+   */
+  --sidebar-rail-width: 56px;
   --gap: 24px;
   --pad: 24px;
   --control-height: 32px;

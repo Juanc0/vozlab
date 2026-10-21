@@ -20,6 +20,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { EDGE, EDGE_B, NODE_A, NODE_B, NODE_C, WORKSPACE_ID } from './fixtures/graph';
@@ -118,7 +119,7 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES } },
     context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],

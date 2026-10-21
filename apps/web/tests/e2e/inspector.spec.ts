@@ -6,7 +6,7 @@
  * the signed-in user created can be edited directly, a node never can.
  */
 
-import { openList, waitForApp } from './support/app';
+import { openInspector, openList, openRootPicker, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('the inspector shows the node and the relation, and the relation can be edited directly', async ({
@@ -27,6 +27,11 @@ test('the inspector shows the node and the relation, and the relation can be edi
 
   await page.goto('/');
   await waitForApp(page);
+
+  // The panel of the root picker is folded, and so is the inspector: the
+  // reader opens the one and then the other.
+  await openRootPicker(page);
+  await openInspector(page);
 
   // The four tabs are there from the start.
   await expect(page.getByRole('tab', { name: 'Contenido' })).toBeVisible();
@@ -82,6 +87,9 @@ test('the forum of the inspector answers the comment of the user', async ({ page
   await page.goto('/');
   await waitForApp(page);
 
+  await openRootPicker(page);
+  await openInspector(page);
+
   await page.getByRole('button', { name: node.title }).first().click();
 
   await page.getByRole('tab', { name: 'Foro' }).click();
@@ -102,6 +110,17 @@ test('the toggle gives the canvas the room and announces its state', async ({ pa
 
   await page.goto('/');
   await waitForApp(page);
+
+  // The inspector is **folded by default**: the walk through the graph
+  // happens without it, and the reader turns it on.
+  const opener = page.getByRole('button', { name: 'Mostrar el inspector' });
+  await expect(opener).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('tab', { name: 'Contenido' })).toHaveCount(0);
+
+  await opener.click();
+  await expect(page.getByRole('tab', { name: 'Contenido' })).toBeVisible();
+
+  await openRootPicker(page);
 
   // A thing is selected: the column has something to show.
   await page.getByRole('button', { name: node.title }).first().click();

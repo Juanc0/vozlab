@@ -11,6 +11,7 @@
 import { getContext, setContext } from 'svelte';
 import type { ApiClient } from '$lib/api/client';
 import type { LocaleState } from '$lib/i18n';
+import type { PanelsState } from './panels.svelte';
 import type { SessionState } from './session.svelte';
 import type { WorkspaceState } from './workspace.svelte';
 
@@ -18,6 +19,7 @@ export const SESSION_CONTEXT_KEY = Symbol.for('vozlab.web.session');
 export const WORKSPACE_CONTEXT_KEY = Symbol.for('vozlab.web.workspace');
 export const API_CLIENT_CONTEXT_KEY = Symbol.for('vozlab.web.api-client');
 export const LOCALE_CONTEXT_KEY = Symbol.for('vozlab.web.locale');
+export const PANELS_CONTEXT_KEY = Symbol.for('vozlab.web.panels');
 
 export interface AppState {
   /** The in-memory session (access token + user). */
@@ -28,6 +30,8 @@ export interface AppState {
   readonly api: ApiClient;
   /** The language of the interface. */
   readonly locale: LocaleState;
+  /** The state of the panels — the navigation, the inspector, the root picker. */
+  readonly panels: PanelsState;
 }
 
 /**
@@ -40,6 +44,7 @@ export function provideAppState(state: AppState): AppState {
   setContext(WORKSPACE_CONTEXT_KEY, state.workspace);
   setContext(API_CLIENT_CONTEXT_KEY, state.api);
   setContext(LOCALE_CONTEXT_KEY, state.locale);
+  setContext(PANELS_CONTEXT_KEY, state.panels);
   return state;
 }
 
@@ -61,6 +66,11 @@ export function getApiClient(): ApiClient {
 /** The language of the interface of the current request/tab. */
 export function getLocaleState(): LocaleState {
   return getRequiredContext<LocaleState>(LOCALE_CONTEXT_KEY, 'locale state');
+}
+
+/** The state of the panels of the current request/tab. */
+export function getPanelsState(): PanelsState {
+  return getRequiredContext<PanelsState>(PANELS_CONTEXT_KEY, 'panels state');
 }
 
 function getRequiredContext<T>(key: symbol, name: string): T {

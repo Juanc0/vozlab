@@ -7,6 +7,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import type { AuthUserDto, WorkspaceSummaryDto } from '@vozlab/shared-types';
@@ -92,7 +93,7 @@ function renderLayout(): { session: SessionState; workspace: WorkspaceState } {
   const children = createRawSnippet(() => ({ render: () => '<p>Page of the app</p>' }));
 
   render(AppLayout, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' }, children },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES }, children },
     context
   });
 

@@ -67,7 +67,13 @@ export const es = {
     signedInFallback: 'Sesión iniciada',
     signOut: 'Cerrar sesión',
     signingOut: 'Cerrando sesión…',
-    signOutFailed: 'No se pudo cerrar la sesión.'
+    signOutFailed: 'No se pudo cerrar la sesión.',
+    collapseNavigation: 'Contraer la navegación',
+    expandNavigation: 'Expandir la navegación',
+    workspaceControl: 'Espacio de trabajo: {name}',
+    sessionControl: 'Sesión de {name}',
+    workspaceMenu: 'El espacio de trabajo',
+    sessionMenu: 'La sesión'
   },
 
   /** The selector of the workspace. */
@@ -186,6 +192,11 @@ export const es = {
     rootHeading: 'Nodo raíz',
     rootHelp:
       'Los nodos más recientes de este espacio de trabajo. Elige uno para dibujar el subgrafo a su alrededor.',
+    rootSearchLabel: 'Buscar un nodo',
+    rootSearchPlaceholder: 'Buscar por título…',
+    rootSearchCount: 'Nodos que coinciden: {count}',
+    rootSearchIdle: 'Nodos en la lista: {count}',
+    rootSearchEmpty: 'Ningún nodo coincide con «{query}».',
     loadingNodes: 'Cargando los nodos…',
     noNodes:
       'Este espacio de trabajo todavía no tiene ningún nodo. No se puede dibujar nada hasta que exista uno.',
@@ -299,7 +310,7 @@ export const es = {
   engines: {
     heading: 'Los motores, lado a lado',
     intro:
-      'La misma ventana, los mismos nodos y las mismas relaciones en los cuatro motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
+      'La misma ventana, los mismos nodos y las mismas relaciones en los cinco motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
     pageTitle: 'Los motores, lado a lado',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
@@ -307,6 +318,9 @@ export const es = {
     panelD3Name: 'Cytoscape + d3-force',
     panelD3Note:
       'El resorte de la aplicación: una simulación con semilla y una fuerza de colisión rectangular.',
+    panelDagName: 'Cytoscape + d3-dag',
+    panelDagNote:
+      'El clon de dagre con d3-dag: una disposición por capas que necesita que el grafo no tenga ciclos, y rompe los que tiene a la vista.',
     panelFcoseName: 'Cytoscape + fcose',
     panelFcoseNote:
       'El mismo lienzo con la fuerza de CoSE: una simulación que se asienta y se detiene.',
@@ -318,7 +332,7 @@ export const es = {
     sizeDemo: 'La demostración ({count} nodos)',
     sizeStress: 'El techo de la API ({count} nodos)',
     edgeStyleLabel: 'Forma de las flechas',
-    measure: 'Medir los cuatro motores',
+    measure: 'Medir los cinco motores',
     measuring: 'Midiendo…',
     rerun: 'Repetir la disposición',
     listToggle: 'Ver la lista',
@@ -341,8 +355,14 @@ export const es = {
     reproducibleLabel: 'Sale igual dos veces',
     reproducibleDagre: 'Sí: es una función de la imagen',
     reproducibleD3: 'Sí: la semilla es fija',
+    reproducibleDag: 'Sí: es una función de la imagen',
     reproducibleFcose: 'Sí, con randomize en falso',
     reproducibleSigma: 'Sin criterio de convergencia',
+    reversedLabel: 'Relaciones invertidas',
+    reversedValue: '{count} relaciones',
+    reversedToggle: 'Ver las {count} relaciones invertidas',
+    reversedDetail:
+      'Se invirtieron para poder ordenar el grafo, y su flecha queda contra lo que dicen: {relations}.',
     loading: 'Cargando la ventana…',
     empty: 'La ventana está vacía: no hay nada que comparar.',
     badgesLabel: 'Los nodos de la ventana',
@@ -359,7 +379,11 @@ export const es = {
     findingD3Collision:
       'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
     findingD3Seed:
-      'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.'
+      'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
+    findingDagCycles:
+      'Las relaciones del grafo tienen ciclos, y una disposición por capas necesita un grafo sin ciclos: dagre los rompe en silencio —su archivo acyclic.js da la vuelta a las relaciones— y el clon de d3-dag los rompe a la vista. Las dos invierten el mismo número de relaciones, y solo una lo dice.',
+    findingDagQuality:
+      'El clon usa el ajuste rápido de d3-dag a propósito: el ajuste por defecto resuelve un programa lineal por capa, y en un grafo de cuatrocientas relaciones tardó noventa segundos.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

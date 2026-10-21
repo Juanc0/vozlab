@@ -6,7 +6,7 @@
  * `PENDING` node that shows up in the list.
  */
 
-import { waitForApp } from './support/app';
+import { openRootPicker, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('the form refuses an invalid submission before the request leaves the app', async ({
@@ -80,7 +80,9 @@ test('a valid submission creates a pending node that shows up in the list', asyn
 
   // The node is in the list of the workspace, and it is pending: the class
   // and the status are the **names** of the interface, not the keys of the
-  // system.
+  // system. The panel of the root picker is folded: the toolbar opens it.
+  await openRootPicker(page);
+
   const entry = page.getByRole('listitem').filter({ hasText: `${api.marker} created node` });
   await expect(entry.getByRole('button', { name: `${api.marker} created node` })).toBeVisible();
   await expect(entry).toContainText('Problema · Pendiente');

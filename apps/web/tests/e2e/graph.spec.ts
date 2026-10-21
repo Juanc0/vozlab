@@ -6,7 +6,7 @@
  * window (3 hops, 200 nodes) is stated to the user.
  */
 
-import { canvasDescription, openList, waitForApp } from './support/app';
+import { canvasDescription, openList, openRootPicker, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('the graph lists the nodes, draws the bounded subgraph and states its bound', async ({
@@ -26,6 +26,9 @@ test('the graph lists the nodes, draws the bounded subgraph and states its bound
 
   await page.goto('/');
   await waitForApp(page);
+
+  // The panel of the root picker is folded: the toolbar opens it.
+  await openRootPicker(page);
 
   // The nodes of the workspace are listed.
   await expect(page.getByRole('button', { name: root.title })).toBeVisible();

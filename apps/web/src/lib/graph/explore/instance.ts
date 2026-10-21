@@ -55,6 +55,12 @@ import {
   type ForceNodeInput,
   type ForcePosition
 } from './force-layout';
+import {
+  createDagLayout,
+  relationsAgainstFlow,
+  type DagEdgeInput,
+  type DagNodeInput
+} from './dag-layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
@@ -108,6 +114,16 @@ export interface LayoutReport {
    * the cards in their places) and not the wait for the browser.
    */
   readonly frameMs?: number;
+  /**
+   * The relations whose arrow is drawn **against** the flow of the picture.
+   *
+   * A layered arrangement has to break the cycles of the relation graph to
+   * be able to order the nodes, and the relations it breaks are drawn
+   * against what they say. `dagre` breaks them **silently**; this report
+   * is how the surface of the comparison tells the reader how many of them
+   * there were.
+   */
+  readonly reversedRelations?: readonly string[];
 }
 
 /** What the exploration instance reports. */
@@ -878,12 +894,110 @@ export function createExplorationInstance(
     springDriver.start();
   }
 
+  /**
+   * The relations of the picture, as the layouts see them.
+   *
+   * The text of a card is an element of its own and it takes no part in
+   * the layouts: only the relations between the cards do.
+   */
+  function relationEdges(): DagEdgeInput[] {
+    const links: DagEdgeInput[] = [];
+
+    core.edges().forEach((edge) => {
+      links.push({
+        id: edge.id(),
+        source: edge.source().id(),
+        target: edge.target().id()
+      });
+    });
+
+    return links;
+  }
+
+  /**
+   * The relations whose arrow is drawn **against** the flow of the picture.
+   *
+   * It is the measure that compares the two layered arrangements on the
+   * same thing: `dagre` reverses the relations that close a cycle and
+   * draws them against what they say, and the clone of `dagre` does the
+   * same — but it says which ones.
+   */
+  function reversedRelations(): string[] {
+    const places = new Map<string, ForcePosition>();
+
+    cardNodes(core.elements()).forEach((card) => {
+      places.set(card.id(), card.position());
+    });
+
+    return [...relationsAgainstFlow(places, relationEdges(), 'LR')];
+  }
+
+  /**
+   * Runs the **clone of `dagre`** — the layered arrangement of `d3-dag`.
+   *
+   * The clone is a **candidate**: it is in the comparison of the engines
+   * and nowhere else. `dagre` stays in production.
+   *
+   * The arrangement is **synchronous** — a layered arrangement is computed
+   * once — and it breaks the cycles of the relation graph on the way: the
+   * relations it breaks are reported, so the reader is told.
+   */
+  function runDagLayout(presentedNodeId: string | null, fit: boolean): void {
+    const inputs: DagNodeInput[] = [];
+    const links = relationEdges();
+
+    cardNodes(core.elements()).forEach((card) => {
+      inputs.push({
+        id: card.id(),
+        width: card.outerWidth(),
+        height: card.outerHeight()
+      });
+    });
+
+    const result = createDagLayout(inputs, links);
+
+    // The picture is about to move: it has not settled yet.
+    settled = false;
+    movement = Number.POSITIVE_INFINITY;
+    lastPositions = new Map<string, Position>();
+
+    applyPlaces(result.positions);
+
+    // The nodes the user dragged keep the place they were put.
+    applyPinnedPlaces();
+
+    // The card of a relation is placed beside its line, and the text of a
+    // card hangs under its card: the picture moved, and they go with it.
+    syncRelationCards();
+    syncCardText(core);
+
+    refreshEdgeStyles();
+
+    presentPicture(presentedNodeId, fit);
+
+    movement = greatestMovement();
+
+    options.onlayout?.({
+      layout: 'dag',
+      ms: result.ms,
+      settled: true,
+      movement,
+      overlaps: overlappingPairs(),
+      reversedRelations: result.brokenRelations
+    });
+  }
+
   /** Runs the layout and puts the picture back where it belongs. */
   function runLayout(presentedNodeId: string | null, fit: boolean): void {
     const currentLayout = layout;
 
     if (currentLayout === 'd3') {
       runSpring(presentedNodeId, fit);
+      return;
+    }
+
+    if (currentLayout === 'dag') {
+      runDagLayout(presentedNodeId, fit);
       return;
     }
 
@@ -941,7 +1055,15 @@ export function createExplorationInstance(
         ms: Date.now() - started,
         settled,
         movement,
-        overlaps: overlappingPairs()
+        overlaps: overlappingPairs(),
+        // The relations that the layout had to break to order the graph:
+        // `dagre` breaks them silently, and the report is how the
+        // comparison of the engines tells the reader how many there were.
+        //
+        // The number is only meaningful for a **layered** arrangement: a
+        // force layout has no layers and no flow, and a relation is not
+        // "against" anything in it.
+        reversedRelations: currentLayout === 'dagre' ? reversedRelations() : undefined
       });
     });
 

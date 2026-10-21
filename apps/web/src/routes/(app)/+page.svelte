@@ -58,7 +58,7 @@
   import type { TranslationKey } from '$lib/i18n';
   import { nodeSelection, edgeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { MediaQuery } from '$lib/layout/media.svelte';
-  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getPanelsState, getWorkspaceState } from '$lib/state/context';
   import RichText from '$lib/components/RichText.svelte';
   import type { PageProps } from './$types';
 
@@ -67,6 +67,7 @@
   const api = getApiClient();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
+  const panels = getPanelsState();
   const t = locale.t;
 
   /** The depths the API accepts. */
@@ -162,8 +163,15 @@
   /** The node the user last clicked — the `manual` criterion. */
   let manualNodeId = $state<string | null>(null);
 
-  /** `true` while the panel of the root picker is open. */
-  let rootPickerOpen = $state(true);
+  /**
+   * `true` while the panel of the root picker is open.
+   *
+   * The panel is a **control** of the toolbar: it opens and it closes, and
+   * the reader is told which of the two it is. It starts closed — the walk
+   * through the graph does not need a list of nodes over it — and the
+   * preference is remembered between visits.
+   */
+  let rootPickerOpen = $state(!panels.rootCollapsed);
 
   /**
    * The height of the floating toolbar.
@@ -230,8 +238,11 @@
    * screen it is a panel that floats over the picture, in a narrow one it
    * is the sheet that comes over the content. The width of the window
    * decides which one it is.
+   *
+   * It starts **folded**: the walk through the graph happens without it,
+   * and the reader turns it on when they want to read a thing.
    */
-  let inspectorOpen = $state(true);
+  let inspectorOpen = $state(!panels.inspectorCollapsed);
 
   /**
    * The width at which the inspector is a panel over the picture.
@@ -268,10 +279,6 @@
     inspectorWide.attach();
     wideLayout.attach();
 
-    // The panel of the root picker is closed on a narrow screen: it would
-    // cover the canvas of a phone, where there is no room for it.
-    rootPickerOpen = wideLayout.matches;
-
     return () => {
       inspectorWide.destroy();
       wideLayout.destroy();
@@ -285,12 +292,15 @@
    * narrow one shows the sheet, and the sheet starts closed: a panel that
    * covers the whole canvas of a phone the moment it arrives is a panel
    * nobody asked for.
+   *
+   * The wide panel follows the **preference** of the reader: it is folded
+   * until they turn it on, and it is folded again on the next visit.
    */
   $effect(() => {
     const wide = inspectorWide.matches;
 
     untrack(() => {
-      inspectorOpen = wide;
+      inspectorOpen = wide && !panels.inspectorCollapsed;
     });
   });
 
@@ -1039,11 +1049,19 @@
   /** The user folded or opened the inspector. */
   function toggleInspector(): void {
     inspectorOpen = !inspectorOpen;
+
+    // The preference is remembered: the next visit finds the inspector as
+    // the reader left it.
+    panels.setInspectorCollapsed(!inspectorOpen);
   }
 
   /** The user folded or opened the panel of the root picker. */
   function toggleRootPicker(): void {
     rootPickerOpen = !rootPickerOpen;
+
+    // The preference is remembered: the next visit finds the panel as the
+    // reader left it.
+    panels.setRootCollapsed(!rootPickerOpen);
   }
 
 </script>
@@ -1453,7 +1471,7 @@
       placement="bottom-left"
       label={t('graph.rootPanelLabel')}
       panelClass="w-[min(20rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-18rem)] overflow-y-auto"
-      hidden={listOpen && !rootPickerOpen}
+      hidden={!rootPickerOpen}
     >
       <RootPicker
         nodes={rootNodes}

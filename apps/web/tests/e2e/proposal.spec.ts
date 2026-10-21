@@ -10,7 +10,7 @@
  * only a status on the screen.
  */
 
-import { openList, waitForApp } from './support/app';
+import { openInspector, openList, openRootPicker, waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
 test('a correction is proposed through the UI and the target is unchanged until the maintainer approves it', async ({
@@ -29,12 +29,16 @@ test('a correction is proposed through the UI and the target is unchanged until 
   await waitForApp(page);
 
   // The node is picked in the root picker: the inspector shows it.
+  await openRootPicker(page);
+
   await page
     .getByRole('region', { name: 'Nodo raíz' })
     .getByRole('button', { name: node.title })
     .click();
 
   // The correction is proposed from the inspector.
+  await openInspector(page);
+
   await page.getByRole('tab', { name: 'Atributos' }).click();
 
   const opener = page.getByRole('button', {
@@ -108,6 +112,8 @@ test('a correction of a relation is proposed through the UI', async ({ page, api
 
   await page.goto('/');
   await waitForApp(page);
+
+  await openRootPicker(page);
 
   await page
     .getByRole('region', { name: 'El nodo raíz del subgrafo' })

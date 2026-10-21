@@ -481,11 +481,38 @@ Decided, and not to be re-opened without evidence:
       is the other half of the same area, one click away, and the canvas
       stays mounted and `inert` behind it. The app's own navigation stays a
       column: the panels that float are the workspace's, not the app's.
-- [ ] 3.25 The clone of dagre that uses `d3-dag`: a parallel candidate, with
-      the cycles broken **visibly** rather than in silence.
+- [x] 3.25 The clone of dagre that uses `d3-dag`: a parallel candidate, with
+      the cycles broken **visibly** rather than in silence. Result: the
+      clone is a **pure module** (`graph/explore/dag-layout.ts`) that breaks
+      the cycles by reversing the DFS back edges — the same rule as dagre,
+      with the theorem written down — and it **reports** which relations it
+      broke, so the reader is told instead of being misled. And the finding
+      of the batch is a **live bug**: dagre reverses the back edges in
+      silence, so **10 of the 35 arrows of the seeded demo point against
+      what the relation says**, today, in production. The clone is nine
+      times faster (1.7 ms against 16 ms on the demo, 102 ms against 682 ms
+      on 200 nodes) and it is pinned to `quality: 'fast'`, because the
+      `medium` preset took **90 seconds** on the same graph.
 - [ ] 3.26 The living spring: the picture stays half organised and keeps
       drifting between the clusters, and the simulation sleeps when the
       window is hidden.
+- [x] 3.29 The workspace's collapsible panels: the navigation folds into a
+      **rail of icons** (56 px), the inspector is **collapsed by default**
+      (the walk through the graph happens without it) and the root picker
+      is **collapsed** with a **search** that matches the title without
+      regard to case or accents. The state is remembered in the cookie
+      `vozlab_panels`, read by the server hook so the first paint is
+      already folded — **never in `localStorage`**. The relation's name is
+      also written on an **opaque** plate now, the same colour as the
+      ground, instead of one that let the line through.
+- [ ] 3.30 The zoom as a property of the view: it starts at the fit (the
+      whole graph in view), the wheel changes it, and walking only re-centres
+      the view — smoothly, without touching the value.
+- [ ] 3.31 The comparison as a common playground: the same workspace frame,
+      the implementations as tabs in the same space, each one free to bring
+      everything it needs.
+- [ ] 3.32 The clone of `d3-dag` must not travel in the production bundle:
+      it is a candidate, and it weighs 44 KB gzip there for nothing.
 - [ ] 3.27 The card as one object: the text becomes a child of the card
       instead of a loose element resynchronised on every frame of a drag.
 - [ ] 3.28 A third painter in the comparison: `d3` and a hand-written SVG

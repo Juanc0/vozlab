@@ -25,7 +25,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 /** The document the server renders, with the language the cookie says. */
 async function renderDocument(cookie: string | undefined): Promise<string> {
   const response = await handle({
-    event: { cookies: { get: () => cookie } },
+    event: { cookies: { get: () => cookie }, locals: {} },
     resolve: async (_event: unknown, options?: { transformPageChunk?: (chunk: { html: string; done: boolean }) => string | undefined }) => {
       const html = '<!doctype html><html lang="es"><head></head><body></body></html>';
       const transformed = await options?.transformPageChunk?.({ html, done: true });
@@ -39,7 +39,8 @@ async function renderDocument(cookie: string | undefined): Promise<string> {
 /** The locale the server reads from the cookie of the visitor. */
 function serverLocale(cookie: string | undefined): string {
   const result = load({
-    cookies: { get: () => cookie }
+    cookies: { get: () => cookie },
+    locals: {}
   } as never) as { locale: string };
 
   return result.locale;

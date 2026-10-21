@@ -59,6 +59,29 @@ export async function openList(page: Page): Promise<void> {
 }
 
 /**
+ * Opens the panel of the **root picker**.
+ *
+ * The panel is folded by default: the toolbar holds the control that opens
+ * it, and the walk through the graph happens without a list of nodes over
+ * the picture.
+ */
+export async function openRootPicker(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Raíz', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nodo raíz' })).toBeVisible();
+}
+
+/**
+ * Opens the **inspector**.
+ *
+ * It is folded by default too: the reader turns it on when they want to
+ * read the thing they have selected.
+ */
+export async function openInspector(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Mostrar el inspector' }).click();
+  await expect(page.getByRole('tab', { name: 'Contenido' })).toBeVisible();
+}
+
+/**
  * The description of the canvas.
  *
  * The canvas is a picture: its description is what a screen reader reads

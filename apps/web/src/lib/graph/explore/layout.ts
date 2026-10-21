@@ -100,8 +100,13 @@ export function exploreLayoutOptions(): DagreLayoutOptions {
  * a simulation of `d3-force` with a rectangular collision force. It is
  * arranged in slices across the frames, so the reader sees the picture
  * find its place, and it stops by itself when it comes to rest.
+ *
+ * `dag` is the **clone of `dagre`** — the pure module of `./dag-layout`,
+ * a layered arrangement of `d3-dag`. It is a **candidate**: it is in the
+ * comparison of the engines and nowhere else, and `dagre` stays in
+ * production.
  */
-export type GraphLayout = 'dagre' | 'fcose' | 'd3';
+export type GraphLayout = 'dagre' | 'fcose' | 'd3' | 'dag';
 
 /**
  * The options of the **force** layout of `fcose`.
@@ -199,7 +204,7 @@ export function fcoseLayoutOptions(): FcoseLayoutOptions {
  * @returns The options of the layout.
  */
 export function explorationLayoutOptions(
-  layout: Exclude<GraphLayout, 'd3'>
+  layout: Exclude<GraphLayout, 'd3' | 'dag'>
 ): DagreLayoutOptions | FcoseLayoutOptions {
   return layout === 'fcose' ? fcoseLayoutOptions() : exploreLayoutOptions();
 }

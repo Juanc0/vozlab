@@ -20,6 +20,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import AppShell from '$lib/components/AppShell.svelte';
@@ -70,7 +71,7 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES } },
     context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
@@ -160,17 +161,28 @@ describe('the responsive layout of the graph page', () => {
     setViewportWidth(1440);
     renderPage();
 
-    const toggle = await screen.findByRole('button', { name: 'Ocultar el inspector' });
+    // It starts **folded**: the walk through the graph happens without it,
+    // and the reader turns it on when they want to read a thing.
+    const toggle = await screen.findByRole('button', { name: 'Mostrar el inspector' });
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('tab', { name: 'Contenido' })).not.toBeInTheDocument();
+
+    await fireEvent.click(toggle);
 
     // The column is there, with its tabs.
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Contenido' })).toBeInTheDocument();
     });
     expect(screen.queryByRole('dialog', { name: 'Inspección' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocultar el inspector' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
 
-    await fireEvent.click(toggle);
+    // And it folds away again.
+    await fireEvent.click(screen.getByRole('button', { name: 'Ocultar el inspector' }));
 
-    // The column is folded away and the toggle says it.
     await waitFor(() => {
       expect(screen.queryByRole('tab', { name: 'Contenido' })).not.toBeInTheDocument();
     });

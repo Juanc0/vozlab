@@ -19,6 +19,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import AppShell from '$lib/components/AppShell.svelte';
@@ -69,7 +70,7 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES } },
     context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
@@ -141,6 +142,9 @@ describe('the workspace of the graph', () => {
 
     // A root is picked, so the picture of the subgraph is drawn.
     await fireEvent.click(await screen.findByRole('button', { name: NODE_A.title }));
+
+    // The inspector is folded by default; the reader turns it on.
+    await fireEvent.click(screen.getByRole('button', { name: 'Mostrar el inspector' }));
 
     const workspace = document.querySelector('.relative.h-full.w-full');
     expect(workspace).not.toBeNull();

@@ -17,6 +17,7 @@
     "@vozlab/shared-types": "workspace:*",
     "cytoscape": "^3.34.4",
     "cytoscape-dagre": "^4.0.1",
+    "d3-dag": "1.2.2",
     "d3-force": "^3.0.0"
   },
   "devDependencies": {

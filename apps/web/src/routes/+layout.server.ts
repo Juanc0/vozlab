@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/public';
 import { DEFAULT_API_BASE_URL, normalizeApiBaseUrl } from '$lib/config/api-base-url';
 import { LOCALE_COOKIE_NAME, resolveLocale } from '$lib/i18n';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -13,7 +14,7 @@ import type { LayoutServerLoad } from './$types';
  * there is no flash of the wrong one and the first render of the client
  * matches the one of the server.
  */
-export const load: LayoutServerLoad = ({ cookies }) => {
+export const load: LayoutServerLoad = ({ cookies, locals }) => {
   const configured = env.PUBLIC_API_BASE_URL;
   const apiBaseUrl = normalizeApiBaseUrl(configured);
 
@@ -30,6 +31,9 @@ export const load: LayoutServerLoad = ({ cookies }) => {
 
   return {
     apiBaseUrl,
-    locale: resolveLocale(cookies.get(LOCALE_COOKIE_NAME))
+    locale: resolveLocale(cookies.get(LOCALE_COOKIE_NAME)),
+    // The state of the panels: the `handle` hook read it from the cookie of
+    // the visitor, and the document is rendered already folded.
+    panels: locals.panels ?? DEFAULT_PANEL_PREFERENCES
   };
 };

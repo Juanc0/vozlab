@@ -18,6 +18,7 @@ import {
   CARD_META_INK,
   CARD_NODE_STYLE,
   CARD_TEXT_STYLE,
+  GROUND_COLOR,
   META_CLASS,
   PRESENTED_COLOR,
   RELATION_CARD_CLASS,
@@ -91,8 +92,11 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       // The name of a relation is a secondary text: it is written in the
       // muted ink, not in the full one.
       color: CARD_META_INK,
-      'text-background-color': '#f9fafb',
-      'text-background-opacity': 0.75,
+      // The name of a relation sits on the **ground** of the canvas, on an
+      // **opaque** plate: the line of the relation must not show through
+      // the name that names it.
+      'text-background-color': GROUND_COLOR,
+      'text-background-opacity': 1,
       'text-background-padding': '2px',
       'text-rotation': 'autorotate',
       // The haystack shape is the exaggerated one: the arc it draws has to

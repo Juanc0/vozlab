@@ -65,4 +65,16 @@ describe('the marks of the canvas', () => {
     expect(presented?.['outline-color']).toBe('#111827');
     expect(presented?.['outline-width']).toBe('3px');
   });
+
+  it('writes the name of a relation on an opaque plate of the ground', () => {
+    // The plate behind the name of a relation is the ground of the canvas,
+    // and it is **opaque**: the line of the relation must not show through
+    // the name that names it. Both canvases say so.
+    for (const stylesheet of [GRAPH_STYLESHEET, EXPLORE_STYLESHEET]) {
+      const edge = rule(stylesheet, 'edge');
+
+      expect(edge?.['text-background-color']).toBe('#f9fafb');
+      expect(edge?.['text-background-opacity']).toBe(1);
+    }
+  });
 });

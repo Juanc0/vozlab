@@ -6,6 +6,7 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
+import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { EDGE, NEW_NODE, NODE_A, NODE_B, RELATION_NAMES, WORKSPACE_ID } from './fixtures/graph';
@@ -121,7 +122,7 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES } },
     context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
@@ -142,6 +143,41 @@ async function openList(): Promise<void> {
 
   await waitFor(() => {
     expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
+  });
+}
+
+/**
+ * Opens the panel of the **root picker**.
+ *
+ * The panel is folded by default: the toolbar holds the control that opens
+ * it, and the walk through the graph happens without a list of nodes over
+ * the picture.
+ */
+async function openRootPicker(): Promise<void> {
+  await fireEvent.click(screen.getByRole('button', { name: 'Raíz' }));
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Raíz' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+  });
+}
+
+/**
+ * Opens the **inspector**.
+ *
+ * It is folded by default too: the reader turns it on when they want to
+ * read the thing they have selected.
+ */
+async function openInspector(): Promise<void> {
+  await fireEvent.click(screen.getByRole('button', { name: 'Mostrar el inspector' }));
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Ocultar el inspector' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
   });
 }
 
@@ -174,6 +210,9 @@ describe('the graph page', () => {
 
     renderPage();
 
+    // The panel is folded: the toolbar opens it.
+    await openRootPicker();
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     });
@@ -184,6 +223,8 @@ describe('the graph page', () => {
     stubFetch({ nodes: () => json({ nodes: [], nextCursor: null }) });
 
     renderPage();
+
+    await openRootPicker();
 
     await waitFor(() => {
       expect(screen.getByText(/todavía no tiene ningún nodo/i)).toBeInTheDocument();
@@ -198,6 +239,8 @@ describe('the graph page', () => {
     });
 
     renderPage();
+
+    await openRootPicker();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
@@ -236,6 +279,8 @@ describe('the graph page', () => {
     });
 
     renderPage();
+
+    await openRootPicker();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
@@ -313,6 +358,8 @@ describe('the graph page', () => {
 
     renderPage();
 
+    await openRootPicker();
+
     const button = screen.getByRole('button', { name: 'Nuevo nodo' });
     await waitFor(() => {
       expect(button).toBeEnabled();
@@ -336,11 +383,15 @@ describe('the graph page', () => {
 
     renderPage();
 
+    await openRootPicker();
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     });
 
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    await openInspector();
 
     const relate = await screen.findByRole('button', { name: 'Relacionar con otro nodo' });
     await fireEvent.click(relate);
@@ -363,11 +414,15 @@ describe('the graph page', () => {
 
     renderPage();
 
+    await openRootPicker();
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     });
 
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    await openInspector();
 
     // The inspector shows the four tabs and the selected node.
     expect(screen.getByRole('tab', { name: 'Contenido' })).toBeInTheDocument();
@@ -390,11 +445,15 @@ describe('the graph page', () => {
 
     renderPage();
 
+    await openRootPicker();
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     });
 
     await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    await openInspector();
 
     // The relation row of the list is selectable too.
     await openList();

@@ -53,7 +53,13 @@ export const en: Dictionary<typeof es> = {
     signedInFallback: 'Signed in',
     signOut: 'Sign out',
     signingOut: 'Signing out…',
-    signOutFailed: 'The sign-out failed.'
+    signOutFailed: 'The sign-out failed.',
+    collapseNavigation: 'Collapse the navigation',
+    expandNavigation: 'Expand the navigation',
+    workspaceControl: 'Workspace: {name}',
+    sessionControl: 'Session of {name}',
+    workspaceMenu: 'The workspace',
+    sessionMenu: 'The session'
   },
 
   workspace: {
@@ -163,6 +169,11 @@ export const en: Dictionary<typeof es> = {
     rootHeading: 'Root node',
     rootHelp:
       'The newest nodes of this workspace. Pick one to draw the subgraph around it.',
+    rootSearchLabel: 'Search for a node',
+    rootSearchPlaceholder: 'Search by title…',
+    rootSearchCount: 'Nodes that match: {count}',
+    rootSearchIdle: 'Nodes in the list: {count}',
+    rootSearchEmpty: 'No node matches “{query}”.',
     loadingNodes: 'Loading the nodes…',
     noNodes:
       'This workspace has no node yet. Nothing can be drawn until one exists.',
@@ -273,7 +284,7 @@ export const en: Dictionary<typeof es> = {
   engines: {
     heading: 'The engines, side by side',
     intro:
-      'The same window, the same nodes and the same relations in the four engines. This is a development surface: it does not exist in a production build.',
+      'The same window, the same nodes and the same relations in the five engines. This is a development surface: it does not exist in a production build.',
     pageTitle: 'The engines, side by side',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
@@ -281,6 +292,9 @@ export const en: Dictionary<typeof es> = {
     panelD3Name: 'Cytoscape + d3-force',
     panelD3Note:
       'The spring of the app: a seeded simulation with a rectangular collision force.',
+    panelDagName: 'Cytoscape + d3-dag',
+    panelDagNote:
+      'The clone of dagre with d3-dag: a layered layout that needs a graph without cycles, and breaks the ones it has in plain sight.',
     panelFcoseName: 'Cytoscape + fcose',
     panelFcoseNote:
       'The same canvas with the force of CoSE: a simulation that settles and stops.',
@@ -292,7 +306,7 @@ export const en: Dictionary<typeof es> = {
     sizeDemo: 'The demo ({count} nodes)',
     sizeStress: 'The ceiling of the API ({count} nodes)',
     edgeStyleLabel: 'Shape of the arrows',
-    measure: 'Measure the four engines',
+    measure: 'Measure the five engines',
     measuring: 'Measuring…',
     rerun: 'Run the layout again',
     listToggle: 'See the list',
@@ -316,8 +330,14 @@ export const en: Dictionary<typeof es> = {
     reproducibleLabel: 'Reproducible',
     reproducibleDagre: 'Yes: it is a function of the picture',
     reproducibleD3: 'Yes: the seed is fixed',
+    reproducibleDag: 'Yes: it is a function of the picture',
     reproducibleFcose: 'Yes, with randomize off',
     reproducibleSigma: 'No convergence criterion',
+    reversedLabel: 'Reversed relations',
+    reversedValue: '{count} relations',
+    reversedToggle: 'See the {count} reversed relations',
+    reversedDetail:
+      'They were reversed to be able to order the graph, and their arrow ends up against what they say: {relations}.',
     loading: 'Loading the window…',
     empty: 'The window is empty: there is nothing to compare.',
     badgesLabel: 'The nodes of the window',
@@ -334,7 +354,11 @@ export const en: Dictionary<typeof es> = {
     findingD3Collision:
       'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
     findingD3Seed:
-      'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.'
+      'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
+    findingDagCycles:
+      'The relations of the graph have cycles, and a layered layout needs a graph without cycles: dagre breaks them silently —its acyclic.js file turns the relations around— and the d3-dag clone breaks them in plain sight. The two of them reverse the same number of relations, and only one of them says so.',
+    findingDagQuality:
+      'The clone uses the fast setting of d3-dag on purpose: the default setting solves a linear program per layer, and on a graph of four hundred relations it took ninety seconds.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

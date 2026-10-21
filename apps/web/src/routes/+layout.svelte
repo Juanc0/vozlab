@@ -10,6 +10,7 @@
   import { registerServiceWorker } from '$lib/pwa/register';
   import { pwaState } from '$lib/pwa/state.svelte';
   import { provideAppState } from '$lib/state/context';
+  import { PanelsState } from '$lib/state/panels.svelte';
   import { SessionState } from '$lib/state/session.svelte';
   import { WorkspaceState } from '$lib/state/workspace.svelte';
   import { isWorkspacePath } from '$lib/layout/workspace';
@@ -30,7 +31,13 @@
   // through the state, not through the data of the page.
   const locale = new LocaleState(untrack(() => data.locale));
 
-  provideAppState({ session, workspace, api, locale });
+  // The state of the panels comes from the server too: the `handle` hook
+  // read the cookie of the visitor, so the first paint is already the state
+  // the reader left behind — the navigation folded into its rail, the
+  // inspector away, the root picker closed.
+  const panels = new PanelsState(untrack(() => data.panels));
+
+  provideAppState({ session, workspace, api, locale, panels });
 
   /**
    * Whether the page has a navigation.
