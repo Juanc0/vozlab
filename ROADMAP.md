@@ -401,8 +401,24 @@ Decided, and not to be re-opened without evidence:
       plain `DESC` (495 ms), and ranking the whole recursive step instead of
       its arms materialises the frontier (8.3 ms → 346 ms). The decision
       and the trigger that would reopen Apache AGE are in **ADR-0027**.
-- [ ] 3.21 The navigation by clicking: the exploration view re-requests the
-      subgraph rooted at the clicked node and re-centres on it.
+- [x] 3.21 The navigation by clicking: the exploration view re-requests the
+      subgraph rooted at the clicked node and re-centres on it. Result: a
+      click is a **walk** — one full request per click to the subgraph
+      rooted at the clicked node, at the depth already selected, and the
+      answer is **merged** into the working set, so walking never loses
+      what was already seen. The exploration view gained the depth control
+      it lacked; the subgraph mode **re-roots** instead, because a
+      neighbourhood has a root, and its picker now agrees with the canvas.
+      The picture **does not empty** while the request is in flight: the old
+      one stays, the region is `aria-busy` and a polite live region says
+      what is happening. A node with no relations is a note, not an error.
+      The **far nodes** are the reader's choice — a switch between the whole
+      working set and only the focus's neighbourhood — and the counts in the
+      interface are the truth. A click also switches the focus criterion to
+      *the one the user chose*, so the view does not re-present another
+      node under the reader's hand. The list view, the text alternative,
+      carries a **Caminar** button per row: the canvas is not reachable by
+      keyboard.
 - [ ] 3.22 The optimistic concurrency: the version column, the
       compare-and-set, the conflict and its copy.
 - [ ] 3.23 The graph page as a full-bleed canvas: the panels over it, and the

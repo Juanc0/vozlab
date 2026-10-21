@@ -34,6 +34,8 @@
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { displayName } from '$lib/i18n/display-name';
   import { formatNumber } from '$lib/i18n';
+  import { mergeEdges, mergeNodes, sameIds } from '$lib/graph/merge';
+  import type { Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import { nodeSelection, edgeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { MediaQuery } from '$lib/layout/media.svelte';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
@@ -67,6 +69,37 @@
   let windowError = $state<ApiFailure | null>(null);
 
   /**
+   * The subgraphs the exploration view has **walked** to.
+   *
+   * The working set of the exploration view is the window plus these: the
+   * nodes accumulate, so walking the graph never loses what has been seen.
+   */
+  let walkNodes = $state.raw<NodeDto[]>([]);
+  let walkEdges = $state.raw<SubgraphEdgeDto[]>([]);
+
+  /** Whether a walk is on its way. */
+  let walking = $state(false);
+
+  /** The failure of the last walk, if it failed. */
+  let walkError = $state<ApiFailure | null>(null);
+
+  /** The node the last walk was about. */
+  let walkTargetId = $state<string | null>(null);
+
+  /** The title of the node whose neighbourhood came back empty. */
+  let walkIsolatedTitle = $state<string | null>(null);
+
+  /**
+   * The **picture** of the exploration view.
+   *
+   * The view decides what it draws (the whole working set or the
+   * neighbourhood of the focus) and tells the page: the list view is the
+   * text alternative of the canvas and shows the same picture.
+   */
+  let pictureNodes = $state.raw<NodeDto[] | null>(null);
+  let pictureEdges = $state.raw<SubgraphEdgeDto[] | null>(null);
+
+  /**
    * The view the page shows.
    *
    * It is a piece of the state of the page, not a route: the URL stays
@@ -88,6 +121,28 @@
   let rootId = $state<string | null>(null);
   let depth = $state(SUBGRAPH_DEFAULT_DEPTH);
   let limit = $state(SUBGRAPH_DEFAULT_NODES);
+
+  /**
+   * A counter that asks for the subgraph again.
+   *
+   * A click on the root of the subgraph is a walk too, and the picture
+   * has to be asked for again even though the root did not change.
+   */
+  let graphReload = $state(0);
+
+  /**
+   * The node the picture is centred on.
+   *
+   * A walk lands on a picture that has just been drawn again: the node
+   * the reader walked to is the one that has to be in the middle of it.
+   */
+  let centerNodeId = $state<string | null>(null);
+
+  /** The number of times the picture asked to be centred. */
+  let centerRequest = $state(0);
+
+  /** The node whose subgraph is on its way — the canvas centres on it. */
+  let pendingCenter = $state<string | null>(null);
 
   /**
    * The selected thing — a node or a relation.
@@ -182,6 +237,7 @@
   let graphRequest = 0;
   let ontologyRequest = 0;
   let windowRequest = 0;
+  let walkRequest = 0;
 
   /** The selected node — it is the one the canvas and the list highlight. */
   const selectedNodeId = $derived(selection?.kind === 'node' ? selection.id : null);
@@ -189,11 +245,37 @@
   /** The selected relation — it is the one the canvas and the list highlight. */
   const selectedEdgeId = $derived(selection?.kind === 'edge' ? selection.id : null);
 
-  /** The nodes the list view shows: the ones of the view on screen. */
-  const listNodes = $derived(viewMode === 'explore' ? windowNodes : graphNodes);
+  /**
+   * The **working set** of the exploration view: the window and every
+   * subgraph the user has walked to.
+   */
+  const exploreNodes = $derived(mergeNodes(windowNodes, walkNodes));
+
+  /** The relations of the working set. */
+  const exploreEdges = $derived(mergeEdges(windowEdges, walkEdges));
+
+  /** The title of the node the walk is about. */
+  const walkTargetTitle = $derived(
+    walkTargetId === null
+      ? null
+      : (exploreNodes.find((node) => node.id === walkTargetId)?.title ?? null)
+  );
+
+  /**
+   * The nodes the list view shows: the ones of the view on screen.
+   *
+   * The exploration view draws a **picture** — the working set or the
+   * neighbourhood of the focus — and the list is its text alternative: it
+   * shows the same picture.
+   */
+  const listNodes = $derived(
+    viewMode === 'explore' ? (pictureNodes ?? exploreNodes) : graphNodes
+  );
 
   /** The relations the list view shows: the ones of the view on screen. */
-  const listEdges = $derived(viewMode === 'explore' ? windowEdges : graphEdges);
+  const listEdges = $derived(
+    viewMode === 'explore' ? (pictureEdges ?? exploreEdges) : graphEdges
+  );
 
   /**
    * The workspace is the scope of every read.
@@ -225,6 +307,17 @@
     windowNodes = [];
     windowEdges = [];
     windowError = null;
+    walkNodes = [];
+    walkEdges = [];
+    walking = false;
+    walkError = null;
+    walkTargetId = null;
+    walkIsolatedTitle = null;
+    pictureNodes = null;
+    pictureEdges = null;
+    centerNodeId = null;
+    centerRequest = 0;
+    pendingCenter = null;
     ontology = null;
     ontologyError = null;
     nodeDialogOpen = false;
@@ -256,17 +349,28 @@
     void loadOntologyOnce();
   });
 
-  /** Reads the bounded subgraph of the root. */
-  $effect(() => {
-    const id = rootId;
-    const currentDepth = depth;
-    const currentLimit = limit;
+  /**
+   * Reads the bounded subgraph of the root.
+   *
+   * The query is read as a whole: the root, the depth, the budget and the
+   * counter of the reloads. A click on the root asks for the same subgraph
+   * again, and the counter is what makes the effect run again.
+   */
+  const graphQuery = $derived({
+    id: rootId,
+    depth,
+    limit,
+    reload: graphReload
+  });
 
-    if (id === null) {
+  $effect(() => {
+    const query = graphQuery;
+
+    if (query.id === null || viewMode !== 'subgraph') {
       return;
     }
 
-    void loadGraph(id, currentDepth, currentLimit);
+    void loadGraph(query.id, query.depth, query.limit);
   });
 
   /**
@@ -382,6 +486,14 @@
       graphEdges = subgraph.edges;
       graphLoaded = true;
 
+      // The picture has just been drawn again: the node the reader walked
+      // to is the one that has to be in the middle of it.
+      if (pendingCenter !== null) {
+        centerNodeId = pendingCenter;
+        pendingCenter = null;
+        centerRequest += 1;
+      }
+
       // The selection may not exist in the new window.
       dropSelectionOutside(subgraph.nodes, subgraph.edges);
     } catch (caught) {
@@ -403,6 +515,105 @@
   function selectRoot(id: string): void {
     rootId = id;
     selection = nodeSelection(id);
+  }
+
+  /**
+   * The user clicked a node of the canvas: the app **walks** to it.
+   *
+   * The two views answer the gesture differently:
+   *
+   * - the exploration view **merges**: the answer of the subgraph rooted at
+   *   the clicked node is added to the working set, and the picture grows;
+   * - the subgraph view **re-roots**: a subgraph *is* a neighbourhood and a
+   *   neighbourhood has a root, so the answer replaces the picture.
+   *
+   * Either way it is **one full request per click**: the subgraph rooted at
+   * the clicked node, at the depth that is selected.
+   */
+  function navigateTo(nodeId: string): void {
+    if (viewMode === 'explore') {
+      // The walk is a choice of the user: the node it goes to is the one
+      // the view presents from now on.
+      selection = nodeSelection(nodeId);
+
+      void walkTo(nodeId);
+      return;
+    }
+
+    // The picture is centred on the node when the new subgraph lands.
+    pendingCenter = nodeId;
+
+    selectRoot(nodeId);
+
+    // The root may not have changed: the counter asks for the picture
+    // again anyway.
+    graphReload += 1;
+  }
+
+  /**
+   * Walks to a node: the subgraph rooted at it, at the selected depth.
+   *
+   * The picture stays on screen while the answer is on its way: a canvas
+   * that empties and refills on every click feels broken. The answer is
+   * **merged** into the working set — what has been seen is never lost.
+   */
+  async function walkTo(nodeId: string): Promise<void> {
+    const current = (walkRequest += 1);
+    walking = true;
+    walkError = null;
+    walkIsolatedTitle = null;
+    walkTargetId = nodeId;
+
+    try {
+      const subgraph = await loadSubgraph(api, {
+        rootId: nodeId,
+        depth,
+        limit
+      });
+
+      if (current !== walkRequest) {
+        return;
+      }
+
+      walkNodes = mergeNodes(walkNodes, subgraph.nodes);
+      walkEdges = mergeEdges(walkEdges, subgraph.edges);
+
+      // A node without relations is not a failure: its neighbourhood came
+      // back empty, and the interface has to say so instead of showing an
+      // error.
+      if (subgraph.nodes.length === 1 && subgraph.edges.length === 0) {
+        walkIsolatedTitle =
+          subgraph.nodes[0]?.title ?? t('graph.unknownNode');
+      }
+    } catch (caught) {
+      if (current !== walkRequest) {
+        return;
+      }
+      if (await redirectToLoginOnAuthFailure(caught, workspace, page.url.pathname)) {
+        return;
+      }
+      walkError = describeFailure(caught, t);
+    } finally {
+      if (current === walkRequest) {
+        walking = false;
+      }
+    }
+  }
+
+  /**
+   * The exploration view says what it draws.
+   *
+   * The list view is the text alternative of the canvas: it shows the same
+   * picture. The state only moves when the picture really changed.
+   */
+  function reportPicture(picture: Neighbourhood): void {
+    if (!sameIds(pictureNodes, picture.nodes)) {
+      pictureNodes = picture.nodes;
+    }
+
+    if (!sameIds(pictureEdges, picture.edges)) {
+      pictureEdges = picture.edges;
+    }
   }
 
   /**
@@ -629,6 +840,17 @@
       return;
     }
     depth = clampDepth(Number(select.value));
+  }
+
+  /**
+   * The depth of a walk is the depth of the whole app.
+   *
+   * The exploration view and the subgraph view share the number: the
+   * neighbourhood a click asks for and the subgraph of the other view are
+   * bounded by the same depth.
+   */
+  function setDepth(value: number): void {
+    depth = clampDepth(value);
   }
 
   function handleLimitChange(event: Event): void {
@@ -927,6 +1149,9 @@
                 selectedNodeId={selectedNodeId}
                 rootNodeId={rootId}
                 onselect={selectNode}
+                onnavigate={navigateTo}
+                centerNodeId={centerNodeId}
+                centerRequest={centerRequest}
                 description={t('graph.canvasDescription', {
                   nodes: formatNumber(locale.locale, graphNodes.length),
                   edges: formatNumber(locale.locale, graphEdges.length)
@@ -937,8 +1162,16 @@
         {:else}
           <div class="mt-4">
             <ExplorationView
-              nodes={windowNodes}
-              edges={windowEdges}
+              nodes={exploreNodes}
+              edges={exploreEdges}
+              {depth}
+              ondepthchange={setDepth}
+              onwalk={navigateTo}
+              {walking}
+              {walkTargetTitle}
+              {walkError}
+              {walkIsolatedTitle}
+              onpicture={reportPicture}
               loading={windowLoading}
               error={windowError}
               selectedNodeId={selectedNodeId}
@@ -965,6 +1198,7 @@
             edges={listEdges}
             {selection}
             onselect={select}
+            onnavigate={navigateTo}
             {ledger}
             reconcileEdge={reconcileEdgeScore}
             onpropose={(edge) => openCorrection({ kind: 'edge', edge })}

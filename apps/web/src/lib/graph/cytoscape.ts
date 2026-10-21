@@ -89,6 +89,8 @@ export interface GraphInstance {
   ): void;
   /** Highlights the selected node (and clears the previous highlight). */
   setSelected(nodeId: string | null): void;
+  /** Centres the picture on a node — the node the user walked to. */
+  centerOn(nodeId: string): void;
   /** Destroys the instance and releases the canvas. */
   destroy(): void;
 }
@@ -117,6 +119,13 @@ export interface GraphInstanceOptions {
   container: HTMLElement;
   /** Called with the id of the tapped node, or `null` for the background. */
   onselect: (nodeId: string | null) => void;
+  /**
+   * Called with the id of the tapped node when the user **walks** to it.
+   *
+   * A tap on a node selects it and re-roots the subgraph on it: the two
+   * are told apart here so the app can answer them differently.
+   */
+  onnavigate?: (nodeId: string) => void;
 }
 
 /**
@@ -138,7 +147,13 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
   });
 
   core.on('tap', 'node', (event) => {
-    options.onselect(cardIdOf(event.target));
+    const id = cardIdOf(event.target);
+
+    options.onselect(id);
+
+    // The tap is also a walk: the user asked for the neighbourhood of this
+    // node, and the app decides what a walk means.
+    options.onnavigate?.(id);
   });
 
   // The text of a card follows the card while the user drags it.
@@ -211,6 +226,14 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
       const selected = core.getElementById(nodeId);
       if (selected.length > 0) {
         selected.addClass(SELECTED_CLASS);
+      }
+    },
+
+    centerOn(nodeId) {
+      const node = core.getElementById(nodeId);
+
+      if (node.length > 0) {
+        core.center(node);
       }
     },
 

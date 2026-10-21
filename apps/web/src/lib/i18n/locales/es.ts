@@ -222,6 +222,8 @@ export const es = {
     columnScore: 'Puntuación',
     columnCorrection: 'Corrección',
     columnAttributes: 'Atributos',
+    columnWalk: 'Recorrido',
+    walkHere: 'Caminar',
     suggestCorrection: 'Proponer una corrección',
     suggestCorrectionOfRelation:
       'Proponer una corrección de la relación {relationKey}',
@@ -254,6 +256,18 @@ export const es = {
     focusHint:
       'La vista no exige que elijas una raíz: presenta un nodo y lo centra. Con «el elegido a mano» y sin que hayas hecho clic, presenta el más relacionado.',
     presented: 'Se presenta «{title}».',
+    focusActive: 'Criterio activo: {label}.',
+    depthLabel: 'Profundidad',
+    depthHelp:
+      'Cuántos saltos se recuperan alrededor del nodo en el que haces clic. Es la misma profundidad que usa el subgrafo.',
+    onlyNeighbourhoodLabel: 'Solo el entorno del nodo',
+    onlyNeighbourhoodHelp:
+      'Con el interruptor activado, la imagen muestra solo el entorno del nodo presentado, a la profundidad elegida. El resto queda oculto.',
+    scopeAll: 'La imagen tiene {shown} nodos: todo lo que se ha visto.',
+    scopeFocused:
+      'La imagen tiene {shown} nodos; {hidden} quedan fuera del entorno del nodo presentado.',
+    walking: 'Recuperando el entorno de «{title}»…',
+    isolated: '«{title}» no tiene relaciones: su entorno está vacío.',
     edgeStyleLabel: 'Forma de las flechas',
     edgeStraight: 'Una línea recta',
     edgeOrthogonal: 'En ángulo recto',
@@ -282,7 +296,9 @@ export const es = {
     hintPan:
       'Arrastra el fondo para mover el lienzo y usa la rueda para acercar o alejar.',
     hintDrag:
-      'Arrastra un nodo para colocarlo en otro sitio entre los demás: la posición dura hasta que se recarga la página.'
+      'Arrastra un nodo para colocarlo en otro sitio entre los demás: la posición dura hasta que se recarga la página.',
+    hintWalk:
+      'Haz clic en un nodo para caminar hacia él: se recuperan sus vecinos a la profundidad elegida y la imagen se centra en él.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

@@ -29,6 +29,15 @@
     presentedNodeId?: string | null;
     /** Called when the user selects (or clears) a node in the canvas. */
     onselect?: (nodeId: string | null) => void;
+    /**
+     * Called when the user **walks** to a node of the canvas.
+     *
+     * A tap on a node is two things at once: it selects the node (the
+     * inspector shows it) and it walks to it (the view asks the API for the
+     * neighbourhood of that node). They are told apart here so the app can
+     * answer the two with two different things.
+     */
+    onnavigate?: (nodeId: string) => void;
     /** Called when the user expands or collapses a node. */
     ontoggle?: (nodeId: string) => void;
     /** Called when the user selects a relation — by tapping its card. */
@@ -47,6 +56,7 @@
     selectedEdgeId = null,
     presentedNodeId = null,
     onselect,
+    onnavigate,
     ontoggle,
     onselectedge,
     ontoggleedge
@@ -163,12 +173,14 @@
    * render of the parent. The holder breaks that dependency.
    */
   let selectHandler: ((nodeId: string | null) => void) | undefined;
+  let navigateHandler: ((nodeId: string) => void) | undefined;
   let toggleHandler: ((nodeId: string) => void) | undefined;
   let selectEdgeHandler: ((edgeId: string) => void) | undefined;
   let toggleEdgeHandler: ((edgeId: string) => void) | undefined;
 
   $effect(() => {
     selectHandler = onselect;
+    navigateHandler = onnavigate;
     toggleHandler = ontoggle;
     selectEdgeHandler = onselectedge;
     toggleEdgeHandler = ontoggleedge;
@@ -207,6 +219,7 @@
       created = createExplorationInstance({
         container: element,
         onselect: (nodeId) => selectHandler?.(nodeId),
+        onnavigate: (nodeId) => navigateHandler?.(nodeId),
         onselectedge: (edgeId) => selectEdgeHandler?.(edgeId),
         onpreview: (next, related) => {
           preview = next;

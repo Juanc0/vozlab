@@ -20,6 +20,30 @@
     rootNodeId?: string | null;
     /** Called when the user selects (or clears) a node in the canvas. */
     onselect?: (nodeId: string | null) => void;
+    /**
+     * Called when the user **walks** to a node of the canvas.
+     *
+     * A tap on a node is two things at once: it selects the node and it
+     * walks to it — in the subgraph view, a walk re-roots the subgraph on
+     * the node that was tapped.
+     */
+    onnavigate?: (nodeId: string) => void;
+    /**
+     * The node the picture is centred on.
+     *
+     * It is set when a walk lands: the picture has just been drawn again,
+     * and the node the reader walked to is the one that has to be in the
+     * middle of it.
+     */
+    centerNodeId?: string | null;
+    /**
+     * The number of times the picture asked to be centred.
+     *
+     * The counter is what tells the canvas that the picture has been drawn
+     * again: the same node can be walked to twice, and the second walk has
+     * to centre the new picture, not the old one.
+     */
+    centerRequest?: number;
     /** The text alternative of the canvas. */
     description?: string;
   }
@@ -30,6 +54,9 @@
     selectedNodeId = null,
     rootNodeId = null,
     onselect,
+    onnavigate,
+    centerNodeId = null,
+    centerRequest = 0,
     description
   }: Props = $props();
 
@@ -52,9 +79,11 @@
    * render of the parent. The holder breaks that dependency.
    */
   let selectHandler: ((nodeId: string | null) => void) | undefined;
+  let navigateHandler: ((nodeId: string) => void) | undefined;
 
   $effect(() => {
     selectHandler = onselect;
+    navigateHandler = onnavigate;
   });
 
   /**
@@ -89,7 +118,8 @@
 
       created = createGraphInstance({
         container: element,
-        onselect: (nodeId) => selectHandler?.(nodeId)
+        onselect: (nodeId) => selectHandler?.(nodeId),
+        onnavigate: (nodeId) => navigateHandler?.(nodeId)
       });
       instance = created;
     })();
@@ -129,6 +159,25 @@
     }
 
     graph.setSelected(selected);
+  });
+
+  /**
+   * Centres the picture on the node the user walked to.
+   *
+   * The effect is declared **after** the one that draws the elements: the
+   * centre happens on the picture that has just been drawn, never on the
+   * one that was there before it.
+   */
+  $effect(() => {
+    const graph = instance;
+    const request = centerRequest;
+    const id = centerNodeId;
+
+    if (graph === null || request === 0 || id === null) {
+      return;
+    }
+
+    graph.centerOn(id);
   });
 </script>
 

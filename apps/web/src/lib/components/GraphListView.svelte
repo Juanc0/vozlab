@@ -31,6 +31,14 @@
     selection?: InspectorSelection | null;
     /** Called when the user selects a node or a relation in the list. */
     onselect?: (selection: InspectorSelection | null) => void;
+    /**
+     * Called when the user **walks** to a node of the list.
+     *
+     * The list is the text alternative of the canvas, and the canvas walks
+     * when a node is tapped: the list offers the same gesture, and it is
+     * the one a keyboard can reach.
+     */
+    onnavigate?: (nodeId: string) => void;
     /** The session-local state of the votes, for the relations. */
     ledger?: VoteLedger;
     /**
@@ -56,6 +64,7 @@
     edges = [],
     selection = null,
     onselect,
+    onnavigate,
     ledger,
     reconcileEdge,
     onpropose
@@ -143,6 +152,9 @@
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnTitle')}</th>
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnType')}</th>
             <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnStatus')}</th>
+            {#if onnavigate}
+              <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnWalk')}</th>
+            {/if}
           </tr>
         </thead>
         <tbody>
@@ -162,10 +174,33 @@
                 {displayName(node.typeDisplayNames, locale.locale, node.typeKey)}
               </td>
               <td class="px-3 py-2 text-muted">{locale.status('node', node.status)}</td>
+              {#if onnavigate}
+                <td class="px-3 py-2">
+                  <!--
+                    The walk of the canvas, in the text: the picture is
+                    walked by tapping a node, and the list is the
+                    alternative a keyboard can reach.
+
+                    The name of the button is short — the row says which
+                    node it is — and the description names the node, so the
+                    reader hears where the walk goes.
+                  -->
+                  <span id="walk-target-{node.id}" class="sr-only">{node.title}</span>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-node-id={node.id}
+                    aria-describedby="walk-target-{node.id}"
+                    onclick={() => onnavigate(node.id)}
+                  >
+                    {t('graph.walkHere')}
+                  </button>
+                </td>
+              {/if}
             </tr>
           {:else}
             <tr>
-              <td colspan="3" class="px-3 py-2 text-muted">{t('graph.listNoNodes')}</td>
+              <td colspan={3 + (onnavigate ? 1 : 0)} class="px-3 py-2 text-muted">{t('graph.listNoNodes')}</td>
             </tr>
           {/each}
         </tbody>

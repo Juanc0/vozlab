@@ -61,6 +61,15 @@ export interface ExplorationInstanceOptions {
   container: HTMLElement;
   /** Called with the id of the tapped node, or `null` for the background. */
   onselect: (nodeId: string | null) => void;
+  /**
+   * Called with the id of the tapped node when the user **walks** to it.
+   *
+   * A tap on a node is two things at once: it selects the node (the
+   * inspector shows it) and it walks to it (the view asks the API for the
+   * subgraph rooted at that node). They are told apart here so the app can
+   * answer the two with two different things.
+   */
+  onnavigate?: (nodeId: string) => void;
   /** Called with the id of the relation whose card was tapped. */
   onselectedge: (edgeId: string) => void;
   /** Called with what the pointer is over, or `null` when it leaves. */
@@ -218,6 +227,11 @@ export function createExplorationInstance(
     }
 
     options.onselect(cardIdOf(event.target));
+
+    // The tap is also a walk: the user asked for the neighbourhood of this
+    // node. The app decides what a walk means (a subgraph in one mode, a
+    // merge in the other).
+    options.onnavigate?.(cardIdOf(event.target));
   });
 
   core.on('tap', (event) => {

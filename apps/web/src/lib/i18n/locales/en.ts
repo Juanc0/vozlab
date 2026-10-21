@@ -198,6 +198,8 @@ export const en: Dictionary<typeof es> = {
     columnScore: 'Score',
     columnCorrection: 'Correction',
     columnAttributes: 'Attributes',
+    columnWalk: 'Walk',
+    walkHere: 'Walk',
     suggestCorrection: 'Suggest a correction',
     suggestCorrectionOfRelation:
       'Suggest a correction of the relation {relationKey}',
@@ -229,6 +231,18 @@ export const en: Dictionary<typeof es> = {
     focusHint:
       'The view does not ask you for a root: it presents a node and centres on it. With “the one you picked” and no click yet, it presents the most related one.',
     presented: 'It presents “{title}”.',
+    focusActive: 'Active criterion: {label}.',
+    depthLabel: 'Depth',
+    depthHelp:
+      'How many hops are recovered around the node you click. It is the same depth the subgraph uses.',
+    onlyNeighbourhoodLabel: 'Only the node’s neighbourhood',
+    onlyNeighbourhoodHelp:
+      'With the switch on, the picture shows only the neighbourhood of the presented node, at the depth that is selected. The rest is hidden.',
+    scopeAll: 'The picture holds {shown} nodes: everything that has been seen.',
+    scopeFocused:
+      'The picture holds {shown} nodes; {hidden} fall outside the neighbourhood of the presented node.',
+    walking: 'Recovering the neighbourhood of “{title}”…',
+    isolated: '“{title}” has no relations: its neighbourhood is empty.',
     edgeStyleLabel: 'Shape of the arrows',
     edgeStraight: 'A straight line',
     edgeOrthogonal: 'At right angles',
@@ -255,7 +269,9 @@ export const en: Dictionary<typeof es> = {
       'Point at a node or a relation to see its content for a moment; the button of the node expands or collapses it.',
     hintPan: 'Drag the background to move the canvas and use the wheel to zoom in or out.',
     hintDrag:
-      'Drag a node to place it somewhere else among the others: the position lasts until the page is reloaded.'
+      'Drag a node to place it somewhere else among the others: the position lasts until the page is reloaded.',
+    hintWalk:
+      'Click a node to walk to it: its neighbours are recovered at the chosen depth and the picture centres on it.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

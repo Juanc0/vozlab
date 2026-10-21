@@ -361,6 +361,28 @@ falls back to the raw value for an unknown one.
 The API's error `code` is a contract identifier and stays in English; the
 API's `message` is the API's own copy and stays as it is.
 
+## Walking the graph
+
+Clicking a node in the canvas is a **walk**: one request per click to the
+subgraph **rooted at that node**, at the depth already selected.
+
+- The **exploration** view **merges** the answer into its working set: the
+  nodes accumulate, so walking never loses what was already seen.
+- The **subgraph** view **re-roots**: a neighbourhood has a root, and the
+  root picker and the canvas now agree.
+- The picture **never empties** while the request is in flight. The old one
+  stays until the new one is ready, the region is `aria-busy` and a polite
+  live region says what is happening. A failure keeps the picture and
+  shows the `code` and the `message`; a node with no relations is a note,
+  not an error.
+- A click switches the focus criterion to *the one the user chose*, so the
+  view does not re-present another node under the reader's hand.
+- Whether the **far nodes** stay on the picture is the reader's choice: a
+  switch between the whole working set and only the focus's neighbourhood
+  at the current depth, with the counts in the interface being the truth.
+- The **list view** carries a *walk* button per row: the canvas is not
+  reachable by keyboard, and the text alternative is the keyboard's path.
+
 ## The node is a card
 
 Every node of the canvas is a **card**, not a dot:
