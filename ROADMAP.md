@@ -262,9 +262,17 @@ Requested after 3.7, to present the product to the university community.
       re-layout, and the shape of the arrows is a choice — straight, an
       orthogonal route with right angles, and four curves. The list view
       stays the text alternative of both modes.
-- [ ] 3.13 The inspector: one right-hand sidebar with tabs (content,
+- [x] 3.13 The inspector: one right-hand sidebar with tabs (content,
       attributes, proposals, forum) shared by both graph views, where the
-      selected node or relation can be edited or corrected.
+      selected node or relation can be edited or corrected. Result: a
+      right-hand column with four tabs — *Contenido*, *Atributos*,
+      *Propuestas*, *Foro* — for the selected **node or relation**; the
+      inline detail panel is gone. The actions express the API's asymmetry:
+      a relation the user authored can be edited **directly**
+      (`PATCH /edges/:id`, author only) and everybody else gets a
+      **correction proposal**; a node has no direct edit route at all, and
+      the interface says so. The column is collapsible so the canvas gets
+      the room, and the graph page is no longer capped at `max-w-6xl`.
 - [ ] 3.14 A responsive layout: mobile-first, the panels become sheets, and
       the canvas follows the window when it resizes.
 

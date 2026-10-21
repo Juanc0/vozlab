@@ -274,6 +274,37 @@ explicit; a failed fetch must not leave a blank canvas.
 Edges are styled by relation key/status. Empty and error states are
 explicit; a failed fetch must not leave a blank canvas.
 
+## The inspector
+
+One right-hand column, shared by **both** graph views, with four tabs:
+**Contenido** (the content and the properties of the selected thing, with
+the vote buttons), **Atributos** (the attributes, and the actions),
+**Propuestas** (the proposals of the target) and **Foro** (the threads and
+the posts). The inline detail panel of the subgraph view is gone; the
+inspector's first tab replaces it.
+
+The selection is a **node or a relation** — the canvas selects nodes, the
+list view selects both — and a relation is read with
+`GET /api/v1/edges/:id`, because the subgraph's edge is the topology only.
+
+The actions express an asymmetry of the API that the interface must show
+rather than hide:
+
+- a **relation** can be edited **directly** with `PATCH /api/v1/edges/:id`,
+  and **only its author** may: anybody else gets
+  `403 ERR_AUTHORIZATION_FAILED`;
+- a **node** has **no** direct edit route at all — the only way to change it
+  is to propose a correction, and the **author of the target** decides.
+
+So the direct edit appears for a relation the signed-in user authored, and
+where it is not available the interface says **why** rather than showing a
+dead button.
+
+The proposals of a target are filtered **client-side**: the API's proposal
+list takes `status`, `targetType`, `kind`, `limit` and `cursor`, but no
+`targetId`. The interface says when the page was truncated — the history is
+partial, and pretending otherwise would be a lie.
+
 ## The exploration view
 
 A second mode of the graph page — "Subgrafo" / "Explorar" — that draws the

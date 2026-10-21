@@ -25,11 +25,12 @@
   import ExplorationView from '$lib/components/ExplorationView.svelte';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
+  import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
-  import NodeDetailsPanel from '$lib/components/NodeDetailsPanel.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { formatNumber } from '$lib/i18n';
+  import { nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import RichText from '$lib/components/RichText.svelte';
   import type { PageProps } from './$types';
@@ -83,8 +84,22 @@
   let depth = $state(SUBGRAPH_DEFAULT_DEPTH);
   let limit = $state(SUBGRAPH_DEFAULT_NODES);
 
-  /** The selected node — the one the details panel shows. */
-  let selectedNodeId = $state<string | null>(null);
+  /**
+   * The selected thing — a node or a relation.
+   *
+   * The selection is a **union**: the canvas selects nodes and the list
+   * view selects nodes *and* relations, and the inspector shows whichever
+   * is selected.
+   */
+  let selection = $state<InspectorSelection | null>(null);
+
+  /**
+   * `true` while the inspector is open.
+   *
+   * The canvas needs the room: the inspector is folded away when the user
+   * wants to read the titles of the nodes.
+   */
+  let inspectorOpen = $state(true);
 
   /** The active metamodel — it drives the creation forms. */
   let ontology = $state.raw<OntologyResponseDto | null>(null);
@@ -121,10 +136,8 @@
   let ontologyRequest = 0;
   let windowRequest = 0;
 
-  /** The selected node of the current subgraph. */
-  const selectedNode = $derived(
-    graphNodes.find((node) => node.id === selectedNodeId) ?? null
-  );
+  /** The selected node — it is the one the canvas and the list highlight. */
+  const selectedNodeId = $derived(selection?.kind === 'node' ? selection.id : null);
 
   /** The nodes the list view shows: the ones of the view on screen. */
   const listNodes = $derived(viewMode === 'explore' ? windowNodes : graphNodes);
@@ -154,7 +167,7 @@
     windowRequest += 1;
 
     rootId = null;
-    selectedNodeId = null;
+    selection = null;
     graphNodes = [];
     graphEdges = [];
     graphLoaded = false;
@@ -320,9 +333,7 @@
       graphLoaded = true;
 
       // The selection may not exist in the new window.
-      if (selectedNodeId !== null && !subgraph.nodes.some((node) => node.id === selectedNodeId)) {
-        selectedNodeId = null;
-      }
+      dropSelectionOutside(subgraph.nodes, subgraph.edges);
     } catch (caught) {
       if (current !== graphRequest) {
         return;
@@ -341,7 +352,30 @@
   /** Picks the root of the subgraph. */
   function selectRoot(id: string): void {
     rootId = id;
-    selectedNodeId = id;
+    selection = nodeSelection(id);
+  }
+
+  /**
+   * Drops the selection when the thing it points at is not in the window.
+   *
+   * The window changed — a new root, a new depth, the exploration view —
+   * and the inspector would show something the picture does not hold.
+   */
+  function dropSelectionOutside(nodes: NodeDto[], edges: SubgraphEdgeDto[]): void {
+    const current = selection;
+
+    if (current === null) {
+      return;
+    }
+
+    const stillThere =
+      current.kind === 'node'
+        ? nodes.some((node) => node.id === current.id)
+        : edges.some((edge) => edge.id === current.id);
+
+    if (!stillThere) {
+      selection = null;
+    }
   }
 
   /**
@@ -366,9 +400,7 @@
       windowEdges = answer.edges;
 
       // The selection may not exist in the new window.
-      if (selectedNodeId !== null && !answer.nodes.some((node) => node.id === selectedNodeId)) {
-        selectedNodeId = null;
-      }
+      dropSelectionOutside(answer.nodes, answer.edges);
     } catch (caught) {
       if (current !== windowRequest) {
         return;
@@ -433,7 +465,17 @@
 
   /** The user selected a node — in the canvas or in the list. */
   function selectNode(id: string | null): void {
-    selectedNodeId = id;
+    selection = id === null ? null : nodeSelection(id);
+  }
+
+  /**
+   * The user selected a thing in the list: a node or a relation.
+   *
+   * The list is the text alternative of the canvas and it offers the same
+   * selection: a relation row is selectable too.
+   */
+  function select(chosen: InspectorSelection | null): void {
+    selection = chosen;
   }
 
   /** Opens the node creation form. */
@@ -482,17 +524,16 @@
     }
   }
 
-  /** Opens the correction form on a node. */
-  function openNodeCorrection(node: NodeDto): void {
+  /**
+   * Opens the correction form on the selected thing.
+   *
+   * The correction is a **proposal**: it changes nothing until the author
+   * of the target approves it. Any member of the workspace may propose
+   * one; the API re-checks everything.
+   */
+  function openCorrection(target: CorrectionTarget): void {
     notice = null;
-    correctionTarget = { kind: 'node', node };
-    correctionOpen = true;
-  }
-
-  /** Opens the correction form on a relation. */
-  function openEdgeCorrection(edge: SubgraphEdgeDto): void {
-    notice = null;
-    correctionTarget = { kind: 'edge', edge };
+    correctionTarget = target;
     correctionOpen = true;
   }
 
@@ -587,7 +628,18 @@
     </p>
   {/if}
 
-  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+  <!--
+    The canvas and the inspector share the width of the window.
+
+    The inspector can be folded away: the canvas needs the room to read the
+    titles of the nodes, and the toggle that folds it is the first control
+    of the column.
+  -->
+  <div
+    class={inspectorOpen
+      ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]'
+      : 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_3rem]'}
+  >
     <div class="min-w-0 space-y-6">
       <!--
         The root picker belongs to the subgraph view: the exploration view
@@ -788,35 +840,39 @@
             summaryKey={viewMode === 'explore' ? 'explore.listSummary' : 'graph.listSummary'}
             nodes={listNodes}
             edges={listEdges}
-            selectedNodeId={selectedNodeId}
-            onselect={selectNode}
+            {selection}
+            onselect={select}
             {ledger}
             reconcileEdge={reconcileEdgeScore}
-            onpropose={openEdgeCorrection}
+            onpropose={(edge) => openCorrection({ kind: 'edge', edge })}
           />
         </div>
       </section>
     </div>
 
-    <aside aria-labelledby="details-heading" class="min-w-0">
-      <section class="rounded-card border border-line bg-surface p-4">
-        <h2 id="details-heading" class="text-base font-semibold tracking-tight">
-          {t('graph.nodeDetailsHeading')}
-        </h2>
-        <div class="mt-3">
-          <NodeDetailsPanel
-            node={selectedNode}
-            onrelate={openEdgeDialog}
-            onsuggest={openNodeCorrection}
-          />
-        </div>
-      </section>
-
-      <p class="mt-4 text-xs text-ink-muted">
-        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
-      </p>
-    </aside>
+    <!--
+      The inspector: the one column of the page. It shows the selected node
+      or relation, and it is shared by the two views of the graph.
+    -->
+    <div class="min-w-0">
+      <Inspector
+        {selection}
+        nodes={listNodes}
+        {ledger}
+        open={inspectorOpen}
+        ontoggle={(open) => {
+          inspectorOpen = open;
+        }}
+        onsuggest={openCorrection}
+        onrelate={openEdgeDialog}
+        reconcileEdge={reconcileEdgeScore}
+      />
+    </div>
   </div>
+
+  <p class="mt-4 text-xs text-ink-muted">
+    <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
+  </p>
 
   <NodeCreateDialog
     open={nodeDialogOpen}

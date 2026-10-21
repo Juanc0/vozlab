@@ -178,7 +178,6 @@ export const es = {
       'El subgrafo está dibujado en un lienzo; el mismo contenido aparece en la lista de debajo.',
     canvasDescription:
       '{nodes} nodos y {edges} relaciones en el subgrafo alrededor de la raíz elegida, dibujados con una disposición dagre determinista.',
-    nodeDetailsHeading: 'Detalles del nodo',
     apiOrigin: 'El grafo se lee de `{apiBaseUrl}`.',
     listSummary: 'El subgrafo en forma de lista',
     listNodesHeading: 'Nodos del subgrafo',
@@ -260,6 +259,57 @@ export const es = {
       'Arrastra un nodo para colocarlo en otro sitio entre los demás: la posición dura hasta que se recarga la página.'
   },
 
+  /** The inspector: the column of tabs beside the canvas. */
+  inspector: {
+    heading: 'Inspección',
+    tabsLabel: 'Las pestañas del inspector',
+    tabContent: 'Contenido',
+    tabAttributes: 'Atributos',
+    tabProposals: 'Propuestas',
+    tabForum: 'Foro',
+    expand: 'Mostrar el inspector',
+    collapse: 'Ocultar el inspector',
+    emptySelection:
+      'Selecciona un nodo o una relación en el lienzo o en la lista para ver su contenido.',
+    readingRelation: 'Leyendo la relación…',
+    relationUnreadable: 'La relación no se ha podido leer.',
+    noAttributes: 'Este objeto no lleva ningún atributo.',
+    attributesOfNode: 'Los atributos del nodo',
+    attributesOfRelation: 'Los atributos de la relación',
+    actionsHeading: 'Acciones',
+    relationKey: 'Clave de la relación',
+    source: 'Origen',
+    target: 'Destino',
+    nodeType: 'Clase de la ontología',
+    status: 'Estado',
+    score: 'Puntuación de la comunidad',
+    author: 'Autoría',
+    created: 'Creado',
+    relate: 'Relacionar con otro nodo',
+    suggestCorrection: 'Sugerir una corrección',
+    suggestCorrectionOfNode: 'Sugerir una corrección del nodo {title}',
+    suggestCorrectionOfRelation: 'Sugerir una corrección de la relación {relationKey}',
+    editDirectly: 'Editar directamente',
+    editDirectlyOfRelation: 'Editar directamente la relación {relationKey}',
+    editDirectlyForbidden:
+      'Solo quien ha creado la relación puede editarla: los demás proponen una corrección.',
+    nodeHasNoDirectEdit:
+      'Un nodo no se edita directamente: se propone una corrección y decide quien lo mantiene.',
+    proposalsHeading: 'Las propuestas de este objeto',
+    loadingProposals: 'Cargando las propuestas…',
+    noProposals: 'Ninguna propuesta apunta a este objeto.',
+    proposalsPartial:
+      'Este historial es **parcial**: la API devolvió una página acotada de las propuestas del espacio de trabajo y hay más allá. La API no puede filtrar por objetivo, así que las propuestas de este objeto se filtran a partir de esa página.',
+    forumHeading: 'El debate de este objeto',
+    edgeSaved: 'La relación se ha actualizado.',
+    edgeSave: 'Guardar los cambios',
+    edgeSaving: 'Guardando…',
+    edgeNothingToSave:
+      'El formulario no cambia nada todavía: cambia un campo antes de guardarlo.',
+    edgeChanges: 'Qué cambia esta edición',
+    edgeFormKept: 'El formulario conserva lo que has escrito: no se ha guardado nada.'
+  },
+
   /** The node: its form, its details and its history. */
   node: {
     newNodeTitle: 'Nuevo nodo',
@@ -283,23 +333,7 @@ export const es = {
       'El formulario conserva lo que has escrito: no se ha creado nada.',
     creating: 'Creando…',
     createSubmit: 'Crear el nodo',
-    selectPrompt:
-      'Selecciona un nodo en el lienzo o en la lista para ver sus detalles.',
-    noDescription: 'Sin descripción.',
-    relate: 'Relacionar con otro nodo',
-    suggestCorrectionLabel: 'Proponer una corrección del nodo {title}',
-    discuss: 'Debatir este nodo',
-    communityScore: 'Puntuación de la comunidad',
-    author: 'Autoría',
-    created: 'Creado',
-    attributesHeading: 'Atributos de la ontología',
-    noAttributes: 'Este nodo no lleva ningún atributo.',
-    proposalHistoryHeading: 'Historial de propuestas de edición',
-    loadingProposals: 'Cargando las propuestas…',
-    noProposals: 'Ninguna propuesta apunta a este nodo.',
-    historyTruncated:
-      'Este historial es **parcial**: la API devolvió una página acotada de las propuestas del espacio de trabajo y hay más allá. La API no puede filtrar por objetivo, así que el historial de este nodo se filtra a partir de esa página.',
-    status: 'Estado'
+    noDescription: 'Sin descripción.'
   },
 
   /** The relation: its form. */

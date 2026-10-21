@@ -101,7 +101,8 @@ export const PROPOSAL: ProposalDto = {
 export const OTHER_PROPOSAL: ProposalDto = {
   ...PROPOSAL,
   id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-  targetId: NODE_B.id
+  targetId: NODE_B.id,
+  justification: 'The description names the wrong building.'
 };
 
 /** A node that was just created by the user. */

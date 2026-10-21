@@ -26,7 +26,7 @@
   </a>
 
   <header class="border-b border-line bg-surface">
-    <div class="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
+    <div class="mx-auto flex w-full items-center gap-3 px-4 py-3">
       <span
         aria-hidden="true"
         class="grid size-8 place-items-center rounded-md bg-brand-900 text-sm font-bold text-white"
@@ -51,12 +51,17 @@
   <InstallPrompt />
   <UpdatePrompt />
 
-  <main id="main-content" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+  <!--
+    The content of the shell is **not** capped: the graph page needs the
+    whole window for its canvas and its inspector. The pages that read
+    better in a narrow column cap themselves.
+  -->
+  <main id="main-content" class="mx-auto w-full flex-1 px-4 py-8">
     {@render children?.()}
   </main>
 
   <footer class="border-t border-line bg-surface">
-    <div class="mx-auto w-full max-w-6xl px-4 py-4 text-sm text-ink-muted">
+    <div class="mx-auto w-full px-4 py-4 text-sm text-ink-muted">
       {t('shell.footer')}
     </div>
   </footer>

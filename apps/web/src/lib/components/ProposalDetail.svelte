@@ -44,15 +44,35 @@
     onresolved?: (resolved: ResolvedProposal) => void;
     /** Called when the API answered with a fresh score of the proposal. */
     onscored?: (proposalId: string, communityScore: number) => void;
+    /**
+     * `false` leaves the discussion of the proposal out.
+     *
+     * The inspector shows the forum of the **target** in its own tab: the
+     * discussion of every proposal would be a second forum inside the
+     * column, and the reader would not know which one answers what.
+     */
+    discussion?: boolean;
   }
 
-  let { proposal, ledger, onresolved, onscored }: Props = $props();
+  let { proposal, ledger, onresolved, onscored, discussion = true }: Props = $props();
 
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
   const t = locale.t;
+
+  /**
+   * The ids of the sections.
+   *
+   * The proposal may be rendered more than once on a page — the inspector
+   * shows every proposal of the target — so the ids cannot be fixed.
+   */
+  const uid = $props.id();
+  const headingId = `proposal-heading-${uid}`;
+  const deltaHeadingId = `proposal-delta-heading-${uid}`;
+  const voteHeadingId = `proposal-vote-heading-${uid}`;
+  const resolutionHeadingId = `proposal-resolution-heading-${uid}`;
 
   /** The target of the proposal — its maintainer and a readable label. */
   let target = $state<ProposalTarget | null>(null);
@@ -216,10 +236,10 @@
   }
 </script>
 
-<article aria-labelledby="proposal-heading" class="space-y-4">
+<article aria-labelledby={headingId} class="space-y-4">
   <header>
     <div class="flex flex-wrap items-center gap-2">
-      <h2 id="proposal-heading" class="text-base font-semibold tracking-tight">
+      <h2 id={headingId} class="text-base font-semibold tracking-tight">
         {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
       <span class="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-ink-muted">
@@ -268,8 +288,8 @@
     {/if}
   </header>
 
-  <section aria-labelledby="proposal-delta-heading">
-    <h3 id="proposal-delta-heading" class="text-xs font-semibold tracking-wide uppercase">
+  <section aria-labelledby={deltaHeadingId}>
+    <h3 id={deltaHeadingId} class="text-xs font-semibold tracking-wide uppercase">
       {t('proposals.proposedChange')}
     </h3>
     <div class="mt-1">
@@ -277,8 +297,8 @@
     </div>
   </section>
 
-  <section aria-labelledby="proposal-vote-heading">
-    <h3 id="proposal-vote-heading" class="text-xs font-semibold tracking-wide uppercase">
+  <section aria-labelledby={voteHeadingId}>
+    <h3 id={voteHeadingId} class="text-xs font-semibold tracking-wide uppercase">
       {t('proposals.voteHeading')}
     </h3>
     <div class="mt-1">
@@ -293,8 +313,8 @@
     </div>
   </section>
 
-  <section aria-labelledby="proposal-resolution-heading">
-    <h3 id="proposal-resolution-heading" class="text-xs font-semibold tracking-wide uppercase">
+  <section aria-labelledby={resolutionHeadingId}>
+    <h3 id={resolutionHeadingId} class="text-xs font-semibold tracking-wide uppercase">
       {t('proposals.resolutionHeading')}
     </h3>
 
@@ -363,10 +383,12 @@
     {/if}
   </section>
 
-  <DiscussionPanel
-    targetId={proposal.id}
-    targetType="PROPOSAL"
-    {ledger}
-    heading={t('proposals.discussionHeading')}
-  />
+  {#if discussion}
+    <DiscussionPanel
+      targetId={proposal.id}
+      targetType="PROPOSAL"
+      {ledger}
+      heading={t('proposals.discussionHeading')}
+    />
+  {/if}
 </article>

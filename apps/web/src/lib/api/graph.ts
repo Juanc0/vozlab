@@ -7,9 +7,11 @@
  * it never pretends the graph is complete — so the clamps live here, next to
  * the call that would be rejected by a `422` otherwise.
  *
- * The module also owns the two **writes** of the graph: the creation of a
- * node (FR-06) and the creation of a relation (FR-08). Both are born
- * `PENDING`: the governance flow decides their fate.
+ * The module also owns the **writes** of the graph: the creation of a node
+ * (FR-06), the creation of a relation (FR-08) and the direct edition of a
+ * relation. The first two are born `PENDING`: the governance flow decides
+ * their fate. The third one is the only write the API lets anybody do
+ * directly — and only the **author** of the relation may do it.
  */
 
 import { cursorQuery, type ApiClient, type CursorPage, type QueryValue } from './client';
@@ -283,4 +285,47 @@ export async function createEdge(
     status: body.status,
     communityScore: body.communityScore
   };
+}
+
+/**
+ * The body of a direct edition of a relation.
+ *
+ * The API takes `relationKey` and `attributes`, both optional: the edition
+ * is partial. The attributes are **merged** into the ones of the relation
+ * (`Edge.updateAttributes`), exactly as a proposal does — an attribute can
+ * be changed and one can be added, but none can be removed nor renamed.
+ */
+export interface UpdateEdgeInput {
+  /** The new key of the relation. */
+  readonly relationKey?: string;
+  /** The attributes to merge into the ones of the relation. */
+  readonly attributes?: Record<string, unknown>;
+}
+
+/**
+ * Edits a relation directly (the `PATCH /api/v1/edges/:id` route).
+ *
+ * **Only the author of the relation may do this**: the API compares the
+ * caller's pseudonym with the one of the relation and answers `403
+ * ERR_AUTHORIZATION_FAILED` otherwise. The UI only offers the action to the
+ * author, but the API is the enforcement — and its refusal is shown.
+ *
+ * The answer is the whole relation: the caller adopts it instead of reading
+ * it back.
+ */
+export async function updateEdge(
+  client: ApiClient,
+  edgeId: string,
+  input: UpdateEdgeInput
+): Promise<EdgeDto> {
+  const body = await client.request<{ edge: EdgeDto }>({
+    method: 'PATCH',
+    path: `/edges/${encodeURIComponent(edgeId)}`,
+    body: {
+      ...(input.relationKey === undefined ? {} : { relationKey: input.relationKey }),
+      ...(input.attributes === undefined ? {} : { attributes: input.attributes })
+    }
+  });
+
+  return body.edge;
 }

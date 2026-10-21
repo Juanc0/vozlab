@@ -35,7 +35,7 @@ describe('the list view of the subgraph', () => {
 
   it('reports the selection of the node', () => {
     render(GraphListView, { context: localeContext(),
-      props: { nodes: [NODE_A, NODE_B], edges: [EDGE], selectedNodeId: NODE_B.id }
+      props: { nodes: [NODE_A, NODE_B], edges: [EDGE], selection: { kind: 'node', id: NODE_B.id } }
     });
 
     const [nodeTable] = screen.getAllByRole('table');
@@ -49,6 +49,19 @@ describe('the list view of the subgraph', () => {
     );
   });
 
+  it('reports the selection of the relation', () => {
+    render(GraphListView, { context: localeContext(),
+      props: { nodes: [NODE_A, NODE_B], edges: [EDGE], selection: { kind: 'edge', id: EDGE.id } }
+    });
+
+    const [, relationTable] = screen.getAllByRole('table');
+
+    expect(within(relationTable).getByRole('button', { name: 'SUGGESTS' })).toHaveAttribute(
+      'aria-current',
+      'true'
+    );
+  });
+
   it('selects the node when the user picks it in the list', async () => {
     const onselect = vi.fn();
     render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
@@ -56,7 +69,17 @@ describe('the list view of the subgraph', () => {
     const [nodeTable] = screen.getAllByRole('table');
     await fireEvent.click(within(nodeTable).getByRole('button', { name: NODE_B.title }));
 
-    expect(onselect).toHaveBeenCalledWith(NODE_B.id);
+    expect(onselect).toHaveBeenCalledWith({ kind: 'node', id: NODE_B.id });
+  });
+
+  it('selects the relation when the user picks it in the list', async () => {
+    const onselect = vi.fn();
+    render(GraphListView, { context: localeContext(), props: { nodes: [NODE_A, NODE_B], edges: [EDGE], onselect } });
+
+    const [, relationTable] = screen.getAllByRole('table');
+    await fireEvent.click(within(relationTable).getByRole('button', { name: 'SUGGESTS' }));
+
+    expect(onselect).toHaveBeenCalledWith({ kind: 'edge', id: EDGE.id });
   });
 
   it('selects the endpoint of a relation when the user picks it', async () => {
@@ -66,7 +89,7 @@ describe('the list view of the subgraph', () => {
     const [, relationTable] = screen.getAllByRole('table');
     await fireEvent.click(within(relationTable).getByRole('button', { name: NODE_A.title }));
 
-    expect(onselect).toHaveBeenCalledWith(NODE_A.id);
+    expect(onselect).toHaveBeenCalledWith({ kind: 'node', id: NODE_A.id });
   });
 
   it('says so when the subgraph holds no node and no relation', () => {

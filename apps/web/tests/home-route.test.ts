@@ -9,6 +9,7 @@ import {
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import { EDGE, NEW_NODE, NODE_A, NODE_B, WORKSPACE_ID } from './fixtures/graph';
+import { EDGE_DTO } from './fixtures/inspector';
 import { ONTOLOGY } from './fixtures/ontology';
 import Home from '../src/routes/(app)/+page.svelte';
 import { contextWithLocale } from './harness/locale';
@@ -53,6 +54,8 @@ interface Answers {
   createNode?: () => Response | Promise<Response>;
   getNode?: () => Response | Promise<Response>;
   createEdge?: () => Response | Promise<Response>;
+  /** The relation the inspector reads with `GET /api/v1/edges/:id`. */
+  edge?: () => Response | Promise<Response>;
 }
 
 function stubFetch(answers: Answers): ReturnType<typeof vi.fn> {
@@ -81,6 +84,11 @@ function stubFetch(answers: Answers): ReturnType<typeof vi.fn> {
     if (/\/nodes\/[0-9a-f-]{36}$/.test(url)) {
       if (!answers.getNode) throw new Error(`unexpected request: ${url}`);
       return answers.getNode();
+    }
+
+    if (/\/edges\/[0-9a-f-]{36}$/.test(url)) {
+      if (!answers.edge) throw new Error(`unexpected request: ${url}`);
+      return answers.edge();
     }
 
     if (url.includes('/nodes')) {
@@ -329,5 +337,61 @@ describe('the graph page', () => {
     // Only the relations of the class of the source are offered.
     const picker = screen.getByLabelText('Relación (obligatorio)') as HTMLSelectElement;
     expect(Array.from(picker.options).map((option) => option.value)).toEqual(['RELATES_TO']);
+  });
+
+  it('shows the selected node in the inspector', async () => {
+    stubFetch({
+      nodes: () => json({ nodes: [NODE_A, NODE_B], nextCursor: null }),
+      subgraph: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
+      proposals: () => json({ proposals: [], nextCursor: null })
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    // The inspector shows the four tabs and the selected node.
+    expect(screen.getByRole('tab', { name: 'Contenido' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Atributos' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Propuestas' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Foro' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: NODE_A.title })).toBeInTheDocument();
+    });
+  });
+
+  it('shows the selected relation in the inspector, read from the API', async () => {
+    const fetchMock = stubFetch({
+      nodes: () => json({ nodes: [NODE_A, NODE_B], nextCursor: null }),
+      subgraph: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
+      proposals: () => json({ proposals: [], nextCursor: null }),
+      edge: () => json({ edge: EDGE_DTO })
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+
+    // The relation row of the list is selectable too.
+    const relation = await screen.findByRole('button', { name: 'SUGGESTS' });
+    await fireEvent.click(relation);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: EDGE_DTO.relationKey })).toBeInTheDocument();
+    });
+
+    // The relation is not in the subgraph response: it was read.
+    expect(
+      fetchMock.mock.calls.some((entry) => String(entry[0]).includes(`/edges/${EDGE.id}`))
+    ).toBe(true);
   });
 });

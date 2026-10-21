@@ -9,6 +9,7 @@
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
+  import type { InspectorSelection } from '$lib/inspector/selection';
 
   interface Props {
     nodes: NodeDto[];
@@ -17,23 +18,23 @@
 
   let { nodes, edges }: Props = $props();
 
-  let selectedNodeId = $state<string | null>(null);
+  let selection = $state<InspectorSelection | null>(null);
 </script>
 
 <GraphCanvas
   {nodes}
   {edges}
-  {selectedNodeId}
+  selectedNodeId={selection?.kind === 'node' ? selection.id : null}
   onselect={(nodeId) => {
-    selectedNodeId = nodeId;
+    selection = nodeId === null ? null : { kind: 'node', id: nodeId };
   }}
 />
 
 <GraphListView
   {nodes}
   {edges}
-  {selectedNodeId}
-  onselect={(nodeId) => {
-    selectedNodeId = nodeId;
+  {selection}
+  onselect={(chosen) => {
+    selection = chosen;
   }}
 />

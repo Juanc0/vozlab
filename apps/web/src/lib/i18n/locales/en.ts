@@ -163,7 +163,6 @@ export const en: Dictionary<typeof es> = {
       'The subgraph is drawn on a canvas; the same content is listed below.',
     canvasDescription:
       '{nodes} nodes and {edges} relations in the subgraph around the selected root, drawn with a deterministic dagre layout.',
-    nodeDetailsHeading: 'Node details',
     apiOrigin: 'The graph is read from `{apiBaseUrl}`.',
     listSummary: 'The subgraph as a list',
     listNodesHeading: 'Nodes of the subgraph',
@@ -242,6 +241,56 @@ export const en: Dictionary<typeof es> = {
       'Drag a node to place it somewhere else among the others: the position lasts until the page is reloaded.'
   },
 
+  /** The inspector: the column of tabs beside the canvas. */
+  inspector: {
+    heading: 'Inspector',
+    tabsLabel: 'The tabs of the inspector',
+    tabContent: 'Content',
+    tabAttributes: 'Attributes',
+    tabProposals: 'Proposals',
+    tabForum: 'Forum',
+    expand: 'Show the inspector',
+    collapse: 'Hide the inspector',
+    emptySelection:
+      'Pick a node or a relation in the canvas or in the list to see its content.',
+    readingRelation: 'Reading the relation…',
+    relationUnreadable: 'The relation could not be read.',
+    noAttributes: 'This object carries no attribute.',
+    attributesOfNode: 'The attributes of the node',
+    attributesOfRelation: 'The attributes of the relation',
+    actionsHeading: 'Actions',
+    relationKey: 'Relation key',
+    source: 'Source',
+    target: 'Target',
+    nodeType: 'Ontology class',
+    status: 'Status',
+    score: 'Community score',
+    author: 'Authorship',
+    created: 'Created',
+    relate: 'Relate it to another node',
+    suggestCorrection: 'Suggest a correction',
+    suggestCorrectionOfNode: 'Suggest a correction of the node {title}',
+    suggestCorrectionOfRelation: 'Suggest a correction of the relation {relationKey}',
+    editDirectly: 'Edit directly',
+    editDirectlyOfRelation: 'Edit the relation {relationKey} directly',
+    editDirectlyForbidden:
+      'Only the author of the relation may edit it: everybody else proposes a correction.',
+    nodeHasNoDirectEdit:
+      'A node is never edited directly: a correction is proposed and the author of the node decides.',
+    proposalsHeading: 'The proposals of this object',
+    loadingProposals: 'Loading the proposals…',
+    noProposals: 'No proposal targets this object.',
+    proposalsPartial:
+      'This history is **partial**: the API returned one bounded page of the proposals of the workspace and there are more beyond it. The API cannot filter by target, so the proposals of this object are filtered out of that page.',
+    forumHeading: 'The forum of this object',
+    edgeSaved: 'The relation has been updated.',
+    edgeSave: 'Save the changes',
+    edgeSaving: 'Saving…',
+    edgeNothingToSave: 'The form changes nothing yet: change a field before saving it.',
+    edgeChanges: 'What this edition changes',
+    edgeFormKept: 'The form keeps what you typed: nothing has been saved.'
+  },
+
   node: {
     newNodeTitle: 'New node',
     createIntro:
@@ -263,23 +312,7 @@ export const en: Dictionary<typeof es> = {
     formKept: 'The form kept what you typed: nothing was created.',
     creating: 'Creating…',
     createSubmit: 'Create the node',
-    selectPrompt:
-      'Select a node in the canvas or in the list to see its details.',
-    noDescription: 'No description.',
-    relate: 'Relate to another node',
-    suggestCorrectionLabel: 'Suggest a correction of the node {title}',
-    discuss: 'Discuss this node',
-    communityScore: 'Community score',
-    author: 'Author',
-    created: 'Created',
-    attributesHeading: 'Ontology attributes',
-    noAttributes: 'This node carries no attribute.',
-    proposalHistoryHeading: 'Edit-proposal history',
-    loadingProposals: 'Loading the proposals…',
-    noProposals: 'No proposal targets this node.',
-    historyTruncated:
-      'This history is **partial**: the API returned one bounded page of the workspace\'s proposals and more exist beyond it. The API cannot filter by target, so the history of this node is filtered from that page.',
-    status: 'Status'
+    noDescription: 'No description.'
   },
 
   edge: {

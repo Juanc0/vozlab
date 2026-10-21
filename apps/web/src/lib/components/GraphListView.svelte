@@ -4,6 +4,7 @@
   import type { VoteLedger } from '$lib/governance/vote.svelte';
   import type { TranslationKey } from '$lib/i18n';
   import { formatNumber } from '$lib/i18n';
+  import { edgeSelection, nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
@@ -19,10 +20,15 @@
     nodes?: NodeDto[];
     /** The relations of the bounded subgraph. */
     edges?: SubgraphEdgeDto[];
-    /** The id of the selected node, or `null` when nothing is selected. */
-    selectedNodeId?: string | null;
-    /** Called when the user selects a node in the list. */
-    onselect?: (nodeId: string | null) => void;
+    /**
+     * The selected thing — a node or a relation.
+     *
+     * The list shares the selection with the canvas and with the
+     * inspector: a relation row is selectable too, not only a node row.
+     */
+    selection?: InspectorSelection | null;
+    /** Called when the user selects a node or a relation in the list. */
+    onselect?: (selection: InspectorSelection | null) => void;
     /** The session-local state of the votes, for the relations. */
     ledger?: VoteLedger;
     /**
@@ -46,7 +52,7 @@
     summaryKey = 'graph.listSummary',
     nodes = [],
     edges = [],
-    selectedNodeId = null,
+    selection = null,
     onselect,
     ledger,
     reconcileEdge,
@@ -66,6 +72,16 @@
 
   /** The number of the relations, written with the conventions of the locale. */
   const edgeCount = $derived(formatNumber(locale.locale, edges.length));
+
+  /** `true` when the selection is the given node. */
+  function isSelectedNode(nodeId: string): boolean {
+    return selection?.kind === 'node' && selection.id === nodeId;
+  }
+
+  /** `true` when the selection is the given relation. */
+  function isSelectedEdge(edgeId: string): boolean {
+    return selection?.kind === 'edge' && selection.id === edgeId;
+  }
 </script>
 
 <!--
@@ -124,8 +140,8 @@
                 <button
                   type="button"
                   class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold aria-[current=true]:text-brand-950"
-                  aria-current={selectedNodeId === node.id ? 'true' : undefined}
-                  onclick={() => onselect?.(node.id)}
+                  aria-current={isSelectedNode(node.id) ? 'true' : undefined}
+                  onclick={() => onselect?.(nodeSelection(node.id))}
                 >
                   {node.title}
                 </button>
@@ -177,12 +193,26 @@
         <tbody>
           {#each edges as edge (edge.id)}
             <tr class="border-t border-line">
-              <th scope="row" class="px-3 py-2 font-normal text-ink-muted">{edge.relationKey}</th>
+              <th scope="row" class="px-3 py-2 font-normal">
+                <!--
+                  The relation is selectable too: the inspector shows the
+                  content and the attributes of a relation, and the list is
+                  the text alternative of the canvas.
+                -->
+                <button
+                  type="button"
+                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold aria-[current=true]:text-brand-950"
+                  aria-current={isSelectedEdge(edge.id) ? 'true' : undefined}
+                  onclick={() => onselect?.(edgeSelection(edge.id))}
+                >
+                  {edge.relationKey}
+                </button>
+              </th>
               <td class="px-3 py-2">
                 <button
                   type="button"
                   class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700"
-                  onclick={() => onselect?.(edge.sourceNodeId)}
+                  onclick={() => onselect?.(nodeSelection(edge.sourceNodeId))}
                 >
                   {titleOf(edge.sourceNodeId)}
                 </button>
@@ -191,7 +221,7 @@
                 <button
                   type="button"
                   class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700"
-                  onclick={() => onselect?.(edge.targetNodeId)}
+                  onclick={() => onselect?.(nodeSelection(edge.targetNodeId))}
                 >
                   {titleOf(edge.targetNodeId)}
                 </button>

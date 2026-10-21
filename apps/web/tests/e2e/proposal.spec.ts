@@ -28,14 +28,17 @@ test('a correction is proposed through the UI and the target is unchanged until 
   await page.goto('/');
   await waitForApp(page);
 
-  // The node is picked in the root picker: the details panel shows it.
+  // The node is picked in the root picker: the inspector shows it.
   await page
     .getByRole('region', { name: 'Nodo raíz' })
     .getByRole('button', { name: node.title })
     .click();
 
+  // The correction is proposed from the inspector.
+  await page.getByRole('tab', { name: 'Atributos' }).click();
+
   const opener = page.getByRole('button', {
-    name: `Proponer una corrección del nodo ${node.title}`
+    name: `Sugerir una corrección del nodo ${node.title}`
   });
   await expect(opener).toBeVisible();
   await opener.click();

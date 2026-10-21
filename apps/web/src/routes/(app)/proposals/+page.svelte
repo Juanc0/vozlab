@@ -260,7 +260,7 @@
   <title>{t('proposals.pageTitle')}</title>
 </svelte:head>
 
-<section class="space-y-6">
+<section class="mx-auto w-full max-w-6xl space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">{t('proposals.heading')}</h1>
     <p class="mt-2 max-w-prose text-ink-muted">

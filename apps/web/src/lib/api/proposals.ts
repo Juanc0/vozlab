@@ -3,9 +3,10 @@
  *
  * The API has **no `targetId` filter** on `GET /api/v1/proposals`: the query
  * accepts `status`, `targetType`, `kind`, `limit` and `cursor` only. The
- * history of one node is therefore filtered **client-side** over one bounded
- * page — and when that page was truncated (`nextCursor` present) the history
- * is *partial*. The UI says so; pretending otherwise would be a lie.
+ * history of one target — a node or a relation — is therefore filtered
+ * **client-side** over one bounded page — and when that page was truncated
+ * (`nextCursor` present) the history is *partial*. The UI says so;
+ * pretending otherwise would be a lie.
  *
  * The list of the workspace, on the other hand, is a first-class read: it is
  * filtered by the API itself and paged with the opaque keyset cursor.
@@ -37,7 +38,7 @@ export function clampProposalLimit(limit: number): number {
 }
 
 /** The proposals of one target, and whether the page they came from was cut. */
-export interface NodeProposalHistory {
+export interface TargetProposalHistory {
   /** The proposals of the target, in the order the API returned them. */
   readonly proposals: ProposalDto[];
   /**
@@ -56,30 +57,44 @@ export function filterProposalsByTarget(
 }
 
 /**
- * Reads the proposal history of one node.
+ * Reads the proposal history of one target — a node or a relation.
  *
- * The page is bounded (`targetType=NODE` plus a `limit`); the target filter
- * is applied here, and the truncation of the page is reported so the UI can
+ * The page is bounded (`targetType` plus a `limit`); the target filter is
+ * applied here, and the truncation of the page is reported so the UI can
  * say that the history is partial.
  */
-export async function loadNodeProposalHistory(
+export async function loadTargetProposalHistory(
   client: ApiClient,
-  targetId: string,
+  target: { readonly targetId: string; readonly targetType: TargetType },
   limit: number = PROPOSAL_DEFAULT_LIMIT
-): Promise<NodeProposalHistory> {
+): Promise<TargetProposalHistory> {
   const page = await client.page<ProposalDto>({
     path: '/proposals',
     resourceKey: 'proposals',
     query: {
-      targetType: 'NODE',
+      targetType: target.targetType,
       limit: clampProposalLimit(limit)
     }
   });
 
   return {
-    proposals: filterProposalsByTarget(page.items, targetId),
+    proposals: filterProposalsByTarget(page.items, target.targetId),
     truncated: page.nextCursor !== null
   };
+}
+
+/**
+ * Reads the proposal history of one node.
+ *
+ * A thin wrapper over {@link loadTargetProposalHistory}: the node is the
+ * target the canvas' panel used to ask for.
+ */
+export async function loadNodeProposalHistory(
+  client: ApiClient,
+  targetId: string,
+  limit: number = PROPOSAL_DEFAULT_LIMIT
+): Promise<TargetProposalHistory> {
+  return loadTargetProposalHistory(client, { targetId, targetType: 'NODE' }, limit);
 }
 
 /** The filters of the proposal list — every one of them is optional. */

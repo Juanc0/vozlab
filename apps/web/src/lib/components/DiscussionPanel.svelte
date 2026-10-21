@@ -39,15 +39,33 @@
     ledger: VoteLedger;
     /** The heading of the section. */
     heading?: string;
+    /**
+     * `true` leaves the card of the panel out.
+     *
+     * The inspector shows the forum inside a column that is already a card:
+     * a card inside a card is noise, and the reader loses the thread of the
+     * page.
+     */
+    bare?: boolean;
   }
 
-  let { targetId, targetType, ledger, heading }: Props = $props();
+  let { targetId, targetType, ledger, heading, bare = false }: Props = $props();
 
   const api = getApiClient();
   const session = getSessionState();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
   const t = locale.t;
+
+  /**
+   * The ids of the sections.
+   *
+   * The panel may be rendered more than once on a page, so the ids cannot
+   * be fixed.
+   */
+  const uid = $props.id();
+  const headingId = `discussion-heading-${uid}`;
+  const postsHeadingId = `thread-posts-heading-${uid}`;
 
   /** The heading of the section. */
   const sectionHeading = $derived(heading ?? t('discussion.heading'));
@@ -359,8 +377,8 @@
   const replyParent = $derived(posts.find((post) => post.id === replyParentId) ?? null);
 </script>
 
-<section aria-labelledby="discussion-heading" class="rounded-card border border-line bg-surface p-4">
-  <h2 id="discussion-heading" class="text-base font-semibold tracking-tight">
+<section aria-labelledby={headingId} class={bare ? '' : 'rounded-card border border-line bg-surface p-4'}>
+  <h2 id={headingId} class="text-base font-semibold tracking-tight">
     {sectionHeading}
   </h2>
 
@@ -459,8 +477,8 @@
   {/if}
 
   {#if selectedThread !== null}
-    <section aria-labelledby="thread-posts-heading" class="mt-5 border-t border-line pt-4">
-      <h3 id="thread-posts-heading" class="text-sm font-semibold tracking-tight">
+    <section aria-labelledby={postsHeadingId} class="mt-5 border-t border-line pt-4">
+      <h3 id={postsHeadingId} class="text-sm font-semibold tracking-tight">
         {t('discussion.commentsOf', { title: selectedThread.title })}
       </h3>
 
