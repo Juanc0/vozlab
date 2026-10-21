@@ -368,28 +368,28 @@
 </script>
 
 <ModalDialog {open} title={t('correction.title')} {onclose} describedby={introId}>
-  <p id={introId} class="text-sm text-ink-muted">
+  <p id={introId} class="text-body text-muted">
     <RichText text={t('correction.intro')} />
   </p>
 
   {#if target === null}
-    <p class="mt-4 text-sm text-ink-muted">
+    <p class="mt-4 text-body text-muted">
       {t('correction.pickTarget')}
     </p>
   {:else if loading}
-    <p role="status" class="mt-4 text-sm text-ink-muted">{t('correction.readingTarget')}</p>
+    <p role="status" class="mt-4 text-body text-muted">{t('correction.readingTarget')}</p>
   {:else if loadError !== null}
-    <p role="alert" class="mt-4 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+    <p role="alert" class="mt-4 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
       <span class="font-mono">{loadError.code}</span> — {loadError.message}
     </p>
   {:else if build === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">{t('correction.loadingTarget')}</p>
+    <p role="status" class="mt-4 text-body text-muted">{t('correction.loadingTarget')}</p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       {#if target.kind === 'node'}
         <div>
-          <label for={titleId} class="block text-sm font-medium text-ink">
-            {t('node.titleLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+          <label for={titleId} class="field-label">
+            {t('node.titleLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
           </label>
           <input
             id={titleId}
@@ -398,39 +398,39 @@
             maxlength="255"
             aria-invalid={errorOf('title') === null ? undefined : 'true'}
             aria-describedby={errorOf('title') === null ? undefined : `${titleId}-error`}
-            class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+            class="field mt-1 w-full"
             value={title}
             oninput={(event) => {
               title = event.currentTarget.value;
             }}
           />
           {#if errorOf('title') !== null}
-            <p id={`${titleId}-error`} class="mt-1 text-sm text-negative">{errorOf('title')}</p>
+            <p id={`${titleId}-error`} class="mt-1 text-body text-pill-negative-ink">{errorOf('title')}</p>
           {/if}
         </div>
 
         <div>
-          <label for={descriptionId} class="block text-sm font-medium text-ink">
-            {t('node.descriptionLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
+          <label for={descriptionId} class="field-label">
+            {t('node.descriptionLabel')} <span class="font-normal text-muted">{t('common.optional')}</span>
           </label>
           <textarea
             id={descriptionId}
             rows="3"
             aria-describedby={descriptionNoteId}
-            class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+            class="field-area mt-1 w-full"
             value={description}
             oninput={(event) => {
               description = event.currentTarget.value;
             }}
           ></textarea>
-          <p id={descriptionNoteId} class="mt-1 text-xs text-ink-muted">
+          <p id={descriptionNoteId} class="mt-1 text-small text-muted">
             {t('correction.emptyDescription')}
           </p>
         </div>
       {:else}
         <div>
-          <label for={relationKeyId} class="block text-sm font-medium text-ink">
-            {t('correction.relationKeyLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+          <label for={relationKeyId} class="field-label">
+            {t('correction.relationKeyLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
           </label>
           <input
             id={relationKeyId}
@@ -440,7 +440,7 @@
             maxlength="100"
             aria-invalid={errorOf('relationKey') === null ? undefined : 'true'}
             aria-describedby={errorOf('relationKey') === null ? undefined : `${relationKeyId}-error`}
-            class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+            class="field mt-1 w-full"
             value={relationKey}
             oninput={(event) => {
               relationKey = event.currentTarget.value;
@@ -452,7 +452,7 @@
             {/each}
           </datalist>
           {#if errorOf('relationKey') !== null}
-            <p id={`${relationKeyId}-error`} class="mt-1 text-sm text-negative">
+            <p id={`${relationKeyId}-error`} class="mt-1 text-body text-pill-negative-ink">
               {errorOf('relationKey')}
             </p>
           {/if}
@@ -460,18 +460,18 @@
       {/if}
 
       <fieldset aria-describedby={attributesNoteId}>
-        <legend class="text-sm font-semibold tracking-tight">{t('correction.attributesLegend')}</legend>
-        <p id={attributesNoteId} class="mt-1 text-xs text-ink-muted">
+        <legend class="font-semibold">{t('correction.attributesLegend')}</legend>
+        <p id={attributesNoteId} class="mt-1 text-small text-muted">
           {t('correction.attributesNote')}
         </p>
 
         {#if rows.length === 0}
-          <p class="mt-2 text-sm text-ink-muted">{t('correction.noAttributes')}</p>
+          <p class="mt-2 text-body text-muted">{t('correction.noAttributes')}</p>
         {:else}
           <ul class="mt-2 space-y-2">
             {#each rows as row, index (row.id)}
               <li
-                class="grid items-end gap-2 rounded-md border border-line bg-surface-muted/40 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto]"
+                class="grid items-end gap-2 rounded-control bg-raised p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto]"
               >
                 <div>
                   <label for={keyInputId(row)} class="sr-only">
@@ -485,7 +485,7 @@
                     errorOf(`attributes.${row.id}:key`) === null
                       ? undefined
                       : 'true'}
-                    class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                    class="field w-full"
                     value={row.key}
                     oninput={(event) => {
                       row.key = event.currentTarget.value;
@@ -501,7 +501,7 @@
                     <input
                       id={valueInputId(row)}
                       type="checkbox"
-                      class="size-4 rounded border-line-strong"
+                      class="size-[18px] accent-accent"
                       checked={row.checked}
                       onchange={(event) => {
                         row.checked = event.currentTarget.checked;
@@ -514,7 +514,7 @@
                       inputmode={row.type === 'number' ? 'decimal' : undefined}
                       readonly={!row.editable}
                       aria-invalid={errorOf(`attributes.${row.id}`) === null ? undefined : 'true'}
-                      class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                      class="field w-full"
                       value={row.text}
                       oninput={(event) => {
                         row.text = event.currentTarget.value;
@@ -530,7 +530,7 @@
                   <select
                     id={typeInputId(row)}
                     disabled={!row.editable}
-                    class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                    class="field w-full"
                     value={row.type}
                     onchange={(event) => {
                       changeType(row.id, event.currentTarget.value as AttributeValueType);
@@ -544,11 +544,11 @@
 
                 <div>
                   {#if row.exists}
-                    <span class="text-xs text-ink-muted">{t('correction.kept')}</span>
+                    <span class="text-small text-muted">{t('correction.kept')}</span>
                   {:else}
                     <button
                       type="button"
-                      class="rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+                      class="btn btn-secondary"
                       aria-label={t('correction.removeLabel', { index: index + 1 })}
                       onclick={() => removeRow(row.id)}
                     >
@@ -558,18 +558,18 @@
                 </div>
 
                 {#if !row.editable}
-                  <p class="text-xs text-ink-muted sm:col-span-4">
+                  <p class="text-small text-muted sm:col-span-4">
                     {t('correction.notEditable')}
                   </p>
                 {/if}
 
                 {#if errorOf(`attributes.${row.id}`) !== null}
-                  <p class="text-sm text-negative sm:col-span-4">
+                  <p class="text-body text-pill-negative-ink sm:col-span-4">
                     {errorOf(`attributes.${row.id}`)}
                   </p>
                 {/if}
                 {#if errorOf(`attributes.${row.id}:key`) !== null}
-                  <p class="text-sm text-negative sm:col-span-4">
+                  <p class="text-body text-pill-negative-ink sm:col-span-4">
                     {errorOf(`attributes.${row.id}:key`)}
                   </p>
                 {/if}
@@ -580,7 +580,7 @@
 
         <button
           type="button"
-          class="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="btn btn-secondary mt-2"
           onclick={addRow}
         >
           {t('correction.addAttribute')}
@@ -588,10 +588,10 @@
       </fieldset>
 
       <section aria-labelledby={diffHeadingId}>
-        <h3 id={diffHeadingId} class="text-sm font-semibold tracking-tight">
+        <h3 id={diffHeadingId}>
           {t('correction.changesHeading')}
         </h3>
-        <p class="mt-1 text-xs text-ink-muted">
+        <p class="mt-1 text-small text-muted">
           {#if changedFields.length === 0}
             {t('correction.noChanges')}
           {:else if changedFields.length === 1}
@@ -601,32 +601,32 @@
           {/if}
         </p>
 
-        <div class="mt-2 overflow-x-auto rounded-card border border-line">
-          <table class="w-full border-collapse text-left text-sm">
+        <div class="mt-2 overflow-x-auto rounded-card bg-surface">
+          <table class="w-full border-collapse text-left text-body">
             <caption class="sr-only">
               {t('correction.tableCaption')}
             </caption>
-            <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
+            <thead class="text-small text-muted">
               <tr>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnField')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnCurrent')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnProposed')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('correction.columnChange')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('correction.columnField')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('correction.columnCurrent')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('correction.columnProposed')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('correction.columnChange')}</th>
               </tr>
             </thead>
             <tbody>
               {#each build.diff as entry (entry.field)}
-                <tr class="border-t border-line">
+                <tr class="border-t border-rule">
                   <th scope="row" class="px-3 py-2 font-normal">
-                    <span class="font-mono text-xs">{t(entry.label.key, entry.label.params)}</span>
+                    <span class="font-mono text-small">{t(entry.label.key, entry.label.params)}</span>
                   </th>
-                  <td class="px-3 py-2 break-words text-ink-muted">{entry.current}</td>
+                  <td class="px-3 py-2 break-words text-muted">{entry.current}</td>
                   <td class="px-3 py-2 break-words">{entry.proposed}</td>
                   <td class="px-3 py-2">
                     {#if entry.changed}
-                      <span class="font-semibold text-brand-900">{t('correction.changes')}</span>
+                      <span class="font-semibold text-accent-ink">{t('correction.changes')}</span>
                     {:else}
-                      <span class="text-ink-muted">{t('correction.unchanged')}</span>
+                      <span class="text-muted">{t('correction.unchanged')}</span>
                     {/if}
                   </td>
                 </tr>
@@ -637,8 +637,8 @@
       </section>
 
       <div>
-        <label for={justificationId} class="block text-sm font-medium text-ink">
-          {t('correction.justificationLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
+        <label for={justificationId} class="field-label">
+          {t('correction.justificationLabel')} <span class="font-normal text-muted">{t('common.optional')}</span>
         </label>
         <textarea
           id={justificationId}
@@ -646,24 +646,24 @@
           maxlength="5000"
           aria-invalid={errorOf('justification') === null ? undefined : 'true'}
           aria-describedby={errorOf('justification') === null ? undefined : `${justificationId}-error`}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field-area mt-1 w-full"
           value={justification}
           oninput={(event) => {
             justification = event.currentTarget.value;
           }}
         ></textarea>
-        <p class="mt-1 text-xs text-ink-muted">
+        <p class="mt-1 text-small text-muted">
           {t('correction.justificationHelp')}
         </p>
         {#if errorOf('justification') !== null}
-          <p id={`${justificationId}-error`} class="mt-1 text-sm text-negative">
+          <p id={`${justificationId}-error`} class="mt-1 text-body text-pill-negative-ink">
             {errorOf('justification')}
           </p>
         {/if}
       </div>
 
       {#if attempted && invalid.length > 0}
-        <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+        <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
           <p class="font-semibold">
             {invalid.length === 1
               ? t('correction.formProblem', { count: formatNumber(locale.locale, invalid.length) })
@@ -689,16 +689,16 @@
       {/if}
 
       {#if attempted && invalid.length === 0 && !build.hasChanges}
-        <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+        <p role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
           {t('correction.nothingToPropose')}
         </p>
       {/if}
 
       {#if failure !== null}
-        <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-          <p class="font-mono font-semibold text-negative">{failure.code}</p>
-          <p class="mt-1 text-ink">{failure.message}</p>
-          <p class="mt-1 text-xs text-ink-muted">
+        <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
+          <p class="font-mono font-semibold text-pill-negative-ink">{failure.code}</p>
+          <p class="mt-1 text-text">{failure.message}</p>
+          <p class="mt-1 text-small text-muted">
             {t('correction.formKept')}
           </p>
         </div>
@@ -707,14 +707,14 @@
       <div class="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-primary"
           disabled={submitting}
         >
           {submitting ? t('correction.proposing') : t('correction.proposeSubmit')}
         </button>
         <button
           type="button"
-          class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="btn btn-secondary"
           onclick={onclose}
         >
           {t('common.cancel')}

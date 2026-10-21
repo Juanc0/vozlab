@@ -2,8 +2,9 @@
   /**
    * The selector of the language.
    *
-   * It sits in the sidebar, next to the selector of the workspace: the two
-   * pick what the visitor sees, and both are preferences of the tab.
+   * It lives in the chrome of the shell: the language changes the whole
+   * interface, including the screens that have no navigation (the sign-in
+   * and the join), so it does not belong in the navigation column.
    *
    * The **options are written in their own language** — "Español" and
    * "English" — and not in the language of the interface: a person who does
@@ -35,22 +36,19 @@
   }
 </script>
 
-<div class="space-y-1.5">
-  <label
-    for="locale-select"
-    class="block text-xs font-semibold tracking-wide text-ink-muted uppercase"
-  >
-    {t('locale.label')}
-  </label>
-
-  <select
-    id="locale-select"
-    class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
-    value={locale.locale}
-    onchange={handleChange}
-  >
-    {#each LOCALES as option (option)}
-      <option value={option}>{names[option]}</option>
-    {/each}
-  </select>
-</div>
+<!--
+  The control carries its own name for the screen reader: the bar is a
+  line of chrome and a visible label would be a second sentence about the
+  interface.
+-->
+<select
+  id="locale-select"
+  aria-label={t('locale.label')}
+  class="field w-auto py-0"
+  value={locale.locale}
+  onchange={handleChange}
+>
+  {#each LOCALES as option (option)}
+    <option value={option}>{names[option]}</option>
+  {/each}
+</select>

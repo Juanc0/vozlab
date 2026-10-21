@@ -374,7 +374,7 @@
     role="img"
     aria-label={t('explore.canvasLabel')}
     aria-describedby={descriptionId}
-    class="h-full min-h-72 w-full overflow-hidden rounded-card border border-line bg-surface"
+    class="h-full min-h-72 w-full overflow-hidden rounded-card bg-surface"
   ></div>
 
   <!--
@@ -414,9 +414,7 @@
           data-node-id={node.id}
           data-node-width={position.width}
           data-node-height={position.height}
-          class="absolute grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center text-[10px] leading-none font-semibold text-ink focus-visible:opacity-100 {shown
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0'}"
+          class="absolute grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center text-[10px] leading-none font-semibold text-text focus-visible:opacity-100 {shown ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}"
           style="left: {position.x + position.width / 2 + BADGE_GAP}px; top: {position.y -
             position.height / 2 - BADGE_GAP}px"
           onclick={() => toggleHandler?.(node.id)}
@@ -439,7 +437,7 @@
           }}
         >
           <span
-            class="grid h-4 w-4 place-items-center rounded-full border border-line-strong bg-surface shadow-sm hover:bg-surface-muted"
+            class="grid h-4 w-4 place-items-center rounded-full border border-control-strong bg-surface shadow-float hover:bg-raised"
           >
             {expanded ? '−' : '+'}
           </span>
@@ -458,13 +456,13 @@
     <div
       role="status"
       aria-live="polite"
-      class="pointer-events-none absolute z-10 w-56 rounded-card border border-line bg-surface p-3 text-xs shadow-lg"
+      class="pointer-events-none absolute z-10 w-56 rounded-card bg-surface p-3 text-small shadow-float"
       style="left: {Math.min(preview.x + 12, Math.max(0, (container?.clientWidth ?? 0) - 268))}px; top: {preview.y +
         12}px"
     >
       {#if previewNode !== null}
-        <p class="text-sm font-semibold tracking-tight">{previewNode.title}</p>
-        <p class="mt-0.5 text-ink-muted">{previewNode.typeKey} · {previewNode.status}</p>
+        <p class="font-semibold">{previewNode.title}</p>
+        <p class="mt-0.5 text-muted">{previewNode.typeKey} · {previewNode.status}</p>
         <p class="mt-2 whitespace-pre-line">
           {previewNode.description?.trim() !== ''
             ? previewNode.description
@@ -474,21 +472,21 @@
           <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
             {#each previewAttributes as [key, value] (key)}
               <dt class="font-medium">{key}</dt>
-              <dd class="text-ink-muted">{formatAttributeValue(value)}</dd>
+              <dd class="text-muted">{formatAttributeValue(value)}</dd>
             {/each}
           </dl>
         {:else}
-          <p class="mt-2 text-ink-muted">{t('explore.previewNoAttributes')}</p>
+          <p class="mt-2 text-muted">{t('explore.previewNoAttributes')}</p>
         {/if}
       {:else if previewEdge !== null}
-        <p class="text-sm font-semibold tracking-tight">{previewEdge.relationKey}</p>
-        <p class="mt-0.5 text-ink-muted">
+        <p class="font-semibold">{previewEdge.relationKey}</p>
+        <p class="mt-0.5 text-muted">
           {t('explore.previewEndpoints', {
             source: titleOf(previewEdge.sourceNodeId),
             target: titleOf(previewEdge.targetNodeId)
           })}
         </p>
-        <p class="mt-2 text-ink-muted">
+        <p class="mt-2 text-muted">
           {previewEdge.status} · {t('explore.previewScore', {
             score: formatNumber(locale.locale, previewEdge.communityScore)
           })}
@@ -498,6 +496,6 @@
   {/if}
 </div>
 
-<p id={descriptionId} class="mt-2 text-sm text-ink-muted">
+<p id={descriptionId} class="mt-2 text-body text-muted">
   {t('explore.canvasDescription', { nodes: nodeCount, edges: edgeCount })}
 </p>

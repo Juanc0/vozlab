@@ -36,29 +36,29 @@
 
 {#if proposal.kind === 'MERGE' && mergeTarget !== null}
   {#if mergeTarget.kind === 'node'}
-    <p class="text-sm">
+    <p class="text-body">
       {t('delta.mergeInto')}
       <strong>{mergeTargetLabel ?? t('delta.nodeBelow')}</strong>
-      <span class="font-mono text-xs break-all text-ink-muted">{mergeTarget.mergeIntoNodeId}</span>
+      <span class="font-mono text-small break-all text-muted">{mergeTarget.mergeIntoNodeId}</span>
     </p>
   {:else}
-    <p role="alert" class="text-sm text-negative">
+    <p role="alert" class="text-body text-pill-negative-ink">
       {t('delta.noSurvivor', { reason: mergeTarget.reason })}
     </p>
   {/if}
 {/if}
 
 {#if entries.length === 0}
-  <p class="text-sm text-ink-muted">{t('delta.noChange')}</p>
+  <p class="text-body text-muted">{t('delta.noChange')}</p>
 {:else}
-  <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+  <dl class="grid gap-x-4 gap-y-1 text-body sm:grid-cols-[auto_1fr]">
     {#each entries as entry (entry.field)}
-      <dt class="text-ink-muted">{entry.field}</dt>
+      <dt class="text-muted">{entry.field}</dt>
       <dd class="break-words">
         {#if isPlainObject(entry.value)}
           <dl class="grid gap-x-3 gap-y-0.5 sm:grid-cols-[auto_1fr]">
             {#each Object.entries(entry.value) as [field, value] (field)}
-              <dt class="text-ink-muted">{field}</dt>
+              <dt class="text-muted">{field}</dt>
               <dd>{formatDeltaValue(value)}</dd>
             {/each}
           </dl>

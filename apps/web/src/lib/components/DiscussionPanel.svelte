@@ -377,30 +377,30 @@
   const replyParent = $derived(posts.find((post) => post.id === replyParentId) ?? null);
 </script>
 
-<section aria-labelledby={headingId} class={bare ? '' : 'rounded-card border border-line bg-surface p-4'}>
-  <h2 id={headingId} class="text-base font-semibold tracking-tight">
+<section aria-labelledby={headingId} class={bare ? '' : 'rounded-card bg-surface p-4'}>
+  <h2 id={headingId}>
     {sectionHeading}
   </h2>
 
   {#if notice}
-    <p role="status" class="mt-2 rounded-md border border-line bg-surface-muted p-2 text-sm">{notice}</p>
+    <p role="status" class="mt-2 rounded-control bg-raised p-2 text-body">{notice}</p>
   {/if}
 
   {#if actionError}
-    <p role="alert" class="mt-2 rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+    <p role="alert" class="mt-2 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
       <span class="font-mono">{actionError.code}</span> — {actionError.message}
     </p>
   {/if}
 
   {#if threadsError}
-    <p role="alert" class="mt-2 rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+    <p role="alert" class="mt-2 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
       <span class="font-mono">{threadsError.code}</span> — {threadsError.message}
     </p>
   {/if}
 
   <form class="mt-3 flex flex-wrap items-end gap-2" onsubmit={startThread}>
     <div class="min-w-0 flex-1">
-      <label for="thread-title" class="block text-xs text-ink-muted">
+      <label for="thread-title" class="field-label">
         {t('discussion.newThread')}
       </label>
       <input
@@ -409,14 +409,14 @@
         minlength="3"
         maxlength="255"
         required
-        class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
+        class="field mt-0.5 w-full"
         placeholder={t('discussion.newThreadPlaceholder')}
         bind:value={newTitle}
       />
     </div>
     <button
       type="submit"
-      class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+      class="btn btn-secondary"
       disabled={creating}
     >
       {creating ? t('discussion.opening') : t('discussion.startThread')}
@@ -424,23 +424,23 @@
   </form>
 
   {#if threadsLoading && threads.length === 0}
-    <p role="status" class="mt-3 text-sm text-ink-muted">{t('discussion.loadingThreads')}</p>
+    <p role="status" class="mt-3 text-body text-muted">{t('discussion.loadingThreads')}</p>
   {:else if threads.length === 0}
-    <p class="mt-3 text-sm text-ink-muted">{t('discussion.noThreads')}</p>
+    <p class="mt-3 text-body text-muted">{t('discussion.noThreads')}</p>
   {:else}
-    <ul class="mt-3 divide-y divide-line">
+    <ul class="mt-3 divide-y divide-rule">
       {#each threads as thread (thread.id)}
         <li class="py-2">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <button
               type="button"
-              class="rounded text-left font-medium text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
+              class="rounded-control text-left font-medium text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2 aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink aria-[current=true]:font-semibold"
               aria-current={selectedThreadId === thread.id ? 'true' : undefined}
               onclick={() => selectThread(thread.id)}
             >
               {thread.title}
             </button>
-            <span class="text-xs text-ink-muted">
+            <span class="text-small text-muted">
               {thread.status}
               {#if thread.status === 'CLOSED'}
                 {t('discussion.closedSuffix')}
@@ -451,7 +451,7 @@
           {#if canCloseThread(thread, authorHash)}
             <button
               type="button"
-              class="mt-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+              class="btn btn-secondary mt-1"
               disabled={busyId === thread.id || thread.status === 'CLOSED'}
               onclick={() => void closeThreadNow(thread)}
             >
@@ -467,7 +467,7 @@
     {#if threadsCursor !== null}
       <button
         type="button"
-        class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+        class="btn btn-secondary mt-3"
         disabled={threadsLoading}
         onclick={() => void loadThreads(targetId, targetType, threadsCursor)}
       >
@@ -477,21 +477,21 @@
   {/if}
 
   {#if selectedThread !== null}
-    <section aria-labelledby={postsHeadingId} class="mt-5 border-t border-line pt-4">
-      <h3 id={postsHeadingId} class="text-sm font-semibold tracking-tight">
+    <section aria-labelledby={postsHeadingId} class="mt-5 border-t border-rule pt-4">
+      <h3 id={postsHeadingId}>
         {t('discussion.commentsOf', { title: selectedThread.title })}
       </h3>
 
       {#if postsError}
-        <p role="alert" class="mt-2 rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+        <p role="alert" class="mt-2 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
           <span class="font-mono">{postsError.code}</span> — {postsError.message}
         </p>
       {/if}
 
       {#if postsLoading && posts.length === 0}
-        <p role="status" class="mt-2 text-sm text-ink-muted">{t('discussion.loadingComments')}</p>
+        <p role="status" class="mt-2 text-body text-muted">{t('discussion.loadingComments')}</p>
       {:else if posts.length === 0}
-        <p class="mt-2 text-sm text-ink-muted">{t('discussion.noComments')}</p>
+        <p class="mt-2 text-body text-muted">{t('discussion.noComments')}</p>
       {:else}
         {@render postList(postTree, 0)}
       {/if}
@@ -499,7 +499,7 @@
       {#if postsCursor !== null}
         <button
           type="button"
-          class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-secondary mt-3"
           disabled={postsLoading}
           onclick={() => void loadPosts(selectedThread.id, postsCursor)}
         >
@@ -508,12 +508,12 @@
       {/if}
 
       <form class="mt-4" onsubmit={postReply}>
-        <label for="reply-body" class="block text-xs text-ink-muted">
+        <label for="reply-body" class="field-label">
           {replyParent === null ? t('discussion.writeComment') : t('discussion.writeReply')}
         </label>
 
         {#if replyParent !== null}
-          <p class="mt-1 flex items-center gap-2 text-xs text-ink-muted">
+          <p class="mt-1 flex items-center gap-2 text-small text-muted">
             <span>
               {t('discussion.replyingTo', {
                 body: `${replyParent.body.slice(0, 80)}${replyParent.body.length > 80 ? '…' : ''}`
@@ -521,7 +521,7 @@
             </span>
             <button
               type="button"
-              class="rounded border border-line-strong bg-surface px-1.5 py-0.5 text-xs text-ink hover:bg-surface-muted"
+              class="btn btn-quiet"
               onclick={cancelReply}
             >
               {t('discussion.cancelReply')}
@@ -534,14 +534,14 @@
           rows="3"
           maxlength="5000"
           required
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
+          class="field-area mt-1 w-full"
           placeholder={t('discussion.commentPlaceholder')}
           bind:value={replyBody}
         ></textarea>
 
         <button
           type="submit"
-          class="mt-2 rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-primary mt-2"
           disabled={posting}
         >
           {posting
@@ -558,16 +558,16 @@
 {#snippet postList(nodes: PostNode[], depth: number)}
   <ul class="mt-2 space-y-3">
     {#each nodes as node (node.post.id)}
-      <li class={depth === 0 ? '' : 'border-l border-line pl-3'}>
-        <article class="rounded-md border border-line bg-surface-muted/40 p-2">
-          <header class="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+      <li class={depth === 0 ? '' : 'border-l border-rule pl-3'}>
+        <article class="rounded-control bg-raised p-2">
+          <header class="flex flex-wrap items-center gap-2 text-small text-muted">
             <span class="font-mono break-all">{node.post.authorHash}</span>
             <time datetime={node.post.createdAt}>
               {formatDate(locale.locale, node.post.createdAt)}
             </time>
           </header>
 
-          <p class="mt-1 text-sm whitespace-pre-wrap break-words">{node.post.body}</p>
+          <p class="mt-1 text-body whitespace-pre-wrap break-words">{node.post.body}</p>
 
           <div class="mt-2 flex flex-wrap items-center gap-2">
             <VoteButtons
@@ -581,7 +581,7 @@
 
             <button
               type="button"
-              class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
+              class="btn btn-secondary"
               onclick={() => startReply(node.post.id)}
             >
               {t('discussion.reply')}
@@ -590,7 +590,7 @@
             {#if canDeletePost(node.post, authorHash)}
               <button
                 type="button"
-                class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-negative hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+                class="btn btn-secondary text-pill-negative-ink"
                 disabled={busyId === node.post.id}
                 onclick={() => void removePost(node.post)}
               >

@@ -18,12 +18,12 @@
 </script>
 
 {#if connectivityState.offline}
-  <div role="status" class="border-b border-warning/40 bg-warning/10">
+  <div role="status" class="border-b border-rule bg-surface">
     <div
-      class="mx-auto flex w-full max-w-6xl flex-wrap items-baseline gap-x-2 gap-y-1 px-4 py-2 text-sm text-ink"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-baseline gap-x-2 gap-y-1 px-4 py-2 text-body text-text"
     >
-      <span class="font-semibold">{t('offline.heading')}</span>
-      <span>{t('offline.text')}</span>
+      <span class="font-semibold text-pill-warning-ink">{t('offline.heading')}</span>
+      <span class="text-muted">{t('offline.text')}</span>
     </div>
   </div>
 {/if}

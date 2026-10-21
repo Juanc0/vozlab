@@ -191,9 +191,9 @@
   }
 </script>
 
-<form class="mt-3 space-y-3 rounded-md border border-line bg-surface-muted/40 p-3" onsubmit={submit} novalidate>
+<form class="mt-3 space-y-3 rounded-control bg-raised p-3" onsubmit={submit} novalidate>
   <div>
-    <label for={relationKeyId} class="block text-sm font-medium text-ink">
+    <label for={relationKeyId} class="field-label">
       {t('correction.relationKeyLabel')}
     </label>
     <input
@@ -202,27 +202,27 @@
       maxlength="100"
       aria-invalid={errorOf('relationKey') === null ? undefined : 'true'}
       aria-describedby={errorOf('relationKey') === null ? undefined : `${relationKeyId}-error`}
-      class="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+      class="field mt-1 w-full"
       value={relationKey}
       oninput={(event) => {
         relationKey = event.currentTarget.value;
       }}
     />
     {#if errorOf('relationKey') !== null}
-      <p id={`${relationKeyId}-error`} class="mt-1 text-sm text-negative">{errorOf('relationKey')}</p>
+      <p id={`${relationKeyId}-error`} class="mt-1 text-body text-pill-negative-ink">{errorOf('relationKey')}</p>
     {/if}
   </div>
 
   <fieldset>
-    <legend class="text-sm font-semibold tracking-tight">{t('correction.attributesLegend')}</legend>
+    <legend class="font-semibold">{t('correction.attributesLegend')}</legend>
 
     {#if rows.length === 0}
-      <p class="mt-1 text-sm text-ink-muted">{t('correction.noAttributes')}</p>
+      <p class="mt-1 text-body text-muted">{t('correction.noAttributes')}</p>
     {:else}
       <ul class="mt-2 space-y-2">
         {#each rows as row, index (row.id)}
           <li
-            class="grid items-end gap-2 rounded-md border border-line bg-surface p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto]"
+            class="grid items-end gap-2 rounded-control bg-surface p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto]"
           >
             <div>
               <label for={keyInputId(row)} class="sr-only">
@@ -232,7 +232,7 @@
                 id={keyInputId(row)}
                 type="text"
                 readonly={row.exists}
-                class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                class="field w-full"
                 value={row.key}
                 oninput={(event) => {
                   row.key = event.currentTarget.value;
@@ -248,7 +248,7 @@
                 <input
                   id={valueInputId(row)}
                   type="checkbox"
-                  class="size-4 rounded border-line-strong"
+                  class="size-[18px] accent-accent"
                   checked={row.checked}
                   onchange={(event) => {
                     row.checked = event.currentTarget.checked;
@@ -260,7 +260,7 @@
                   type="text"
                   inputmode={row.type === 'number' ? 'decimal' : undefined}
                   readonly={!row.editable}
-                  class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                  class="field w-full"
                   value={row.text}
                   oninput={(event) => {
                     row.text = event.currentTarget.value;
@@ -276,7 +276,7 @@
               <select
                 id={typeInputId(row)}
                 disabled={!row.editable}
-                class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm"
+                class="field w-full"
                 value={row.type}
                 onchange={(event) => {
                   changeType(row.id, event.currentTarget.value as AttributeValueType);
@@ -290,11 +290,11 @@
 
             <div>
               {#if row.exists}
-                <span class="text-xs text-ink-muted">{t('correction.kept')}</span>
+                <span class="text-small text-muted">{t('correction.kept')}</span>
               {:else}
                 <button
                   type="button"
-                  class="rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+                  class="btn btn-secondary"
                   aria-label={t('correction.removeLabel', { index: index + 1 })}
                   onclick={() => removeRow(row.id)}
                 >
@@ -309,7 +309,7 @@
 
     <button
       type="button"
-      class="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+      class="btn btn-secondary mt-2"
       onclick={addRow}
     >
       {t('correction.addAttribute')}
@@ -317,17 +317,17 @@
   </fieldset>
 
   <section aria-labelledby={changesHeadingId}>
-    <h3 id={changesHeadingId} class="text-sm font-semibold tracking-tight">
+    <h3 id={changesHeadingId}>
       {t('inspector.edgeChanges')}
     </h3>
     {#if changed.length === 0}
-      <p class="mt-1 text-xs text-ink-muted">{t('inspector.edgeNothingToSave')}</p>
+      <p class="mt-1 text-small text-muted">{t('inspector.edgeNothingToSave')}</p>
     {:else}
-      <ul class="mt-1 space-y-1 text-xs">
+      <ul class="mt-1 space-y-1 text-small">
         {#each build.diff.filter((entry) => entry.changed) as entry (entry.field)}
           <li>
             <span class="font-medium">{t(entry.label.key, entry.label.params)}</span>
-            <span class="text-ink-muted">— {entry.current} → {entry.proposed}</span>
+            <span class="text-muted">— {entry.current} → {entry.proposed}</span>
           </li>
         {/each}
       </ul>
@@ -335,7 +335,7 @@
   </section>
 
   {#if attempted && invalid.length > 0}
-    <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+    <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
       <p class="font-semibold">
         {invalid.length === 1
           ? t('correction.formProblem', { count: formatNumber(locale.locale, invalid.length) })
@@ -350,27 +350,27 @@
   {/if}
 
   {#if attempted && invalid.length === 0 && !build.hasChanges}
-    <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+    <p role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
       {t('inspector.edgeNothingToSave')}
     </p>
   {/if}
 
   {#if failure !== null}
-    <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-      <p class="font-mono font-semibold text-negative">{failure.code}</p>
-      <p class="mt-1 text-ink">{failure.message}</p>
-      <p class="mt-1 text-xs text-ink-muted">{t('inspector.edgeFormKept')}</p>
+    <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
+      <p class="font-mono font-semibold text-pill-negative-ink">{failure.code}</p>
+      <p class="mt-1 text-text">{failure.message}</p>
+      <p class="mt-1 text-small text-muted">{t('inspector.edgeFormKept')}</p>
     </div>
   {/if}
 
   {#if notice !== null}
-    <p role="status" class="rounded-md border border-line bg-surface p-2 text-sm">{notice}</p>
+    <p role="status" class="rounded-control bg-raised p-2 text-body">{notice}</p>
   {/if}
 
   <div class="flex flex-wrap items-center gap-3">
     <button
       type="submit"
-      class="rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+      class="btn btn-primary"
       disabled={submitting}
     >
       {submitting ? t('inspector.edgeSaving') : t('inspector.edgeSave')}
@@ -379,7 +379,7 @@
     {#if oncancel}
       <button
         type="button"
-        class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+        class="btn btn-secondary"
         onclick={oncancel}
       >
         {t('common.cancel')}

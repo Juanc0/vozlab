@@ -33,15 +33,15 @@
 
 <OverlayPanel {open} side="right" {panelId} label={t('sheet.label')} {onclose}>
   <div class="flex h-full flex-col">
-    <div class="flex items-center justify-between gap-3 border-b border-line p-4">
-      <h2 class="text-base font-semibold tracking-tight">{t('sheet.heading')}</h2>
+    <div class="flex items-center justify-between gap-3 border-b border-rule p-4">
+      <h2>{t('sheet.heading')}</h2>
       <button
         type="button"
-        class="-mr-2 grid size-11 place-items-center rounded-md text-ink hover:bg-surface-muted"
+        class="-mr-2 grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
         aria-label={t('sheet.close')}
         onclick={onclose}
       >
-        <span aria-hidden="true" class="text-lg leading-none">✕</span>
+        <span aria-hidden="true" class="text-section leading-none">✕</span>
       </button>
     </div>
 

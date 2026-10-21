@@ -262,28 +262,28 @@
 
 <section class="mx-auto w-full max-w-6xl space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{t('proposals.heading')}</h1>
-    <p class="mt-2 max-w-prose text-ink-muted">
+    <h1>{t('proposals.heading')}</h1>
+    <p class="mt-2 max-w-measure text-muted">
       <RichText text={t('proposals.intro')} />
     </p>
   </div>
 
   <section
     aria-labelledby="proposal-filters-heading"
-    class="rounded-card border border-line bg-surface p-4"
+    class="rounded-card bg-surface p-4"
   >
-    <h2 id="proposal-filters-heading" class="text-base font-semibold tracking-tight">
+    <h2 id="proposal-filters-heading">
       {t('proposals.filtersHeading')}
     </h2>
 
-    <div class="mt-3 flex flex-wrap items-end gap-3 text-sm">
+    <div class="mt-3 flex flex-wrap items-end gap-3 text-body">
       <div>
-        <label for="filter-status" class="block text-xs text-ink-muted">
+        <label for="filter-status" class="block text-small text-muted">
           {t('proposals.filterStatus')}
         </label>
         <select
           id="filter-status"
-          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+          class="field mt-0.5"
           value={filters.status ?? ''}
           onchange={handleStatusChange}
         >
@@ -295,12 +295,12 @@
       </div>
 
       <div>
-        <label for="filter-target-type" class="block text-xs text-ink-muted">
+        <label for="filter-target-type" class="block text-small text-muted">
           {t('proposals.filterTarget')}
         </label>
         <select
           id="filter-target-type"
-          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+          class="field mt-0.5"
           value={filters.targetType ?? ''}
           onchange={handleTargetTypeChange}
         >
@@ -312,12 +312,12 @@
       </div>
 
       <div>
-        <label for="filter-kind" class="block text-xs text-ink-muted">
+        <label for="filter-kind" class="block text-small text-muted">
           {t('proposals.filterKind')}
         </label>
         <select
           id="filter-kind"
-          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+          class="field mt-0.5"
           value={filters.kind ?? ''}
           onchange={handleKindChange}
         >
@@ -330,18 +330,27 @@
     </div>
   </section>
 
-  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
+  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
     <section aria-labelledby="proposal-list-heading" class="min-w-0">
       <h2 id="proposal-list-heading" class="sr-only">{t('proposals.listHeading')}</h2>
 
       {#if listError}
-        <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
+        <p role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
           <span class="font-mono">{listError.code}</span> — {listError.message}
         </p>
       {:else if loading && proposals.length === 0}
-        <p role="status" class="text-sm text-ink-muted">{t('proposals.loading')}</p>
+        <!--
+          The loading state keeps the shape of the table it replaces: flat
+          grey bars at the real size of the rows.
+        -->
+        <div class="rounded-card bg-surface p-4" role="status" aria-live="polite">
+          <span class="sr-only">{t('proposals.loading')}</span>
+          {#each [0, 1, 2, 3, 4] as row (row)}
+            <div class="skeleton mb-3 w-full last:mb-0"></div>
+          {/each}
+        </div>
       {:else if proposals.length === 0}
-        <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+        <p class="rounded-card border border-dashed border-border p-4 text-center text-body text-muted">
           {t('proposals.none')}
         </p>
       {:else}
@@ -353,30 +362,30 @@
         -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div
-          class="overflow-x-auto rounded-card border border-line"
+          class="overflow-x-auto rounded-card bg-surface"
           role="region"
           aria-label={t('proposals.listRegion')}
           tabindex="0"
         >
-          <table class="w-full border-collapse text-left text-sm">
+          <table class="w-full min-w-[34rem] border-collapse text-left text-body [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:bg-surface">
             <caption class="sr-only">
               {t('proposals.listCaption')}
             </caption>
-            <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
+            <thead class="text-small text-muted">
               <tr>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnProposal')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnStatus')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnScore')}</th>
-                <th scope="col" class="px-3 py-2 font-semibold">{t('proposals.columnCreated')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('proposals.columnProposal')}</th>
+                <th scope="col" class="px-3 py-2 font-normal">{t('proposals.columnStatus')}</th>
+                <th scope="col" class="px-3 py-2 text-right font-normal">{t('proposals.columnScore')}</th>
+                <th scope="col" class="px-3 py-2 text-right font-normal">{t('proposals.columnCreated')}</th>
               </tr>
             </thead>
             <tbody>
               {#each proposals as proposal (proposal.id)}
-                <tr class="border-t border-line align-top">
+                <tr class="border-t border-rule align-top">
                   <th scope="row" class="px-3 py-2 font-normal">
                     <button
                       type="button"
-                      class="rounded text-left font-medium text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
+                      class="rounded-control text-left font-medium text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2 aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink aria-[current=true]:font-semibold"
                       aria-current={selectedId === proposal.id ? 'true' : undefined}
                       onclick={() => (selectedId = proposal.id)}
                     >
@@ -385,16 +394,20 @@
                         : t('proposals.editProposalOf', { target: targetNoun(proposal.targetType) })}
                     </button>
                     {#if proposal.justification}
-                      <span class="mt-1 block text-sm font-normal text-ink-muted">
+                      <span class="mt-1 block text-body font-normal text-muted">
                         {proposal.justification}
                       </span>
                     {/if}
                   </th>
-                  <td class="px-3 py-2 text-ink-muted">{proposal.status}</td>
-                  <td class="px-3 py-2 tabular-nums text-ink-muted">
+                  <td class="px-3 py-2">
+                    <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
+                      {proposal.status}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums text-muted">
                     {formatNumber(locale.locale, proposal.communityScore)}
                   </td>
-                  <td class="px-3 py-2 text-ink-muted">
+                  <td class="px-3 py-2 text-right text-muted">
                     <time datetime={proposal.createdAt}>
                       {formatDate(locale.locale, proposal.createdAt)}
                     </time>
@@ -408,7 +421,7 @@
         {#if cursor !== null}
           <button
             type="button"
-            class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="btn btn-secondary mt-3"
             disabled={loading}
             onclick={() => void loadProposals(cursor)}
           >
@@ -419,15 +432,15 @@
     </section>
 
     <aside aria-labelledby="proposal-detail-heading" class="min-w-0">
-      <section class="rounded-card border border-line bg-surface p-4">
+      <section class="rounded-card bg-surface p-4">
         <h2 id="proposal-detail-heading" class="sr-only">{t('proposals.detailHeading')}</h2>
 
         {#if focusError}
-          <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
+          <p role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
             <span class="font-mono">{focusError.code}</span> — {focusError.message}
           </p>
         {:else if selected === null}
-          <p class="text-sm text-ink-muted">
+          <p class="text-body text-muted">
             {t('proposals.pickProposal')}
           </p>
         {:else}

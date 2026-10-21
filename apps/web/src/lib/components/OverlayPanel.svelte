@@ -163,9 +163,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     aria-hidden="true"
-    class="fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 {open
-      ? 'opacity-100'
-      : 'pointer-events-none opacity-0'}"
+    class="fixed inset-0 z-40 bg-text/40 transition-opacity duration-200 {open ? 'opacity-100' : 'pointer-events-none opacity-0'}"
     onclick={onclose}
   ></div>
 
@@ -178,14 +176,7 @@
     aria-hidden={open ? undefined : 'true'}
     inert={!open}
     tabindex="-1"
-    class="fixed inset-y-0 z-50 flex flex-col overflow-y-auto border-line bg-surface shadow-xl transition-transform duration-200 {side ===
-    'left'
-      ? 'left-0 w-[min(20rem,85vw)] border-r'
-      : 'right-0 w-[min(26rem,90vw)] border-l'} {open
-      ? 'translate-x-0'
-      : side === 'left'
-        ? '-translate-x-full'
-        : 'translate-x-full'} {panelClass}"
+    class="fixed inset-y-0 z-50 flex flex-col overflow-y-auto border-rule bg-surface shadow-float transition-transform duration-200 {side === 'left' ? 'left-0 w-[min(20rem,85vw)] border-r' : 'right-0 w-[min(26rem,90vw)] border-l'} {open ? 'translate-x-0' : side === 'left' ? '-translate-x-full' : 'translate-x-full'} {panelClass}"
   >
     {@render children?.()}
   </div>

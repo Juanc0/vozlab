@@ -124,9 +124,9 @@
   role="img"
   aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
-  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card border border-line bg-surface"
+  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card bg-surface"
 ></div>
 
-<p id={descriptionId} class="mt-2 text-sm text-ink-muted">
+<p id={descriptionId} class="mt-2 text-body text-muted">
   {description ?? t('graph.canvasDefaultDescription')}
 </p>

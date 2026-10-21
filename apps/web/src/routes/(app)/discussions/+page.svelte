@@ -145,25 +145,28 @@
 
 <section class="mx-auto w-full max-w-6xl space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{t('discussions.heading')}</h1>
-    <p class="mt-2 max-w-prose text-ink-muted">
+    <h1>{t('discussions.heading')}</h1>
+    <p class="mt-2 max-w-measure text-muted">
       {t('discussions.intro')}
     </p>
   </div>
 
-  <section aria-labelledby="discussion-target-heading" class="rounded-card border border-line bg-surface p-4">
-    <h2 id="discussion-target-heading" class="text-base font-semibold tracking-tight">
+  <section aria-labelledby="discussion-target-heading" class="rounded-card bg-surface p-4">
+    <h2 id="discussion-target-heading">
       {t('discussions.targetHeading')}
     </h2>
 
-    <form class="mt-3 flex flex-wrap items-end gap-3" onsubmit={applyTarget}>
+    <form
+      class="mt-3 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+      onsubmit={applyTarget}
+    >
       <div>
-        <label for="target-type" class="block text-xs text-ink-muted">
+        <label for="target-type" class="block text-small text-muted">
           {t('discussions.kindLabel')}
         </label>
         <select
           id="target-type"
-          class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+          class="field mt-0.5"
           bind:value={targetTypeInput}
         >
           {#each targetTypeOptions as option (option.value)}
@@ -173,13 +176,13 @@
       </div>
 
       <div class="min-w-0 flex-1">
-        <label for="target-id" class="block text-xs text-ink-muted">
+        <label for="target-id" class="block text-small text-muted">
           {t('discussions.identifierLabel')}
         </label>
         <input
           id="target-id"
           type="text"
-          class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-mono text-sm text-ink"
+          class="field mt-0.5 w-full font-mono"
           placeholder={t('discussions.identifierPlaceholder')}
           bind:value={targetIdInput}
         />
@@ -187,24 +190,24 @@
 
       <button
         type="submit"
-        class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+        class="btn btn-primary"
       >
         {t('discussions.show')}
       </button>
     </form>
 
     {#if nodesError}
-      <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
+      <p role="alert" class="mt-3 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
         <span class="font-mono">{nodesError.code}</span> — {nodesError.message}
       </p>
     {:else if nodes.length > 0}
       <div class="mt-3">
-        <label for="target-node" class="block text-xs text-ink-muted">
+        <label for="target-node" class="block text-small text-muted">
           {t('discussions.pickNode')}
         </label>
         <select
           id="target-node"
-          class="mt-0.5 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+          class="field mt-0.5 w-full"
           value={targetIdInput}
           onchange={handleNodePicked}
         >
@@ -218,7 +221,7 @@
   </section>
 
   {#if targetId === ''}
-    <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+    <p class="rounded-card border border-dashed border-border p-4 text-center text-body text-muted">
       {t('discussions.pickTarget')}
     </p>
   {:else}

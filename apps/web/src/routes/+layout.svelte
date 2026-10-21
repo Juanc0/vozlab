@@ -41,6 +41,17 @@
    */
   const navigation = $derived(page.route.id?.startsWith('/(app)') ?? false);
 
+  /**
+   * The name of the active workspace — the **scope** of the screen.
+   *
+   * It is shown in the bar of the shell: every read and every write of the
+   * application is made in it, and the reader must never wonder which one.
+   * It is `null` until the session is restored and the memberships arrive.
+   */
+  const scope = $derived(
+    workspace.workspaces.find((item) => item.id === workspace.currentWorkspaceId)?.name ?? null
+  );
+
   onMount(() => {
     // The connectivity drives the offline banner and the block of the
     // writes: both are read from the browser, never from the server.
@@ -60,6 +71,6 @@
   });
 </script>
 
-<AppShell title="VozLab" {navigation}>
+<AppShell title="VozLab" {navigation} {scope}>
   {@render children?.()}
 </AppShell>

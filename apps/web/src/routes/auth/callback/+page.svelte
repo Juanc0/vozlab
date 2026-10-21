@@ -28,26 +28,26 @@
   <title>{t('callback.pageTitle')}</title>
 </svelte:head>
 
-<section class="mx-auto max-w-prose space-y-6">
+<section class="mx-auto max-w-measure space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{t('callback.heading')}</h1>
-    <p class="mt-2 text-ink-muted">{message}</p>
+    <h1>{t('callback.heading')}</h1>
+    <p class="mt-2 text-muted">{message}</p>
   </div>
 
   {#if known}
-    <p class="font-mono text-sm text-negative">{known}</p>
+    <p class="font-mono text-body text-pill-negative-ink">{known}</p>
   {/if}
 
   <div class="flex flex-wrap gap-3">
     <a
       href="/login"
-      class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+      class="btn btn-primary"
     >
       {t('common.tryAgain')}
     </a>
     <a
       href="/join"
-      class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+      class="btn btn-secondary"
     >
       {t('common.joinWithCode')}
     </a>

@@ -153,7 +153,7 @@
 <div class="inline-flex items-center gap-1.5" role="group" aria-label={t('vote.onLabel', { label: target })}>
   <button
     type="button"
-    class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
+    class="btn btn-secondary w-8 px-0 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-ink"
     aria-pressed={voted === 'UPVOTE'}
     aria-label={t('vote.upvote', { label: target })}
     disabled={pending}
@@ -162,12 +162,12 @@
     <span aria-hidden="true">▲</span>
   </button>
 
-  <span class="text-xs text-ink-muted">{t('vote.score')}</span>
-  <span class="min-w-6 text-center text-sm font-semibold tabular-nums">{formatted}</span>
+  <span class="text-small text-muted">{t('vote.score')}</span>
+  <span class="min-w-6 text-center text-body font-semibold tabular-nums">{formatted}</span>
 
   <button
     type="button"
-    class="rounded-md border border-line-strong-strong bg-surface px-2 py-1 text-sm text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand-600 aria-pressed:bg-brand-50"
+    class="btn btn-secondary w-8 px-0 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-ink"
     aria-pressed={voted === 'DOWNVOTE'}
     aria-label={t('vote.downvote', { label: target })}
     disabled={pending}
@@ -177,10 +177,10 @@
   </button>
 </div>
 
-<p role="status" class="mt-1 text-xs text-ink-muted">{info}</p>
+<p role="status" class="mt-1 text-small text-muted">{info}</p>
 
 {#if failure}
-  <p role="alert" class="mt-1 text-xs text-negative">
+  <p role="alert" class="mt-1 text-small text-pill-negative-ink">
     {t('vote.rejectedTitle')} — <span class="font-mono">{failure.code}</span> — {failure.message}
   </p>
 {/if}

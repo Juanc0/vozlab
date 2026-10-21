@@ -31,7 +31,7 @@
    * column of fifteen rems on a phone of twenty rems leaves nothing for
    * the graph.
    */
-  const navWide = new MediaQuery('(min-width: 768px)');
+  const navWide = new MediaQuery('(min-width: 1024px)');
 
   onMount(() => {
     navWide.attach();
@@ -158,24 +158,32 @@
     </Drawer>
   {/if}
 
-  <div class="grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
+  <div class="grid {navWide.matches ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7' : ''}">
     {#if navWide.matches}
-      <aside aria-label={t('app.workspaceAndSections')} class="hidden min-w-0 md:block">
+      <!--
+        The column of the navigation.
+
+        It is **flat**: it shares the ground of the page and a single 1px
+        rule divides it from the content. It sticks under the bar of the
+        shell, so the destinations and the session are always within reach
+        of the pointer.
+      -->
+      <aside
+        aria-label={t('app.workspaceAndSections')}
+        class="hidden min-w-0 border-r border-rule pr-6 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:overflow-y-auto"
+      >
         <AppSidebar />
       </aside>
     {/if}
 
     <div class="min-w-0">
       {#if status === 'no-membership'}
-        <section class="rounded-card border border-line bg-surface p-6">
-          <h1 class="text-lg font-semibold tracking-tight">{t('app.noWorkspaceHeading')}</h1>
-          <p class="mt-2 text-sm text-ink-muted">
+        <section class="rounded-card bg-surface p-6">
+          <h1>{t('app.noWorkspaceHeading')}</h1>
+          <p class="mt-2 max-w-measure text-body text-muted">
             {t('app.noWorkspaceText')}
           </p>
-          <a
-            href="/join"
-            class="mt-4 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
-          >
+          <a href="/join" class="btn btn-secondary mt-4">
             {t('common.joinWithCode')}
           </a>
         </section>
@@ -185,25 +193,21 @@
     </div>
   </div>
 {:else if status === 'failed'}
-  <section role="alert" class="rounded-card border border-line bg-surface p-6">
-    <h1 class="text-lg font-semibold tracking-tight">{t('app.restoreFailedHeading')}</h1>
-    <p class="mt-2 text-sm text-ink-muted">
+  <section role="alert" class="max-w-measure rounded-card bg-surface p-6">
+    <h1 class="text-section font-sans">{t('app.restoreFailedHeading')}</h1>
+    <p class="mt-2 text-body text-muted">
       {#if connectivityState.offline}
         {t('app.restoreFailedOffline')}
       {:else}
         {failure}
       {/if}
     </p>
-    <button
-      type="button"
-      class="mt-4 rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
-      onclick={restore}
-    >
+    <button type="button" class="btn btn-primary mt-4" onclick={restore}>
       {t('common.tryAgain')}
     </button>
   </section>
 {:else}
   <div role="status" aria-live="polite">
-    <h1 class="text-lg font-semibold tracking-tight">{t('app.restoring')}</h1>
+    <h1 class="text-section font-sans">{t('app.restoring')}</h1>
   </div>
 {/if}

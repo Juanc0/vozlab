@@ -260,29 +260,29 @@
 </script>
 
 <ModalDialog {open} title={t('node.newNodeTitle')} {onclose} describedby={introId}>
-  <p id={introId} class="text-sm text-ink-muted">
+  <p id={introId} class="text-body text-muted">
     <RichText text={t('node.createIntro')} />
   </p>
 
   {#if ontology === null && ontologyError !== null}
-    <p role="alert" class="mt-4 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+    <p role="alert" class="mt-4 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
       <span class="font-mono">{ontologyError.code}</span> — {ontologyError.message}
     </p>
   {:else if ontology === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">{t('node.loadingOntology')}</p>
+    <p role="status" class="mt-4 text-body text-muted">{t('node.loadingOntology')}</p>
   {:else if options.length === 0}
-    <p class="mt-4 text-sm text-ink-muted">
+    <p class="mt-4 text-body text-muted">
       {t('node.noActiveClass')}
     </p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       <div>
-        <label for={classId} class="block text-sm font-medium text-ink">
+        <label for={classId} class="field-label">
           {t('node.ontologyClass')}
         </label>
         <select
           id={classId}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field mt-1 w-full"
           aria-describedby={classDescription === null ? undefined : classDescriptionId}
           value={classKey}
           onchange={(event) => {
@@ -294,13 +294,13 @@
           {/each}
         </select>
         {#if classDescription !== null}
-          <p id={classDescriptionId} class="mt-1 text-xs text-ink-muted">{classDescription}</p>
+          <p id={classDescriptionId} class="mt-1 text-small text-muted">{classDescription}</p>
         {/if}
       </div>
 
       <div>
-        <label for={titleId} class="block text-sm font-medium text-ink">
-          {t('node.titleLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+        <label for={titleId} class="field-label">
+          {t('node.titleLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
         </label>
         <input
           id={titleId}
@@ -312,33 +312,33 @@
           aria-required="true"
           aria-invalid={errors['title'] === undefined ? undefined : 'true'}
           aria-describedby={errors['title'] === undefined ? undefined : `${titleId}-error`}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field mt-1 w-full"
           value={title}
           oninput={(event) => {
             title = event.currentTarget.value;
           }}
         />
         {#if errors['title'] !== undefined}
-          <p id={`${titleId}-error`} class="mt-1 text-sm text-negative">{errorOf('title')}</p>
+          <p id={`${titleId}-error`} class="mt-1 text-body text-pill-negative-ink">{errorOf('title')}</p>
         {/if}
       </div>
 
       <div>
-        <label for={descriptionId} class="block text-sm font-medium text-ink">
-          {t('node.descriptionLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
+        <label for={descriptionId} class="field-label">
+          {t('node.descriptionLabel')} <span class="font-normal text-muted">{t('common.optional')}</span>
         </label>
         <textarea
           id={descriptionId}
           rows="3"
           aria-invalid={errors['description'] === undefined ? undefined : 'true'}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field-area mt-1 w-full"
           value={description}
           oninput={(event) => {
             description = event.currentTarget.value;
           }}
         ></textarea>
         {#if errors['description'] !== undefined}
-          <p id={`${descriptionId}-error`} class="mt-1 text-sm text-negative">
+          <p id={`${descriptionId}-error`} class="mt-1 text-body text-pill-negative-ink">
             {errorOf('description')}
           </p>
         {/if}
@@ -346,18 +346,18 @@
 
       {#if fields.length > 0}
         <fieldset class="space-y-4">
-          <legend class="text-sm font-semibold tracking-tight">
+          <legend class="font-semibold">
             {t('node.attributesOf', { label: model?.label ?? '' })}
           </legend>
 
           {#each fields as field (field.systemKey)}
             <div>
               {#if field.datatype === 'boolean'}
-                <label for={fieldId(field)} class="flex items-center gap-2 text-sm font-medium text-ink">
+                <label for={fieldId(field)} class="flex items-center gap-2 field-label">
                   <input
                     id={fieldId(field)}
                     type="checkbox"
-                    class="size-4 rounded border-line-strong"
+                    class="size-[18px] accent-accent"
                     checked={values[field.systemKey] === true}
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
@@ -368,21 +368,21 @@
                   />
                   {field.label}
                   {#if field.isRequired}
-                    <span class="text-xs font-normal text-ink-muted">{t('common.required')}</span>
+                    <span class="text-small font-normal text-muted">{t('common.required')}</span>
                   {/if}
                 </label>
               {:else}
-                <label for={fieldId(field)} class="block text-sm font-medium text-ink">
+                <label for={fieldId(field)} class="field-label">
                   {field.label}
                   {#if field.isRequired}
-                    <span class="text-xs font-normal text-ink-muted">{t('common.required')}</span>
+                    <span class="text-small font-normal text-muted">{t('common.required')}</span>
                   {/if}
                 </label>
 
                 {#if field.datatype === 'enum'}
                   <select
                     id={fieldId(field)}
-                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+                    class="field mt-1 w-full"
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
@@ -404,7 +404,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+                    class="field mt-1 w-full"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -417,7 +417,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+                    class="field mt-1 w-full"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -430,7 +430,7 @@
                     aria-required={field.isRequired ? 'true' : undefined}
                     aria-invalid={errors[field.systemKey] === undefined ? undefined : 'true'}
                     aria-describedby={describedBy(field)}
-                    class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+                    class="field mt-1 w-full"
                     value={stringValue(field.systemKey)}
                     oninput={(event) => {
                       setValue(field.systemKey, event.currentTarget.value);
@@ -440,11 +440,11 @@
               {/if}
 
               {#if field.description !== null}
-                <p id={fieldHelpId(field)} class="mt-1 text-xs text-ink-muted">{field.description}</p>
+                <p id={fieldHelpId(field)} class="mt-1 text-small text-muted">{field.description}</p>
               {/if}
 
               {#if errors[field.systemKey] !== undefined}
-                <p id={fieldErrorId(field)} class="mt-1 text-sm text-negative">
+                <p id={fieldErrorId(field)} class="mt-1 text-body text-pill-negative-ink">
                   {errorOf(field.systemKey)}
                 </p>
               {/if}
@@ -452,18 +452,18 @@
           {/each}
         </fieldset>
       {:else}
-        <p class="text-sm text-ink-muted">
+        <p class="text-body text-muted">
           {t('node.noActiveAttributes')}
         </p>
       {/if}
 
       {#if skipped.length > 0}
-        <div class="rounded-md border border-line bg-surface-muted p-3 text-sm">
+        <div class="rounded-control bg-raised p-3 text-body">
           <p class="font-medium">{t('node.notShownHeading')}</p>
-          <ul class="mt-1 list-disc pl-5 text-ink-muted">
+          <ul class="mt-1 list-disc pl-5 text-muted">
             {#each skipped as property (property.systemKey)}
               <li>
-                <span class="font-mono text-xs">{property.systemKey}</span> —
+                <span class="font-mono text-small">{property.systemKey}</span> —
                 {t('node.skippedExplanation', { label: property.label })}
               </li>
             {/each}
@@ -472,7 +472,7 @@
       {/if}
 
       {#if invalidFields.length > 0}
-        <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+        <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
           <p class="font-semibold">
             {invalidFields.length === 1
               ? t('node.formProblem', { count: formatNumber(locale.locale, invalidFields.length) })
@@ -498,10 +498,10 @@
       {/if}
 
       {#if failure !== null}
-        <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-          <p class="font-mono font-semibold text-negative">{failure.code}</p>
-          <p class="mt-1 text-ink">{failure.message}</p>
-          <p class="mt-1 text-xs text-ink-muted">
+        <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
+          <p class="font-mono font-semibold text-pill-negative-ink">{failure.code}</p>
+          <p class="mt-1 text-text">{failure.message}</p>
+          <p class="mt-1 text-small text-muted">
             {t('node.formKept')}
           </p>
         </div>
@@ -510,14 +510,14 @@
       <div class="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-primary"
           disabled={submitting}
         >
           {submitting ? t('node.creating') : t('node.createSubmit')}
         </button>
         <button
           type="button"
-          class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="btn btn-secondary"
           onclick={onclose}
         >
           {t('common.cancel')}

@@ -140,15 +140,15 @@
 
 <div class="space-y-4">
   <div>
-    <h3 class="text-base font-semibold tracking-tight">{t('explore.heading')}</h3>
-    <p class="mt-1 max-w-prose text-sm text-ink-muted">{t('explore.intro')}</p>
+    <h3>{t('explore.heading')}</h3>
+    <p class="mt-1 max-w-measure text-body text-muted">{t('explore.intro')}</p>
   </div>
 
   <!--
     The nature of the window. A canvas that truncates in silence is a canvas
     that lies: the reader has to know what the window is and what it is not.
   -->
-  <ul class="max-w-prose list-disc space-y-1 pl-5 text-xs text-ink-muted">
+  <ul class="max-w-measure list-disc space-y-1 pl-5 text-small text-muted">
     <li><RichText text={t('explore.windowClosed')} /></li>
     <li><RichText text={t('explore.windowOrder')} /></li>
     <li>
@@ -163,7 +163,7 @@
   </ul>
 
   {#if error !== null}
-    <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+    <p role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
       <span class="font-mono">{error.code}</span> — {error.message}
     </p>
   {/if}
@@ -171,8 +171,8 @@
   <!-- The controls of the view. -->
   <div class="flex flex-wrap items-end gap-6">
     <fieldset class="min-w-0">
-      <legend class="text-xs text-ink-muted">{t('explore.focusLabel')}</legend>
-      <div class="mt-1 flex flex-wrap gap-1">
+      <legend class="text-small text-muted">{t('explore.focusLabel')}</legend>
+      <div class="mt-1 inline-flex gap-1 rounded-control bg-raised p-1">
         {#each FOCUS_CRITERIA as option (option)}
           <input
             type="radio"
@@ -184,7 +184,7 @@
           />
           <label
             for="explore-focus-{option}"
-            class="pointer-coarse:min-h-11 cursor-pointer rounded-md border border-line-strong px-2.5 py-1 text-xs font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+            class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-2.5 py-1 text-small font-medium text-muted hover:text-text peer-checked:bg-surface peer-checked:text-text peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
           >
             {t(FOCUS_LABELS[option])}
           </label>
@@ -193,12 +193,12 @@
     </fieldset>
 
     <div>
-      <label for="explore-edge-style" class="block text-xs text-ink-muted">
+      <label for="explore-edge-style" class="block text-small text-muted">
         {t('explore.edgeStyleLabel')}
       </label>
       <select
         id="explore-edge-style"
-        class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+        class="field mt-0.5"
         bind:value={edgeStyle}
       >
         {#each EDGE_STYLES as option (option)}
@@ -208,21 +208,21 @@
     </div>
   </div>
 
-  <p class="max-w-prose text-xs text-ink-muted">
+  <p class="max-w-measure text-small text-muted">
     {t('explore.focusHint')}
     {#if presentedNode !== null}
-      <span class="font-medium text-ink">
+      <span class="font-medium text-text">
         {t('explore.presented', { title: presentedNode.title })}
       </span>
     {/if}
   </p>
 
   {#if loading && nodes.length === 0}
-    <p role="status" class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+    <p role="status" class="rounded-card border border-dashed border-border p-4 text-center text-body text-muted">
       {t('explore.loading')}
     </p>
   {:else if nodes.length === 0 && error === null}
-    <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+    <p class="rounded-card border border-dashed border-border p-4 text-center text-body text-muted">
       {t('explore.empty')}
     </p>
   {:else}
@@ -237,7 +237,7 @@
       ontoggle={toggleNode}
     />
 
-    <ul class="max-w-prose list-disc space-y-1 pl-5 text-xs text-ink-muted">
+    <ul class="max-w-measure list-disc space-y-1 pl-5 text-small text-muted">
       <li>{t('explore.hintHover')}</li>
       <li>{t('explore.hintPan')}</li>
       <li>{t('explore.hintDrag')}</li>

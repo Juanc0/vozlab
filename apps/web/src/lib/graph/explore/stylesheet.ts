@@ -23,7 +23,7 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
     style: {
       label: 'data(label)',
       'background-color': 'data(color)',
-      color: '#0f172a',
+      color: '#111827',
       'font-size': '10px',
       'text-valign': 'bottom',
       'text-margin-y': 4,
@@ -45,7 +45,7 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       height: NODE_CARD_HEIGHT,
       'background-color': '#ffffff',
       'border-width': '1px',
-      'border-color': '#94a3b8',
+      'border-color': '#d1d5db',
       'text-valign': 'center',
       'text-halign': 'center',
       'text-margin-y': 0,
@@ -53,7 +53,7 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'text-max-width': `${NODE_CARD_WIDTH - 24}px`,
       'font-size': '10px',
       'line-height': 1.35,
-      color: '#0f172a'
+      color: '#111827'
     }
   },
   {
@@ -62,8 +62,8 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
     selector: `node.${SELECTED_CLASS}`,
     style: {
       'border-width': '3px',
-      'border-color': '#1e3a8a',
-      'underlay-color': '#1e3a8a',
+      'border-color': '#2563eb',
+      'underlay-color': '#2563eb',
       'underlay-opacity': 0.12,
       'underlay-padding': '6px'
     }
@@ -73,7 +73,7 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
     selector: `node.${PRESENTED_CLASS}`,
     style: {
       'border-width': '3px',
-      'border-color': '#b45309'
+      'border-color': '#92400e'
     }
   },
   {

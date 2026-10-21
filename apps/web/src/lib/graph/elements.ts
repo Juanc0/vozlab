@@ -104,24 +104,24 @@ export function nodeCardText(node: NodeDto): string {
 
 /** The colour of a node, by its status. */
 const NODE_COLORS: Record<NodeStatus, string> = {
-  ACTIVE: '#15803d',
-  PENDING: '#b45309',
-  DRAFT: '#64748b',
-  MERGED: '#6d28d9',
-  DEPRECATED: '#94a3b8',
-  REJECTED: '#b91c1c'
+  ACTIVE: '#247b50',
+  PENDING: '#92400e',
+  DRAFT: '#5f6672',
+  MERGED: '#6b7280',
+  DEPRECATED: '#9ca3af',
+  REJECTED: '#c4242a'
 };
 
 /** The colour of a relation, by its status. */
 const EDGE_COLORS: Record<EdgeStatus, string> = {
   ACTIVE: '#475569',
-  PENDING: '#b45309',
-  DRAFT: '#64748b',
-  REJECTED: '#b91c1c'
+  PENDING: '#92400e',
+  DRAFT: '#5f6672',
+  REJECTED: '#c4242a'
 };
 
 /** The colour of a node of an unknown status. */
-const FALLBACK_COLOR = '#64748b';
+const FALLBACK_COLOR = '#5f6672';
 
 /** The colour of a node, by its status. */
 export function nodeColor(status: NodeStatus): string {
@@ -206,7 +206,7 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
     style: {
       label: 'data(label)',
       'background-color': 'data(color)',
-      color: '#0f172a',
+      color: '#111827',
       'font-size': '10px',
       'text-valign': 'bottom',
       'text-margin-y': 4,
@@ -223,8 +223,8 @@ export const GRAPH_STYLESHEET: StylesheetJson = [
     selector: 'node.vozlab-selected',
     style: {
       'border-width': '3px',
-      'border-color': '#1e3a8a',
-      'overlay-color': '#1e3a8a',
+      'border-color': '#2563eb',
+      'overlay-color': '#2563eb',
       'overlay-opacity': 0.12,
       'overlay-padding': '6px'
     }

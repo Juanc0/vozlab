@@ -51,8 +51,8 @@
 {#if node !== null}
   <article class="space-y-4">
     <header>
-      <h3 class="text-base font-semibold tracking-tight">{node.title}</h3>
-      <p class="mt-1 text-sm text-ink-muted">
+      <h3 class="text-section font-semibold">{node.title}</h3>
+      <p class="mt-1 text-body text-muted">
         {#if node.description}
           {node.description}
         {:else}
@@ -61,20 +61,20 @@
       </p>
     </header>
 
-    <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-      <dt class="text-ink-muted">{t('inspector.nodeType')}</dt>
+    <dl class="grid gap-x-4 gap-y-2 text-body sm:grid-cols-[auto_1fr]">
+      <dt class="text-muted">{t('inspector.nodeType')}</dt>
       <dd>{node.typeKey}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.status')}</dt>
+      <dt class="text-muted">{t('inspector.status')}</dt>
       <dd>{node.status}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.score')}</dt>
+      <dt class="text-muted">{t('inspector.score')}</dt>
       <dd>{formatNumber(locale.locale, node.communityScore)}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.author')}</dt>
-      <dd class="font-mono text-xs break-all">{node.authorHash}</dd>
+      <dt class="text-muted">{t('inspector.author')}</dt>
+      <dd class="font-mono text-small break-all">{node.authorHash}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.created')}</dt>
+      <dt class="text-muted">{t('inspector.created')}</dt>
       <dd>
         <time datetime={node.createdAt}>{formatDate(locale.locale, node.createdAt)}</time>
       </dd>
@@ -83,7 +83,7 @@
     {#if onrelate}
       <button
         type="button"
-        class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+        class="btn btn-secondary"
         onclick={() => onrelate(node)}
       >
         {t('inspector.relate')}
@@ -93,41 +93,41 @@
 {:else if edge !== null}
   <article class="space-y-4">
     <header>
-      <h3 class="text-base font-semibold tracking-tight">{edge.relationKey}</h3>
+      <h3 class="text-section font-semibold">{edge.relationKey}</h3>
     </header>
 
-    <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-      <dt class="text-ink-muted">{t('inspector.relationKey')}</dt>
+    <dl class="grid gap-x-4 gap-y-2 text-body sm:grid-cols-[auto_1fr]">
+      <dt class="text-muted">{t('inspector.relationKey')}</dt>
       <dd>{edge.relationKey}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.source')}</dt>
+      <dt class="text-muted">{t('inspector.source')}</dt>
       <dd>
         {titleOf(edge.sourceNodeId)}
-        <span class="block font-mono text-xs break-all text-ink-muted">{edge.sourceNodeId}</span>
+        <span class="block font-mono text-small break-all text-muted">{edge.sourceNodeId}</span>
       </dd>
 
-      <dt class="text-ink-muted">{t('inspector.target')}</dt>
+      <dt class="text-muted">{t('inspector.target')}</dt>
       <dd>
         {titleOf(edge.targetNodeId)}
-        <span class="block font-mono text-xs break-all text-ink-muted">{edge.targetNodeId}</span>
+        <span class="block font-mono text-small break-all text-muted">{edge.targetNodeId}</span>
       </dd>
-      <dt class="text-ink-muted">{t('inspector.status')}</dt>
+      <dt class="text-muted">{t('inspector.status')}</dt>
       <dd>{edge.status}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.score')}</dt>
+      <dt class="text-muted">{t('inspector.score')}</dt>
       <dd>{formatNumber(locale.locale, edge.communityScore)}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.author')}</dt>
-      <dd class="font-mono text-xs break-all">{edge.authorHash}</dd>
+      <dt class="text-muted">{t('inspector.author')}</dt>
+      <dd class="font-mono text-small break-all">{edge.authorHash}</dd>
 
-      <dt class="text-ink-muted">{t('inspector.created')}</dt>
+      <dt class="text-muted">{t('inspector.created')}</dt>
       <dd>
         <time datetime={edge.createdAt}>{formatDate(locale.locale, edge.createdAt)}</time>
       </dd>
     </dl>
 
     <section aria-labelledby="inspector-vote-heading">
-      <h3 id="inspector-vote-heading" class="text-xs font-semibold tracking-wide uppercase">
+      <h3 id="inspector-vote-heading">
         {t('vote.score')}
       </h3>
       <div class="mt-1">
@@ -143,5 +143,5 @@
     </section>
   </article>
 {:else}
-  <p class="text-sm text-ink-muted">{t('inspector.emptySelection')}</p>
+  <p class="text-body text-muted">{t('inspector.emptySelection')}</p>
 {/if}

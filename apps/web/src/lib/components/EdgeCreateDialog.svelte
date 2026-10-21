@@ -176,37 +176,37 @@
 </script>
 
 <ModalDialog {open} title={t('edge.relateTitle')} {onclose} describedby={introId}>
-  <p id={introId} class="text-sm text-ink-muted">
+  <p id={introId} class="text-body text-muted">
     <RichText text={t('edge.intro')} />
   </p>
 
   {#if source === null}
-    <p class="mt-4 text-sm text-ink-muted">
+    <p class="mt-4 text-body text-muted">
       {t('edge.pickSource')}
     </p>
   {:else if ontology === null}
-    <p role="status" class="mt-4 text-sm text-ink-muted">{t('node.loadingOntology')}</p>
+    <p role="status" class="mt-4 text-body text-muted">{t('node.loadingOntology')}</p>
   {:else if relations.length === 0}
-    <p class="mt-4 text-sm text-ink-muted">
+    <p class="mt-4 text-body text-muted">
       {t('edge.noRelation', { typeKey: source.typeKey })}
     </p>
   {:else}
     <form class="mt-4 space-y-5" onsubmit={submit} novalidate>
       <div>
-        <span class="block text-sm font-medium text-ink">{t('edge.from')}</span>
-        <p class="mt-1 rounded-md border border-line bg-surface-muted px-3 py-2 text-sm">
+        <span class="field-label">{t('edge.from')}</span>
+        <p class="mt-1 rounded-control bg-ground px-3 py-2 text-body">
           {source.title}
-          <span class="block text-xs text-ink-muted">{source.typeKey}</span>
+          <span class="block text-small text-muted">{source.typeKey}</span>
         </p>
       </div>
 
       <div>
-        <label for={relationId} class="block text-sm font-medium text-ink">
-          {t('edge.relationLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+        <label for={relationId} class="field-label">
+          {t('edge.relationLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
         </label>
         <select
           id={relationId}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field mt-1 w-full"
           value={relationKey}
           onchange={(event) => {
             selectRelation(event.currentTarget.value);
@@ -219,7 +219,7 @@
           {/each}
         </select>
         {#if relation !== null}
-          <p class="mt-1 text-xs text-ink-muted">
+          <p class="mt-1 text-small text-muted">
             <span class="font-mono">{relation.systemKey}</span> — {t('edge.fromClass')}
             <span class="font-mono">{relation.domainClassKey}</span> {t('edge.toClass')}
             <span class="font-mono">{relation.rangeClassKey}</span>.
@@ -228,12 +228,12 @@
       </div>
 
       <div>
-        <label for={targetId} class="block text-sm font-medium text-ink">
-          {t('edge.toLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+        <label for={targetId} class="field-label">
+          {t('edge.toLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
         </label>
         <select
           id={targetId}
-          class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+          class="field mt-1 w-full"
           aria-invalid={errors['target'] === undefined ? undefined : 'true'}
           aria-describedby={errors['target'] === undefined ? undefined : `${targetId}-error`}
           value={targetNodeId}
@@ -248,29 +248,29 @@
         </select>
 
         {#if targets.length === 0}
-          <p class="mt-1 text-xs text-ink-muted">
+          <p class="mt-1 text-small text-muted">
             {t('edge.noTarget', { range: rangeLabel ?? '' })}
           </p>
         {:else if target !== null}
-          <p class="mt-1 text-xs text-ink-muted">
+          <p class="mt-1 text-small text-muted">
             {t('edge.willPointAt', { title: target.title })}
           </p>
         {/if}
 
-        <p class="mt-1 text-xs text-ink-muted">
+        <p class="mt-1 text-small text-muted">
           {t('edge.candidates', { count: formatNumber(locale.locale, nodes.length) })}
         </p>
 
         {#if errors['target'] !== undefined}
-          <p id={`${targetId}-error`} class="mt-1 text-sm text-negative">{errors['target']}</p>
+          <p id={`${targetId}-error`} class="mt-1 text-body text-pill-negative-ink">{errors['target']}</p>
         {/if}
       </div>
 
       {#if failure !== null}
-        <div role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
-          <p class="font-mono font-semibold text-negative">{failure.code}</p>
-          <p class="mt-1 text-ink">{failure.message}</p>
-          <p class="mt-1 text-xs text-ink-muted">
+        <div role="alert" class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
+          <p class="font-mono font-semibold text-pill-negative-ink">{failure.code}</p>
+          <p class="mt-1 text-text">{failure.message}</p>
+          <p class="mt-1 text-small text-muted">
             {t('edge.formKept')}
           </p>
         </div>
@@ -279,14 +279,14 @@
       <div class="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-primary"
           disabled={submitting}
         >
           {submitting ? t('edge.creating') : t('edge.createSubmit')}
         </button>
         <button
           type="button"
-          class="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+          class="btn btn-secondary"
           onclick={onclose}
         >
           {t('common.cancel')}

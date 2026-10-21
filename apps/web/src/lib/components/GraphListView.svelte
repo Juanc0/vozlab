@@ -95,15 +95,15 @@
   carries the short description of what it shows.
 -->
 <details open class="space-y-6">
-  <summary class="cursor-pointer text-sm font-semibold tracking-tight">
+  <summary class="cursor-pointer font-semibold">
     {t(summaryKey)}
   </summary>
 
   <div class="mt-4 space-y-6">
   <section aria-labelledby="subgraph-nodes-heading">
-    <h3 id="subgraph-nodes-heading" class="text-sm font-semibold tracking-tight">
+    <h3 id="subgraph-nodes-heading">
       {t('graph.listNodesHeading')}
-      <span class="font-normal text-ink-muted">({nodeCount})</span>
+      <span class="font-normal text-muted">({nodeCount})</span>
     </h3>
 
     <!--
@@ -117,41 +117,41 @@
     -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
-      class="mt-2 overflow-x-auto rounded-card border border-line"
+      class="mt-2 overflow-x-auto rounded-card bg-surface"
       role="region"
       aria-label={t('graph.listNodesRegion')}
       tabindex="0"
     >
-      <table class="w-full border-collapse text-left text-sm">
+      <table class="w-full min-w-[32rem] border-collapse text-left text-body [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:bg-surface">
         <caption class="sr-only">
           {t('graph.listNodesCaption')}
         </caption>
-        <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
+        <thead class="text-small text-muted">
           <tr>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnTitle')}</th>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnType')}</th>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnStatus')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnTitle')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnType')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnStatus')}</th>
           </tr>
         </thead>
         <tbody>
           {#each nodes as node (node.id)}
-            <tr class="border-t border-line">
+            <tr class="border-t border-rule">
               <th scope="row" class="px-3 py-2 font-normal">
                 <button
                   type="button"
-                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold aria-[current=true]:text-brand-950"
+                  class="rounded-control text-left text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2 aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink aria-[current=true]:font-semibold"
                   aria-current={isSelectedNode(node.id) ? 'true' : undefined}
                   onclick={() => onselect?.(nodeSelection(node.id))}
                 >
                   {node.title}
                 </button>
               </th>
-              <td class="px-3 py-2 text-ink-muted">{node.typeKey}</td>
-              <td class="px-3 py-2 text-ink-muted">{node.status}</td>
+              <td class="px-3 py-2 text-muted">{node.typeKey}</td>
+              <td class="px-3 py-2 text-muted">{node.status}</td>
             </tr>
           {:else}
             <tr>
-              <td colspan="3" class="px-3 py-2 text-ink-muted">{t('graph.listNoNodes')}</td>
+              <td colspan="3" class="px-3 py-2 text-muted">{t('graph.listNoNodes')}</td>
             </tr>
           {/each}
         </tbody>
@@ -160,39 +160,39 @@
   </section>
 
   <section aria-labelledby="subgraph-relations-heading">
-    <h3 id="subgraph-relations-heading" class="text-sm font-semibold tracking-tight">
+    <h3 id="subgraph-relations-heading">
       {t('graph.listRelationsHeading')}
-      <span class="font-normal text-ink-muted">({edgeCount})</span>
+      <span class="font-normal text-muted">({edgeCount})</span>
     </h3>
 
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
-      class="mt-2 overflow-x-auto rounded-card border border-line"
+      class="mt-2 overflow-x-auto rounded-card bg-surface"
       role="region"
       aria-label={t('graph.listRelationsRegion')}
       tabindex="0"
     >
-      <table class="w-full border-collapse text-left text-sm">
+      <table class="w-full min-w-[32rem] border-collapse text-left text-body [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:bg-surface">
         <caption class="sr-only">
           {t('graph.listRelationsCaption')}
         </caption>
-        <thead class="bg-surface-muted text-xs tracking-wide text-ink-muted uppercase">
+        <thead class="text-small text-muted">
           <tr>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnRelation')}</th>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnFrom')}</th>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnTo')}</th>
-            <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnStatus')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnRelation')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnFrom')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnTo')}</th>
+            <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnStatus')}</th>
             {#if ledger}
-              <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnScore')}</th>
+              <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnScore')}</th>
             {/if}
             {#if onpropose}
-              <th scope="col" class="px-3 py-2 font-semibold">{t('graph.columnCorrection')}</th>
+              <th scope="col" class="px-3 py-2 font-normal">{t('graph.columnCorrection')}</th>
             {/if}
           </tr>
         </thead>
         <tbody>
           {#each edges as edge (edge.id)}
-            <tr class="border-t border-line">
+            <tr class="border-t border-rule">
               <th scope="row" class="px-3 py-2 font-normal">
                 <!--
                   The relation is selectable too: the inspector shows the
@@ -201,7 +201,7 @@
                 -->
                 <button
                   type="button"
-                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold aria-[current=true]:text-brand-950"
+                  class="rounded-control text-left text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2 aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink aria-[current=true]:font-semibold"
                   aria-current={isSelectedEdge(edge.id) ? 'true' : undefined}
                   onclick={() => onselect?.(edgeSelection(edge.id))}
                 >
@@ -211,7 +211,7 @@
               <td class="px-3 py-2">
                 <button
                   type="button"
-                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700"
+                  class="rounded-control text-left text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2"
                   onclick={() => onselect?.(nodeSelection(edge.sourceNodeId))}
                 >
                   {titleOf(edge.sourceNodeId)}
@@ -220,13 +220,13 @@
               <td class="px-3 py-2">
                 <button
                   type="button"
-                  class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700"
+                  class="rounded-control text-left text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2"
                   onclick={() => onselect?.(nodeSelection(edge.targetNodeId))}
                 >
                   {titleOf(edge.targetNodeId)}
                 </button>
               </td>
-              <td class="px-3 py-2 text-ink-muted">{edge.status}</td>
+              <td class="px-3 py-2 text-muted">{edge.status}</td>
               {#if ledger}
                 <td class="px-3 py-2">
                   <VoteButtons
@@ -247,7 +247,7 @@
                 <td class="px-3 py-2">
                   <button
                     type="button"
-                    class="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-medium text-ink hover:bg-surface-muted"
+                    class="btn btn-secondary"
                     aria-label={t('graph.suggestCorrectionOfRelation', { relationKey: edge.relationKey })}
                     onclick={() => onpropose(edge)}
                   >
@@ -258,7 +258,7 @@
             </tr>
           {:else}
             <tr>
-              <td colspan={4 + (ledger ? 1 : 0) + (onpropose ? 1 : 0)} class="px-3 py-2 text-ink-muted">
+              <td colspan={4 + (ledger ? 1 : 0) + (onpropose ? 1 : 0)} class="px-3 py-2 text-muted">
                 {t('graph.listNoRelations')}
               </td>
             </tr>

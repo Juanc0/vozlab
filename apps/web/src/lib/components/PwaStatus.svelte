@@ -18,25 +18,25 @@
 </script>
 
 {#if pwaState.error !== null}
-  <div role="alert" class="border-b border-negative/30 bg-negative/5">
+  <div role="alert" class="border-b border-rule bg-surface">
     <div
-      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-body"
     >
-      <p class="text-ink">
+      <p class="text-text">
         {t('pwa.errorTitle')}
-        <span class="font-mono text-negative">{pwaState.error}</span>. {t('pwa.errorHint')}
+        <span class="font-mono text-pill-negative-ink">{pwaState.error}</span>. {t('pwa.errorHint')}
       </p>
     </div>
   </div>
 {:else if pwaState.offlineReady && !dismissed}
-  <div role="status" class="border-b border-line bg-surface">
+  <div role="status" class="border-b border-rule bg-surface">
     <div
-      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-body"
     >
-      <p class="text-ink">{t('pwa.offlineReady')}</p>
+      <p class="text-text">{t('pwa.offlineReady')}</p>
       <button
         type="button"
-        class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+        class="btn btn-secondary"
         onclick={() => {
           dismissed = true;
         }}

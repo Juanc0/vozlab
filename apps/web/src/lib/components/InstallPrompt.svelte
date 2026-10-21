@@ -15,14 +15,14 @@
 </script>
 
 {#if installState.canInstall}
-  <div class="border-b border-line bg-surface">
+  <div class="border-b border-rule bg-surface">
     <div
-      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-body"
     >
-      <p class="text-ink">{t('install.message')}</p>
+      <p class="text-text">{t('install.message')}</p>
       <button
         type="button"
-        class="rounded-md border border-line-strong-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+        class="btn btn-secondary"
         onclick={() => void installState.install()}
       >
         {t('install.action')}

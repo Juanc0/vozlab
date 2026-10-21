@@ -246,16 +246,21 @@
 
 <aside aria-labelledby={showHeading ? 'inspector-heading' : undefined} class="min-w-0">
   {#if showHeading}
-    <h2 id="inspector-heading" class="text-base font-semibold tracking-tight">
+    <h2 id="inspector-heading">
       {t('inspector.heading')}
     </h2>
   {/if}
 
-  <div class="mt-2 rounded-card border border-line bg-surface p-4">
+  <!--
+    The panel is **flat**: a white surface on the ground, with no border
+    and no shadow at rest. The rule of the tabs is what separates the
+    chrome from the content they choose.
+  -->
+  <div class="mt-2 rounded-card bg-surface p-4">
     <div
       role="tablist"
       aria-label={t('inspector.tabsLabel')}
-      class="flex flex-wrap gap-1 border-b border-line"
+      class="flex gap-4 border-b border-rule"
     >
       {#each TABS as tab, index (tab.id)}
         <button
@@ -265,7 +270,7 @@
           aria-selected={activeTab === tab.id}
           aria-controls={panelId}
           tabindex={activeTab === tab.id ? 0 : -1}
-          class="rounded-t-md border-b-2 px-3 py-1.5 text-sm font-medium aria-[selected=true]:border-brand-900 aria-[selected=true]:text-brand-950 hover:bg-surface-muted"
+          class="-mb-px border-b-2 border-transparent pb-2 text-body font-medium text-muted hover:text-text aria-[selected=true]:border-accent aria-[selected=true]:text-text"
           onclick={() => selectTab(tab.id)}
           onkeydown={(event) => onTabKeydown(event, index)}
         >
@@ -282,7 +287,7 @@
       class="mt-3"
     >
       {#if selection === null}
-        <p class="text-sm text-ink-muted">{t('inspector.emptySelection')}</p>
+        <p class="text-body text-muted">{t('inspector.emptySelection')}</p>
       {:else if activeTab === 'content'}
         {#if selection.kind === 'edge' && currentEdge === null}
           {@render relationState()}
@@ -332,12 +337,12 @@
 -->
 {#snippet relationState()}
   {#if edgeError !== null}
-    <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+    <p role="alert" class="rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
       <span class="font-mono">{edgeError.code}</span> — {edgeError.message}
     </p>
   {:else if edgeLoading}
-    <p role="status" class="text-sm text-ink-muted">{t('inspector.readingRelation')}</p>
+    <p role="status" class="text-body text-muted">{t('inspector.readingRelation')}</p>
   {:else}
-    <p role="alert" class="text-sm text-negative">{t('inspector.relationUnreadable')}</p>
+    <p role="alert" class="text-body text-pill-negative-ink">{t('inspector.relationUnreadable')}</p>
   {/if}
 {/snippet}

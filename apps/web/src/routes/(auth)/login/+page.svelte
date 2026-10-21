@@ -95,49 +95,49 @@
   <title>{t('login.pageTitle')}</title>
 </svelte:head>
 
-<section class="mx-auto max-w-prose space-y-6">
+<section class="mx-auto max-w-[39rem] space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{t('login.heading')}</h1>
-    <p class="mt-2 text-ink-muted">
+    <h1>{t('login.heading')}</h1>
+    <p class="mt-2 max-w-measure text-body text-muted">
       {t('login.intro')}
     </p>
   </div>
 
-  <div class="rounded-card border border-line bg-surface p-6">
+  <div class="rounded-card bg-surface p-6">
     <button
       type="button"
-      class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800"
+      class="btn btn-primary"
       onclick={startLogin}
     >
       {t('login.continue')}
     </button>
-    <p class="mt-3 text-sm text-ink-muted">
+    <p class="mt-3 text-body text-muted max-w-measure">
       {t('login.continueHelp')}
     </p>
   </div>
 
-  <div class="rounded-card border border-line bg-surface p-6">
-    <h2 class="text-lg font-semibold">{t('login.joiningHeading')}</h2>
-    <p class="mt-2 text-sm text-ink-muted">
+  <div class="rounded-card bg-surface p-6">
+    <h2>{t('login.joiningHeading')}</h2>
+    <p class="mt-2 text-body text-muted max-w-measure">
       {t('login.joiningText')}
     </p>
     <a
       href="/join"
-      class="mt-3 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+      class="btn btn-secondary mt-3"
     >
       {t('common.joinWithCode')}
     </a>
   </div>
 
   {#if isDevelopmentBuild()}
-    <div class="rounded-card border border-line bg-surface p-6">
-      <h2 class="text-lg font-semibold">{t('login.devHeading')}</h2>
-      <p class="mt-2 text-sm text-ink-muted">
+    <div class="rounded-card bg-surface p-6">
+      <h2>{t('login.devHeading')}</h2>
+      <p class="mt-2 text-body text-muted max-w-measure">
         <RichText text={t('login.devText')} />
       </p>
 
       <form class="mt-4 space-y-3" onsubmit={submitDevSignIn}>
-        <label for="dev-token" class="block text-sm font-medium text-ink">
+        <label for="dev-token" class="field-label">
           {t('login.devTokenLabel')}
         </label>
         <input
@@ -146,28 +146,28 @@
           bind:value={devToken}
           autocomplete="off"
           spellcheck="false"
-          class="w-full rounded-md border border-line-strong bg-surface px-3 py-2 font-mono text-xs"
+          class="field w-full font-mono"
           placeholder="eyJhbGciOiJIUzI1NiIs…"
         />
 
         <button
           type="submit"
-          class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn btn-primary"
           disabled={devPending || !hydrated}
         >
           {devPending ? t('login.devSigningIn') : t('login.devSubmit')}
         </button>
 
         {#if !hydrated}
-          <p class="text-xs text-ink-muted" role="status">{t('login.devPreparing')}</p>
+          <p class="text-small text-muted" role="status">{t('login.devPreparing')}</p>
         {/if}
 
         {#if devFailure}
-          <p class="text-sm text-negative" role="alert">{devFailure}</p>
+          <p class="text-body text-pill-negative-ink" role="alert">{devFailure}</p>
         {/if}
       </form>
 
-      <p class="mt-4 text-sm text-ink-muted">
+      <p class="mt-4 text-body text-muted max-w-measure">
         {t('login.devTokenNote')}
       </p>
 
@@ -178,7 +178,7 @@
       -->
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <pre
-        class="mt-3 overflow-x-auto rounded-md bg-surface-muted p-3 text-xs"
+        class="mt-3 overflow-x-auto rounded-control bg-ground p-3 text-small"
         role="region"
         aria-label={t('login.devCommandsLabel')}
         tabindex="0"
@@ -187,22 +187,22 @@ pnpm --filter @vozlab/database db:mint-token -- --as moderator
 pnpm --filter @vozlab/database db:mint-token -- --as member</code></pre>
     </div>
   {:else}
-    <div class="rounded-card border border-line bg-surface p-6">
-      <h2 class="text-lg font-semibold">{t('login.localHeading')}</h2>
-      <p class="mt-2 text-sm text-ink-muted">
+    <div class="rounded-card bg-surface p-6">
+      <h2>{t('login.localHeading')}</h2>
+      <p class="mt-2 text-body text-muted max-w-measure">
         {t('login.localText')}
       </p>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <pre
-        class="mt-3 overflow-x-auto rounded-md bg-surface-muted p-3 text-xs"
+        class="mt-3 overflow-x-auto rounded-control bg-ground p-3 text-small"
         role="region"
         aria-label={t('login.localCommandLabel')}
         tabindex="0"
       ><code>pnpm --filter @vozlab/database db:mint-token -- --as maintainer</code></pre>
-      <p class="mt-2 text-sm text-ink-muted">
+      <p class="mt-2 text-body text-muted max-w-measure">
         <RichText text={t('login.localNote')} />
       </p>
-      <p class="mt-2 text-sm text-ink-muted">
+      <p class="mt-2 text-body text-muted max-w-measure">
         <RichText text={t('login.localRunbook')} />
       </p>
     </div>

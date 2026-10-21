@@ -29,16 +29,13 @@
 </script>
 
 <div class="space-y-1.5">
-  <label
-    for="workspace-select"
-    class="block text-xs font-semibold tracking-wide text-ink-muted uppercase"
-  >
+  <label for="workspace-select" class="block text-small text-muted">
     {t('workspace.label')}
   </label>
 
   <select
     id="workspace-select"
-    class="w-full rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-surface-muted"
+    class="field w-full"
     value={workspace.currentWorkspaceId}
     disabled={workspace.workspaces.length === 0}
     onchange={handleChange}
@@ -48,10 +45,10 @@
     {/each}
   </select>
 
-  <p class="text-xs text-ink-muted">
+  <p class="text-small text-muted">
     {#if active}
       {t('workspace.yourRole')}
-      <span class="font-semibold text-ink">{active.role}</span>
+      <span class="font-medium text-text">{active.role}</span>
     {:else}
       {t('workspace.noneSelected')}
     {/if}

@@ -97,22 +97,22 @@
 </script>
 
 <section aria-labelledby="inspector-proposals-heading" class="space-y-3">
-  <h3 id="inspector-proposals-heading" class="text-xs font-semibold tracking-wide uppercase">
+  <h3 id="inspector-proposals-heading">
     {t('inspector.proposalsHeading')}
   </h3>
 
   {#if failure}
-    <p role="alert" class="rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+    <p role="alert" class="rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
       <span class="font-mono">{failure.code}</span> — {failure.message}
     </p>
   {:else if loading && proposals.length === 0}
-    <p role="status" class="text-sm text-ink-muted">{t('inspector.loadingProposals')}</p>
+    <p role="status" class="text-body text-muted">{t('inspector.loadingProposals')}</p>
   {:else if proposals.length === 0}
-    <p class="text-sm text-ink-muted">{t('inspector.noProposals')}</p>
+    <p class="text-body text-muted">{t('inspector.noProposals')}</p>
   {:else}
     <div class="space-y-4">
       {#each proposals as proposal (proposal.id)}
-        <div class="rounded-md border border-line bg-surface-muted/40 p-3">
+        <div class="rounded-control bg-raised p-3">
           <ProposalDetail {proposal} {ledger} discussion={false} />
         </div>
       {/each}
@@ -120,7 +120,7 @@
   {/if}
 
   {#if truncated}
-    <p class="text-xs text-warning">
+    <p class="rounded-control bg-pill-warning-bg p-2 text-small text-pill-warning-ink">
       <RichText text={t('inspector.proposalsPartial')} />
     </p>
   {/if}

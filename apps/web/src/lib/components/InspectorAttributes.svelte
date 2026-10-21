@@ -114,16 +114,16 @@
 </script>
 
 <section aria-labelledby={attributesHeadingId} class="space-y-3">
-  <h3 id={attributesHeadingId} class="text-xs font-semibold tracking-wide uppercase">
+  <h3 id={attributesHeadingId}>
     {node !== null ? t('inspector.attributesOfNode') : t('inspector.attributesOfRelation')}
   </h3>
 
   {#if attributeEntries.length === 0}
-    <p class="text-sm text-ink-muted">{t('inspector.noAttributes')}</p>
+    <p class="text-body text-muted">{t('inspector.noAttributes')}</p>
   {:else}
-    <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+    <dl class="grid gap-x-4 gap-y-1 text-body sm:grid-cols-[auto_1fr]">
       {#each attributeEntries as [key, value] (key)}
-        <dt class="text-ink-muted">{key}</dt>
+        <dt class="text-muted">{key}</dt>
         <dd class="break-words">{formatDeltaValue(value)}</dd>
       {/each}
     </dl>
@@ -131,7 +131,7 @@
 </section>
 
 <section aria-labelledby={actionsHeadingId} class="space-y-2">
-  <h3 id={actionsHeadingId} class="text-xs font-semibold tracking-wide uppercase">
+  <h3 id={actionsHeadingId}>
     {t('inspector.actionsHeading')}
   </h3>
 
@@ -143,7 +143,7 @@
     -->
     <button
       type="button"
-      class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+      class="btn btn-secondary"
       disabled={node === null && edge === null}
       aria-label={node !== null
         ? t('inspector.suggestCorrectionOfNode', { title: node.title })
@@ -163,7 +163,7 @@
     {#if edge !== null}
       <button
         type="button"
-        class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+        class="btn btn-secondary"
         disabled={!isAuthor}
         aria-describedby={directEditReason === null ? undefined : reasonId}
         onclick={() => {
@@ -176,7 +176,7 @@
   </div>
 
   {#if directEditReason !== null}
-    <p id={reasonId} class="text-xs text-ink-muted">
+    <p id={reasonId} class="text-small text-muted">
       {directEditReason}
     </p>
   {/if}

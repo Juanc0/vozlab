@@ -15,14 +15,14 @@
 </script>
 
 {#if pwaState.needsRefresh}
-  <div role="status" class="border-b border-brand-200 bg-brand-50">
+  <div role="status" class="border-b border-accent-track bg-accent-soft">
     <div
-      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm text-brand-950"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-body text-accent-ink"
     >
       <p class="font-medium">{t('update.available')}</p>
       <button
         type="button"
-        class="rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
+        class="btn btn-secondary"
         onclick={() => void pwaState.applyUpdate()}
       >
         {t('update.reload')}

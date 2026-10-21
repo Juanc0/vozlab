@@ -143,7 +143,7 @@
 <dialog
   bind:this={dialog}
   id="vozlab-dialog-{uid}"
-  class="m-auto w-[min(34rem,calc(100vw-1rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
+  class="m-auto w-[min(34rem,calc(100vw-1rem))] rounded-card bg-surface p-0 text-text shadow-float backdrop:bg-text/40"
   aria-labelledby={titleId}
   aria-describedby={describedby}
   tabindex="-1"
@@ -157,10 +157,10 @@
     -->
     <div class="max-h-[85dvh] overflow-y-auto p-4 sm:p-6">
       <div class="flex items-start justify-between gap-4">
-        <h2 id={titleId} class="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           type="button"
-          class="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-surface-muted hover:text-ink"
+          class="btn btn-quiet"
           onclick={closeNow}
         >
           {t('common.close')}

@@ -290,6 +290,69 @@ Requested after 3.7, to present the product to the university community.
       1440 px: no horizontal scroll, the drawing is redrawn at the new size
       and the graph does not move.
 
+### Phase 3 — the design round and the exploration engine
+
+Requested after 3.14: a fresh design for the whole interface, a graph engine
+that behaves like a spring, the relations in the interface's own language, and
+the backend questions behind "walk through the graph".
+
+Decided, and not to be re-opened without evidence:
+
+- **The design direction is the *accent ladder*** (a light app style dealt
+  from a measured library, not invented): one brand hue at full strength only
+  on small marks, and its pale tints doing all the area work. The hue is
+  VozLab's own blue in place of the dealt raspberry, which the sheet allows.
+- **The node is a card**: a rounded rectangle whose height grows with the
+  title, with the title inside, wrapped at word boundaries.
+- **The API returns the display names**, not the localized one: the graph
+  DTOs carry the `{en, es}` map of the class and of the relation, and the
+  client picks its language.
+- **The graph edge is enriched**: it carries the attributes, the author and
+  the dates, not only the topology, so a relation can be expanded like a node.
+- **Both graph engines are tried side by side** in a development-only
+  comparison, and the choice between them is made by looking at them, not by
+  argument. Cytoscape has the wrapped label and the edge programs for free;
+  Sigma has the WebGL renderer and the graph store in the client.
+- **The navigation is a full request per click**: clicking a node re-requests
+  the subgraph rooted at it, at the depth already selected.
+- **No Apache AGE.** The review of 2026-10-21 found that AGE is a query
+  language, not a concurrency mechanism, that the evidence does not show Cypher
+  beating the bounded CTE for this shape, and that the extension is absent
+  from every managed PostgreSQL allow-list. The concurrency work is done with
+  a version column instead. The trigger that would reopen the question is
+  written down in ADR-0028.
+
+- [x] 3.15 The design system: the tokens of the accent ladder, the type, the
+      shell, the bars and the page frames. Result: the direction is the
+      **accent ladder**, dealt from a measured library of real product
+      screens, with the hue of the brand in place of the dealt raspberry
+      and IBM Plex in place of the dealt DM Sans. One `@theme` block holds
+      the raw palette, the **roles** and the geometry; the five old role
+      names are gone and a test fails if one comes back. IBM Plex Sans and
+      Serif are **vendored** with their OFL licence, because the PWA is
+      offline-first. The panels are flat, the elevation is a tone step, the
+      one filled button is the only one, and the accent's share of a screen
+      is measured: **zero** leaves of text in the full accent. The contrast
+      is measured, not assumed (17.7:1 for the ink, 9.5:1 for the accent
+      ink on its tint). The rules live in `docs/design-system.md`.
+- [ ] 3.16 The node card: the shape, the title inside it, and the word wrap
+      that never breaks a word.
+- [ ] 3.17 The two engines side by side: a development-only comparison of
+      Cytoscape and Sigma.js on the same data and the same interactions.
+- [ ] 3.18 The names in the interface's language: the API returns the
+      display-name map of the class and of the relation.
+- [ ] 3.19 The enriched relation: the graph DTO carries the attributes, the
+      author and the dates, and a relation expands like a node.
+- [ ] 3.20 The ranked traversal and the two missing indexes: the nearest
+      nodes become the strongest ones, and the window stops sorting the whole
+      workspace.
+- [ ] 3.21 The navigation by clicking: the exploration view re-requests the
+      subgraph rooted at the clicked node and re-centres on it.
+- [ ] 3.22 The optimistic concurrency: the version column, the
+      compare-and-set, the conflict and its copy.
+- [ ] 3.23 The graph page as a full-bleed canvas: the panels over it, and the
+      even background of the exploration view.
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

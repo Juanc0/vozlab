@@ -84,18 +84,18 @@
   <title>{t('join.pageTitle')}</title>
 </svelte:head>
 
-<section class="mx-auto max-w-prose space-y-6">
+<section class="mx-auto max-w-[39rem] space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{t('join.heading')}</h1>
-    <p class="mt-2 text-ink-muted">
+    <h1>{t('join.heading')}</h1>
+    <p class="mt-2 max-w-measure text-body text-muted">
       {t('join.intro')}
     </p>
   </div>
 
-  <form class="space-y-5 rounded-card border border-line bg-surface p-6" onsubmit={submit}>
+  <form class="space-y-5 rounded-card bg-surface p-6" onsubmit={submit}>
     <div>
-      <label for="event-code" class="block text-sm font-medium text-ink">
-        {t('join.codeLabel')} <span class="font-normal text-ink-muted">{t('common.required')}</span>
+      <label for="event-code" class="field-label">
+        {t('join.codeLabel')} <span class="font-normal text-muted">{t('common.required')}</span>
       </label>
       <input
         id="event-code"
@@ -109,17 +109,17 @@
         aria-required="true"
         aria-invalid={failure === null ? undefined : 'true'}
         aria-describedby={failure === null ? 'event-code-help' : 'event-code-help event-code-error'}
-        class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 font-mono text-sm"
+        class="field mt-1 w-full font-mono"
         bind:value={code}
       />
-      <p id="event-code-help" class="mt-1 text-xs text-ink-muted">
+      <p id="event-code-help" class="mt-1 text-small text-muted">
         {t('join.codeHelp')}
       </p>
     </div>
 
     <div>
-      <label for="event-alias" class="block text-sm font-medium text-ink">
-        {t('join.aliasLabel')} <span class="font-normal text-ink-muted">{t('common.optional')}</span>
+      <label for="event-alias" class="field-label">
+        {t('join.aliasLabel')} <span class="font-normal text-muted">{t('common.optional')}</span>
       </label>
       <input
         id="event-alias"
@@ -128,10 +128,10 @@
         maxlength="100"
         autocomplete="off"
         aria-describedby="event-alias-help"
-        class="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm"
+        class="field mt-1 w-full"
         bind:value={alias}
       />
-      <p id="event-alias-help" class="mt-1 text-xs text-ink-muted">
+      <p id="event-alias-help" class="mt-1 text-small text-muted">
         {t('join.aliasHelp')}
       </p>
     </div>
@@ -140,29 +140,29 @@
       <div
         id="event-code-error"
         role="alert"
-        class="rounded-md border border-line bg-surface-muted p-3 text-sm"
+        class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink"
       >
         {#if failure.code}
-          <p class="font-mono font-semibold text-negative">{failure.code}</p>
+          <p class="font-mono font-semibold text-pill-negative-ink">{failure.code}</p>
         {/if}
-        <p class={failure.code ? 'mt-1 text-ink' : 'text-ink'}>{failure.message}</p>
+        <p class={failure.code ? 'mt-1' : ''}>{failure.message}</p>
       </div>
     {/if}
 
     <button
       type="submit"
-      class="rounded-md bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+      class="btn btn-primary"
       disabled={pending || !hydrated}
     >
       {pending ? t('join.submitting') : t('join.submit')}
     </button>
 
     {#if !hydrated}
-      <p class="text-xs text-ink-muted" role="status">{t('join.preparing')}</p>
+      <p class="text-small text-muted" role="status">{t('join.preparing')}</p>
     {/if}
   </form>
 
-  <p class="text-sm text-ink-muted">
+  <p class="text-body text-muted">
     {t('join.signInInstead')} <a href="/login" class="underline">{t('join.signInLink')}</a>.
   </p>
 </section>

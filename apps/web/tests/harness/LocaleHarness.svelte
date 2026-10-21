@@ -2,14 +2,13 @@
   /**
    * The harness of the language selector.
    *
-   * It renders the shell and the selector together, exactly as the sidebar
-   * does: the tests need a screen whose visible text changes with the
-   * language, and a control that changes it.
+   * The selector lives in the **shell**: the language changes the whole
+   * interface, including the screens that have no navigation, so it is
+   * part of the chrome and not of the navigation column.
+   *
+   * The harness renders the shell alone — the selector comes with it.
    */
   import AppShell from '$lib/components/AppShell.svelte';
-  import LocaleSelector from '$lib/components/LocaleSelector.svelte';
 </script>
 
-<AppShell title="VozLab">
-  <LocaleSelector />
-</AppShell>
+<AppShell title="VozLab" />

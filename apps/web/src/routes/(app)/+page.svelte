@@ -643,10 +643,18 @@
 </svelte:head>
 
 <section class="space-y-6">
+  <!--
+    The title row.
+
+    The title is the one element of the screen that is set in the serif:
+    it says that the page is a document, and the rest of the interface
+    stays in the interface face. The one action of the screen — the
+    filled button — is at the right of the row.
+  -->
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-semibold tracking-tight">{t('graph.heading')}</h1>
-      <p class="mt-2 max-w-prose text-ink-muted">
+      <h1>{t('graph.heading')}</h1>
+      <p class="mt-2 max-w-measure text-body text-muted">
         <RichText
           text={t('graph.intro', {
             maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES),
@@ -659,24 +667,24 @@
     <div class="flex flex-col items-start gap-1 sm:items-end">
       <button
         type="button"
-        class="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+        class="btn btn-primary"
         disabled={ontology === null}
         onclick={openNodeDialog}
       >
         {t('graph.newNode')}
       </button>
       {#if ontologyError !== null}
-        <p role="alert" class="text-xs text-negative">
+        <p role="alert" class="text-small text-pill-negative-ink">
           <span class="font-mono">{ontologyError.code}</span> — {ontologyError.message}
         </p>
       {:else if ontologyLoading}
-        <p class="text-xs text-ink-muted">{t('graph.readingOntology')}</p>
+        <p class="text-small text-muted">{t('graph.readingOntology')}</p>
       {/if}
     </div>
   </div>
 
   {#if notice !== null}
-    <p role="status" class="rounded-md border border-line bg-surface px-4 py-3 text-sm">
+    <p role="status" class="rounded-control bg-raised px-4 py-3 text-body">
       {notice.text}
       {#if notice.link}
         <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
@@ -694,9 +702,7 @@
     down, where nobody finds it.
   -->
   <div
-    class="grid gap-6 {inspectorWide.matches && inspectorOpen
-      ? 'xl:grid-cols-[minmax(0,1fr)_24rem]'
-      : ''}"
+    class="grid gap-6 {inspectorWide.matches && inspectorOpen ? 'xl:grid-cols-[minmax(0,1fr)_24rem]' : ''}"
   >
     <div class="min-w-0 space-y-6">
       <!--
@@ -704,37 +710,47 @@
         has no root — it presents a node and lets the user choose which one.
       -->
       {#if viewMode === 'subgraph'}
-        <section aria-labelledby="root-picker-heading" class="rounded-card border border-line bg-surface p-4">
-          <h2 id="root-picker-heading" class="text-base font-semibold tracking-tight">
+        <section aria-labelledby="root-picker-heading" class="rounded-card bg-surface p-4">
+          <h2 id="root-picker-heading">
             {t('graph.rootHeading')}
           </h2>
-          <p class="mt-1 text-sm text-ink-muted">
+          <p class="mt-1 text-body text-muted">
             {t('graph.rootHelp')}
           </p>
 
           {#if rootsError}
-            <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+            <p role="alert" class="mt-3 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
               <span class="font-mono">{rootsError.code}</span> — {rootsError.message}
             </p>
           {:else if rootsLoading && rootNodes.length === 0}
-            <p role="status" class="mt-3 text-sm text-ink-muted">{t('graph.loadingNodes')}</p>
+            <!--
+              The loading state keeps the shape of the list it replaces:
+              flat grey bars at the real size of the rows, and no shift when
+              the nodes land.
+            -->
+            <div class="mt-3 space-y-3" role="status" aria-live="polite">
+              <span class="sr-only">{t('graph.loadingNodes')}</span>
+              {#each [0, 1, 2, 3, 4] as row (row)}
+                <div class="skeleton w-full"></div>
+              {/each}
+            </div>
           {:else if rootNodes.length === 0}
-            <p class="mt-3 text-sm text-ink-muted">
+            <p class="mt-3 text-body text-muted">
               {t('graph.noNodes')}
             </p>
           {:else}
-            <ul class="mt-3 divide-y divide-line">
+            <ul class="mt-3 divide-y divide-rule">
               {#each rootNodes as node (node.id)}
                 <li class="flex flex-wrap items-baseline justify-between gap-2 py-2">
                   <button
                     type="button"
-                    class="rounded text-left text-brand-900 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-700 aria-[current=true]:font-semibold"
+                    class="rounded-control text-left text-text hover:bg-raised hover:text-accent-ink hover:underline hover:underline-offset-2 aria-[current=true]:font-semibold"
                     aria-current={rootId === node.id ? 'true' : undefined}
                     onclick={() => selectRoot(node.id)}
                   >
                     {node.title}
                   </button>
-                  <span class="text-xs text-ink-muted">{node.typeKey} · {node.status}</span>
+                  <span class="text-small text-muted">{node.typeKey} · {node.status}</span>
                 </li>
               {/each}
             </ul>
@@ -742,7 +758,7 @@
             {#if rootCursor !== null}
               <button
                 type="button"
-                class="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+                class="btn btn-secondary mt-3"
                 disabled={rootsLoading}
                 onclick={() => loadRoots(rootCursor)}
               >
@@ -753,13 +769,13 @@
         </section>
       {/if}
 
-      <section aria-labelledby="canvas-heading" class="rounded-card border border-line bg-surface p-4">
+      <section aria-labelledby="canvas-heading" class="rounded-card bg-surface p-4">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="canvas-heading" class="text-base font-semibold tracking-tight">
+          <h2 id="canvas-heading">
             {viewMode === 'explore' ? t('explore.heading') : t('graph.subgraphHeading')}
           </h2>
 
-          <div class="flex flex-wrap items-end gap-3 text-sm">
+          <div class="flex flex-wrap items-end gap-3 text-body">
             <!--
               The switch between the two views of the graph. It is a piece of
               the state of the page: the URL stays clean and both views stay
@@ -771,7 +787,7 @@
             -->
             <fieldset>
               <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
-              <div class="flex flex-wrap gap-1">
+              <div class="inline-flex gap-1 rounded-control bg-raised p-1">
                 {#each VIEW_MODES as mode (mode)}
                   <input
                     type="radio"
@@ -783,7 +799,7 @@
                   />
                   <label
                     for="graph-view-{mode}"
-                    class="pointer-coarse:min-h-11 cursor-pointer rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+                    class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-3 py-1.5 text-body font-medium text-muted hover:text-text peer-checked:bg-surface peer-checked:text-text peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
                   >
                     {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
                   </label>
@@ -793,12 +809,12 @@
 
             {#if viewMode === 'subgraph'}
               <div>
-                <label for="subgraph-depth" class="block text-xs text-ink-muted">
+                <label for="subgraph-depth" class="block text-small text-muted">
                   {t('graph.depthLabel')}
                 </label>
                 <select
                   id="subgraph-depth"
-                  class="mt-0.5 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+                  class="field mt-0.5"
                   value={depth}
                   onchange={handleDepthChange}
                 >
@@ -809,7 +825,7 @@
               </div>
 
               <div>
-                <label for="subgraph-limit" class="block text-xs text-ink-muted">
+                <label for="subgraph-limit" class="block text-small text-muted">
                   {t('graph.maxNodesLabel')}
                 </label>
                 <input
@@ -817,7 +833,7 @@
                   type="number"
                   min="1"
                   max={SUBGRAPH_MAX_NODES}
-                  class="mt-0.5 w-24 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+                  class="field mt-0.5 w-24"
                   value={limit}
                   onchange={handleLimitChange}
                 />
@@ -832,7 +848,7 @@
             -->
             <button
               type="button"
-              class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+              class="btn btn-secondary"
               aria-expanded={inspectorOpen}
               aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
               onclick={(event) => {
@@ -848,10 +864,10 @@
           </div>
         </div>
 
-        <p class="mt-1 text-xs text-ink-muted">{t('graph.modeHint')}</p>
+        <p class="mt-1 text-small text-muted">{t('graph.modeHint')}</p>
 
         {#if viewMode === 'subgraph'}
-          <p class="mt-1 text-xs text-ink-muted">
+          <p class="mt-1 text-small text-muted">
             {t('graph.bounds', {
               depth: formatNumber(locale.locale, depth),
               limit: formatNumber(locale.locale, limit),
@@ -861,10 +877,10 @@
           </p>
 
           {#if graphError}
-            <p role="alert" class="mt-3 rounded-md border border-negative/30 bg-negative/5 p-3 text-sm">
+            <p role="alert" class="mt-3 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink">
               <span class="font-mono">{graphError.code}</span> — {graphError.message}
               {#if graphLoaded}
-                <span class="mt-1 block text-ink-muted">
+                <span class="mt-1 block text-muted">
                   {t('graph.staleGraph')}
                 </span>
               {/if}
@@ -873,13 +889,19 @@
 
           <div class="mt-4">
             {#if rootId === null}
-              <p class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
+              <p class="rounded-card border border-dashed border-border p-4 text-center text-body text-muted">
                 {t('graph.pickRoot')}
               </p>
             {:else if graphLoading && !graphLoaded}
-              <p role="status" class="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">
-                {t('graph.loadingSubgraph')}
-              </p>
+              <!--
+                The canvas has its own shape: the loading state is the flat
+                grey band of the canvas, and the layout does not move when
+                the graph lands.
+              -->
+              <div role="status" aria-live="polite">
+                <span class="sr-only">{t('graph.loadingSubgraph')}</span>
+                <div class="h-72 rounded-card bg-raised"></div>
+              </div>
             {:else if graphLoaded}
               <GraphCanvas
                 nodes={graphNodes}
@@ -913,7 +935,7 @@
         -->
         <div class="mt-6">
           {#if viewMode === 'explore'}
-            <p class="mb-2 text-xs text-ink-muted">{t('graph.exploreListNote')}</p>
+            <p class="mb-2 text-small text-muted">{t('graph.exploreListNote')}</p>
           {/if}
 
           <GraphListView
@@ -974,7 +996,7 @@
     {/if}
   </div>
 
-  <p class="mt-4 text-xs text-ink-muted">
+  <p class="mt-4 text-small text-muted">
     <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
   </p>
 

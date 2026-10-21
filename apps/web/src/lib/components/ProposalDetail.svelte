@@ -239,57 +239,57 @@
 <article aria-labelledby={headingId} class="space-y-4">
   <header>
     <div class="flex flex-wrap items-center gap-2">
-      <h2 id={headingId} class="text-base font-semibold tracking-tight">
+      <h2 id={headingId}>
         {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
-      <span class="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-ink-muted">
+      <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
         {proposal.status}
       </span>
     </div>
 
-    <dl class="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-      <dt class="text-ink-muted">{t('proposals.target')}</dt>
+    <dl class="mt-2 grid gap-x-4 gap-y-1 text-body sm:grid-cols-[auto_1fr]">
+      <dt class="text-muted">{t('proposals.target')}</dt>
       <dd>
         {proposal.targetType}
         {#if target?.label}
-          <span class="text-ink-muted">— {target.label}</span>
+          <span class="text-muted">— {target.label}</span>
         {/if}
-        <span class="block font-mono text-xs break-all text-ink-muted">{proposal.targetId}</span>
+        <span class="block font-mono text-small break-all text-muted">{proposal.targetId}</span>
       </dd>
 
-      <dt class="text-ink-muted">{t('proposals.author')}</dt>
-      <dd class="font-mono text-xs break-all">{proposal.proposerHash}</dd>
+      <dt class="text-muted">{t('proposals.author')}</dt>
+      <dd class="font-mono text-small break-all">{proposal.proposerHash}</dd>
 
-      <dt class="text-ink-muted">{t('proposals.created')}</dt>
+      <dt class="text-muted">{t('proposals.created')}</dt>
       <dd>
         <time datetime={proposal.createdAt}>
           {formatDate(locale.locale, proposal.createdAt)}
         </time>
-        <span class="text-ink-muted">
+        <span class="text-muted">
           ({t('proposals.daysAgo', { count: formatNumber(locale.locale, ageDays) })})
         </span>
       </dd>
 
       {#if proposal.resolvedAt}
-        <dt class="text-ink-muted">{t('proposals.resolved')}</dt>
+        <dt class="text-muted">{t('proposals.resolved')}</dt>
         <dd>
           <time datetime={proposal.resolvedAt}>
             {formatDate(locale.locale, proposal.resolvedAt)}
           </time>
           {#if proposal.resolvedBy}
-            <span class="block font-mono text-xs break-all text-ink-muted">{proposal.resolvedBy}</span>
+            <span class="block font-mono text-small break-all text-muted">{proposal.resolvedBy}</span>
           {/if}
         </dd>
       {/if}
     </dl>
 
     {#if proposal.justification}
-      <p class="mt-2 text-sm">{proposal.justification}</p>
+      <p class="mt-2 text-body">{proposal.justification}</p>
     {/if}
   </header>
 
   <section aria-labelledby={deltaHeadingId}>
-    <h3 id={deltaHeadingId} class="text-xs font-semibold tracking-wide uppercase">
+    <h3 id={deltaHeadingId}>
       {t('proposals.proposedChange')}
     </h3>
     <div class="mt-1">
@@ -298,7 +298,7 @@
   </section>
 
   <section aria-labelledby={voteHeadingId}>
-    <h3 id={voteHeadingId} class="text-xs font-semibold tracking-wide uppercase">
+    <h3 id={voteHeadingId}>
       {t('proposals.voteHeading')}
     </h3>
     <div class="mt-1">
@@ -314,26 +314,26 @@
   </section>
 
   <section aria-labelledby={resolutionHeadingId}>
-    <h3 id={resolutionHeadingId} class="text-xs font-semibold tracking-wide uppercase">
+    <h3 id={resolutionHeadingId}>
       {t('proposals.resolutionHeading')}
     </h3>
 
     {#if notice}
-      <p role="status" class="mt-1 rounded-md border border-line bg-surface-muted p-2 text-sm">
+      <p role="status" class="mt-1 rounded-control bg-raised p-2 text-body">
         {notice}
       </p>
     {/if}
 
     {#if actionError}
-      <p role="alert" class="mt-1 rounded-md border border-negative/30 bg-negative/5 p-2 text-sm text-negative">
+      <p role="alert" class="mt-1 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
         <span class="font-mono">{actionError.code}</span> — {actionError.message}
       </p>
     {/if}
 
     {#if permissions === null}
-      <p role="status" class="mt-1 text-sm text-ink-muted">{t('proposals.readingTarget')}</p>
+      <p role="status" class="mt-1 text-body text-muted">{t('proposals.readingTarget')}</p>
     {:else if proposal.status !== 'PENDING'}
-      <p class="mt-1 text-sm text-ink-muted">
+      <p class="mt-1 text-body text-muted">
         {t('proposals.notOpen', { status: proposal.status })}
       </p>
     {:else}
@@ -341,7 +341,7 @@
         {#if permissions.canResolve}
           <button
             type="button"
-            class="rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+            class="btn btn-primary"
             disabled={resolving}
             onclick={() => void resolve('approve')}
           >
@@ -349,7 +349,7 @@
           </button>
           <button
             type="button"
-            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="btn btn-secondary"
             disabled={resolving}
             onclick={() => void resolve('reject')}
           >
@@ -360,7 +360,7 @@
         {#if permissions.canAutoApply}
           <button
             type="button"
-            class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="btn btn-secondary"
             disabled={resolving}
             onclick={() => void resolve('auto-apply')}
           >
@@ -370,13 +370,13 @@
       </div>
 
       {#if !permissions.canResolve}
-        <p class="mt-1 text-sm text-ink-muted">
+        <p class="mt-1 text-body text-muted">
           {t('proposals.belongsToMaintainer')}
         </p>
       {/if}
 
       {#if !permissions.canAutoApply}
-        <p class="mt-1 text-sm text-ink-muted">
+        <p class="mt-1 text-body text-muted">
           {t('proposals.autoApplyBlocked', { reason: autoApplyBlockerReason() })}
         </p>
       {/if}

@@ -7,6 +7,28 @@
     <meta name="description" content="VozLab — cliente de co-creación para el grafo de conocimiento." />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
     <!--
+      The two faces of the interface, preloaded.
+
+      IBM Plex Sans is the interface face and it is on every screen;
+      IBM Plex Serif is the title face and it is on the first screen of
+      every page. They are vendored under `static/fonts/`, so the preload
+      costs nothing but a request the browser was going to make anyway.
+    -->
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/ibm-plex-sans-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/ibm-plex-serif-latin-700-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <!--
       The manifest link is declared here on purpose: SvelteKit renders `app.html`
       for SSR, so `vite-plugin-pwa`'s `transformIndexHtml` hook never runs for
       this template (SvelteKit does not emit an `index.html`).
