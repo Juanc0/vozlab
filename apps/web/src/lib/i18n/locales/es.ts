@@ -32,7 +32,22 @@ export const es = {
   /** The shell: the skip link, the header and the footer. */
   shell: {
     skipToContent: 'Saltar al contenido',
+    openMenu: 'Abrir el menú de navegación',
     footer: 'VozLab — cliente de co-creación para el grafo de conocimiento.'
+  },
+
+  /** The drawer of the navigation: the column of a narrow screen. */
+  drawer: {
+    label: 'Menú de navegación',
+    heading: 'Navegación',
+    close: 'Cerrar el menú de navegación'
+  },
+
+  /** The sheet of the inspector: the column of a narrow screen. */
+  sheet: {
+    label: 'Inspección',
+    heading: 'Inspección',
+    close: 'Cerrar el inspector'
   },
 
   /** The sidebar: the sections, the identity and the sign-out. */

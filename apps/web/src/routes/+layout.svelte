@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { page } from '$app/state';
   import '../app.css';
   import AppShell from '$lib/components/AppShell.svelte';
   import { ApiClient } from '$lib/api/client';
@@ -30,6 +31,16 @@
 
   provideAppState({ session, workspace, api, locale });
 
+  /**
+   * Whether the page has a navigation.
+   *
+   * The button of the menu only makes sense where there is something to
+   * open: the login and the join have no navigation. The **route id** says
+   * which group the page belongs to — the group is a part of the route, not
+   * of the URL, and the URL stays clean (FR-04).
+   */
+  const navigation = $derived(page.route.id?.startsWith('/(app)') ?? false);
+
   onMount(() => {
     // The connectivity drives the offline banner and the block of the
     // writes: both are read from the browser, never from the server.
@@ -49,6 +60,6 @@
   });
 </script>
 
-<AppShell title="VozLab">
+<AppShell title="VozLab" {navigation}>
   {@render children?.()}
 </AppShell>

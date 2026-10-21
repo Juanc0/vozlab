@@ -10,7 +10,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | --- | --- |
 | API core (nodes, edges, proposals, ontology, discussions, votes) | Done — Phases 0/1/1R/1S/1T, 45 tasks verified |
 | Auth flow (OIDC login/callback, refresh/logout, `/auth/me`, event QR join) | Done — Batch 1V; requires a configured IdP |
-| Tests | 33 API files / 178 TypeScript unit tests + 44 web files / 365 tests green (`pnpm test`); opt-in Playwright suite of 10 tests (`pnpm --filter @vozlab/web test:e2e`); opt-in integration suite (5 files / 29 tests); Python runtime 105 tests (`uv run pytest`) |
+| Tests | 33 API files / 178 TypeScript unit tests + 47 web files / 376 tests green (`pnpm test`); opt-in Playwright suite of 10 tests (`pnpm --filter @vozlab/web test:e2e`); opt-in integration suite (5 files / 29 tests); Python runtime 105 tests (`uv run pytest`) |
 | Build / type-check | Green (`pnpm turbo run build type-check`) |
 | CI | Thin GitHub Actions: TypeScript gate + Python gate (uv/pytest/ruff) + worker image builds |
 | Lint | **Red debt** — 24 pre-existing `@typescript-eslint/no-explicit-any` errors |
@@ -19,7 +19,7 @@ The platform is specified as a Fastify API plus a SvelteKit 5 PWA, three Python 
 | Source registry | Done — `meta.data_sources` + agent-only `GET /api/v1/ingestion/resolve-source`; no management route yet |
 | Extractor (Agent 1) | Partial — masks PII, extracts a draft and creates a `PENDING` node; nothing publishes `stream:source_raw` yet |
 | Consolidator, AGE adapter, SSE, metrics | Not built |
-| PWA (SvelteKit 5) | Working — builds, serves SSR, ships a manifest and a service worker (3.1), with the per-tab workspace state and the HTTP client (3.2), the route groups with the session guard (3.3), the Cytoscape canvas (3.4), the creation forms and the governance UI (proposal review, discussions, optimistic voting) (3.5), the offline shell with its accessibility pass (3.6), the Playwright suite (3.7) and the interface in Spanish and English (3.10) |
+| PWA (SvelteKit 5) | Working — builds, serves SSR, ships a manifest and a service worker (3.1), with the per-tab workspace state and the HTTP client (3.2), the route groups with the session guard (3.3), the Cytoscape canvas (3.4), the creation forms and the governance UI (proposal review, discussions, optimistic voting) (3.5), the offline shell with its accessibility pass (3.6), the Playwright suite (3.7), the interface in Spanish and English (3.10), the exploration view (3.12), the inspector (3.13) and the responsive layout (3.14) |
 
 The API now implements the real auth flow. No IdP runs in Compose and the PWA login screen is Phase 3, so local development still uses `db:mint-token`; see [docs/README.md](docs/README.md) for the requirement-by-requirement status.
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import {
@@ -27,10 +28,12 @@
   import GraphListView from '$lib/components/GraphListView.svelte';
   import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { formatNumber } from '$lib/i18n';
   import { nodeSelection, type InspectorSelection } from '$lib/inspector/selection';
+  import { MediaQuery } from '$lib/layout/media.svelte';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import RichText from '$lib/components/RichText.svelte';
   import type { PageProps } from './$types';
@@ -98,8 +101,50 @@
    *
    * The canvas needs the room: the inspector is folded away when the user
    * wants to read the titles of the nodes.
+   *
+   * The state is **one** for the two shapes of the inspector: in a wide
+   * screen it folds the column, in a narrow one it opens the sheet. The
+   * width of the window decides which one it is.
    */
   let inspectorOpen = $state(true);
+
+  /**
+   * The width at which the inspector is a column of the page.
+   *
+   * Below it the inspector is a sheet that comes over the content: as a
+   * column it would fall after the whole list of nodes, thousands of pixels
+   * down, where nobody finds it.
+   */
+  const inspectorWide = new MediaQuery('(min-width: 1280px)');
+
+  /** The id of the panel of the inspector — the toggle points at it. */
+  const INSPECTOR_PANEL_ID = 'vozlab-inspector-panel';
+
+  /** The id of the sheet of the inspector — the toggle points at it. */
+  const INSPECTOR_SHEET_ID = 'vozlab-inspector-sheet';
+
+  onMount(() => {
+    inspectorWide.attach();
+
+    return () => {
+      inspectorWide.destroy();
+    };
+  });
+
+  /**
+   * The inspector follows the width of the window.
+   *
+   * A wide window shows the column and a narrow one shows the sheet, and
+   * the sheet starts closed: a panel that covers the whole canvas of a
+   * phone the moment it arrives is a panel nobody asked for.
+   */
+  $effect(() => {
+    const wide = inspectorWide.matches;
+
+    untrack(() => {
+      inspectorOpen = wide;
+    });
+  });
 
   /** The active metamodel — it drives the creation forms. */
   let ontology = $state.raw<OntologyResponseDto | null>(null);
@@ -580,6 +625,17 @@
     input.value = String(next);
     limit = next;
   }
+
+  /**
+   * Shows or hides the inspector.
+   *
+   * One control, two behaviours: in a wide screen it folds the column of
+   * the page and in a narrow one it opens the sheet that comes over the
+   * content.
+   */
+  function toggleInspector(): void {
+    inspectorOpen = !inspectorOpen;
+  }
 </script>
 
 <svelte:head>
@@ -631,14 +687,16 @@
   <!--
     The canvas and the inspector share the width of the window.
 
-    The inspector can be folded away: the canvas needs the room to read the
-    titles of the nodes, and the toggle that folds it is the first control
-    of the column.
+    Above `xl` the inspector is a column of the page and it can be folded
+    away: the canvas needs the room to read the titles of the nodes. Below
+    `xl` the inspector is a **sheet** that comes over the content: as a
+    column it would fall after the whole list of nodes, thousands of pixels
+    down, where nobody finds it.
   -->
   <div
-    class={inspectorOpen
-      ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]'
-      : 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_3rem]'}
+    class="grid gap-6 {inspectorWide.matches && inspectorOpen
+      ? 'xl:grid-cols-[minmax(0,1fr)_24rem]'
+      : ''}"
   >
     <div class="min-w-0 space-y-6">
       <!--
@@ -725,7 +783,7 @@
                   />
                   <label
                     for="graph-view-{mode}"
-                    class="cursor-pointer rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+                    class="pointer-coarse:min-h-11 cursor-pointer rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
                   >
                     {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
                   </label>
@@ -765,6 +823,28 @@
                 />
               </div>
             {/if}
+
+            <!--
+              The toggle of the inspector. It is the **same** control in the
+              two widths: it folds the column of a wide screen and it opens
+              the sheet of a narrow one. It lives in the toolbar because it
+              has to be reachable when the panel is closed.
+            -->
+            <button
+              type="button"
+              class="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
+              aria-expanded={inspectorOpen}
+              aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
+              onclick={(event) => {
+                // Safari does not focus a button that is clicked: the focus
+                // is given to the button by hand, or the panel cannot give
+                // it back when it closes.
+                event.currentTarget.focus();
+                toggleInspector();
+              }}
+            >
+              {inspectorOpen ? t('inspector.collapse') : t('inspector.expand')}
+            </button>
           </div>
         </div>
 
@@ -851,23 +931,47 @@
     </div>
 
     <!--
-      The inspector: the one column of the page. It shows the selected node
-      or relation, and it is shared by the two views of the graph.
+      The inspector: the one panel of the selected thing. It is shared by
+      the two views of the graph.
+
+      It is a **column** of the page in a wide window and a **sheet** over
+      the content in a narrow one. Only one of the two is ever in the DOM:
+      the inspector carries the ids of its controls.
     -->
-    <div class="min-w-0">
-      <Inspector
-        {selection}
-        nodes={listNodes}
-        {ledger}
+    {#if inspectorWide.matches}
+      {#if inspectorOpen}
+        <div class="min-w-0">
+          <Inspector
+            {selection}
+            nodes={listNodes}
+            {ledger}
+            panelId={INSPECTOR_PANEL_ID}
+            onsuggest={openCorrection}
+            onrelate={openEdgeDialog}
+            reconcileEdge={reconcileEdgeScore}
+          />
+        </div>
+      {/if}
+    {:else}
+      <Sheet
         open={inspectorOpen}
-        ontoggle={(open) => {
-          inspectorOpen = open;
+        panelId={INSPECTOR_SHEET_ID}
+        onclose={() => {
+          inspectorOpen = false;
         }}
-        onsuggest={openCorrection}
-        onrelate={openEdgeDialog}
-        reconcileEdge={reconcileEdgeScore}
-      />
-    </div>
+      >
+        <Inspector
+          {selection}
+          nodes={listNodes}
+          {ledger}
+          panelId={INSPECTOR_PANEL_ID}
+          showHeading={false}
+          onsuggest={openCorrection}
+          onrelate={openEdgeDialog}
+          reconcileEdge={reconcileEdgeScore}
+        />
+      </Sheet>
+    {/if}
   </div>
 
   <p class="mt-4 text-xs text-ink-muted">

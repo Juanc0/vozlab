@@ -368,13 +368,13 @@
   a `role="img"` hides its own subtree from the reader, and the badges of the
   nodes have to be reachable with the keyboard.
 -->
-<div class="relative h-full min-h-[30rem] w-full">
+<div class="relative h-[60svh] min-h-72 w-full">
   <div
     bind:this={container}
     role="img"
     aria-label={t('explore.canvasLabel')}
     aria-describedby={descriptionId}
-    class="h-full min-h-[30rem] w-full overflow-hidden rounded-card border border-line bg-surface"
+    class="h-full min-h-72 w-full overflow-hidden rounded-card border border-line bg-surface"
   ></div>
 
   <!--
@@ -383,6 +383,10 @@
     They are real buttons over the picture, so the expansion is operable
     with the keyboard and announced. The layer is a toolbar with a single
     tab stop: the arrow keys move from one badge to the next.
+
+    The **button** is the target and the **dot** is its face: on a touch
+    device the target grows to forty-four pixels and the dot stays the size
+    it is drawn at, so the badge does not cover the node it belongs to.
   -->
   <div
     bind:this={overlay}
@@ -410,7 +414,7 @@
           data-node-id={node.id}
           data-node-width={position.width}
           data-node-height={position.height}
-          class="absolute flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line-strong bg-surface text-[10px] leading-none font-semibold text-ink shadow-sm hover:bg-surface-muted focus-visible:opacity-100 {shown
+          class="absolute grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center text-[10px] leading-none font-semibold text-ink focus-visible:opacity-100 {shown
             ? 'pointer-events-auto opacity-100'
             : 'pointer-events-none opacity-0'}"
           style="left: {position.x + position.width / 2 + BADGE_GAP}px; top: {position.y -
@@ -434,7 +438,11 @@
             hidePreview();
           }}
         >
-          {expanded ? '−' : '+'}
+          <span
+            class="grid h-4 w-4 place-items-center rounded-full border border-line-strong bg-surface shadow-sm hover:bg-surface-muted"
+          >
+            {expanded ? '−' : '+'}
+          </span>
         </button>
       {/if}
     {/each}

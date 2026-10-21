@@ -273,8 +273,18 @@ Requested after 3.7, to present the product to the university community.
       **correction proposal**; a node has no direct edit route at all, and
       the interface says so. The column is collapsible so the canvas gets
       the room, and the graph page is no longer capped at `max-w-6xl`.
-- [ ] 3.14 A responsive layout: mobile-first, the panels become sheets, and
-      the canvas follows the window when it resizes.
+- [x] 3.14 A responsive layout: mobile-first, the panels become sheets, and
+      the canvas follows the window when it resizes. Result: the base styles
+      are the phone's and the breakpoints add the columns. The navigation
+      becomes a **drawer** below `md` and the inspector a **sheet** from the
+      right below `xl` — where before it fell 6 000 px down the page, where
+      nobody finds it. Both are real modals: a backdrop, a focus trap,
+      <kbd>Escape</kbd> and the focus returned, and the background is
+      `inert`. **The canvas now follows the window**: a `ResizeObserver`
+      calls `cy.resize()` and nothing else — no re-fit, no layout — so the
+      picture stays where the reader left it. Verified at 375, 768 and
+      1440 px: no horizontal scroll, the drawing is redrawn at the new size
+      and the graph does not move.
 
 ## Phase 4 — Platform, QA and operations
 

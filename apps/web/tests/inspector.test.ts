@@ -37,7 +37,6 @@ function props(overrides: Record<string, unknown> = {}): Record<string, unknown>
     selection: { kind: 'node', id: NODE_A.id },
     nodes: [NODE_A, NODE_B],
     ledger: new VoteLedger(),
-    open: true,
     ...overrides
   };
 }
@@ -47,15 +46,14 @@ function renderInspector(
   options: { authorHash?: string | null } = {},
   overrides: Record<string, unknown> = {},
   fetchMock?: ReturnType<typeof vi.fn>
-): { fetchMock: ReturnType<typeof vi.fn>; ontoggle: ReturnType<typeof vi.fn> } {
-  const ontoggle = vi.fn();
+): { fetchMock: ReturnType<typeof vi.fn> } {
   const harness = renderGovernance(
     Inspector,
     { authorHash: options.authorHash ?? null, fetch: fetchMock },
-    props({ ontoggle, ...overrides })
+    props(overrides)
   );
 
-  return { fetchMock: harness.fetchMock, ontoggle };
+  return { fetchMock: harness.fetchMock };
 }
 
 describe('the inspector', () => {
@@ -223,17 +221,6 @@ describe('the inspector', () => {
 
     // The box to answer.
     expect(screen.getByLabelText('Escribe un comentario')).toBeInTheDocument();
-  });
-
-  it('hides and shows the inspector with the toggle, and announces its state', async () => {
-    const { ontoggle } = renderInspector();
-
-    const toggle = screen.getByRole('button', { name: 'Ocultar el inspector' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    await fireEvent.click(toggle);
-
-    expect(ontoggle).toHaveBeenCalledWith(false);
   });
 
   it('surfaces the refusal of a direct edition and keeps what the user typed', async () => {

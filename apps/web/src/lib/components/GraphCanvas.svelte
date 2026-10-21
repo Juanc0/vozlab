@@ -114,13 +114,17 @@
   The canvas is a picture: a screen reader cannot see it. The container
   therefore carries an accessible name and points at a short description, and
   the list view below is the real alternative.
+
+  Its height is a fraction of the **visual** viewport (`svh`, not `vh`: the
+  chrome of a mobile browser changes the height of `vh`, and a canvas that
+  is taller than the screen is a canvas that cannot be seen).
 -->
 <div
   bind:this={container}
   role="img"
   aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
-  class="h-full min-h-96 w-full overflow-hidden rounded-card border border-line bg-surface"
+  class="h-[60svh] min-h-72 w-full overflow-hidden rounded-card border border-line bg-surface"
 ></div>
 
 <p id={descriptionId} class="mt-2 text-sm text-ink-muted">

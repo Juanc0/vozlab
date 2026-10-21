@@ -56,6 +56,38 @@
   }
 
   /*
+   * The minimum size of a target on a touch device.
+   *
+   * 44 × 44 px is the size the platforms ask for, and it is the size a
+   * finger needs: a control that is smaller is hard to hit, and the ones
+   * that suffer the most are the rows of a list and the badges of a canvas.
+   *
+   * The rule is **only** for a coarse pointer: a mouse does not need a
+   * button of forty-four pixels, and the density of a wide screen is part
+   * of what makes it readable.
+   */
+  @media (pointer: coarse) {
+    button,
+    a[href]:not(.sr-only),
+    select,
+    input:not([type='radio']):not([type='checkbox']) {
+      min-height: 2.75rem;
+    }
+
+    button,
+    a[href]:not(.sr-only),
+    select {
+      min-width: 2.75rem;
+    }
+
+    input[type='checkbox']:not(.sr-only),
+    input[type='radio']:not(.sr-only) {
+      min-height: 1.5rem;
+      min-width: 1.5rem;
+    }
+  }
+
+  /*
    * The motion is an enhancement, never the only way something is
    * understood (WCAG 2.2 SC 2.3.3 / 2.2.2). A user who asked for less
    * motion gets none of it.

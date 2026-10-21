@@ -16,6 +16,7 @@
    * and `Escape` itself. Both paths behave the same way for the user.
    */
   import type { Snippet } from 'svelte';
+  import { focusFirstControl, trapTabKey } from '$lib/a11y/focus-trap';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
@@ -47,10 +48,6 @@
   /** `true` when the DOM implements `showModal()` (a real browser). */
   let native = false;
 
-  /** The elements a keyboard user can reach inside the dialog. */
-  const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
   /**
    * Opens and closes the dialog with the focus.
    *
@@ -77,7 +74,7 @@
       element.addEventListener('keydown', onKeydown);
     }
 
-    focusFirst(element);
+    focusFirstControl(element);
 
     return () => {
       element.removeEventListener('keydown', onKeydown);
@@ -124,7 +121,8 @@
    * The keyboard of the fallback path.
    *
    * A native modal dialog traps the focus and closes on `Escape` by itself;
-   * the fallback has to do both.
+   * the fallback has to do both. The trap is the one of the panels of the
+   * app (`$lib/a11y/focus-trap`): there is only one.
    */
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
@@ -134,58 +132,30 @@
     }
 
     const element = dialog;
-    if (event.key !== 'Tab' || element === undefined) {
+    if (element === undefined) {
       return;
     }
 
-    const focusable = focusableElements(element);
-    if (focusable.length === 0) {
-      event.preventDefault();
-      element.focus();
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-
-    if (event.shiftKey && (active === first || active === element)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (active === last || active === element)) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  /** Moves the focus to the first control of the dialog. */
-  function focusFirst(element: HTMLElement): void {
-    // A control may ask for the focus explicitly (`data-autofocus`): the
-    // first field of a form is more useful than the close button.
-    const preferred = element.querySelector<HTMLElement>('[data-autofocus]');
-    const focusable = focusableElements(element);
-    (preferred ?? focusable[0] ?? element).focus();
-  }
-
-  /** The reachable controls of the dialog. */
-  function focusableElements(root: HTMLElement): HTMLElement[] {
-    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-      (element) => !element.hasAttribute('hidden') && element.closest('[hidden]') === null
-    );
+    trapTabKey(event, element);
   }
 </script>
 
 <dialog
   bind:this={dialog}
   id="vozlab-dialog-{uid}"
-  class="m-auto w-[min(34rem,calc(100vw-2rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
+  class="m-auto w-[min(34rem,calc(100vw-1rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
   aria-labelledby={titleId}
   aria-describedby={describedby}
   tabindex="-1"
   onclose={handleClosed}
 >
   {#if open}
-    <div class="max-h-[85vh] overflow-y-auto p-6">
+    <!--
+      The dialog fits a phone: its height is a fraction of the **visual**
+      viewport (`dvh`, not `vh`: the chrome of a mobile browser changes the
+      height of `vh`) and its content scrolls inside it.
+    -->
+    <div class="max-h-[85dvh] overflow-y-auto p-4 sm:p-6">
       <div class="flex items-start justify-between gap-4">
         <h2 id={titleId} class="text-lg font-semibold tracking-tight">{title}</h2>
         <button

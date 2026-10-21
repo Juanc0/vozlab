@@ -13,6 +13,10 @@
    * The column is **collapsible**: the canvas needs the room, and the
    * toggle announces its state (`aria-expanded`).
    *
+   * The toggle itself belongs to the page: it is the same control in a wide
+   * screen (it folds the column) and in a narrow one (it opens the sheet),
+   * and it has to be reachable when the panel is closed.
+   *
    * The tabs are a real tablist: the arrow keys move between them, the
    * selected one is the only one in the tab order, and the panel is
    * labelled by the tab it shows.
@@ -39,10 +43,20 @@
     nodes?: NodeDto[];
     /** The session-local state of the votes. */
     ledger: VoteLedger;
-    /** `true` while the column is open. */
-    open: boolean;
-    /** Called when the user shows or hides the column. */
-    ontoggle?: (open: boolean) => void;
+    /**
+     * The id of the panel of the tabs.
+     *
+     * The control that opens the inspector points at it with
+     * `aria-controls`, so the id cannot be a random one: the page owns it.
+     */
+    panelId?: string;
+    /**
+     * `false` when the panel that holds the inspector already names it.
+     *
+     * The sheet of a narrow screen has its own heading: the inspector must
+     * not say the same thing twice.
+     */
+    showHeading?: boolean;
     /** Called when the user wants to propose a correction of the selection. */
     onsuggest?: (target: CorrectionTarget) => void;
     /** Called when the user wants to relate the selected node to another one. */
@@ -63,8 +77,8 @@
     selection,
     nodes = [],
     ledger,
-    open,
-    ontoggle,
+    panelId: givenPanelId,
+    showHeading = true,
     onsuggest,
     onrelate,
     onsaved,
@@ -91,7 +105,7 @@
 
   /** The ids of the tabs and of the panel — they cannot be fixed. */
   const uid = $props.id();
-  const panelId = `inspector-panel-${uid}`;
+  const panelId = $derived(givenPanelId ?? `inspector-panel-${uid}`);
 
   /** The id of the tab of a kind. */
   function tabId(tab: InspectorTab): string {
@@ -230,100 +244,85 @@
   }
 </script>
 
-<aside aria-labelledby="inspector-heading" class="min-w-0">
-  <h2 id="inspector-heading" class={open ? 'text-base font-semibold tracking-tight' : 'sr-only'}>
-    {t('inspector.heading')}
-  </h2>
+<aside aria-labelledby={showHeading ? 'inspector-heading' : undefined} class="min-w-0">
+  {#if showHeading}
+    <h2 id="inspector-heading" class="text-base font-semibold tracking-tight">
+      {t('inspector.heading')}
+    </h2>
+  {/if}
 
-  <div class={open ? 'mt-2 rounded-card border border-line bg-surface p-4' : ''}>
-    <!--
-      The toggle is the first control of the column and it never moves: the
-      reader folds the column away and finds it again in the same place.
-    -->
-    <button
-      type="button"
-      class="rounded-md border border-line-strong bg-surface p-1.5 text-ink hover:bg-surface-muted"
-      aria-expanded={open}
-      aria-controls={open ? panelId : undefined}
-      onclick={() => ontoggle?.(!open)}
+  <div class="mt-2 rounded-card border border-line bg-surface p-4">
+    <div
+      role="tablist"
+      aria-label={t('inspector.tabsLabel')}
+      class="flex flex-wrap gap-1 border-b border-line"
     >
-      <span aria-hidden="true" class="block text-xs leading-none">{open ? '▸' : '◂'}</span>
-      <span class="sr-only">{open ? t('inspector.collapse') : t('inspector.expand')}</span>
-    </button>
+      {#each TABS as tab, index (tab.id)}
+        <button
+          type="button"
+          role="tab"
+          id={tabId(tab.id)}
+          aria-selected={activeTab === tab.id}
+          aria-controls={panelId}
+          tabindex={activeTab === tab.id ? 0 : -1}
+          class="rounded-t-md border-b-2 px-3 py-1.5 text-sm font-medium aria-[selected=true]:border-brand-900 aria-[selected=true]:text-brand-950 hover:bg-surface-muted"
+          onclick={() => selectTab(tab.id)}
+          onkeydown={(event) => onTabKeydown(event, index)}
+        >
+          {t(tab.label)}
+        </button>
+      {/each}
+    </div>
 
-    {#if open}
-      <div
-        role="tablist"
-        aria-label={t('inspector.tabsLabel')}
-        class="mt-3 flex flex-wrap gap-1 border-b border-line"
-      >
-        {#each TABS as tab, index (tab.id)}
-          <button
-            type="button"
-            role="tab"
-            id={tabId(tab.id)}
-            aria-selected={activeTab === tab.id}
-            aria-controls={panelId}
-            tabindex={activeTab === tab.id ? 0 : -1}
-            class="rounded-t-md border-b-2 px-3 py-1.5 text-sm font-medium aria-[selected=true]:border-brand-900 aria-[selected=true]:text-brand-950 hover:bg-surface-muted"
-            onclick={() => selectTab(tab.id)}
-            onkeydown={(event) => onTabKeydown(event, index)}
-          >
-            {t(tab.label)}
-          </button>
-        {/each}
-      </div>
-
-      <div
-        role="tabpanel"
-        id={panelId}
-        aria-labelledby={tabId(activeTab)}
-        tabindex="0"
-        class="mt-3"
-      >
-        {#if selection === null}
-          <p class="text-sm text-ink-muted">{t('inspector.emptySelection')}</p>
-        {:else if activeTab === 'content'}
-          {#if selection.kind === 'edge' && currentEdge === null}
-            {@render relationState()}
-          {:else}
-            <InspectorContent
-              node={selectedNode}
-              edge={currentEdge}
-              {nodes}
-              {ledger}
-              reconcileEdge={reconcileRelationScore}
-              {onrelate}
-            />
-          {/if}
-        {:else if activeTab === 'attributes'}
-          {#if selection.kind === 'edge' && currentEdge === null}
-            {@render relationState()}
-          {:else}
-            <InspectorAttributes
-              node={selectedNode}
-              edge={currentEdge}
-              {onsuggest}
-              onsaved={handleSaved}
-            />
-          {/if}
-        {:else if activeTab === 'proposals'}
-          <InspectorProposals
-            targetId={selection.id}
-            targetType={selectionTargetType(selection)}
-            {ledger}
-          />
+    <div
+      role="tabpanel"
+      id={panelId}
+      aria-labelledby={tabId(activeTab)}
+      tabindex="0"
+      class="mt-3"
+    >
+      {#if selection === null}
+        <p class="text-sm text-ink-muted">{t('inspector.emptySelection')}</p>
+      {:else if activeTab === 'content'}
+        {#if selection.kind === 'edge' && currentEdge === null}
+          {@render relationState()}
         {:else}
-          <DiscussionPanel
-            targetId={selection.id}
-            targetType={selectionTargetType(selection)}
+          <InspectorContent
+            node={selectedNode}
+            edge={currentEdge}
+            {nodes}
             {ledger}
-            heading={t('inspector.forumHeading')}
-            bare
+            reconcileEdge={reconcileRelationScore}
+            {onrelate}
           />
         {/if}
-      </div>
-    {/if}
+      {:else if activeTab === 'attributes'}
+        {#if selection.kind === 'edge' && currentEdge === null}
+          {@render relationState()}
+        {:else}
+          <InspectorAttributes
+            node={selectedNode}
+            edge={currentEdge}
+            {onsuggest}
+            onsaved={handleSaved}
+          />
+        {/if}
+      {:else if activeTab === 'proposals'}
+        <InspectorProposals
+          targetId={selection.id}
+          targetType={selectionTargetType(selection)}
+          {ledger}
+        />
+      {:else}
+        <DiscussionPanel
+          targetId={selection.id}
+          targetType={selectionTargetType(selection)}
+          {ledger}
+          heading={t('inspector.forumHeading')}
+          bare
+        />
+      {/if}
+    </div>
   </div>
 </aside>
 

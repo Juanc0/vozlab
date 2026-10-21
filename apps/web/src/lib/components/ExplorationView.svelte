@@ -184,7 +184,7 @@
           />
           <label
             for="explore-focus-{option}"
-            class="cursor-pointer rounded-md border border-line-strong px-2.5 py-1 text-xs font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+            class="pointer-coarse:min-h-11 cursor-pointer rounded-md border border-line-strong px-2.5 py-1 text-xs font-medium text-ink hover:bg-surface-muted peer-checked:border-brand-900 peer-checked:bg-brand-50 peer-checked:text-brand-950 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
           >
             {t(FOCUS_LABELS[option])}
           </label>

@@ -28,7 +28,20 @@ export const en: Dictionary<typeof es> = {
 
   shell: {
     skipToContent: 'Skip to content',
+    openMenu: 'Open the navigation menu',
     footer: 'VozLab — co-creation client for the knowledge graph.'
+  },
+
+  drawer: {
+    label: 'Navigation menu',
+    heading: 'Navigation',
+    close: 'Close the navigation menu'
+  },
+
+  sheet: {
+    label: 'Inspector',
+    heading: 'Inspector',
+    close: 'Close the inspector'
   },
 
   sidebar: {

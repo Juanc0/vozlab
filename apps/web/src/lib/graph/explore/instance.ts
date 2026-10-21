@@ -14,6 +14,10 @@
  *   orthogonal shape is routed by the pure router of `./orthogonal`;
  * - the pointer over a node or a relation opens a **preview** of it.
  *
+ * The instance also **follows the size of its container**: a
+ * `ResizeObserver` redraws the picture when the window is resized, and the
+ * viewport is left where the user put it.
+ *
  * The module is imported **dynamically**, from the browser only: Cytoscape
  * draws to a `<canvas>`, so the server pass must never evaluate it.
  */
@@ -21,6 +25,7 @@
 import type { Core, NodeCollection, Position } from 'cytoscape';
 import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
 import { toGraphElements } from '../elements';
+import { observeContainerSize } from '../resize';
 import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
 import { exploreLayoutOptions } from './layout';
@@ -239,6 +244,19 @@ export function createExplorationInstance(
   /** The node the view presented the last time the layout ran. */
   let lastPresented: string | null = null;
 
+  /**
+   * The canvas follows the size of its container.
+   *
+   * The window is resized, a panel opens and the canvas gets narrower: the
+   * picture is redrawn at the new size and **only** that. The viewport is
+   * not re-fitted and the layout is not run again — the picture stays where
+   * the user left it, because a resize that re-fits moves the graph under
+   * the reader's feet.
+   */
+  const stopObserving = observeContainerSize(options.container, () => {
+    core.resize();
+  });
+
   /** Runs the layout and puts the picture back where it belongs. */
   function runLayout(
     expandedIds: ReadonlySet<string>,
@@ -348,6 +366,9 @@ export function createExplorationInstance(
     },
 
     destroy() {
+      // The observer dies with the instance: a canvas that is gone must not
+      // be resized any more.
+      stopObserving();
       core.destroy();
     }
   };

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { restoreSession } from '$lib/auth/restore';
@@ -9,8 +9,11 @@
     signInWithDevelopmentToken
   } from '$lib/auth/dev-sign-in';
   import AppSidebar from '$lib/components/AppSidebar.svelte';
+  import Drawer from '$lib/components/Drawer.svelte';
+  import { MediaQuery } from '$lib/layout/media.svelte';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
   import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { shellState } from '$lib/state/shell.svelte';
   import type { LayoutProps } from './$types';
 
   let { children }: LayoutProps = $props();
@@ -20,6 +23,63 @@
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
   const t = locale.t;
+
+  /**
+   * The width at which the navigation is a column.
+   *
+   * Below it the navigation is a drawer that comes over the content: a
+   * column of fifteen rems on a phone of twenty rems leaves nothing for
+   * the graph.
+   */
+  const navWide = new MediaQuery('(min-width: 768px)');
+
+  onMount(() => {
+    navWide.attach();
+
+    return () => {
+      navWide.destroy();
+    };
+  });
+
+  /** The route the drawer was opened on. */
+  let navPath: string | null = null;
+
+  /**
+   * The drawer closes when the route changes.
+   *
+   * The user picked a section of the navigation: the drawer has done its
+   * work, and the new page is the one they asked for.
+   */
+  $effect(() => {
+    // The path is the dependency of the effect: the drawer follows the
+    // route, not the other way round.
+    const path = page.url.pathname;
+
+    untrack(() => {
+      if (path === navPath) {
+        return;
+      }
+
+      navPath = path;
+      shellState.closeNav();
+    });
+  });
+
+  /**
+   * The drawer closes when the window becomes wide.
+   *
+   * Above `md` the navigation is the column, and a drawer that is open
+   * behind it would be a panel nobody can see.
+   */
+  $effect(() => {
+    const wide = navWide.matches;
+
+    untrack(() => {
+      if (wide) {
+        shellState.closeNav();
+      }
+    });
+  });
 
   /**
    * The state of the guard.
@@ -85,10 +145,25 @@
 </script>
 
 {#if status === 'ready' || status === 'no-membership'}
-  <div class="grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
-    <aside aria-label={t('app.workspaceAndSections')} class="min-w-0">
+  <!--
+    The navigation is a **drawer** below `md` and a **column** above it.
+
+    The two are never in the DOM at the same time: the navigation carries
+    the ids of its controls, and two copies of it would be two elements
+    with the same id.
+  -->
+  {#if !navWide.matches}
+    <Drawer open={shellState.navOpen} onclose={() => shellState.closeNav()}>
       <AppSidebar />
-    </aside>
+    </Drawer>
+  {/if}
+
+  <div class="grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
+    {#if navWide.matches}
+      <aside aria-label={t('app.workspaceAndSections')} class="hidden min-w-0 md:block">
+        <AppSidebar />
+      </aside>
+    {/if}
 
     <div class="min-w-0">
       {#if status === 'no-membership'}

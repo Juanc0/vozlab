@@ -90,8 +90,10 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'text-background-padding': '2px',
       'text-rotation': 'autorotate',
       // The haystack shape is the exaggerated one: the arc it draws has to
-      // be seen, not guessed.
-      'haystack-radius': 60,
+      // be seen, not guessed. The radius is a **fraction** of the size of
+      // the node, not a number of pixels: Cytoscape refuses anything that
+      // is not between zero and one.
+      'haystack-radius': 1,
       'overlay-opacity': 0
     }
   },

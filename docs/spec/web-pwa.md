@@ -274,6 +274,35 @@ explicit; a failed fetch must not leave a blank canvas.
 Edges are styled by relation key/status. Empty and error states are
 explicit; a failed fetch must not leave a blank canvas.
 
+## The layout
+
+The base styles are the **phone's**; the breakpoints add the columns. Not
+the other way round.
+
+- Below `md` the navigation is a **drawer** that opens from the left over
+  the content, with a backdrop, a focus trap, <kbd>Escape</kbd> and the
+  focus returned to the opener. The button lives in the header and
+  announces its state.
+- Below `xl` the inspector is a **sheet** that slides in from the right.
+  It must not be the last thing in the page: a column that stacks below
+  everything is a column nobody finds.
+- Both are the **same implementation** — one panel over the content, two
+  directions — and the focus trap is the app's, extracted from
+  `ModalDialog` rather than written twice.
+- The canvas is a fraction of the **visual** viewport (`svh`/`dvh`), not of
+  `vh`: the chrome of a mobile browser changes the height of `vh`.
+- No horizontal scroll at 320 px. The tables scroll inside their own
+  container, never the page.
+- The touch targets are at least 44 × 44 px on a touch device — the hit
+  area of a canvas badge grows while the dot stays small.
+
+**The canvas follows the window.** A `ResizeObserver` on the container calls
+`cy.resize()` and **nothing else**: no `fit()`, no layout. Cytoscape's
+`resize()` redraws the surface and keeps the zoom and the pan, so the
+picture stays exactly where the reader left it. A resize that re-fits moves
+the graph under the reader's feet. The observer is disconnected with the
+instance.
+
 ## The inspector
 
 One right-hand column, shared by **both** graph views, with four tabs:
