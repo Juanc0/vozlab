@@ -255,7 +255,7 @@ export const en: Dictionary<typeof es> = {
     relationBadgesLabel: 'The relations of the window',
     canvasLabel: 'Exploration window canvas',
     canvasDescription:
-      '{nodes} nodes and {edges} relations of the exploration window, drawn with a deterministic dagre layout.',
+      '{nodes} nodes and {edges} relations of the exploration window, drawn with a d3-force spring with a rectangular collision.',
     previewNoDescription: 'No description.',
     previewNoAttributes: 'No attributes.',
     previewEndpoints: 'From “{source}” to “{target}”',
@@ -273,11 +273,14 @@ export const en: Dictionary<typeof es> = {
   engines: {
     heading: 'The engines, side by side',
     intro:
-      'The same window, the same nodes and the same relations in the three engines. This is a development surface: it does not exist in a production build.',
+      'The same window, the same nodes and the same relations in the four engines. This is a development surface: it does not exist in a production build.',
     pageTitle: 'The engines, side by side',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
       'The incumbent: a hierarchical, deterministic layout, computed in one go.',
+    panelD3Name: 'Cytoscape + d3-force',
+    panelD3Note:
+      'The spring of the app: a seeded simulation with a rectangular collision force.',
     panelFcoseName: 'Cytoscape + fcose',
     panelFcoseNote:
       'The same canvas with the force of CoSE: a simulation that settles and stops.',
@@ -289,7 +292,7 @@ export const en: Dictionary<typeof es> = {
     sizeDemo: 'The demo ({count} nodes)',
     sizeStress: 'The ceiling of the API ({count} nodes)',
     edgeStyleLabel: 'Shape of the arrows',
-    measure: 'Measure the three engines',
+    measure: 'Measure the four engines',
     measuring: 'Measuring…',
     rerun: 'Run the layout again',
     listToggle: 'See the list',
@@ -304,6 +307,17 @@ export const en: Dictionary<typeof es> = {
     settledLabel: 'Settled',
     settledYes: 'Yes',
     settledNo: 'Not yet',
+    overlapsLabel: 'Cards on top of each other',
+    overlapsValue: '{count} pairs',
+    ticksLabel: 'Steps of the simulation',
+    ticksValue: '{count} steps',
+    layoutFrameLabel: 'Frame of the layout',
+    frameLayoutValue: '{value} ms',
+    reproducibleLabel: 'Reproducible',
+    reproducibleDagre: 'Yes: it is a function of the picture',
+    reproducibleD3: 'Yes: the seed is fixed',
+    reproducibleFcose: 'Yes, with randomize off',
+    reproducibleSigma: 'No convergence criterion',
     loading: 'Loading the window…',
     empty: 'The window is empty: there is nothing to compare.',
     badgesLabel: 'The nodes of the window',
@@ -316,7 +330,11 @@ export const en: Dictionary<typeof es> = {
     findingSigmaDashes:
       'Sigma has no dashed edge program: the pending status of a relation is only carried by its colour.',
     findingFcoseSeed:
-      'fcose has no randomSeed: its spectral step draws the starting places, and the same picture does not come out twice.'
+      'fcose has no randomSeed: its spectral step draws the starting places, and the same picture does not come out twice.',
+    findingD3Collision:
+      'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
+    findingD3Seed:
+      'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

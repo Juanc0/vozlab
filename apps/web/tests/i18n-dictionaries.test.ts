@@ -27,6 +27,7 @@ const IDENTICAL: readonly string[] = [
   'locale.es',
   'locale.en',
   'engines.panelDagreName',
+  'engines.panelD3Name',
   'engines.panelFcoseName',
   'engines.panelSigmaName'
 ];

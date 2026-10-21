@@ -437,6 +437,23 @@ Decided, and not to be re-opened without evidence:
       keyboard.
 - [ ] 3.22 The optimistic concurrency: the version column, the
       compare-and-set, the conflict and its copy.
+- [x] 3.24 The spring of the exploration view: `d3-force` with a rectangular
+      collision force of our own. Result: `d3-force` (3 KB) replaces
+      `cytoscape-fcose` as the layout of the exploration view, and the
+      collision that no library does for cards is written here: axis-aligned
+      boxes pushed apart along the axis of least penetration, with the
+      neighbours found through a **uniform grid** (1.0 ms per tick at 200
+      nodes, 6.2 ms at 1000). The repulsion is charged by the **area** of
+      the card, not by its degree — which is the thing force-atlas2 does
+      not do. **0 overlapping card pairs**, against fcose's 392 and FA2's
+      493. The run is **deterministic** (a seeded LCG and a fixed circle
+      start: two runs give exactly the same positions), it **stops by
+      itself** (`alpha < alphaMin`, 300 ticks), and it is stepped in
+      **slices of 3 ticks per frame** so the reader *sees* the picture
+      rearrange and the interface never stalls (3.20 ms of frame). With
+      `prefers-reduced-motion` the layout runs in one go and gives the same
+      picture. The layout is a **pure module** — no DOM, no canvas, no
+      Cytoscape — so it is tested on its own.
 - [x] 3.23 The graph page as a full-bleed canvas: the panels over it, and the
       even background of the exploration view. Result: the graph page is a
       **workspace**, not a page — it fills the viewport (`100dvh`), the page

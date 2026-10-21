@@ -3,14 +3,14 @@
  *
  * The comparison is a **development** surface: it only exists in a
  * development build. The journey says the two things that matter about it:
- * the three panels draw the **same** picture, and the list — the text
+ * the four panels draw the **same** picture, and the list — the text
  * alternative of the pictures — is one click away.
  */
 
 import { waitForApp } from './support/app';
 import { expect, test } from './support/fixtures';
 
-test('the three engines draw the same picture, and the list is the alternative', async ({
+test('the four engines draw the same picture, and the list is the alternative', async ({
   page,
   api
 }) => {
@@ -26,12 +26,14 @@ test('the three engines draw the same picture, and the list is the alternative',
     page.getByRole('heading', { name: 'Los motores, lado a lado' })
   ).toBeVisible();
 
-  // The three pictures, each one with a name of its own.
+  // The four pictures, each one with a name of its own.
   const dagre = page.getByRole('img', { name: /Cytoscape \+ dagre/ });
+  const d3 = page.getByRole('img', { name: /Cytoscape \+ d3-force/ });
   const fcose = page.getByRole('img', { name: /Cytoscape \+ fcose/ });
   const sigma = page.getByRole('img', { name: /Sigma\.js \+ Graphology/ });
 
   await expect(dagre).toBeVisible();
+  await expect(d3).toBeVisible();
   await expect(fcose).toBeVisible();
 
   // Sigma draws with WebGL: a browser that cannot draw it says so
@@ -42,10 +44,10 @@ test('the three engines draw the same picture, and the list is the alternative',
     await expect(sigma).toBeVisible();
   }
 
-  // The **same** data in the three: the badges are the nodes of the
+  // The **same** data in the four: the badges are the nodes of the
   // picture, and there are as many in one panel as in the other.
   const badges = page.getByRole('toolbar', { name: 'Los nodos de la ventana' });
-  await expect(badges).toHaveCount(3);
+  await expect(badges).toHaveCount(4);
 
   const counts = await badges.evaluateAll((layers) =>
     layers.map((layer) => layer.querySelectorAll('button').length)
@@ -54,7 +56,7 @@ test('the three engines draw the same picture, and the list is the alternative',
   expect(counts[0]).toBeGreaterThan(0);
   expect(new Set(counts).size).toBe(1);
 
-  // The list is the text alternative of the three pictures.
+  // The list is the text alternative of the four pictures.
   await page.getByRole('button', { name: 'Ver la lista' }).click();
 
   const table = page.getByRole('region', { name: 'Los nodos del subgrafo' });

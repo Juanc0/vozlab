@@ -44,6 +44,17 @@ import {
   seedCirclePositions,
   type GraphLayout
 } from './layout';
+import {
+  countOverlappingPairs,
+  createForceLayout,
+  driveForceLayout,
+  runForceLayoutToRest,
+  type ForceDriver,
+  type ForceEdgeInput,
+  type ForceLayout,
+  type ForceNodeInput,
+  type ForcePosition
+} from './force-layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 
@@ -75,6 +86,28 @@ export interface LayoutReport {
   readonly settled: boolean;
   /** The greatest movement of the last step, in pixels. */
   readonly movement: number;
+  /**
+   * The number of pairs of cards that overlap.
+   *
+   * It is the metric that told the truth about `fcose`: a layout that
+   * settles in half a second can still leave hundreds of pairs of cards
+   * on top of each other.
+   */
+  readonly overlaps: number;
+  /**
+   * How many ticks of the simulation ran.
+   *
+   * It is there for the **spring**: the simulation of `d3-force` is run in
+   * slices, and the number of the ticks says how many slices there were.
+   */
+  readonly ticks?: number;
+  /**
+   * The time a frame of the layout took, in milliseconds.
+   *
+   * It is the **median** of the frames: the work of the picture (putting
+   * the cards in their places) and not the wait for the browser.
+   */
+  readonly frameMs?: number;
 }
 
 /** What the exploration instance reports. */
@@ -124,9 +157,10 @@ export interface ExplorationElementsOptions {
   /**
    * The layout the picture is arranged with.
    *
-   * The default is `dagre`: the deterministic one, the layout of the app.
-   * The **force** layout is additive — the development surface that compares
-   * the engines is the only thing that asks for the spring.
+   * The default is `d3`: the **spring** of the app, a simulation of
+   * `d3-force` with a rectangular collision force. The deterministic
+   * `dagre` and the `fcose` of the extension are there for the comparison
+   * of the engines.
    */
   layout?: GraphLayout;
   /**
@@ -237,6 +271,27 @@ function sameNodes(current: Collection, nodes: readonly NodeDto[]): boolean {
 }
 
 /**
+ * The middle of a list of numbers.
+ *
+ * @param values - The numbers.
+ * @returns The middle one, or zero when the list is empty.
+ */
+function median(values: readonly number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
+  }
+
+  return sorted[middle] ?? 0;
+}
+
+/**
  * Creates the Cytoscape instance of the exploration view.
  *
  * The instance starts **empty**: the elements are applied by
@@ -287,6 +342,113 @@ export function createExplorationInstance(
    * layout is stopped.
    */
   const SETTLE_MOVEMENT = 1.5;
+
+  /**
+   * How many ticks of the spring run in one frame.
+   *
+   * The number is a **budget**: a tick of two hundred cards costs about a
+   * millisecond, and three of them keep the frame of the canvas inside
+   * the eight milliseconds that still read as a fluid picture — the work of
+   * the picture itself (putting the cards in their places) is on top of
+   * that.
+   *
+   * It is also what makes the spring **seen**: too many ticks in one frame
+   * and the picture jumps instead of finding its place.
+   */
+  const TICKS_PER_FRAME = 3;
+
+  /** The spring of the picture, while it is running. */
+  let spring: ForceLayout | null = null;
+
+  /** The driver of the spring: the frames it asks for. */
+  let springDriver: ForceDriver | null = null;
+
+  /**
+   * Whether the reader is **dragging** a card.
+   *
+   * The spring does not fight the pointer: while the card is being dragged,
+   * the simulation is paused and the card keeps the place the pointer puts
+   * it in.
+   */
+  let dragging = false;
+
+  /**
+   * Whether the reader asked for less motion.
+   *
+   * The picture is the same one either way: with less motion the spring
+   * runs to its conclusion in one go, without the intermediate frames.
+   */
+  function prefersReducedMotion(): boolean {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false;
+    }
+
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /**
+   * Stops the spring.
+   *
+   * Nothing runs after this: no frame is asked for, no timer is left.
+   */
+  function stopSpring(): void {
+    springDriver?.stop();
+    springDriver = null;
+    spring = null;
+  }
+
+  /**
+   * Puts the cards where the spring put them.
+   *
+   * @param places - The place of every card.
+   */
+  function applyPlaces(places: ReadonlyMap<string, ForcePosition>): void {
+    cardNodes(core.elements()).forEach((card) => {
+      const place = places.get(card.id());
+
+      if (place === undefined) {
+        return;
+      }
+
+      card.position({ x: place.x, y: place.y });
+    });
+
+    // The card of a relation hangs beside its line, and the text of a card
+    // hangs under its card: the picture moved, and they go with it.
+    syncRelationCards();
+    syncCardText(core);
+  }
+
+  /**
+   * The pairs of cards that overlap, in the coordinates of the canvas.
+   *
+   * @returns How many pairs overlap.
+   */
+  function overlappingPairs(): number {
+    const boxes = [...nodeBoxes().values()].map((box) => ({
+      x: box.cx,
+      y: box.cy,
+      width: box.width,
+      height: box.height
+    }));
+
+    return countOverlappingPairs(boxes);
+  }
+
+  /**
+   * The frames of the animation.
+   *
+   * They are the frames of the browser: the spring runs in slices and the
+   * picture is drawn between the slices.
+   */
+  const frames = {
+    request(callback: () => void): number {
+      return requestAnimationFrame(callback);
+    },
+    cancel(handle: number): void {
+      cancelAnimationFrame(handle);
+    }
+  };
 
   /** The greatest distance a card travelled since the last picture. */
   function greatestMovement(): number {
@@ -362,8 +524,28 @@ export function createExplorationInstance(
     });
   }
 
+  core.on('grab', 'node', () => {
+    // The reader has the pointer down on a card: the spring stops, so the
+    // picture does not fight the pointer.
+    dragging = true;
+    springDriver?.stop();
+  });
+
   core.on('dragfree', 'node', (event) => {
-    options.ondrag(cardIdOf(event.target), event.target.position());
+    dragging = false;
+
+    const place = event.target.position();
+
+    // The card keeps the place it was put: the spring is told about it, so
+    // the simulation works around it.
+    spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
+
+    options.ondrag(cardIdOf(event.target), place);
+
+    // The spring goes on with the rest of the picture.
+    if (spring !== null && springDriver !== null && !spring.settled) {
+      springDriver.start();
+    }
   });
 
   // The text of a card follows the card while the user drags it, and the
@@ -508,11 +690,206 @@ export function createExplorationInstance(
     core.resize();
   });
 
+  /**
+   * Puts the picture where it belongs after a layout.
+   *
+   * The view centres on the node it presents — but only when that node
+   * changes. A layout that runs because a card appeared rearranges the
+   * picture **where it is**: the reader must see the neighbours move away
+   * from the card, not the whole picture jump.
+   *
+   * @param presentedNodeId - The node the view presents.
+   * @param fit - Whether the picture is fitted to the window.
+   */
+  function presentPicture(presentedNodeId: string | null, fit: boolean): void {
+    const presentedChanged = presentedNodeId !== lastPresented;
+    lastPresented = presentedNodeId;
+
+    if (fit) {
+      // The picture is fitted to the window the first time it is drawn — and
+      // only then: a layout that runs again because a node grew must not
+      // move the picture under the user's feet.
+      core.fit(undefined, 30);
+
+      if (core.zoom() < readableZoom) {
+        core.zoom(readableZoom);
+      }
+    }
+
+    if (presentedNodeId !== null && (fit || presentedChanged)) {
+      const presented = core.getElementById(presentedNodeId);
+
+      if (presented.length > 0) {
+        core.center(presented);
+      }
+    }
+  }
+
+  /**
+   * Runs the **spring** of the exploration view.
+   *
+   * The spring is the pure module of `./force-layout`: the cards are
+   * given to it with the **real size** of their cards, and it answers with
+   * the places they find.
+   *
+   * The picture is arranged **in slices**, across the frames: the reader
+   * sees the cards find their place, and the simulation stops by itself
+   * when it comes to rest. A reader who asked for less motion gets the
+   * same picture in one go.
+   *
+   * @param presentedNodeId - The node the view presents.
+   * @param fit - Whether the picture is fitted to the window.
+   */
+  function runSpring(presentedNodeId: string | null, fit: boolean): void {
+    stopSpring();
+
+    /** The time each frame of the animation took, in milliseconds. */
+    const frameTimes: number[] = [];
+
+    const inputs: ForceNodeInput[] = [];
+    const links: ForceEdgeInput[] = [];
+
+    // The picture the spring starts from.
+    //
+    // The **first** arrangement starts from the circle of the module: the
+    // cards of a canvas that has never been drawn are all in the same
+    // place, and a simulation that begins with every card in the same
+    // place has nothing to push apart.
+    //
+    // The arrangements that follow start from **the picture as it is**: the
+    // reader must see the cards rearrange around the new space, not jump
+    // to a circle and spring out of it.
+    const places = new Map<string, Position>();
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    cardNodes(core.elements()).forEach((card) => {
+      const place = card.position();
+
+      places.set(card.id(), place);
+      minX = Math.min(minX, place.x);
+      maxX = Math.max(maxX, place.x);
+      minY = Math.min(minY, place.y);
+      maxY = Math.max(maxY, place.y);
+    });
+
+    // The picture is **arranged** when its cards are not all in the same
+    // place: a canvas that has never been drawn has them all in the
+    // origin.
+    const arranged = maxX - minX > 200 || maxY - minY > 200;
+
+    cardNodes(core.elements()).forEach((card) => {
+      const place = arranged ? places.get(card.id()) : undefined;
+
+      inputs.push({
+        id: card.id(),
+        width: card.outerWidth(),
+        height: card.outerHeight(),
+        x: place?.x,
+        y: place?.y
+      });
+    });
+
+    core.edges().forEach((edge) => {
+      links.push({ source: edge.source().id(), target: edge.target().id() });
+    });
+
+    const created = createForceLayout(inputs, links, { pinned });
+
+    spring = created;
+
+    // The picture is about to move: it has not settled yet.
+    settled = false;
+    movement = Number.POSITIVE_INFINITY;
+    lastPositions = new Map<string, Position>();
+
+    // The picture starts where the spring starts: the cards are put in
+    // their places before the first frame, so the reader does not see them
+    // jump from one place to another.
+    applyPlaces(created.positions());
+
+    // The relations are drawn with the shape the view was given.
+    refreshEdgeStyles();
+
+    // The picture is centred: the spring arranges it around the origin,
+    // and the viewport has to show it.
+    core.center(core.elements());
+
+    const report = (): void => {
+      movement = greatestMovement();
+
+      if (movement < SETTLE_MOVEMENT) {
+        settled = true;
+      }
+
+      options.onlayout?.({
+        layout: 'd3',
+        ms: created.result().ms,
+        settled: created.settled,
+        movement,
+        overlaps: overlappingPairs(),
+        ticks: created.ticks,
+        frameMs: median(frameTimes)
+      });
+    };
+
+    if (prefersReducedMotion()) {
+      // Less motion: the picture is arranged in one go, and it is the same
+      // picture the animated path arrives at.
+      const result = runForceLayoutToRest(created);
+
+      applyPlaces(result.positions);
+      presentPicture(presentedNodeId, fit);
+      report();
+
+      spring = null;
+
+      return;
+    }
+
+    springDriver = driveForceLayout(created, {
+      scheduler: frames,
+      ticksPerFrame: TICKS_PER_FRAME,
+      onFrame: (places) => {
+        if (dragging) {
+          // The reader has the pointer down on a card: the picture does not
+          // move under the pointer.
+          return;
+        }
+
+        const began = performance.now();
+
+        applyPlaces(places);
+
+        frameTimes.push(performance.now() - began);
+      },
+      onSettled: () => {
+        springDriver = null;
+
+        // The picture has come to rest: it is framed and the report goes
+        // out.
+        presentPicture(presentedNodeId, fit);
+        report();
+      }
+    });
+
+    springDriver.start();
+  }
+
   /** Runs the layout and puts the picture back where it belongs. */
   function runLayout(presentedNodeId: string | null, fit: boolean): void {
-    const layoutOptions = explorationLayoutOptions(layout);
+    const currentLayout = layout;
 
-    if (layout === 'fcose') {
+    if (currentLayout === 'd3') {
+      runSpring(presentedNodeId, fit);
+      return;
+    }
+
+    const layoutOptions = explorationLayoutOptions(currentLayout);
+
+    if (currentLayout === 'fcose') {
       // The **force** layout needs a start: a simulation that begins with
       // every node in the same place has nothing to push apart. The nodes
       // are placed on a circle, deterministically, so the same graph always
@@ -560,10 +937,11 @@ export function createExplorationInstance(
       }
 
       options.onlayout?.({
-        layout,
+        layout: currentLayout,
         ms: Date.now() - started,
         settled,
-        movement
+        movement,
+        overlaps: overlappingPairs()
       });
     });
 
@@ -583,38 +961,14 @@ export function createExplorationInstance(
 
     refreshEdgeStyles();
 
-    // The view centres on the node it presents — but only when that node
-    // changes. A layout that runs because a card appeared rearranges the
-    // picture **where it is**: the reader must see the neighbours move away
-    // from the card, not the whole picture jump.
-    const presentedChanged = presentedNodeId !== lastPresented;
-    lastPresented = presentedNodeId;
-
-    if (fit) {
-      // The picture is fitted to the window the first time it is drawn — and
-      // only then: a layout that runs again because a node grew must not
-      // move the picture under the user's feet.
-      core.fit(undefined, 30);
-
-      if (core.zoom() < readableZoom) {
-        core.zoom(readableZoom);
-      }
-    }
-
-    if (presentedNodeId !== null && (fit || presentedChanged)) {
-      const presented = core.getElementById(presentedNodeId);
-
-      if (presented.length > 0) {
-        core.center(presented);
-      }
-    }
+    presentPicture(presentedNodeId, fit);
   }
 
   return {
     setElements(nodes, edges, elementOptions) {
       edgeStyle = elementOptions.edgeStyle;
       pinned = new Map(elementOptions.pinned);
-      layout = elementOptions.layout ?? 'dagre';
+      layout = elementOptions.layout ?? 'd3';
       readableZoom = elementOptions.readableZoom ?? MIN_READABLE_ZOOM;
 
       // The picture is fitted again only when the window itself changed: a
@@ -751,6 +1105,11 @@ export function createExplorationInstance(
       // The observer dies with the instance: a canvas that is gone must not
       // be resized any more.
       stopObserving();
+
+      // The spring dies with it: no frame is asked for a canvas that is
+      // not there any more.
+      stopSpring();
+
       core.destroy();
     }
   };

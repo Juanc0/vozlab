@@ -361,6 +361,37 @@ falls back to the raw value for an unknown one.
 The API's error `code` is a contract identifier and stays in English; the
 API's `message` is the API's own copy and stays as it is.
 
+## The spring of the exploration view
+
+The exploration view is arranged by **`d3-force`**, and the collision that
+no library does for cards is written here.
+
+- **Deterministic**: a seeded LCG and a fixed circular start. Two runs
+  give **exactly** the same positions.
+- **It stops by itself**: `alpha < alphaMin`, in 300 ticks.
+- **It is stepped in slices** of three ticks per frame, so the reader sees
+  the picture rearrange — the spring is the point — and the interface never
+  stalls. `prefers-reduced-motion` runs it in one go, to the same picture.
+- **The collision is rectangular**: two cards that overlap are pushed apart
+  along the axis of least penetration, symmetrically, and a card the reader
+  dragged never moves. The neighbours come from a **uniform grid** (1.0 ms
+  per tick at 200 nodes, 6.2 ms at 1000).
+- **The repulsion is charged by the area** of the card, not by its degree:
+  force-atlas2 scales the mass by the weighted degree, which lets a small
+  card dominate the picture.
+
+The layout is a **pure module** — no DOM, no canvas, no Cytoscape — so it
+is unit-tested on its own and it survives a change of painter.
+
+The measured comparison, on 200 nodes and 400 relations:
+
+| layout | time to settle | overlapping card pairs | reproducible |
+| --- | --- | --- | --- |
+| `dagre` | 2971 ms | 0 | yes |
+| **`d3-force`** | **386 ms** | **0** | yes, fixed seed |
+| `cytoscape-fcose` | 1052 ms | **392** | yes, with `randomize:false` |
+| force-atlas2 | 5640 ms | **493** | only with fixed starts — and **no convergence criterion at all** |
+
 ## The workspace
 
 The graph page is a **workspace**, not a page: it fills the viewport

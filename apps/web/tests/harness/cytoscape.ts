@@ -44,6 +44,15 @@ export interface FakeCore {
   core: Record<string, unknown>;
   handlers: Handler[];
   layouts: Array<Record<string, unknown>>;
+  /**
+   * The places the picture was put in.
+   *
+   * The **spring** of the exploration view does not ask Cytoscape for a
+   * layout: it answers with the places itself and puts them in the cards.
+   * Every write is recorded here, so a test can see that the picture was
+   * arranged again.
+   */
+  placements: Array<{ id: string; position: { x: number; y: number } }>;
   nodes: Map<string, FakeNode>;
   edges: Map<string, FakeEdge>;
 }
@@ -53,6 +62,7 @@ export function createFakeCore(): FakeCore {
   const edges = new Map<string, FakeEdge>();
   const handlers: Handler[] = [];
   const layouts: Array<Record<string, unknown>> = [];
+  const placements: Array<{ id: string; position: { x: number; y: number } }> = [];
   let placed = 0;
 
   const nodeApi = (node: FakeNode) => ({
@@ -79,6 +89,7 @@ export function createFakeCore(): FakeCore {
     position: (next?: { x: number; y: number }) => {
       if (next !== undefined) {
         node.position = next;
+        placements.push({ id: node.id, position: next });
       }
 
       return node.position;
@@ -223,7 +234,7 @@ export function createFakeCore(): FakeCore {
     destroy: vi.fn()
   };
 
-  return { core, handlers, layouts, nodes, edges };
+  return { core, handlers, layouts, placements, nodes, edges };
 }
 
 /** Fires the handler the instance registered for an event. */

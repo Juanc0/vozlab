@@ -26,6 +26,7 @@
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { edgeColor } from '$lib/graph/elements';
+  import { countOverlappingPairs } from '$lib/graph/explore/force-layout';
   import { displayName } from '$lib/i18n/display-name';
   import { formatDate, formatNumber } from '$lib/i18n';
   import { shortPseudonym } from '$lib/graph/relation-card';
@@ -52,7 +53,11 @@
     /** Called when the user expands or collapses a node. */
     ontoggle?: (nodeId: string) => void;
     /** Called when the spring has settled. */
-    onsettled?: (report: { readonly ms: number; readonly iterations: number }) => void;
+    onsettled?: (report: {
+      readonly ms: number;
+      readonly iterations: number;
+      readonly overlaps: number;
+    }) => void;
     /** Called with the element the panel is drawn in, for the measurements. */
     oncontainer?: (element: HTMLElement | undefined) => void;
     /** Called when the panel could not be drawn. */
@@ -371,7 +376,20 @@
 
     paint();
 
-    onsettled?.({ ms: report.ms, iterations: report.iterations });
+    // The pairs of cards that lie on top of each other: the metric that
+    // tells the truth about a force layout.
+    const boxes = [...badgePositions.values()].map((badge) => ({
+      x: badge.x - badge.width / 2,
+      y: badge.y + badge.height / 2,
+      width: badge.width,
+      height: badge.height
+    }));
+
+    onsettled?.({
+      ms: report.ms,
+      iterations: report.iterations,
+      overlaps: countOverlappingPairs(boxes)
+    });
   }
 
   /**

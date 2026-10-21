@@ -92,9 +92,9 @@
   let frames = $state.raw<Map<string, FrameSummary>>(new Map());
 
   /** The instants the layouts took, by engine. */
-  let layouts = $state.raw<Map<string, { ms: number; settled: boolean; iterations?: number }>>(
-    new Map()
-  );
+  let layouts = $state.raw<
+    Map<string, { ms: number; settled: boolean; iterations?: number; overlaps?: number; ticks?: number; frameMs?: number }>
+  >(new Map());
 
   /** Whether the measurement is running. */
   let measuring = $state(false);
@@ -218,7 +218,14 @@
    */
   function reportLayout(
     engine: string,
-    report: { ms: number; settled: boolean; iterations?: number }
+    report: {
+      ms: number;
+      settled: boolean;
+      iterations?: number;
+      overlaps?: number;
+      ticks?: number;
+      frameMs?: number;
+    }
   ): void {
     queueMicrotask(() => {
       layouts.set(engine, report);
@@ -238,7 +245,7 @@
     const next = new Map<string, FrameSummary>();
 
     try {
-      for (const name of ['dagre', 'fcose', 'sigma']) {
+      for (const name of ['dagre', 'd3', 'fcose', 'sigma']) {
         const element = panelOf(name);
 
         if (element === undefined) {
@@ -377,8 +384,8 @@
       The three panels, side by side. They are the same picture in three
       engines: the same nodes, the same relations and the same controls.
     -->
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {#each [{ id: 'dagre', name: t('engines.panelDagreName'), note: t('engines.panelDagreNote') }, { id: 'fcose', name: t('engines.panelFcoseName'), note: t('engines.panelFcoseNote') }, { id: 'sigma', name: t('engines.panelSigmaName'), note: t('engines.panelSigmaNote') }] as panel (panel.id)}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      {#each [{ id: 'dagre', name: t('engines.panelDagreName'), note: t('engines.panelDagreNote'), reproducible: t('engines.reproducibleDagre') }, { id: 'd3', name: t('engines.panelD3Name'), note: t('engines.panelD3Note'), reproducible: t('engines.reproducibleD3') }, { id: 'fcose', name: t('engines.panelFcoseName'), note: t('engines.panelFcoseNote'), reproducible: t('engines.reproducibleFcose') }, { id: 'sigma', name: t('engines.panelSigmaName'), note: t('engines.panelSigmaNote'), reproducible: t('engines.reproducibleSigma') }] as panel (panel.id)}
         <section class="flex flex-col rounded-card bg-surface p-3">
           <h2 class="text-body font-semibold">{panel.name}</h2>
           <p class="mt-0.5 text-small text-muted">{panel.note}</p>
@@ -426,6 +433,49 @@
                   ? t('engines.settledYes')
                   : t('engines.settledNo')}
             </dd>
+
+            <!--
+              The pairs of cards that lie on top of each other: the metric
+              that told the truth about the springs.
+            -->
+            <dt class="text-muted">{t('engines.overlapsLabel')}</dt>
+            <dd class="font-mono">
+              {layouts.get(panel.id)?.overlaps === undefined
+                ? '—'
+                : t('engines.overlapsValue', {
+                    count: formatNumber(locale.locale, layouts.get(panel.id)?.overlaps ?? 0)
+                  })}
+            </dd>
+
+            <!--
+              The steps of the simulation and the time a frame of it took:
+              the spring is run in slices, and the slices are what the
+              reader sees.
+            -->
+            <dt class="text-muted">{t('engines.ticksLabel')}</dt>
+            <dd class="font-mono">
+              {layouts.get(panel.id)?.ticks === undefined
+                ? '—'
+                : t('engines.ticksValue', {
+                    count: formatNumber(locale.locale, layouts.get(panel.id)?.ticks ?? 0)
+                  })}
+            </dd>
+
+            <dt class="text-muted">{t('engines.layoutFrameLabel')}</dt>
+            <dd class="font-mono">
+              {layouts.get(panel.id)?.frameMs === undefined
+                ? '—'
+                : t('engines.frameLayoutValue', {
+                    value: (layouts.get(panel.id)?.frameMs ?? 0).toFixed(2)
+                  })}
+            </dd>
+
+            <!--
+              Whether the same picture comes out twice. It is not the same
+              question for the four engines, and the answer says so.
+            -->
+            <dt class="text-muted">{t('engines.reproducibleLabel')}</dt>
+            <dd>{panel.reproducible}</dd>
           </dl>
 
           <!--
@@ -461,7 +511,8 @@
                   reportLayout('sigma', {
                     ms: report.ms,
                     settled: true,
-                    iterations: report.iterations
+                    iterations: report.iterations,
+                    overlaps: report.overlaps
                   });
                 }}
                 onerror={(message) => {
@@ -476,7 +527,7 @@
                 {selectedNodeId}
                 presentedNodeId={presented}
                 {edgeStyle}
-                layout={panel.id === 'fcose' ? 'fcose' : 'dagre'}
+                layout={panel.id === 'fcose' ? 'fcose' : panel.id === 'd3' ? 'd3' : 'dagre'}
                 readableZoom={0.08}
                 label={`${panel.name} — ${t('engines.canvasLabel')}`}
                 onselect={(id) => {
@@ -484,7 +535,13 @@
                 }}
                 ontoggle={toggleNode}
                 onlayout={(report) => {
-                  reportLayout(panel.id, { ms: report.ms, settled: report.settled });
+                  reportLayout(panel.id, {
+                    ms: report.ms,
+                    settled: report.settled,
+                    overlaps: report.overlaps,
+                    ticks: report.ticks,
+                    frameMs: report.frameMs
+                  });
                 }}
               />
             {/if}
@@ -503,6 +560,8 @@
         <li>{t('engines.findingSigmaEdges')}</li>
         <li>{t('engines.findingSigmaDashes')}</li>
         <li>{t('engines.findingFcoseSeed')}</li>
+        <li>{t('engines.findingD3Collision')}</li>
+        <li>{t('engines.findingD3Seed')}</li>
       </ul>
     </section>
 

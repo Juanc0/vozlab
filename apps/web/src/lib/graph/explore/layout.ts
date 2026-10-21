@@ -93,14 +93,15 @@ export function exploreLayoutOptions(): DagreLayoutOptions {
  * The layouts the exploration view can arrange the picture with.
  *
  * `dagre` is the layout of the app: a deterministic arrangement, never a
- * physics simulation. `fcose` is the **force** layout — a spring: it
- * settles and it stops.
+ * physics simulation. `fcose` is the **force** layout of the extension —
+ * it is kept for the comparison of the engines.
  *
- * The force layout is **additive**: the graph of the app keeps its
- * deterministic layout, and the comparison of the engines (a development
- * surface) is the only thing that asks for the spring.
+ * `d3` is the **spring of the app**: the pure module of `./force-layout`,
+ * a simulation of `d3-force` with a rectangular collision force. It is
+ * arranged in slices across the frames, so the reader sees the picture
+ * find its place, and it stops by itself when it comes to rest.
  */
-export type GraphLayout = 'dagre' | 'fcose';
+export type GraphLayout = 'dagre' | 'fcose' | 'd3';
 
 /**
  * The options of the **force** layout of `fcose`.
@@ -198,7 +199,7 @@ export function fcoseLayoutOptions(): FcoseLayoutOptions {
  * @returns The options of the layout.
  */
 export function explorationLayoutOptions(
-  layout: GraphLayout
+  layout: Exclude<GraphLayout, 'd3'>
 ): DagreLayoutOptions | FcoseLayoutOptions {
   return layout === 'fcose' ? fcoseLayoutOptions() : exploreLayoutOptions();
 }

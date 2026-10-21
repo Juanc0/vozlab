@@ -33,9 +33,10 @@
     /**
      * The layout the picture is arranged with.
      *
-     * The default is `dagre`: the deterministic layout of the app. The
-     * **force** layout is additive — the development surface that compares
-     * the engines is the only thing that asks for the spring.
+     * The default is `d3`: the **spring** of the app — a simulation of
+     * `d3-force` with a rectangular collision force, arranged in slices
+     * across the frames. The deterministic `dagre` and the `fcose` of the
+     * extension are there for the comparison of the engines.
      */
     layout?: GraphLayout;
     /**
@@ -82,7 +83,7 @@
     expandedIds = new Set<string>(),
     expandedEdgeIds = new Set<string>(),
     edgeStyle = 'bezier',
-    layout = 'dagre',
+    layout = 'd3',
     readableZoom = undefined,
     label = undefined,
     selectedNodeId = null,

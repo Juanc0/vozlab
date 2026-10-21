@@ -280,7 +280,7 @@ export const es = {
     relationBadgesLabel: 'Las relaciones de la ventana',
     canvasLabel: 'Lienzo de la ventana de exploración',
     canvasDescription:
-      '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con una disposición dagre determinista.',
+      '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con un resorte de d3-force con colisión rectangular.',
     previewNoDescription: 'Sin descripción.',
     previewNoAttributes: 'Sin atributos.',
     previewEndpoints: 'De «{source}» a «{target}»',
@@ -299,11 +299,14 @@ export const es = {
   engines: {
     heading: 'Los motores, lado a lado',
     intro:
-      'La misma ventana, los mismos nodos y las mismas relaciones en los tres motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
+      'La misma ventana, los mismos nodos y las mismas relaciones en los cuatro motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
     pageTitle: 'Los motores, lado a lado',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
       'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
+    panelD3Name: 'Cytoscape + d3-force',
+    panelD3Note:
+      'El resorte de la aplicación: una simulación con semilla y una fuerza de colisión rectangular.',
     panelFcoseName: 'Cytoscape + fcose',
     panelFcoseNote:
       'El mismo lienzo con la fuerza de CoSE: una simulación que se asienta y se detiene.',
@@ -315,7 +318,7 @@ export const es = {
     sizeDemo: 'La demostración ({count} nodos)',
     sizeStress: 'El techo de la API ({count} nodos)',
     edgeStyleLabel: 'Forma de las flechas',
-    measure: 'Medir los tres motores',
+    measure: 'Medir los cuatro motores',
     measuring: 'Midiendo…',
     rerun: 'Repetir la disposición',
     listToggle: 'Ver la lista',
@@ -329,6 +332,17 @@ export const es = {
     settledLabel: 'Asentada',
     settledYes: 'Sí',
     settledNo: 'Todavía no',
+    overlapsLabel: 'Tarjetas encima',
+    overlapsValue: '{count} pares',
+    ticksLabel: 'Pasos de la simulación',
+    ticksValue: '{count} pasos',
+    layoutFrameLabel: 'Cuadro de la disposición',
+    frameLayoutValue: '{value} ms por cuadro',
+    reproducibleLabel: 'Sale igual dos veces',
+    reproducibleDagre: 'Sí: es una función de la imagen',
+    reproducibleD3: 'Sí: la semilla es fija',
+    reproducibleFcose: 'Sí, con randomize en falso',
+    reproducibleSigma: 'Sin criterio de convergencia',
     loading: 'Cargando la ventana…',
     empty: 'La ventana está vacía: no hay nada que comparar.',
     badgesLabel: 'Los nodos de la ventana',
@@ -341,7 +355,11 @@ export const es = {
     findingSigmaDashes:
       'Sigma no tiene programa de arista discontinua: el estado pendiente de una relación se ve solo en el color.',
     findingFcoseSeed:
-      'fcose no tiene randomSeed: su paso espectral sortea las posiciones de partida, y la misma imagen no sale igual dos veces.'
+      'fcose no tiene randomSeed: su paso espectral sortea las posiciones de partida, y la misma imagen no sale igual dos veces.',
+    findingD3Collision:
+      'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
+    findingD3Seed:
+      'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.'
   },
 
   /** The inspector: the column of tabs beside the canvas. */

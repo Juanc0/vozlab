@@ -189,7 +189,10 @@ describe('the exploration view', () => {
   it('expands a node when its badge is clicked, and the layout runs again', async () => {
     await renderView();
 
-    const before = core.layouts.length;
+    // The spring of the view does not ask Cytoscape for a layout: it
+    // answers with the places itself and puts them in the cards. The
+    // picture is arranged again when a card is expanded.
+    const before = core.placements.length;
     const badge = screen.getByRole('button', { name: `Expandir «${NODE_C.title}»` });
 
     expect(badge).toHaveAttribute('aria-pressed', 'false');
@@ -197,7 +200,7 @@ describe('the exploration view', () => {
     await fireEvent.click(badge);
 
     await waitFor(() => {
-      expect(core.layouts.length).toBeGreaterThan(before);
+      expect(core.placements.length).toBeGreaterThan(before);
     });
 
     expect(
@@ -217,14 +220,14 @@ describe('the exploration view', () => {
       }
     });
 
-    const before = core.layouts.length;
+    const before = core.placements.length;
     await fireEvent.click(screen.getByRole('button', { name: `Expandir «${NODE_C.title}»` }));
 
     await waitFor(() => {
-      expect(core.layouts.length).toBeGreaterThan(before);
+      expect(core.placements.length).toBeGreaterThan(before);
     });
 
-    // The layout moves every node: the place the user dragged the node to
+    // The spring moves every node: the place the user dragged the node to
     // is put back after it.
     expect(core.nodes.get(NODE_C.id)?.position).toEqual({ x: 300, y: 400 });
   });
