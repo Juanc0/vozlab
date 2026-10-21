@@ -383,6 +383,15 @@ no library does for cards is written here.
 The layout is a **pure module** — no DOM, no canvas, no Cytoscape — so it
 is unit-tested on its own and it survives a change of painter.
 
+**The ambition, not yet met.** The picture must be **alive but
+structured**: the clusters must stay legible and the nodes must keep
+drifting between them, rather than the graph settling into a ball or
+freezing in a hierarchy. The implementation above **settles and stops**,
+which is the right behaviour for a battery and the wrong one for the
+ambition; the way to have both is a **warm** simulation with a very low
+`alphaTarget`, suspended when the window is hidden and switched off
+entirely by `prefers-reduced-motion`. It is an open item, not a done one.
+
 The measured comparison, on 200 nodes and 400 relations:
 
 | layout | time to settle | overlapping card pairs | reproducible |

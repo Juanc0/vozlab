@@ -18,6 +18,7 @@ Status snapshot: **2026-10-21**. Phases 0, 1, 1R, 1S, 1T and Batch 1V (auth flow
 | [auth-and-tenancy.md](auth-and-tenancy.md) | OIDC flow, access/refresh sessions, guards, workspace isolation, pseudonymity |
 | [conventions.md](conventions.md) | Layering, NodeNext imports, naming, errors, events, pagination |
 | [design-system.md](design-system.md) | The design system: the tokens, the type, the house rules a new surface follows |
+| [graph-engine-research.md](graph-engine-research.md) | The graph engine: the research of 2026-10-21, the shortlist and the order of work |
 | [api-reference.md](api-reference.md) | Endpoint catalogue, headers, payloads, status codes |
 | [errors.md](errors.md) | Canonical `ERR_*` catalogue and HTTP mapping |
 | [runbook-dev.md](runbook-dev.md) | Local bootstrap, migrations, seed, tokens, troubleshooting |

@@ -326,6 +326,18 @@ Decided, and not to be re-opened without evidence:
   relation that turns draws the eye to the turn instead of to what it joins.
   The shape is out of both graphs and the router that computed the turn went
   with it — no shape is routed any more.
+- **The product is online-first, not offline-first.** Everything that is
+  shown or edited comes from the API; there is no local state and no
+  synchronisation, and none is intended. The shell is cached so the app
+  opens instantly and can say clearly when the connection is gone. The
+  research of 2026-10-21 had argued the bundle size on the grounds of an
+  offline PWA — a premise the product owner corrected, and one that has to
+  be left out of every argument.
+- **The graph engine is not decided.** The research is written down in
+  `docs/graph-engine-research.md` and the work goes in the order the
+  product owner says: the layout first (it is what decides whether the
+  picture is legible), the painter afterwards, judged with the eyes in the
+  comparison surface.
 
 - [x] 3.15 The design system: the tokens of the accent ladder, the type, the
       shell, the bars and the page frames. Result: the direction is the

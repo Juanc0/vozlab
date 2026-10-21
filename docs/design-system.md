@@ -82,9 +82,11 @@ proposals page, **zero** leaves of text are painted in the full accent.
 (`h1`, `h2` and the page title). Two families, never three; monospace only
 for a pseudonym, an id or a real code block.
 
-The files are **vendored** in `apps/web/static/fonts/` — the PWA is
-offline-first and the shell must render with its own faces when the
-network is gone. `font-display: swap`, a preload for the two most used
+The files are **vendored** in `apps/web/static/fonts/` — the shell is
+cached by the service worker, so it opens with its own faces even when the
+network is gone. (The product is **online-first**: everything that is shown
+or edited comes from the API, and there is no local state and no
+synchronisation.) `font-display: swap`, a preload for the two most used
 faces, and the SIL Open Font License 1.1 next to the files.
 
 ## The house rules
