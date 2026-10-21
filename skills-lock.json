@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "accessibility": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "2174f783a038a7ca4869c4c18e14726ec13b9c6b705d59253f647d0ca37cb78d"
+    },
     "accessibility-audit": {
       "source": "accesslint/skills",
       "sourceType": "github",
@@ -54,6 +59,12 @@
       "sourceType": "github",
       "skillPath": "SKILL.md",
       "computedHash": "a63eac94737b587294ee529c92bd24b72c17928521e24d500aa933e840c675e4"
+    },
+    "design-taste-frontend": {
+      "source": "leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "69021ac7e671c0c0d85d65b570003cef360b1c296323fa28c042884e146478ca"
     },
     "docker-compose": {
       "source": "bagelhole/devops-security-agent-skills",
@@ -114,6 +125,19 @@
       "skillPath": "skills/hexagonal-architecture/SKILL.md",
       "computedHash": "1579f70e4cd5a2dde39d29a2055d18b39f06b063a308d3b43a498900c99495b7"
     },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "84572f92d75b1cac952f347e97ff01a82f476f2dbf5e0ec46418de24e62a5071"
+    },
+    "ios-design": {
+      "source": "uizze.sh",
+      "sourceUrl": "https://uizze.sh/",
+      "sourceType": "well-known",
+      "computedHash": "5db10aea0f95d69a54cabcfae129ea0e7069b7022de967b2a04acdd9fa1be050",
+      "wellKnownDigest": "sha256:8db9f7cafeda65751e88fcbc1c9e4fc3f93803a438c30fe8e3fc8b00773417bd"
+    },
     "k6-load-testing": {
       "source": "sickn33/agentic-awesome-skills",
       "sourceType": "github",
@@ -148,6 +172,11 @@
       "skillPath": "skills/owasp-security-review/SKILL.md",
       "computedHash": "ed6d651c8d3c26b95f5455937af3c47b8a52f277ed2bc545b19e2f9667926d82"
     },
+    "playwright-best-practices": {
+      "source": "currents-dev/playwright-best-practices-skill",
+      "sourceType": "autoskills-registry",
+      "computedHash": "e561c4afbeb78350e32621b505a1e5f42194e8df33d8d03ed77b16bf06651862"
+    },
     "postgresql-optimization": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
@@ -172,11 +201,26 @@
       "skillPath": "plugins/luxor-testing-essentials/skills/pytest-patterns/SKILL.md",
       "computedHash": "71603d0be68ab05ec6510fe74bd3ad473519177fb619e28c578baa630ac87f69"
     },
+    "python-executor": {
+      "source": "inferen-sh/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "2e6c3a689e19bee7533b10d3b9954e38873e6dc3d0db73ff4e693e627f8c92cb"
+    },
+    "python-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "autoskills-registry",
+      "computedHash": "c8f806cc10a5b3daeb0f5fd31bfaa751019e23e78e2708b7f4de470d6b7ad4e9"
+    },
     "redis-observability": {
       "source": "redis/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/redis-observability/SKILL.md",
       "computedHash": "801b2a3f6347fc021bb2f30d8ce685a485975f155a7cd2c67f2ccea8473285d1"
+    },
+    "seo": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "7495da57766c99f787a729d4a21234ecb5d29d90f304a0d9a5996dcdc1eec048"
     },
     "sql-optimization": {
       "source": "github/awesome-copilot",
@@ -184,11 +228,21 @@
       "skillPath": "skills/sql-optimization/SKILL.md",
       "computedHash": "d87639dea8e0208e2161b78b22f6427b0fdf59e95e693b40d48b1226a0c35ccf"
     },
+    "svelte-code-writer": {
+      "source": "sveltejs/ai-tools",
+      "sourceType": "autoskills-registry",
+      "computedHash": "a557ac0a7452c48e09a7366afb1fa3f1b3fc11200576b4c8745c7c96fb457394"
+    },
     "svelte5-best-practices": {
       "source": "ejirocodes/agent-skills",
       "sourceType": "github",
       "skillPath": "svelte/skills/svelte5-best-practices/SKILL.md",
       "computedHash": "eeb2be3e32085d47ad5938afd6e96b2a4f9fd9e073ca27ec3f6df32371689b7c"
+    },
+    "tailwind-css-patterns": {
+      "source": "giuseppe-trisciuoglio/developer-kit",
+      "sourceType": "autoskills-registry",
+      "computedHash": "8fd534b64b3f305ade80c207e2f9ba4338d5e409e355af9f724c36764b6709c1"
     },
     "tailwind-design-system": {
       "source": "wshobson/agents",
@@ -211,6 +265,18 @@
       "source": "wshobson/agents",
       "sourceType": "autoskills-registry",
       "computedHash": "c32101c65134d94ef1a3305ef486020b57be6408f97ed952c9c560e3fe04188d"
+    },
+    "ui-taste": {
+      "source": "uizze.sh",
+      "sourceUrl": "https://uizze.sh/",
+      "sourceType": "well-known",
+      "computedHash": "b9d9f1f68d2db3316639cf77ad74dae34a2ed2ffb90845e5de6c592095c78a3d",
+      "wellKnownDigest": "sha256:120fd3e899db255454fff61b7e8c22757524ffe31101a22d19346708bd20c4b9"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "9b57a2fff4dbb3c38e7f2e511f4125784f11cd67f54e89d3e7d9c57fe5834bd5"
     },
     "vitest": {
       "source": "antfu/skills",
