@@ -561,7 +561,7 @@ Decided, and not to be re-opened without evidence:
       **type-only** import, which is erased at compile time. The production
       bundle lost **177 KB raw / 35 KB gzip**, and `sugiyama`, `decross` and
       `zherebko` are in **no file** of it.
-- [ ] 3.28 A third painter in the comparison: `d3` and a hand-written SVG
+- [x] 3.28 A third painter in the comparison: `d3` and a hand-written SVG
       painter, with the card as one `<g>`. **The next batch**, and the
       **full candidate**: the card as one `<g>`, the relations with their
       opaque plates, pan/zoom (`d3-zoom`), drag (`d3-drag`), hover,
@@ -575,7 +575,35 @@ Decided, and not to be re-opened without evidence:
       the board**: the compound-node mechanism it proposed collides with
       what `elements.ts` already documents (in Cytoscape a compound node is
       sized by its children, and the card is the one that must keep its
-      shape).
+      shape). Result: the painter exists as **a candidate in the
+      comparison** — `svg/painter.ts` (1 435 lines), `svg/edge-path.ts`
+      (375), `svg/camera.ts` (163) — and its card is **one `<g>`**: the
+      rect, the title's tspans, the meta line, the badge and the body, with
+      the transparent hit rect on top. It draws the **five** relation shapes
+      as `<path>`, the label at 11 px on an **opaque** plate of the ground,
+      the status dashes and the arrowheads, and it brings the **living
+      spring** as its arrangement — the production module, untouched. The
+      five shapes and the card's content were extracted into pure modules
+      (`edge-path.ts`, `card-content.ts`) that the incumbent uses too, so
+      the two painters are the same picture. **The payload**: the painter's
+      chunk is **22 988 B gzip** (the research measured 22.8 KB) and the
+      production bundle carries **nothing** of it — `d3-selection`,
+      `d3-zoom` and `d3-drag` are devDependencies and the built client was
+      grepped for them. **At 200 cards (384 relations)**: **4 867** DOM
+      elements, **15.3–19.7 ms** to build, **4.90 ms** per frame of the
+      spring, **0** overlapping pairs — against the research's 4 007
+      elements and 12.9 ms, because this carries the full card chrome and
+      not bare nodes. The pan during a wheel is **23.45 ms / 42.6 fps** at
+      200 cards, below the research's 59.7 fps: the honest reading is that
+      SVG is not free at 200 cards with this much ink, and the comparison
+      says so instead of rounding it away. What the eyes said: the card
+      **is** the same card — same 8 px radius, same ink, same wrapped title,
+      same meta line — and the plate is opaque.
+- [ ] 3.33 The comparison's chrome: the readout and the essay fold, so the
+      picture is the picture — at 1440 and at 375 — and the size selector
+      never shows an empty value.
+- [ ] 3.34 The shell's copy says online-first: the toast no longer promises
+      "ready to work offline", which is false — the data needs the network.
 
 ## Phase 4 — Platform, QA and operations
 

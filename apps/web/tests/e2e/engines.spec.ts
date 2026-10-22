@@ -27,9 +27,9 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
     page.getByRole('heading', { name: 'Los motores, de uno en uno' })
   ).toBeVisible();
 
-  // The engines are a **tablist**: three tabs, one of them selected.
+  // The engines are a **tablist**: four tabs, one of them selected.
   const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveCount(3);
+  await expect(tabs).toHaveCount(4);
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
   // The first engine is on screen, and it is the **only** picture. A
@@ -56,7 +56,40 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
   await expect(growReadout.getByText(/Viva: se mueve en reposo|Despierta/)).toBeVisible();
   await expect(page.getByTestId('hierarchy-note')).toHaveCount(0);
 
-  // The third tab is the **clone** of dagre: the layered arrangement of
+  // The third tab is the **SVG painter**: the same living spring, drawn by
+  // hand. The picture is a `<svg>` whose cards are groups — there is no
+  // canvas and no `<img>` — and the readout carries the numbers of the
+  // painter: the build of the picture and the elements it put in the DOM.
+  await page.keyboard.press('ArrowRight');
+
+  await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-engine-picture="svg"]')).toBeVisible();
+  await expect(page.getByRole('img')).toHaveCount(0);
+  await expect(page.locator('g.vozlab-svg-card').first()).toBeVisible();
+
+  const svgReadout = page.getByRole('region', { name: 'Las medidas del motor' });
+  await expect(svgReadout.getByTestId('alive-note')).toBeVisible();
+  await expect(svgReadout.getByText('Construcción de la imagen')).toBeVisible();
+  await expect(svgReadout.getByText(/\d+[.,]\d{2} ms en construirla/)).toBeVisible();
+  await expect(svgReadout.getByText('Elementos de la imagen')).toBeVisible();
+  await expect(svgReadout.getByText(/\d[\d.,]* elementos/)).toBeVisible();
+  await expect(page.getByTestId('hierarchy-note')).toHaveCount(0);
+
+  // The cards are controls: they take the focus, the ring says so, and the
+  // keyboard selects and expands them.
+  const card = page.locator('g.vozlab-svg-card').first();
+
+  await card.focus();
+  await expect(card).toBeFocused();
+  await expect(card.locator('rect.vozlab-svg-ring')).toHaveAttribute('opacity', '1');
+
+  await page.keyboard.press('Enter');
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+
+  await page.keyboard.press('e');
+  await expect(card).toHaveAttribute('aria-expanded', 'true');
+
+  // The fourth tab is the **clone** of dagre: the layered arrangement of
   // `d3-dag`. The library is a dependency of the comparison alone — the
   // picture of the app never imports it — and the comparison hands the
   // clone over to the picture it mounts.

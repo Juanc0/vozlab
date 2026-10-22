@@ -49,8 +49,8 @@ const GONE_FILES = [
 ];
 
 describe('the engines that were removed from the comparison', () => {
-  it('leaves only the three engines: dagre, the living spring and d3-dag', () => {
-    expect(ENGINES.map((engine) => engine.id)).toEqual(['dagre', 'd3', 'dag']);
+  it('leaves the four engines: dagre, the living spring with its two painters and d3-dag', () => {
+    expect(ENGINES.map((engine) => engine.id)).toEqual(['dagre', 'd3', 'svg', 'dag']);
     expect(ENGINES.every((engine) => !GONE_IDS.includes(engine.id))).toBe(true);
   });
 

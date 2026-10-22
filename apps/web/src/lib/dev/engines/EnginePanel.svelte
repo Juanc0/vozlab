@@ -4,8 +4,9 @@
    *
    * The comparison does **not** impose a shared layout on the engines: each
    * one brings its own arrangement (the layered one of `dagre`, the living
-   * spring of `d3-force`, the clone of `d3-dag`) and the canvas of
-   * Cytoscape paints all three.
+   * spring of `d3-force`, the clone of `d3-dag`) and its own painter — the
+   * canvas of Cytoscape for the three incumbents, and the hand-written SVG
+   * of the candidate.
    *
    * What the comparison gives it is the **room** and the **data**: the same
    * window, the same nodes and the same relations.
@@ -19,6 +20,7 @@
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
   import { createDagLayout } from './dag';
+  import SvgEnginePanel from './svg/SvgEnginePanel.svelte';
 
   interface Props {
     /** The engine that is on screen. */
@@ -113,39 +115,70 @@
     mounts the new one in the same space.
   -->
   {#key engine}
-    <ExplorationCanvas
-      {nodes}
-      {edges}
-      {expandedIds}
-      {selectedNodeId}
-      {presentedNodeId}
-      {edgeStyle}
-      {label}
-      layout={descriptor.layout}
-      /**
-       * The **clone** is handed over here: the library `d3-dag` is a
-       * dependency of this development surface, and the picture of the
-       * app never imports it.
-       */
-      dagLayout={createDagLayout}
-      onerror={(message) => onerror?.(message)}
-      onselect={(nodeId) => onselect?.(nodeId)}
-      ontoggle={(nodeId) => ontoggle?.(nodeId)}
-      onlayout={(report) => {
-        onlayout?.(engine, {
-          ms: report.ms,
-          settled: report.settled,
-          overlaps: report.overlaps,
-          ticks: report.ticks,
-          frameMs: report.frameMs,
-          tickMs: report.tickMs,
-          alive: report.alive,
-          awake: report.awake,
-          shapeReached: report.shapeReached,
-          threshold: report.threshold,
-          reversedRelations: report.reversedRelations
-        });
-      }}
-    />
+    {#if descriptor.painter === 'svg'}
+      <SvgEnginePanel
+        {nodes}
+        {edges}
+        {expandedIds}
+        {selectedNodeId}
+        {presentedNodeId}
+        {edgeStyle}
+        {label}
+        onerror={(message) => onerror?.(message)}
+        onselect={(nodeId) => onselect?.(nodeId)}
+        ontoggle={(nodeId) => ontoggle?.(nodeId)}
+        onlayout={(report) => {
+          onlayout?.(engine, {
+            ms: report.ms,
+            settled: report.settled,
+            overlaps: report.overlaps,
+            ticks: report.ticks,
+            frameMs: report.frameMs,
+            tickMs: report.tickMs,
+            alive: report.alive,
+            awake: report.awake,
+            shapeReached: report.shapeReached,
+            threshold: report.threshold,
+            buildMs: report.buildMs,
+            domElements: report.domElements
+          });
+        }}
+      />
+    {:else}
+      <ExplorationCanvas
+        {nodes}
+        {edges}
+        {expandedIds}
+        {selectedNodeId}
+        {presentedNodeId}
+        {edgeStyle}
+        {label}
+        layout={descriptor.layout}
+        /**
+         * The **clone** is handed over here: the library `d3-dag` is a
+         * dependency of this development surface, and the picture of the
+         * app never imports it.
+         */
+        dagLayout={createDagLayout}
+        onerror={(message) => onerror?.(message)}
+        onselect={(nodeId) => onselect?.(nodeId)}
+        ontoggle={(nodeId) => ontoggle?.(nodeId)}
+        onlayout={(report) => {
+          onlayout?.(engine, {
+            ms: report.ms,
+            settled: report.settled,
+            overlaps: report.overlaps,
+            ticks: report.ticks,
+            frameMs: report.frameMs,
+            tickMs: report.tickMs,
+            alive: report.alive,
+            awake: report.awake,
+            shapeReached: report.shapeReached,
+            threshold: report.threshold,
+            reversedRelations: report.reversedRelations
+          });
+        }}
+      />
+    {/if}
   {/key}
 </div>

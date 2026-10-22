@@ -40,6 +40,26 @@ const WARMUP_FRAMES = 5;
 const MEASURED_FRAMES = 30;
 
 /**
+ * The surface the engine draws on.
+ *
+ * The panel of Cytoscape draws to a `<canvas>`; the SVG painter draws to
+ * its own `<svg>`. The measurement looks for the picture that says it is
+ * one, and falls back to the canvas of the incumbent.
+ *
+ * @param element - The element the engine draws in.
+ * @returns The surface, or `undefined` when there is no picture.
+ */
+function pictureOf(element: HTMLElement): HTMLElement | undefined {
+  const painted = element.querySelector<HTMLElement>('[data-engine-picture="svg"]');
+
+  if (painted !== null) {
+    return painted;
+  }
+
+  return element.querySelector<HTMLCanvasElement>('canvas') ?? undefined;
+}
+
+/**
  * Measures the frames of a picture.
  *
  * @param element - The element the picture is drawn in.
@@ -50,10 +70,9 @@ export async function measureFrames(
   element: HTMLElement,
   frames = MEASURED_FRAMES
 ): Promise<number[]> {
-  const canvases = [...element.querySelectorAll('canvas')];
-  const canvas = canvases[0];
+  const picture = pictureOf(element);
 
-  if (canvas === undefined) {
+  if (picture === undefined) {
     return [];
   }
 
@@ -68,11 +87,11 @@ export async function measureFrames(
       deltas.push(now - last);
       last = now;
 
-      const bounds = canvas.getBoundingClientRect();
+      const bounds = picture.getBoundingClientRect();
 
-      // The wheel over the canvas: the engine moves the picture, and the
+      // The wheel over the picture: the engine moves the picture, and the
       // frame it takes to draw it is the frame that is measured.
-      canvas.dispatchEvent(
+      picture.dispatchEvent(
         new WheelEvent('wheel', {
           deltaY: -120,
           clientX: bounds.left + bounds.width / 2,

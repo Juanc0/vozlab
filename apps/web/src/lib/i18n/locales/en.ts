@@ -13,6 +13,110 @@
 import type { Dictionary } from '../dictionary';
 import { es } from './es';
 
+/**
+ * The copy of the **development surface** — the comparison of the engines.
+ *
+ * The comparison exists only in a development build, and its copy follows
+ * the same rule: `import.meta.env.DEV` folds to `false` in a production
+ * build, the object becomes `{}` and the names, the notes and the findings
+ * of the engines do not travel to a bundle that never shows them. The type
+ * keeps the keys, so `t()` remains checked.
+ */
+const engines = {
+  heading: 'The engines, one at a time',
+  intro:
+    'One single space for the four engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
+  pageTitle: 'The engines, one at a time',
+  tabsLabel: 'The engines, one at a time',
+  toolbarLabel: 'The bar of the engines',
+  readoutLabel: 'The measurements of the engine',
+  readoutHeading: 'The measurements of {name}',
+  panelDagreName: 'Cytoscape + dagre',
+  panelDagreNote:
+    'The incumbent: a hierarchical, deterministic layout, computed in one go.',
+  panelD3Name: 'Cytoscape + d3-force',
+  panelD3Note:
+    'The living spring of the app: a seeded simulation, a rectangular collision force and a rest that breathes.',
+  panelSvgName: 'SVG + d3',
+  panelSvgNote:
+    'The painter we own: every card is one <g> — the rectangle, the wrapped title, the meta line and the body — and every relation a <path>. It brings no layout of its own: the living spring arranges it, and the readout measures what the picture costs. Its five shapes are approximations of Cytoscape\'s curves, and everything Cytoscape does inside is written by hand here.',
+  panelDagName: 'Cytoscape + d3-dag',
+  panelDagNote:
+    'The clone of dagre with d3-dag: a layered layout that needs a graph without cycles, and breaks the ones it has in plain sight.',
+  hierarchyStatic: 'A hierarchy does not breathe: its ranks are the drawing.',
+  canvasLabel: 'The canvas of the comparison',
+  pictureLabel: 'The picture of the comparison',
+  sizeLabel: 'Size of the picture',
+  sizeDemo: 'The demo ({count} nodes)',
+  sizeStress: 'The ceiling of the API ({count} nodes)',
+  edgeStyleLabel: 'Shape of the arrows',
+  measure: 'Measure the engine',
+  measuring: 'Measuring…',
+  noMeasurement: 'It has not been measured yet.',
+  rerun: 'Run the layout again',
+  listToggle: 'See the list',
+  listHeading: 'The picture as a list',
+  counts: 'The picture holds {nodes} nodes and {edges} relations.',
+  frameLabel: 'Frame',
+  frameValue: '{value} ms (median)',
+  framePeak: 'The slowest one: {value} ms',
+  frameCount: 'Frames measured: {count}',
+  layoutLabel: 'Layout',
+  layoutValue: '{value} ms in total',
+  buildLabel: 'Build of the picture',
+  buildValue: '{value} ms to build',
+  domLabel: 'Elements of the picture',
+  domValue: '{count} elements',
+  settledLabel: 'Settled',
+  settledYes: 'Yes',
+  settledNo: 'Not yet',
+  motionLabel: 'Motion',
+  aliveAwake: 'Awake: the hand moved it',
+  aliveIdle: 'Alive: it moves at rest',
+  shapeLabel: 'Shape',
+  shapeReached: 'Reached below {threshold} px per step',
+  shapeMoving: 'Still looking for it',
+  aliveNote:
+    'The living spring does not settle: at rest it keeps moving below {threshold} px per step, and it wakes when the hand touches it. The shape is reached when the movement falls below that threshold; the simulation never stops.',
+  overlapsLabel: 'Cards on top of each other',
+  overlapsValue: '{count} pairs',
+  ticksLabel: 'Steps of the simulation',
+  ticksValue: '{count} steps',
+  tickLabel: 'One step of the spring',
+  tickValue: '{value} ms per step',
+  layoutFrameLabel: 'Frame of the layout',
+  frameLayoutValue: '{value} ms',
+  reproducibleLabel: 'Reproducible',
+  reproducibleDagre: 'Yes: it is a function of the picture',
+  reproducibleD3: 'Yes: the seed is fixed',
+  reproducibleSvg: 'Yes: the seed is fixed',
+  reproducibleDag: 'Yes: it is a function of the picture',
+  reversedLabel: 'Reversed relations',
+  reversedValue: '{count} relations',
+  reversedToggle: 'See the {count} reversed relations',
+  reversedDetail:
+    'They were reversed to be able to order the graph, and their arrow ends up against what they say: {relations}.',
+  loading: 'Loading the window…',
+  empty: 'The window is empty: there is nothing to compare.',
+  svgPainterError: 'The SVG painter could not draw the picture.',
+  badgesLabel: 'The nodes of the window',
+  findingsHeading: 'What this engine does differently',
+  findingSvgCard:
+    'The card is one object: the rectangle, the title, the meta line and the body are children of the same <g>. Cytoscape draws them as separate elements, and a drag has to re-synchronise the text on every frame.',
+  findingSvgLimits:
+    'The painter is ours: it has no layout and no WebGL renderer, its five shapes approximate Cytoscape\'s curves, and the picture is not virtualised — two hundred cards are thousands of elements in the DOM. The readout says how many, and how long the SVG took to build.',
+  findingD3Collision:
+    'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
+  findingD3Seed:
+    'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
+  findingD3Living:
+    'The spring of d3-force does not settle: rest is a temperature above zero, so it keeps moving below the threshold and wakes when the hand touches it. Relations with more weight pull their cards closer.',
+  findingDagCycles:
+    'The relations of the graph have cycles, and a layered layout needs a graph without cycles: dagre breaks them silently —its acyclic.js file turns the relations around— and the d3-dag clone breaks them in plain sight. The two of them reverse the same number of relations, and only one of them says so.',
+  findingDagQuality:
+    'The clone uses the fast setting of d3-dag on purpose: the default setting solves a linear program per layer, and on a graph of four hundred relations it took ninety seconds.'
+};
+
 export const en: Dictionary<typeof es> = {
   common: {
     cancel: 'Cancel',
@@ -283,86 +387,7 @@ export const en: Dictionary<typeof es> = {
    * The copy of the names of the engines is the same in the two languages:
    * they are proper nouns, and a proper noun is not translated.
    */
-  engines: {
-    heading: 'The engines, one at a time',
-    intro:
-      'One single space for the three engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
-    pageTitle: 'The engines, one at a time',
-    tabsLabel: 'The engines, one at a time',
-    toolbarLabel: 'The bar of the engines',
-    readoutLabel: 'The measurements of the engine',
-    readoutHeading: 'The measurements of {name}',
-    panelDagreName: 'Cytoscape + dagre',
-    panelDagreNote:
-      'The incumbent: a hierarchical, deterministic layout, computed in one go.',
-    panelD3Name: 'Cytoscape + d3-force',
-    panelD3Note:
-      'The living spring of the app: a seeded simulation, a rectangular collision force and a rest that breathes.',
-    panelDagName: 'Cytoscape + d3-dag',
-    panelDagNote:
-      'The clone of dagre with d3-dag: a layered layout that needs a graph without cycles, and breaks the ones it has in plain sight.',
-    hierarchyStatic: 'A hierarchy does not breathe: its ranks are the drawing.',
-    canvasLabel: 'The canvas of the comparison',
-    sizeLabel: 'Size of the picture',
-    sizeDemo: 'The demo ({count} nodes)',
-    sizeStress: 'The ceiling of the API ({count} nodes)',
-    edgeStyleLabel: 'Shape of the arrows',
-    measure: 'Measure the engine',
-    measuring: 'Measuring…',
-    noMeasurement: 'It has not been measured yet.',
-    rerun: 'Run the layout again',
-    listToggle: 'See the list',
-    listHeading: 'The picture as a list',
-    counts: 'The picture holds {nodes} nodes and {edges} relations.',
-    frameLabel: 'Frame',
-    frameValue: '{value} ms (median)',
-    framePeak: 'The slowest one: {value} ms',
-    frameCount: 'Frames measured: {count}',
-    layoutLabel: 'Layout',
-    layoutValue: '{value} ms in total',
-    settledLabel: 'Settled',
-    settledYes: 'Yes',
-    settledNo: 'Not yet',
-    motionLabel: 'Motion',
-    aliveAwake: 'Awake: the hand moved it',
-    aliveIdle: 'Alive: it moves at rest',
-    shapeLabel: 'Shape',
-    shapeReached: 'Reached below {threshold} px per step',
-    shapeMoving: 'Still looking for it',
-    aliveNote:
-      'The living spring does not settle: at rest it keeps moving below {threshold} px per step, and it wakes when the hand touches it. The shape is reached when the movement falls below that threshold; the simulation never stops.',
-    overlapsLabel: 'Cards on top of each other',
-    overlapsValue: '{count} pairs',
-    ticksLabel: 'Steps of the simulation',
-    ticksValue: '{count} steps',
-    tickLabel: 'One step of the spring',
-    tickValue: '{value} ms per step',
-    layoutFrameLabel: 'Frame of the layout',
-    frameLayoutValue: '{value} ms',
-    reproducibleLabel: 'Reproducible',
-    reproducibleDagre: 'Yes: it is a function of the picture',
-    reproducibleD3: 'Yes: the seed is fixed',
-    reproducibleDag: 'Yes: it is a function of the picture',
-    reversedLabel: 'Reversed relations',
-    reversedValue: '{count} relations',
-    reversedToggle: 'See the {count} reversed relations',
-    reversedDetail:
-      'They were reversed to be able to order the graph, and their arrow ends up against what they say: {relations}.',
-    loading: 'Loading the window…',
-    empty: 'The window is empty: there is nothing to compare.',
-    badgesLabel: 'The nodes of the window',
-    findingsHeading: 'What this engine does differently',
-    findingD3Collision:
-      'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
-    findingD3Seed:
-      'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
-    findingD3Living:
-      'The spring of d3-force does not settle: rest is a temperature above zero, so it keeps moving below the threshold and wakes when the hand touches it. Relations with more weight pull their cards closer.',
-    findingDagCycles:
-      'The relations of the graph have cycles, and a layered layout needs a graph without cycles: dagre breaks them silently —its acyclic.js file turns the relations around— and the d3-dag clone breaks them in plain sight. The two of them reverse the same number of relations, and only one of them says so.',
-    findingDagQuality:
-      'The clone uses the fast setting of d3-dag on purpose: the default setting solves a linear program per layer, and on a graph of four hundred relations it took ninety seconds.'
-  },
+  engines: import.meta.env.DEV ? engines : ({} as typeof engines),
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {

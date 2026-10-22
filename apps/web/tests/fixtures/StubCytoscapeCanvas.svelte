@@ -7,7 +7,7 @@
    * measurements belong to it. The stub reports an arrangement of its own,
    * and the time it reports says which engine produced it.
    */
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
 
   interface Props {
     layout?: string;
@@ -37,7 +37,14 @@
     }) => void;
   }
 
-  let { layout = 'dagre', label = 'El lienzo', dagLayout = undefined, onlayout }: Props = $props();
+  let {
+    layout = 'dagre',
+    label = 'El lienzo',
+    nodes = [],
+    edges = [],
+    dagLayout = undefined,
+    onlayout
+  }: Props = $props();
 
   /** The time each arrangement takes — the number says which engine it is. */
   const TIMES: Record<string, number> = {
@@ -46,14 +53,22 @@
     dag: 33
   };
 
-  onMount(() => {
-    onlayout?.({
-      ms: TIMES[layout] ?? 99,
-      settled: true,
-      overlaps: 1,
-      ticks: 5,
-      frameMs: 2,
-      reversedRelations: []
+  // The window arrives after the first paint: the report follows the data,
+  // as it does in the real canvas. The callback is read untracked so a
+  // report does not re-run the effect that produced it.
+  $effect(() => {
+    void nodes;
+    void edges;
+
+    untrack(() => {
+      onlayout?.({
+        ms: TIMES[layout] ?? 99,
+        settled: true,
+        overlaps: 1,
+        ticks: 5,
+        frameMs: 2,
+        reversedRelations: []
+      });
     });
   });
 </script>

@@ -399,7 +399,7 @@
         {selectedNodeId}
         presentedNodeId={presented}
         {edgeStyle}
-        label={`${t(descriptor.nameKey)} — ${t('engines.canvasLabel')}`}
+        label={`${t(descriptor.nameKey)} — ${t('engines.pictureLabel')}`}
         onselect={(nodeId) => {
           selectedNodeId = nodeId;
         }}

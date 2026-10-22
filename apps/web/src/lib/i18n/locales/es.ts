@@ -22,6 +22,110 @@ import type {
   ThreadStatus,
 } from '@vozlab/shared-types';
 
+/**
+ * The copy of the **development surface** — the comparison of the engines.
+ *
+ * The comparison exists only in a development build, and its copy follows
+ * the same rule: `import.meta.env.DEV` folds to `false` in a production
+ * build, the object becomes `{}` and the names, the notes and the findings
+ * of the engines do not travel to a bundle that never shows them. The type
+ * keeps the keys, so `t()` remains checked.
+ */
+const engines = {
+  heading: 'Los motores, de uno en uno',
+  intro:
+    'Un mismo espacio para los cuatro motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
+  pageTitle: 'Los motores, de uno en uno',
+  tabsLabel: 'Los motores, de uno en uno',
+  toolbarLabel: 'La barra de los motores',
+  readoutLabel: 'Las medidas del motor',
+  readoutHeading: 'Las medidas de {name}',
+  panelDagreName: 'Cytoscape + dagre',
+  panelDagreNote:
+    'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
+  panelD3Name: 'Cytoscape + d3-force',
+  panelD3Note:
+    'El resorte vivo de la aplicación: una simulación con semilla, una fuerza de colisión rectangular y un reposo que respira.',
+  panelSvgName: 'SVG + d3',
+  panelSvgNote:
+    'El pintor propio: cada tarjeta es un solo <g> —el rectángulo, el título partido, la línea de tipo y el cuerpo— y cada relación un <path>. No trae disposición propia: lo reparte el resorte vivo, y la lectura mide lo que cuesta la imagen. Sus cinco formas son aproximaciones de las curvas de Cytoscape, y todo lo que Cytoscape resuelve por dentro aquí está escrito a mano.',
+  panelDagName: 'Cytoscape + d3-dag',
+  panelDagNote:
+    'El clon de dagre con d3-dag: una disposición por capas que necesita que el grafo no tenga ciclos, y rompe los que tiene a la vista.',
+  hierarchyStatic: 'Una jerarquía no respira: sus rangos son el dibujo.',
+  canvasLabel: 'El lienzo de la comparación',
+  pictureLabel: 'La imagen de la comparación',
+  sizeLabel: 'Tamaño de la imagen',
+  sizeDemo: 'La demostración ({count} nodos)',
+  sizeStress: 'El techo de la API ({count} nodos)',
+  edgeStyleLabel: 'Forma de las flechas',
+  measure: 'Medir el motor',
+  measuring: 'Midiendo…',
+  noMeasurement: 'Todavía no se ha medido.',
+  rerun: 'Repetir la disposición',
+  listToggle: 'Ver la lista',
+  listHeading: 'La imagen en forma de lista',
+  counts: 'La imagen tiene {nodes} nodos y {edges} relaciones.',
+  frameLabel: 'Marco',
+  frameValue: '{value} ms (mediana)',
+  framePeak: 'El más lento: {value} ms',
+  frameCount: 'Cuadros medidos: {count}',
+  layoutLabel: 'Disposición',
+  layoutValue: '{value} ms en total',
+  buildLabel: 'Construcción de la imagen',
+  buildValue: '{value} ms en construirla',
+  domLabel: 'Elementos de la imagen',
+  domValue: '{count} elementos',
+  settledLabel: 'Asentada',
+  settledYes: 'Sí',
+  settledNo: 'Todavía no',
+  motionLabel: 'Movimiento',
+  aliveAwake: 'Despierta: la mano la movió',
+  aliveIdle: 'Viva: se mueve en reposo',
+  shapeLabel: 'Forma',
+  shapeReached: 'Alcanzada por debajo de {threshold} px por paso',
+  shapeMoving: 'Todavía buscándola',
+  aliveNote:
+    'El resorte vivo no se asienta: en reposo sigue moviéndose por debajo de {threshold} px por paso, y despierta cuando la mano lo toca. La forma se alcanza cuando el movimiento queda por debajo de ese umbral; la simulación no se detiene.',
+  overlapsLabel: 'Tarjetas encima',
+  overlapsValue: '{count} pares',
+  ticksLabel: 'Pasos de la simulación',
+  ticksValue: '{count} pasos',
+  tickLabel: 'Un paso del resorte',
+  tickValue: '{value} ms por paso',
+  layoutFrameLabel: 'Cuadro de la disposición',
+  frameLayoutValue: '{value} ms por cuadro',
+  reproducibleLabel: 'Sale igual dos veces',
+  reproducibleDagre: 'Sí: es una función de la imagen',
+  reproducibleD3: 'Sí: la semilla es fija',
+  reproducibleSvg: 'Sí: la semilla es fija',
+  reproducibleDag: 'Sí: es una función de la imagen',
+  reversedLabel: 'Relaciones invertidas',
+  reversedValue: '{count} relaciones',
+  reversedToggle: 'Ver las {count} relaciones invertidas',
+  reversedDetail:
+    'Se invirtieron para poder ordenar el grafo, y su flecha queda contra lo que dicen: {relations}.',
+  loading: 'Cargando la ventana…',
+  empty: 'La ventana está vacía: no hay nada que comparar.',
+  svgPainterError: 'El pintor SVG no pudo dibujar la imagen.',
+  badgesLabel: 'Los nodos de la ventana',
+  findingsHeading: 'Lo que este motor hace distinto',
+  findingSvgCard:
+    'La tarjeta es un solo objeto: el rectángulo, el título, la línea de tipo y el cuerpo son hijos del mismo <g>. Cytoscape los dibuja como elementos separados, y un arrastre tiene que volver a sincronizar el texto en cada cuadro.',
+  findingSvgLimits:
+    'El pintor es nuestro: no trae disposición ni renderizador WebGL, sus cinco formas son aproximaciones de las curvas de Cytoscape y la imagen no está virtualizada: doscientas tarjetas son miles de elementos en el DOM. La lectura dice cuántos y cuánto tardó el SVG en construirse.',
+  findingD3Collision:
+    'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
+  findingD3Seed:
+    'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
+  findingD3Living:
+    'El resorte de d3-force no se asienta: el reposo es una temperatura distinta de cero, así que sigue moviéndose por debajo del umbral y despierta cuando la mano lo toca. Las relaciones con más peso acercan sus tarjetas.',
+  findingDagCycles:
+    'Las relaciones del grafo tienen ciclos, y una disposición por capas necesita un grafo sin ciclos: dagre los rompe en silencio —su archivo acyclic.js da la vuelta a las relaciones— y el clon de d3-dag los rompe a la vista. Las dos invierten el mismo número de relaciones, y solo una lo dice.',
+  findingDagQuality:
+    'El clon usa el ajuste rápido de d3-dag a propósito: el ajuste por defecto resuelve un programa lineal por capa, y en un grafo de cuatrocientas relaciones tardó noventa segundos.'
+};
+
 export const es = {
   /** The copy several screens share. */
   common: {
@@ -309,86 +413,7 @@ export const es = {
    * The copy of the names of the engines is the same in the two languages:
    * they are proper nouns, and a proper noun is not translated.
    */
-  engines: {
-    heading: 'Los motores, de uno en uno',
-    intro:
-      'Un mismo espacio para los tres motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
-    pageTitle: 'Los motores, de uno en uno',
-    tabsLabel: 'Los motores, de uno en uno',
-    toolbarLabel: 'La barra de los motores',
-    readoutLabel: 'Las medidas del motor',
-    readoutHeading: 'Las medidas de {name}',
-    panelDagreName: 'Cytoscape + dagre',
-    panelDagreNote:
-      'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
-    panelD3Name: 'Cytoscape + d3-force',
-    panelD3Note:
-      'El resorte vivo de la aplicación: una simulación con semilla, una fuerza de colisión rectangular y un reposo que respira.',
-    panelDagName: 'Cytoscape + d3-dag',
-    panelDagNote:
-      'El clon de dagre con d3-dag: una disposición por capas que necesita que el grafo no tenga ciclos, y rompe los que tiene a la vista.',
-    hierarchyStatic: 'Una jerarquía no respira: sus rangos son el dibujo.',
-    canvasLabel: 'El lienzo de la comparación',
-    sizeLabel: 'Tamaño de la imagen',
-    sizeDemo: 'La demostración ({count} nodos)',
-    sizeStress: 'El techo de la API ({count} nodos)',
-    edgeStyleLabel: 'Forma de las flechas',
-    measure: 'Medir el motor',
-    measuring: 'Midiendo…',
-    noMeasurement: 'Todavía no se ha medido.',
-    rerun: 'Repetir la disposición',
-    listToggle: 'Ver la lista',
-    listHeading: 'La imagen en forma de lista',
-    counts: 'La imagen tiene {nodes} nodos y {edges} relaciones.',
-    frameLabel: 'Marco',
-    frameValue: '{value} ms (mediana)',
-    framePeak: 'El más lento: {value} ms',
-    frameCount: 'Cuadros medidos: {count}',
-    layoutLabel: 'Disposición',
-    layoutValue: '{value} ms en total',
-    settledLabel: 'Asentada',
-    settledYes: 'Sí',
-    settledNo: 'Todavía no',
-    motionLabel: 'Movimiento',
-    aliveAwake: 'Despierta: la mano la movió',
-    aliveIdle: 'Viva: se mueve en reposo',
-    shapeLabel: 'Forma',
-    shapeReached: 'Alcanzada por debajo de {threshold} px por paso',
-    shapeMoving: 'Todavía buscándola',
-    aliveNote:
-      'El resorte vivo no se asienta: en reposo sigue moviéndose por debajo de {threshold} px por paso, y despierta cuando la mano lo toca. La forma se alcanza cuando el movimiento queda por debajo de ese umbral; la simulación no se detiene.',
-    overlapsLabel: 'Tarjetas encima',
-    overlapsValue: '{count} pares',
-    ticksLabel: 'Pasos de la simulación',
-    ticksValue: '{count} pasos',
-    tickLabel: 'Un paso del resorte',
-    tickValue: '{value} ms por paso',
-    layoutFrameLabel: 'Cuadro de la disposición',
-    frameLayoutValue: '{value} ms por cuadro',
-    reproducibleLabel: 'Sale igual dos veces',
-    reproducibleDagre: 'Sí: es una función de la imagen',
-    reproducibleD3: 'Sí: la semilla es fija',
-    reproducibleDag: 'Sí: es una función de la imagen',
-    reversedLabel: 'Relaciones invertidas',
-    reversedValue: '{count} relaciones',
-    reversedToggle: 'Ver las {count} relaciones invertidas',
-    reversedDetail:
-      'Se invirtieron para poder ordenar el grafo, y su flecha queda contra lo que dicen: {relations}.',
-    loading: 'Cargando la ventana…',
-    empty: 'La ventana está vacía: no hay nada que comparar.',
-    badgesLabel: 'Los nodos de la ventana',
-    findingsHeading: 'Lo que este motor hace distinto',
-    findingD3Collision:
-      'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
-    findingD3Seed:
-      'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
-    findingD3Living:
-      'El resorte de d3-force no se asienta: el reposo es una temperatura distinta de cero, así que sigue moviéndose por debajo del umbral y despierta cuando la mano lo toca. Las relaciones con más peso acercan sus tarjetas.',
-    findingDagCycles:
-      'Las relaciones del grafo tienen ciclos, y una disposición por capas necesita un grafo sin ciclos: dagre los rompe en silencio —su archivo acyclic.js da la vuelta a las relaciones— y el clon de d3-dag los rompe a la vista. Las dos invierten el mismo número de relaciones, y solo una lo dice.',
-    findingDagQuality:
-      'El clon usa el ajuste rápido de d3-dag a propósito: el ajuste por defecto resuelve un programa lineal por capa, y en un grafo de cuatrocientas relaciones tardó noventa segundos.'
-  },
+  engines: import.meta.env.DEV ? engines : ({} as typeof engines),
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {

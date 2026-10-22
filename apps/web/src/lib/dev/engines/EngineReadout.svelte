@@ -96,11 +96,32 @@
     </dd>
 
     <!--
+      The painter's own numbers. The canvas of Cytoscape does not report
+      them, and the readout does not invent them: the rows are there when
+      the engine measured them.
+    -->
+    {#if measurement?.buildMs !== undefined}
+      <dt class="text-muted">{t('engines.buildLabel')}</dt>
+      <dd class="font-mono">
+        {t('engines.buildValue', { value: measurement.buildMs.toFixed(2) })}
+      </dd>
+    {/if}
+
+    {#if measurement?.domElements !== undefined}
+      <dt class="text-muted">{t('engines.domLabel')}</dt>
+      <dd class="font-mono">
+        {t('engines.domValue', {
+          count: formatNumber(locale.locale, measurement.domElements)
+        })}
+      </dd>
+    {/if}
+
+    <!--
       The living spring is not settled, and the readout does not say it is:
       it says whether the spring is awake and whether the picture reached its
       shape below the threshold. A one-pass arrangement keeps the old row.
     -->
-    {#if engine.id === 'd3' && measurement?.alive === true}
+    {#if measurement?.alive === true}
       <dt class="text-muted">{t('engines.motionLabel')}</dt>
       <dd>{measurement.awake ? t('engines.aliveAwake') : t('engines.aliveIdle')}</dd>
 
@@ -168,7 +189,7 @@
 
     <!--
       Whether the same picture comes out twice. It is not the same question
-      for the three engines, and the answer says so.
+      for every engine, and the answer says so.
     -->
     <dt class="text-muted">{t('engines.reproducibleLabel')}</dt>
     <dd>{t(engine.reproducibleKey)}</dd>
@@ -191,11 +212,10 @@
 
   <!--
     The living spring, said in words: it does not settle, it moves at rest,
-    and its shape is reached below a threshold. The two one-pass
-    arrangements carry their own note beside the tabs — a hierarchy does
-    not breathe.
+    and its shape is reached below a threshold. The one-pass arrangements
+    carry their own note beside the tabs — a hierarchy does not breathe.
   -->
-  {#if engine.id === 'd3' && measurement?.alive === true}
+  {#if measurement?.alive === true}
     <p class="mt-2 text-small text-muted" role="note" data-testid="alive-note">
       {t('engines.aliveNote', {
         threshold: formatNumber(locale.locale, measurement.threshold ?? 1.5)

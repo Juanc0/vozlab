@@ -17,7 +17,7 @@ import type { GraphLayout } from '$lib/graph/explore/layout';
 import type { TranslationKey } from '$lib/i18n';
 
 /** The engines of the comparison. */
-export type EngineId = 'dagre' | 'd3' | 'dag';
+export type EngineId = 'dagre' | 'd3' | 'svg' | 'dag';
 
 /**
  * What a **measurement** of an engine says.
@@ -54,6 +54,10 @@ export interface EngineMeasurement {
   readonly threshold?: number;
   /** The relations the arrangement had to break to order the graph. */
   readonly reversedRelations?: readonly string[];
+  /** The time the picture took to be built, in milliseconds. */
+  readonly buildMs?: number;
+  /** The elements of the picture, the root included. */
+  readonly domElements?: number;
 }
 
 /** What an engine of the comparison is. */
@@ -69,10 +73,17 @@ export interface EngineDescriptor {
   /**
    * The layout the engine arranges the picture with.
    *
-   * Every engine of the comparison uses the canvas of Cytoscape: the
-   * comparison no longer carries a second painter.
+   * The SVG painter arranges its picture with the living spring too: the
+   * comparison changes the painter, not the arrangement.
    */
   readonly layout: GraphLayout;
+  /**
+   * The painter the engine draws with.
+   *
+   * `cytoscape` is the incumbent; `svg` is the candidate that owns its
+   * picture, one `<g>` per card.
+   */
+  readonly painter: 'cytoscape' | 'svg';
   /** The findings of the comparison that concern this engine. */
   readonly findingKeys: readonly TranslationKey[];
 }
@@ -81,7 +92,8 @@ export interface EngineDescriptor {
  * The engines of the comparison, in the order the tabs show them.
  *
  * The order is the order of the **freedom**: the deterministic arrangement
- * first, then the living spring, then the clone of `dagre`.
+ * first, then the living spring with each of its two painters, then the
+ * clone of `dagre`.
  */
 export const ENGINES: readonly EngineDescriptor[] = [
   {
@@ -90,6 +102,7 @@ export const ENGINES: readonly EngineDescriptor[] = [
     noteKey: 'engines.panelDagreNote',
     reproducibleKey: 'engines.reproducibleDagre',
     layout: 'dagre',
+    painter: 'cytoscape',
     findingKeys: ['engines.findingDagCycles']
   },
   {
@@ -98,8 +111,23 @@ export const ENGINES: readonly EngineDescriptor[] = [
     noteKey: 'engines.panelD3Note',
     reproducibleKey: 'engines.reproducibleD3',
     layout: 'd3',
+    painter: 'cytoscape',
     findingKeys: [
       'engines.findingD3Collision',
+      'engines.findingD3Seed',
+      'engines.findingD3Living'
+    ]
+  },
+  {
+    id: 'svg',
+    nameKey: 'engines.panelSvgName',
+    noteKey: 'engines.panelSvgNote',
+    reproducibleKey: 'engines.reproducibleSvg',
+    layout: 'd3',
+    painter: 'svg',
+    findingKeys: [
+      'engines.findingSvgCard',
+      'engines.findingSvgLimits',
       'engines.findingD3Seed',
       'engines.findingD3Living'
     ]
@@ -110,6 +138,7 @@ export const ENGINES: readonly EngineDescriptor[] = [
     noteKey: 'engines.panelDagNote',
     reproducibleKey: 'engines.reproducibleDag',
     layout: 'dag',
+    painter: 'cytoscape',
     findingKeys: ['engines.findingDagCycles', 'engines.findingDagQuality']
   }
 ];

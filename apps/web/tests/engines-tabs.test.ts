@@ -28,6 +28,10 @@ vi.mock('../src/lib/components/ExplorationCanvas.svelte', async () => ({
   default: (await import('./fixtures/StubCytoscapeCanvas.svelte')).default
 }));
 
+vi.mock('../src/lib/dev/engines/svg/SvgEnginePanel.svelte', async () => ({
+  default: (await import('./fixtures/StubSvgPanel.svelte')).default
+}));
+
 vi.mock('$app/environment', () => ({
   browser: true,
   building: false,
@@ -62,9 +66,11 @@ describe('the tabs of the engines', () => {
 
     const tabs = screen.getAllByRole('tab');
 
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0]).toHaveAccessibleName('Cytoscape + dagre');
-    expect(tabs[2]).toHaveAccessibleName('Cytoscape + d3-dag');
+    expect(tabs[1]).toHaveAccessibleName('Cytoscape + d3-force');
+    expect(tabs[2]).toHaveAccessibleName('SVG + d3');
+    expect(tabs[3]).toHaveAccessibleName('Cytoscape + d3-dag');
 
     // The selected tab is the only one in the tab order, and it is the one
     // that is announced as selected.
@@ -127,14 +133,26 @@ describe('the comparison of the engines', () => {
 
     expect(screen.getAllByRole('img')).toHaveLength(1);
 
-    // The clone of dagre is mounted in the same space, and the canvas of
-    // the living spring is gone.
+    // The SVG painter takes over the same space: the canvas is gone, and
+    // the painter is the only picture.
+    await fireEvent.click(screen.getByRole('tab', { name: 'SVG + d3' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('svg-canvas')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('cytoscape-canvas')).toBeNull();
+    expect(screen.queryAllByRole('img')).toHaveLength(0);
+
+    // The clone of dagre is mounted in the same space, and the painter is
+    // gone.
     await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + d3-dag' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('cytoscape-canvas')).toHaveAttribute('data-layout', 'dag');
     });
 
+    expect(screen.queryByTestId('svg-canvas')).toBeNull();
     expect(screen.getAllByRole('img')).toHaveLength(1);
   });
 
@@ -182,14 +200,27 @@ describe('the comparison of the engines', () => {
 
     expect(screen.queryByText(/11\.0 ms en total/)).toBeNull();
 
-    // The clone of dagre is a third engine, and its measurement is its own.
+    // The SVG painter measures its own picture, with the two numbers only
+    // it reports: the build of the SVG and its DOM elements.
+    await fireEvent.click(screen.getByRole('tab', { name: 'SVG + d3' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/55\.0 ms en total/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/44\.00 ms en construirla/)).toBeInTheDocument();
+    expect(screen.getByText(/444 elementos/)).toBeInTheDocument();
+    expect(screen.queryByText(/22\.0 ms en total/)).toBeNull();
+
+    // The clone of dagre is another engine, and its measurement is its own.
     await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + d3-dag' }));
 
     await waitFor(() => {
       expect(screen.getByText(/33\.0 ms en total/)).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/22\.0 ms en total/)).toBeNull();
+    expect(screen.queryByText(/55\.0 ms en total/)).toBeNull();
+    expect(screen.queryByText(/444 elementos/)).toBeNull();
   });
 
   it('offers the list as the text alternative of the picture', async () => {

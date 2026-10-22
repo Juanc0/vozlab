@@ -281,7 +281,7 @@ document does not age into a wish list.
 | --- | --- | --- |
 | the spring settles and stops; the ambition is a picture that keeps drifting | **3.26** | **done** — the living spring: an idle drift (`alphaTarget` 0.005 at ~12 Hz, 0.281 px per tick at 200 cards), a wake to 0.1 on contact with a 1.2 s cool-down, no ticks in a hidden tab, and a still picture under `prefers-reduced-motion`. The attraction is weighted by the relation's `communityScore`, which is what makes the picture *half organised*. |
 | the card as one object, with compound nodes | ~~3.27~~ | **dropped** — a compound node is sized by its children (as `elements.ts` already documents) and the card is the one that must keep its shape. The goal is met by the painter below, where the card *is* one `<g>`. |
-| a third painter: `d3` + SVG | **3.28** | **in progress** — the full candidate, with the same feature set as the incumbent. |
+| a third painter: `d3` + SVG | **3.28** | **done** — the full candidate, with the same feature set as the incumbent. **22 988 B gzip**, **4 867** DOM elements at 200 cards, **15.3–19.7 ms** to build and **4.90 ms** per spring frame; the pan is **42.6 fps** against Cytoscape's 57.2, which is the honest cost of drawing the whole card chrome. The card is one `<g>`, and the production bundle does not carry the painter. |
 | `d3-dag` as a clone of dagre | **3.25** | **done** — 1.7 ms against dagre's 16 ms on the demo, and the finding: **dagre reverses 10 of the 35 arrows of the seeded demo in silence**. |
 | delete Sigma and `cytoscape-fcose` | — | **done** — removed from the comparison, with their dependencies and their copy. |
 | AntV G6 v5, only if the yardstick changes | — | **not built** — 393 KB and an imperative framework that fights the runes. |
