@@ -16,16 +16,20 @@ import {
  * runs it is roadmap 4.3. It is wired like the integration suite of the API
  * (`test:integration`): a package script, no task in `turbo.json`.
  *
- * Two servers are started here — the API on `:3000` and the PWA on `:5173`,
- * the ports of the local stack of `docs/runbook-dev.md`:
+ * Two servers are started here — the API on `:3100` and the PWA on `:5174`,
+ * **next to** the local stack of `docs/runbook-dev.md` (`:3000` / `:5173`),
+ * which a developer can keep running:
  *
- * - `reuseExistingServer` is on: a developer who already runs the stack keeps
- *   it and the suite uses it as it is;
- * - when they are not running, Playwright starts them — the API with the
- *   origin of the PWA (CORS) and the PWA pointed at the API of the run.
+ * - the suite owns its pair, so it never borrows a server it did not
+ *   configure. That is not a detail: the API of the run is started with a
+ *   **test budget** for the rate limiter, because the suite is one actor and
+ *   writes as one person;
+ * - `reuseExistingServer` is on for a **previous run's** servers on those
+ *   ports, when they are still up;
+ * - otherwise Playwright starts them — the API with the origin of the PWA
+ *   (CORS) and the PWA pointed at the API of the run.
  *
- * `E2E_WEB_PORT` and `E2E_API_PORT` move the pair, for the case where the
- * ports of the local stack are taken.
+ * `E2E_WEB_PORT` and `E2E_API_PORT` move the pair again.
  *
  * The API needs the migrated and the seeded databases (`db:migrate` and
  * `db:seed:dev`); the global setup fails with an explicit message when they
@@ -73,7 +77,21 @@ export default defineConfig({
       timeout: 60_000,
       // The CORS origin of the API must be the origin of the PWA, and the
       // API must listen on the port of this run.
-      env: { WEB_ORIGIN, PORT: String(API_PORT_NUMBER) }
+      //
+      // The suite is **one actor**: every journey of the run shares the
+      // user the event code created, and the fixtures write nodes,
+      // proposals, relations and votes as that user. A run therefore
+      // exceeds the 30 writes/minute a person gets (RNF-08) well before
+      // the last journeys, and the API would refuse them with `429` — not
+      // the behaviour the PWA journeys are about. The limiter itself is
+      // covered by the API suite; the API this config starts gets a budget
+      // the run cannot exhaust.
+      env: {
+        WEB_ORIGIN,
+        PORT: String(API_PORT_NUMBER),
+        RATE_LIMIT_READ_MAX: '10000',
+        RATE_LIMIT_WRITE_MAX: '1000'
+      }
     },
     {
       // `--strictPort`: the dev server must fail instead of taking the next

@@ -29,7 +29,8 @@ const IDENTICAL: readonly string[] = [
   'engines.panelDagreName',
   'engines.panelD3Name',
   'engines.panelSvgName',
-  'engines.panelDagName'
+  'engines.panelDagName',
+  'engines.kpiMs'
 ];
 
 describe('the two dictionaries', () => {

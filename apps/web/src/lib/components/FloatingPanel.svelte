@@ -27,6 +27,16 @@
     /** The extra classes of the panel — its width, its height. */
     panelClass?: string;
     /**
+     * `true` when the panel is flat.
+     *
+     * The elevation of a floating panel is a **tone step** in the surfaces
+     * that sit directly on the ground: a surface over the ground is already
+     * the step, and a shadow there is a second way of saying the same
+     * thing. The workspace that compares the engines uses it so the panels
+     * do not turn into cards over the picture.
+     */
+    flat?: boolean;
+    /**
      * `true` when the panel is folded away.
      *
      * The panel stays in the document: the control that opens it points at
@@ -44,6 +54,7 @@
     label,
     id,
     panelClass = '',
+    flat = false,
     hidden = false,
     element = $bindable(undefined),
     children
@@ -67,7 +78,9 @@
   bind:this={element}
   {id}
   aria-label={label}
-  class="pointer-events-auto absolute z-10 rounded-card border border-border bg-surface shadow-float {PLACEMENT[placement]} {panelClass} {hidden ? 'hidden' : ''}"
+  class="pointer-events-auto absolute z-10 rounded-card bg-surface {flat
+    ? ''
+    : 'border border-border shadow-float'} {PLACEMENT[placement]} {panelClass} {hidden ? 'hidden' : ''}"
 >
   {@render children?.()}
 </section>

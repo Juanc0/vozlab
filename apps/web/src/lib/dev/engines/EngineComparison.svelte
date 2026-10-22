@@ -33,7 +33,7 @@
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { formatNumber } from '$lib/i18n';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
-  import { comparisonGraph, type ComparisonGraph } from './comparison-data';
+  import { comparisonGraph, MAX_NODES, type ComparisonGraph } from './comparison-data';
   import { measureFrames, summarizeFrames, type FrameSummary } from './frames';
   import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
   import EnginePanel from './EnginePanel.svelte';
@@ -74,6 +74,9 @@
     return `engine-tab-${engine}-${uid}`;
   }
 
+  /** The id of the folded note of the comparison. */
+  const essayId = `engine-essay-${uid}`;
+
   /** The window of the workspace — the picture the engine draws. */
   let windowNodes = $state.raw<NodeDto[]>([]);
   let windowEdges = $state.raw<SubgraphEdgeDto[]>([]);
@@ -81,7 +84,7 @@
   let failure = $state<ApiFailure | null>(null);
 
   /** How many nodes the picture holds. */
-  let wanted = $state(24);
+  let wanted = $state(0);
 
   /** The shape the relations are drawn with. */
   let edgeStyle = $state<EdgeStyle>('bezier');
@@ -97,6 +100,18 @@
 
   /** The list — the text alternative of the picture. */
   let listOpen = $state(false);
+
+  /** The note of the comparison — onboarding, folded by default. */
+  let essayOpen = $state(false);
+
+  /**
+   * The full measurements of the engine — one fold for the whole surface.
+   *
+   * It lives here and not in the readout, so it is the **same** fold when the
+   * reader moves from one engine to the next: the comparison keeps the state
+   * it was left in.
+   */
+  let measurementsOpen = $state(false);
 
   /** The engine that is on screen. */
   let activeEngine = $state<EngineId>('dagre');
@@ -218,6 +233,11 @@
 
       windowNodes = answer.nodes;
       windowEdges = answer.edges;
+
+      // The select shows the window that came: the old fixed default is not
+      // one of its options when the workspace is larger (or smaller), and a
+      // select whose value matches no option is a blank field.
+      wanted = Math.min(answer.nodes.length, MAX_NODES);
     } catch (caught) {
       failure = describeFailure(caught, t);
     } finally {
@@ -351,6 +371,41 @@
   /** The number of nodes of the picture, written with the conventions of the locale. */
   const nodeCount = $derived(formatNumber(locale.locale, picture.nodes.length));
   const edgeCount = $derived(formatNumber(locale.locale, picture.edges.length));
+
+  /**
+   * The sizes the picture can take.
+   *
+   * The window that came is **always** an option, even when its size is not
+   * one of the old presets: a select whose value matches no option renders
+   * blank, and a blank field does not say what the picture is. The current
+   * size is added as a last resort, so the select never loses its value.
+   */
+  const sizeOptions = $derived.by<{ value: number; label: string }[]>(() => {
+    const options = new Map<number, string>();
+
+    options.set(
+      demoCount,
+      t('engines.sizeDemo', { count: formatNumber(locale.locale, demoCount) })
+    );
+
+    if (demoCount !== MAX_NODES) {
+      options.set(
+        MAX_NODES,
+        t('engines.sizeStress', { count: formatNumber(locale.locale, MAX_NODES) })
+      );
+    }
+
+    if (!options.has(wanted)) {
+      options.set(
+        wanted,
+        t('engines.sizeCurrent', { count: formatNumber(locale.locale, wanted) })
+      );
+    }
+
+    return [...options.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([value, label]) => ({ value, label }));
+  });
 </script>
 
 <svelte:head>
@@ -440,146 +495,196 @@
   {/if}
 
   <!--
-    The **floating toolbar**: the frame of the picture. It holds the title,
-    the tabs of the engines and the controls over the picture.
+    The **floating toolbar**: the frame of the picture. It is one compact
+    bar — the title, the tabs and one row of controls — and it is **flat**:
+    a surface over the ground is already the tone step, and a shadow here
+    would turn the bar into a card over the picture.
+
+    The note of the comparison is onboarding, and whoever opens the
+    comparison is there to look at pictures: it is folded behind a quiet
+    control and starts folded.
   -->
   <FloatingPanel
     placement="top-left"
     label={t('engines.toolbarLabel')}
     panelClass="max-w-[calc(100%-2rem)]"
+    flat
     bind:element={toolbarElement}
   >
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
-      <h1 class="text-kpi">{t('engines.heading')}</h1>
+    <div class="p-3 max-sm:p-2">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <h1 class="min-w-0 flex-1 truncate text-kpi max-sm:text-body">
+          {t('engines.heading')}
+        </h1>
+
+        <!--
+          The note of the comparison, one click away. It starts folded: the
+          paragraph is onboarding, and the picture is what the reader came
+          for. On a phone the control is the question mark; the accessible
+          name is always the same.
+        -->
+        <button
+          type="button"
+          class="grid size-11 shrink-0 place-items-center rounded-control text-muted hover:bg-raised hover:text-text sm:inline-flex sm:size-auto sm:h-8 sm:gap-1.5 sm:px-2.5"
+          aria-expanded={essayOpen}
+          aria-controls={essayId}
+          data-testid="essay-toggle"
+          onclick={() => {
+            essayOpen = !essayOpen;
+          }}
+        >
+          <span aria-hidden="true" class="text-body font-semibold sm:hidden">?</span>
+          <span class="sr-only sm:not-sr-only">{t('engines.essayToggle')}</span>
+          <svg
+            aria-hidden="true"
+            class="hidden size-4 shrink-0 transition-transform motion-reduce:transition-none sm:block {essayOpen
+              ? 'rotate-180'
+              : ''}"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m4 6 4 4 4-4" />
+          </svg>
+        </button>
+
+        <!--
+          The switch between the picture and its **text alternative**. It is
+          a real toggle: the state is announced (`aria-pressed`), and the
+          list is one click away — never behind a hover or a gesture.
+        -->
+        <button
+          type="button"
+          class="grid size-11 shrink-0 place-items-center rounded-control border border-control bg-surface text-text hover:bg-raised sm:inline-flex sm:size-auto sm:h-8 sm:gap-1.5 sm:px-2.5 aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
+          aria-pressed={listOpen}
+          data-testid="list-toggle"
+          onclick={() => {
+            listOpen = !listOpen;
+          }}
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 shrink-0"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M2.5 4h11M2.5 8h11M2.5 12h7" />
+          </svg>
+          <span class="sr-only sm:not-sr-only">{t('engines.listToggle')}</span>
+        </button>
+      </div>
 
       <!--
-        The switch between the picture and its **text alternative**. It is
-        a real toggle: the state is announced (`aria-pressed`), and the
-        list is one click away — never behind a hover or a gesture.
+        The note: folded, and it stays in the document while it is closed so
+        the control always points at the same paragraph.
       -->
-      <button
-        type="button"
-        class="btn btn-secondary ml-auto aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
-        aria-pressed={listOpen}
-        onclick={() => {
-          listOpen = !listOpen;
-        }}
-      >
-        {t('engines.listToggle')}
-      </button>
-    </div>
-
-    <!--
-      The note of the comparison. On a narrow screen the picture is the
-      thing: the note goes.
-    -->
-    <p class="hidden max-w-measure px-3 text-small text-muted min-[48rem]:block">
-      {t('engines.intro')}
-    </p>
-
-    <!--
-      The tabs of the engines: the quiet control that chooses the
-      implementation that occupies the space.
-    -->
-    <div class="px-3 pt-2">
-      <EngineTabs
-        active={activeEngine}
-        onselect={selectEngine}
-        {panelId}
-        {tabId}
-      />
-    </div>
-
-    <!--
-      The layered arrangements do not breathe: their ranks are the picture,
-      and there is nothing to wake. The comparison says so out loud, so the
-      still picture is not read as a broken spring.
-    -->
-    {#if descriptor.layout === 'dagre' || descriptor.layout === 'dag'}
-      <p
-        role="note"
-        data-testid="hierarchy-note"
-        class="max-w-measure px-3 pt-2 text-small text-muted"
-      >
-        {t('engines.hierarchyStatic')}
-      </p>
-    {/if}
-
-    <!--
-      The controls over the picture: the size of the picture, the shape of
-      the relations, the measurement of the engine that is on screen and the
-      repetition of its arrangement.
-    -->
-    <div class="flex flex-wrap items-end gap-x-4 gap-y-2 px-3 py-3">
-      <div>
-        <label for="engines-size" class="block text-small text-muted">
-          {t('engines.sizeLabel')}
-        </label>
-        <select
-          id="engines-size"
-          class="field mt-0.5"
-          value={wanted}
-          onchange={(event) => {
-            const select = event.currentTarget;
-
-            if (select instanceof HTMLSelectElement) {
-              wanted = Number(select.value);
-            }
-          }}
-        >
-          <option value={demoCount}>
-            {t('engines.sizeDemo', { count: formatNumber(locale.locale, demoCount) })}
-          </option>
-          <option value={200}>
-            {t('engines.sizeStress', { count: formatNumber(locale.locale, 200) })}
-          </option>
-        </select>
+      <div id={essayId} hidden={!essayOpen} class="mt-2">
+        <p class="max-w-measure text-small text-muted sm:text-body">
+          {t('engines.intro')}
+        </p>
       </div>
 
-      <div>
-        <label for="engines-edge-style" class="block text-small text-muted">
-          {t('engines.edgeStyleLabel')}
-        </label>
-        <select
-          id="engines-edge-style"
-          class="field mt-0.5"
-          value={edgeStyle}
-          onchange={(event) => {
-            const select = event.currentTarget;
+      <!--
+        The tabs of the engines: the quiet control that chooses the
+        implementation that occupies the space.
 
-            if (select instanceof HTMLSelectElement) {
-              edgeStyle = select.value as EdgeStyle;
-            }
-          }}
-        >
-          {#each EDGE_STYLES as style (style)}
-            <option value={style}>{EDGE_STYLE_LABELS[style]}</option>
-          {/each}
-        </select>
+        The layered arrangements do not breathe: their ranks are the picture,
+        and there is nothing to wake. The comparison says so out loud, on the
+        same row on a wide screen, so the still picture is not read as a
+        broken spring and the bar does not grow a line of its own.
+      -->
+      <div class="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <EngineTabs
+          active={activeEngine}
+          onselect={selectEngine}
+          {panelId}
+          {tabId}
+        />
+
+        {#if descriptor.layout === 'dagre' || descriptor.layout === 'dag'}
+          <p
+            role="note"
+            data-testid="hierarchy-note"
+            class="text-small text-muted sm:justify-self-end"
+          >
+            {t('engines.hierarchyStatic')}
+          </p>
+        {/if}
       </div>
 
-      <button type="button" class="btn btn-secondary" onclick={measure} disabled={measuring}>
-        {measuring ? t('engines.measuring') : t('engines.measure')}
-      </button>
+      <!--
+        The controls over the picture: the size of the picture, the shape of
+        the relations, the measurement of the engine that is on screen, the
+        repetition of its arrangement and the counts of the picture.
+      -->
+      <div class="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+        <div>
+          <label for="engines-size" class="block text-small text-muted">
+            {t('engines.sizeLabel')}
+          </label>
+          <select
+            id="engines-size"
+            class="field mt-0.5"
+            bind:value={wanted}
+          >
+            {#each sizeOptions as option (option.value)}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+        </div>
 
-      <button
-        type="button"
-        class="btn btn-secondary"
-        onclick={() => {
-          layoutToken += 1;
-        }}
-      >
-        {t('engines.rerun')}
-      </button>
+        <div>
+          <label for="engines-edge-style" class="block text-small text-muted">
+            {t('engines.edgeStyleLabel')}
+          </label>
+          <select
+            id="engines-edge-style"
+            class="field mt-0.5"
+            value={edgeStyle}
+            onchange={(event) => {
+              const select = event.currentTarget;
+
+              if (select instanceof HTMLSelectElement) {
+                edgeStyle = select.value as EdgeStyle;
+              }
+            }}
+          >
+            {#each EDGE_STYLES as style (style)}
+              <option value={style}>{EDGE_STYLE_LABELS[style]}</option>
+            {/each}
+          </select>
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick={measure} disabled={measuring}>
+          {measuring ? t('engines.measuring') : t('engines.measure')}
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick={() => {
+            layoutToken += 1;
+          }}
+        >
+          {t('engines.rerun')}
+        </button>
+
+        <!--
+          The counts of the picture: the same nodes and the same relations
+          for every engine. They sit at the end of the row, in the meta ink:
+          a number, not another paragraph.
+        -->
+        <p class="self-center text-small text-muted sm:ml-auto">
+          {t('engines.counts', { nodes: nodeCount, edges: edgeCount })}
+        </p>
+      </div>
     </div>
-
-    <!--
-      The counts of the picture: the same nodes and the same relations for
-      every engine.
-    -->
-    <p class="px-3 pb-3 text-small text-muted">
-      {t('engines.counts', { nodes: nodeCount, edges: edgeCount })}
-    </p>
   </FloatingPanel>
 
   <!--
@@ -590,7 +695,8 @@
   <FloatingPanel
     placement="bottom-left"
     label={t('engines.readoutLabel')}
-    panelClass="max-h-[40vh] w-[min(26rem,calc(100%-2rem))] overflow-y-auto min-[48rem]:max-h-[calc(100%-var(--notice-h,0px)-18rem)]"
+    panelClass="max-h-[40vh] w-[min(28rem,calc(100%-2rem))] overflow-y-auto min-[48rem]:max-h-[calc(100%-var(--notice-h,0px)-18rem)]"
+    flat
   >
     {#if failure !== null}
       <p
@@ -610,6 +716,7 @@
         frames={engineFrames}
         nodes={picture.nodes}
         edges={picture.edges}
+        bind:open={measurementsOpen}
       />
     {/if}
 

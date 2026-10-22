@@ -599,9 +599,22 @@ Decided, and not to be re-opened without evidence:
       says so instead of rounding it away. What the eyes said: the card
       **is** the same card — same 8 px radius, same ink, same wrapped title,
       same meta line — and the plate is opaque.
-- [ ] 3.33 The comparison's chrome: the readout and the essay fold, so the
+- [x] 3.33 The comparison's chrome: the readout and the essay fold, so the
       picture is the picture — at 1440 and at 375 — and the size selector
-      never shows an empty value.
+      never shows an empty value. Result: the readout **folds to its three
+      numbers** — the frame time, the overlapping pairs and the state — and
+      the table opens behind "Todas las medidas", with the fold remembered
+      across tabs; the essay opens behind "¿Qué es esto?"; the toolbar reads
+      as one bar. The chrome went from **28.7% to 13.0%** of the canvas at
+      1440 (the free gap from 115 to 566 px) and from **76.9% to 37.6%** at
+      375, where the folded readout is one line. The size select cannot
+      render an empty value any more: its options include the loaded window.
+      **And the suite found a harness defect on the way**: the E2E was
+      **reusing the dev API**, so it wrote as one actor against the real
+      **30 writes/minute** and the vote journey was refused with `429` — the
+      vote was never broken. The suite now owns **its own ports** (`:3100` /
+      `:5174`), starts its own API with a **test budget** for the limiter,
+      and runs next to a developer's stack instead of borrowing it.
 - [x] 3.34 The shell's copy says online-first: the toast no longer promises
       "ready to work offline", which is false — the data needs the network.
       Result: the notice says what is true — **"VozLab ya está en la caché de
