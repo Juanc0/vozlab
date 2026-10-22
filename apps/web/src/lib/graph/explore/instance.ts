@@ -63,6 +63,7 @@ import {
 } from './dag-layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
+import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, clampZoom, type ZoomSource } from './zoom';
 
 /** What the pointer is over. */
 export interface ExplorationPreview {
@@ -156,6 +157,28 @@ export interface ExplorationInstanceOptions {
    * surface that compares the engines is the only reader.
    */
   onlayout?: (report: LayoutReport) => void;
+  /**
+   * The zoom the reader had when the view was opened.
+   *
+   * It is `null` when the reader never chose one: the picture is then
+   * **fitted** — the whole graph in view — and the fit is the zoom that
+   * picture starts with.
+   *
+   * The value is read **once**, when the instance is created: the zoom
+   * belongs to the reader, and a new window must not impose it again.
+   */
+  zoom?: number | null;
+  /**
+   * Called when the zoom of the picture changes.
+   *
+   * The app keeps the value: the zoom survives the change of the view of
+   * the graph — the two views are the same workspace — and it is the
+   * reader's, not the picture's.
+   *
+   * The **source** says who changed it: the reader (the wheel, the pinch,
+   * the controls) or the view (the fit of the picture).
+   */
+  onzoom?: (zoom: number, source: ZoomSource) => void;
 }
 
 /** How the elements of the exploration view are drawn. */
@@ -182,10 +205,13 @@ export interface ExplorationElementsOptions {
   /**
    * The smallest zoom the picture is fitted to.
    *
-   * The default is the zoom in which the title of a card can be read: a
-   * card whose title cannot be read is not a card. The comparison of the
-   * engines draws three pictures at once and asks for a smaller one, so
-   * that the three pictures can be seen whole.
+   * It is the **floor of the fit**, and it is asked for by the callers that
+   * need it: the comparison of the engines draws three pictures at once and
+   * asks for a smaller one, so that the three pictures can be seen whole.
+   *
+   * The app asks for **nothing**: the fit of the picture is the fit, and
+   * the reader decides afterwards whether to come closer to read the
+   * titles.
    */
   readableZoom?: number;
   /**
@@ -251,28 +277,59 @@ export interface ExplorationInstance {
   relationPositions(): Map<string, RenderedRelation>;
   /** Where the card of every expanded relation is, in the rendered coordinates. */
   relationCards(): Map<string, RenderedBox>;
+  /**
+   * The zoom of the picture, in the range of the reader.
+   *
+   * It is the zoom the reader has: the fit when they never chose one.
+   */
+  zoom(): number;
+  /** Comes closer to the picture, one step. */
+  zoomIn(): void;
+  /** Goes away from the picture, one step. */
+  zoomOut(): void;
+  /**
+   * Puts the whole picture in view.
+   *
+   * It is the **fit**, and it is the reader who asks for it: the button of
+   * the toolbar is a choice, not something the view does on its own.
+   */
+  fitView(): void;
   /** Destroys the instance and releases the canvas. */
   destroy(): void;
 }
 
 /**
- * The smallest zoom the view starts at.
+ * How long the pan of a walk takes, in milliseconds.
  *
- * Every node is a **card** with its title inside, so a window of two
- * hundred nodes does not fit in a canvas: the picture would be a hairball of
- * a few pixels per node, and a card whose title cannot be read is not a
- * card. The view starts close enough to **read** the shape of the graph —
- * the title of a card is twelve pixels, and it has to stay readable — and
- * the user pans and zooms from there.
+ * It is a third of a second: long enough to be seen as a **movement** and
+ * short enough not to be waited for. A jump is not a movement, and a
+ * movement that takes a second is a broken picture.
  */
-const MIN_READABLE_ZOOM = 0.75;
+const PAN_DURATION = 320;
+
+/**
+ * The shape of the pan of a walk.
+ *
+ * It is eased in and out: a pan that starts and stops abruptly reads as a
+ * glitch, and a pan that moves at a constant speed reads as a machine.
+ */
+const PAN_EASING = 'ease-in-out-cubic';
+
+/**
+ * The room the picture keeps around itself when it is fitted, in pixels.
+ *
+ * The room is the air of the design system: the picture does not touch the
+ * edge of the canvas.
+ */
+const FIT_PADDING = 30;
 
 /**
  * Whether the picture holds the same nodes as the ones it is given.
  *
- * The picture is fitted again when the window changes, and kept as it is
- * when a node grows: a layout that moves the picture under the user's feet
- * while a card appears is a picture that cannot be read.
+ * The picture is **fitted** when it is drawn for the first time, and it is
+ * never fitted again on its own: a picture that grows keeps the zoom of the
+ * reader, and a card that appears does not move the picture under the
+ * reader's feet.
  */
 function sameNodes(current: Collection, nodes: readonly NodeDto[]): boolean {
   const cards = cardNodes(current);
@@ -322,8 +379,8 @@ export function createExplorationInstance(
     elements: [],
     style: EXPLORE_STYLESHEET,
     layout: { name: 'preset' },
-    minZoom: 0.1,
-    maxZoom: 3,
+    minZoom: MIN_ZOOM,
+    maxZoom: MAX_ZOOM,
     // The picture can be moved and zoomed: the layout is a preset one, so
     // panning does not fight with it.
     userPanningEnabled: true,
@@ -334,7 +391,42 @@ export function createExplorationInstance(
   let edgeStyle: EdgeStyle = 'bezier';
   let pinned = new Map<string, Position>();
   let layout: GraphLayout = 'dagre';
-  let readableZoom = MIN_READABLE_ZOOM;
+
+  /**
+   * The floor of the fit, when the caller asks for one.
+   *
+   * The app asks for nothing: the fit of the picture is the fit.
+   */
+  let readableZoom: number | undefined = undefined;
+
+  /**
+   * The zoom of the **reader**.
+   *
+   * It is `null` when the reader never chose one: the picture is then
+   * fitted — the whole graph in view — and the fit is the zoom the picture
+   * starts with. Once the reader has chosen one (the wheel, the pinch, the
+   * controls), the value is **theirs**: the picture never imposes a zoom
+   * again — it grows and the zoom stays.
+   */
+  let readerZoom: number | null =
+    options.zoom === undefined || options.zoom === null ? null : clampZoom(options.zoom);
+
+  /**
+   * Whether the picture has been fitted once.
+   *
+   * The fit happens **once**: the first picture is the whole graph in
+   * view, and every picture after it keeps the zoom of the reader.
+   */
+  let fitted = false;
+
+  /**
+   * Whether the instance is moving the viewport itself.
+   *
+   * The zoom of the reader is told to the app when the **reader** changes
+   * it: a fit or a pan of the instance is not a choice of the reader, and
+   * it must not overwrite the value the reader has.
+   */
+  let adjustingViewport = false;
 
   /**
    * The greatest movement of the picture, in pixels.
@@ -581,6 +673,27 @@ export function createExplorationInstance(
     options.onrender();
   });
 
+  /**
+   * The reader changed the zoom.
+   *
+   * The wheel, the pinch and the controls of the toolbar all end here: the
+   * value is the reader's, and the app keeps it so that it survives the
+   * change of the view of the graph.
+   */
+  core.on('zoom', () => {
+    if (adjustingViewport) {
+      // The instance is moving the viewport itself: the zoom of the reader
+      // is not overwritten by a fit or by a pan.
+      return;
+    }
+
+    const zoom = clampZoom(core.zoom());
+
+    readerZoom = zoom;
+
+    options.onzoom?.(zoom, 'reader');
+  });
+
   /** The boxes of the nodes, in the model coordinates of the canvas. */
   function nodeBoxes(): Map<string, CardBox> {
     const boxes = new Map<string, CardBox>();
@@ -707,37 +820,218 @@ export function createExplorationInstance(
   });
 
   /**
+   * Puts the whole picture in view.
+   *
+   * It is the **fit**: every node of the picture inside the box of the
+   * canvas. The fit is the zoom the view starts with — and it is the
+   * **only** zoom the view imposes: after this, the zoom belongs to the
+   * reader.
+   *
+   * @param keepZoom - Whether the zoom of the reader is kept.
+   * @param source - Who asked for the fit.
+   *
+   * The zoom is kept when the picture is drawn for the first time and the
+   * reader already has one — the view was opened again after a change of
+   * the mode of the graph: the fit only finds the **place** of the picture,
+   * and the zoom of the reader is put back. It is **not** kept when the
+   * reader asks for the fit: that is the choice they made.
+   */
+  function fitPicture(keepZoom: boolean, source: ZoomSource): void {
+    const wanted = keepZoom ? readerZoom : null;
+
+    adjustingViewport = true;
+
+    try {
+      core.fit(undefined, FIT_PADDING);
+
+      const floor = readableZoom;
+
+      if (floor !== undefined && core.zoom() < floor) {
+        core.zoom(floor);
+      }
+
+      if (wanted !== null) {
+        core.zoom(wanted);
+      }
+    } finally {
+      adjustingViewport = false;
+    }
+
+    readerZoom = clampZoom(core.zoom());
+
+    options.onzoom?.(readerZoom, source);
+  }
+
+  /**
+   * Puts the zoom of the reader back on the picture.
+   *
+   * A picture that grows keeps the zoom it had: the reader chose it, and
+   * the growth of the picture is not a reason to take it away.
+   */
+  function applyReaderZoom(): void {
+    if (readerZoom === null) {
+      return;
+    }
+
+    adjustingViewport = true;
+
+    try {
+      core.zoom(readerZoom);
+    } finally {
+      adjustingViewport = false;
+    }
+  }
+
+  /**
+   * Changes the zoom around the **centre** of the canvas.
+   *
+   * The zoom of the controls keeps the middle of the picture where it is:
+   * a zoom that drifts towards the corner of the canvas loses the place the
+   * reader was looking at.
+   *
+   * @param level - The zoom the picture goes to.
+   */
+  function zoomAroundCentre(level: number): void {
+    const zoom = clampZoom(level);
+
+    if (zoom === core.zoom()) {
+      return;
+    }
+
+    core.zoom({
+      level: zoom,
+      renderedPosition: { x: core.width() / 2, y: core.height() / 2 }
+    });
+  }
+
+  /**
+   * Moves the picture onto a node, with a **smooth progression**.
+   *
+   * The movement is the animation of the renderer: the viewport glides onto
+   * the node over {@link PAN_DURATION} milliseconds, eased in and out. The
+   * zoom is **not** touched: a walk moves the picture, not the zoom.
+   *
+   * The pan does not fight the spring: the spring has already settled when
+   * the pan starts, so the node is in its final place and the picture ends
+   * centred on it.
+   *
+   * A reader who asked for less motion gets the picture in its place at
+   * once: an instant pan is the correct behaviour for someone who asked
+   * for less movement.
+   *
+   * @param nodeId - The id of the node the picture is centred on.
+   */
+  function panTo(nodeId: string): void {
+    const node = core.getElementById(nodeId);
+
+    if (node.length === 0) {
+      return;
+    }
+
+    // The pan that is running is stopped: two pans at once would fight for
+    // the same place.
+    core.stop();
+
+    if (prefersReducedMotion()) {
+      core.center(node);
+
+      return;
+    }
+
+    core.animate({
+      center: { eles: node },
+      duration: PAN_DURATION,
+      easing: PAN_EASING
+    });
+  }
+
+  /**
+   * How far the node the view presents may be from the middle of the canvas
+   * before the picture goes back to it.
+   *
+   * It is a quarter of the canvas: a layout that rearranges the picture
+   * leaves the node a little to the side, and that is the reader's pan and
+   * not something to correct. A layout that leaves it **far** behind is
+   * something to correct: the view presents a node, and a node that the
+   * picture left in a corner is not presented.
+   */
+  const CENTRE_TOLERANCE = 0.25;
+
+  /**
+   * Whether the node is far from the middle of the canvas.
+   *
+   * @param node - The node the view presents.
+   * @returns Whether the picture has to go back to it.
+   */
+  function isFarFromCentre(node: Position): boolean {
+    const zoom = core.zoom();
+    const pan = core.pan();
+
+    const x = node.x * zoom + pan.x;
+    const y = node.y * zoom + pan.y;
+
+    return (
+      Math.abs(x - core.width() / 2) > (core.width() * CENTRE_TOLERANCE) / 2 ||
+      Math.abs(y - core.height() / 2) > (core.height() * CENTRE_TOLERANCE) / 2
+    );
+  }
+
+  /**
    * Puts the picture where it belongs after a layout.
    *
-   * The view centres on the node it presents — but only when that node
-   * changes. A layout that runs because a card appeared rearranges the
-   * picture **where it is**: the reader must see the neighbours move away
-   * from the card, not the whole picture jump.
+   * - the **first** picture is fitted: the whole graph in view;
+   * - after that, the zoom is the reader's and nothing imposes it again:
+   *   the picture grows and the zoom stays;
+   * - a **walk** moves the picture onto the node the reader walked to, with
+   *   an eased pan. The spring settles first, so the pan does not fight the
+   *   simulation and the picture ends centred on the node;
+   * - a layout that only rearranged the picture keeps the place the reader
+   *   has, unless it left the node the view presents far behind.
    *
    * @param presentedNodeId - The node the view presents.
-   * @param fit - Whether the picture is fitted to the window.
+   * @param grew - Whether the picture holds nodes it did not hold before.
    */
-  function presentPicture(presentedNodeId: string | null, fit: boolean): void {
+  function presentPicture(presentedNodeId: string | null, grew: boolean): void {
     const presentedChanged = presentedNodeId !== lastPresented;
     lastPresented = presentedNodeId;
 
-    if (fit) {
-      // The picture is fitted to the window the first time it is drawn — and
-      // only then: a layout that runs again because a node grew must not
-      // move the picture under the user's feet.
-      core.fit(undefined, 30);
+    if (!fitted && core.elements().length > 0) {
+      // The picture is fitted the first time it is drawn — and only then.
+      fitted = true;
 
-      if (core.zoom() < readableZoom) {
-        core.zoom(readableZoom);
-      }
+      // The fit of the view: it is the zoom the picture starts with, and
+      // not a choice of the reader.
+      fitPicture(readerZoom !== null, 'view');
+
+      return;
     }
 
-    if (presentedNodeId !== null && (fit || presentedChanged)) {
-      const presented = core.getElementById(presentedNodeId);
+    if (grew) {
+      // The picture grew: the zoom of the reader stays, and the picture
+      // grows around it.
+      applyReaderZoom();
+    }
 
-      if (presented.length > 0) {
-        core.center(presented);
-      }
+    if (presentedNodeId === null) {
+      return;
+    }
+
+    const node = core.getElementById(presentedNodeId);
+
+    if (node.length === 0) {
+      return;
+    }
+
+    if (presentedChanged || grew) {
+      panTo(presentedNodeId);
+
+      return;
+    }
+
+    if (isFarFromCentre(node.position())) {
+      // The layout left the node the view presents far behind: the picture
+      // goes back to it, with the same eased pan.
+      panTo(presentedNodeId);
     }
   }
 
@@ -754,9 +1048,9 @@ export function createExplorationInstance(
    * same picture in one go.
    *
    * @param presentedNodeId - The node the view presents.
-   * @param fit - Whether the picture is fitted to the window.
+   * @param grew - Whether the picture holds nodes it did not hold before.
    */
-  function runSpring(presentedNodeId: string | null, fit: boolean): void {
+  function runSpring(presentedNodeId: string | null, grew: boolean): void {
     stopSpring();
 
     /** The time each frame of the animation took, in milliseconds. */
@@ -831,7 +1125,12 @@ export function createExplorationInstance(
 
     // The picture is centred: the spring arranges it around the origin,
     // and the viewport has to show it.
-    core.center(core.elements());
+    //
+    // It is done **once**: the picture that follows keeps the place the
+    // reader has, and the walk moves the picture with an eased pan.
+    if (!fitted) {
+      core.center(core.elements());
+    }
 
     const report = (): void => {
       movement = greatestMovement();
@@ -857,7 +1156,7 @@ export function createExplorationInstance(
       const result = runForceLayoutToRest(created);
 
       applyPlaces(result.positions);
-      presentPicture(presentedNodeId, fit);
+      presentPicture(presentedNodeId, grew);
       report();
 
       spring = null;
@@ -886,7 +1185,7 @@ export function createExplorationInstance(
 
         // The picture has come to rest: it is framed and the report goes
         // out.
-        presentPicture(presentedNodeId, fit);
+        presentPicture(presentedNodeId, grew);
         report();
       }
     });
@@ -942,7 +1241,7 @@ export function createExplorationInstance(
    * once — and it breaks the cycles of the relation graph on the way: the
    * relations it breaks are reported, so the reader is told.
    */
-  function runDagLayout(presentedNodeId: string | null, fit: boolean): void {
+  function runDagLayout(presentedNodeId: string | null, grew: boolean): void {
     const inputs: DagNodeInput[] = [];
     const links = relationEdges();
 
@@ -973,7 +1272,7 @@ export function createExplorationInstance(
 
     refreshEdgeStyles();
 
-    presentPicture(presentedNodeId, fit);
+    presentPicture(presentedNodeId, grew);
 
     movement = greatestMovement();
 
@@ -988,16 +1287,16 @@ export function createExplorationInstance(
   }
 
   /** Runs the layout and puts the picture back where it belongs. */
-  function runLayout(presentedNodeId: string | null, fit: boolean): void {
+  function runLayout(presentedNodeId: string | null, grew: boolean): void {
     const currentLayout = layout;
 
     if (currentLayout === 'd3') {
-      runSpring(presentedNodeId, fit);
+      runSpring(presentedNodeId, grew);
       return;
     }
 
     if (currentLayout === 'dag') {
-      runDagLayout(presentedNodeId, fit);
+      runDagLayout(presentedNodeId, grew);
       return;
     }
 
@@ -1039,6 +1338,14 @@ export function createExplorationInstance(
     const started = Date.now();
     const runner = core.layout(cardLayoutOptions(layoutOptions, core));
 
+    /**
+     * Whether the layout **glides** the cards to their places.
+     *
+     * An animated layout moves the cards over the frames, and the picture
+     * is only where it will be when the glide is over.
+     */
+    const animated = layoutOptions.animate === true;
+
     // The report is **additive**: the graph of the app does not read it, and
     // the development surface that compares the engines is the only reader.
     runner.one('layoutstop', () => {
@@ -1048,6 +1355,13 @@ export function createExplorationInstance(
 
       if (movement < SETTLE_MOVEMENT) {
         settled = true;
+      }
+
+      // An animated layout glides the cards to their places: the picture is
+      // put back where it belongs **when the glide is over**. A fit taken
+      // before it is a fit of the places the cards left.
+      if (animated) {
+        presentPicture(presentedNodeId, grew);
       }
 
       options.onlayout?.({
@@ -1083,7 +1397,11 @@ export function createExplorationInstance(
 
     refreshEdgeStyles();
 
-    presentPicture(presentedNodeId, fit);
+    // The picture is put back where it belongs — unless the layout is
+    // still gliding, and then the `layoutstop` above does it.
+    if (!animated) {
+      presentPicture(presentedNodeId, grew);
+    }
   }
 
   return {
@@ -1091,11 +1409,13 @@ export function createExplorationInstance(
       edgeStyle = elementOptions.edgeStyle;
       pinned = new Map(elementOptions.pinned);
       layout = elementOptions.layout ?? 'd3';
-      readableZoom = elementOptions.readableZoom ?? MIN_READABLE_ZOOM;
+      readableZoom = elementOptions.readableZoom;
 
-      // The picture is fitted again only when the window itself changed: a
-      // layout that runs because a node grew keeps the viewport.
-      const fit = !sameNodes(core.elements(), nodes);
+      // Whether the picture **grew**: it holds nodes it did not hold
+      // before. A picture that grew is a walk, and a walk moves the picture
+      // onto the node the reader walked to. A picture that only changed its
+      // shape — a card that grew — keeps the place it had.
+      const grew = !sameNodes(core.elements(), nodes);
 
       // The elements are patched, not re-created: the instance (and its
       // viewport) survives a new window.
@@ -1113,7 +1433,7 @@ export function createExplorationInstance(
       prepareCardText(core);
 
       this.setPresented(elementOptions.presentedNodeId);
-      runLayout(elementOptions.presentedNodeId, fit);
+      runLayout(elementOptions.presentedNodeId, grew);
     },
 
     setSelected(nodeId) {
@@ -1221,6 +1541,24 @@ export function createExplorationInstance(
       });
 
       return cards;
+    },
+
+    zoom() {
+      return clampZoom(core.zoom());
+    },
+
+    zoomIn() {
+      zoomAroundCentre(core.zoom() * ZOOM_STEP);
+    },
+
+    zoomOut() {
+      zoomAroundCentre(core.zoom() / ZOOM_STEP);
+    },
+
+    fitView() {
+      // The reader asked for the fit: it is their choice, and it becomes
+      // the zoom of the picture.
+      fitPicture(false, 'reader');
     },
 
     destroy() {

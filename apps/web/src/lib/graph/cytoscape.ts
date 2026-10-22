@@ -29,6 +29,7 @@ import {
 } from './elements';
 import { observeContainerSize } from './resize';
 import { cytoscape } from './cytoscape-runtime';
+import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, clampZoom, type ZoomSource } from './explore/zoom';
 
 /** The class of the selected node. */
 const SELECTED_CLASS = 'vozlab-selected';
@@ -65,19 +66,32 @@ export const DAGRE_LAYOUT: DagreLayoutOptions = {
   edgeSep: 20,
   rankSep: 80,
   animate: false,
-  fit: true
+  // The viewport is **not** fitted by the layout: the zoom belongs to the
+  // reader, and the view fits the picture itself, the first time it draws
+  // it.
+  fit: false
 };
 
 /**
- * The smallest zoom the canvas starts at.
+ * How long the pan of a walk takes, in milliseconds.
  *
- * Every node is a **card** with its title inside it, so a subgraph that does
- * not fit in a canvas would be a picture of unreadable rectangles. The view
- * starts close enough to **read** the cards — the title of a card is twelve
- * pixels, and it has to stay readable — and the reader pans and zooms from
- * there.
+ * It is a third of a second: long enough to be seen as a **movement** and
+ * short enough not to be waited for.
  */
-const MIN_READABLE_ZOOM = 0.75;
+const PAN_DURATION = 320;
+
+/**
+ * The shape of the pan of a walk.
+ *
+ * It is eased in and out: a pan that starts and stops abruptly reads as a
+ * glitch.
+ */
+const PAN_EASING = 'ease-in-out-cubic';
+
+/**
+ * The room the picture keeps around itself when it is fitted, in pixels.
+ */
+const FIT_PADDING = 30;
 
 /** What the canvas reports back to the app. */
 export interface GraphInstance {
@@ -91,6 +105,14 @@ export interface GraphInstance {
   setSelected(nodeId: string | null): void;
   /** Centres the picture on a node — the node the user walked to. */
   centerOn(nodeId: string): void;
+  /** The zoom of the picture, in the range of the reader. */
+  zoom(): number;
+  /** Comes closer to the picture, one step. */
+  zoomIn(): void;
+  /** Goes away from the picture, one step. */
+  zoomOut(): void;
+  /** Puts the whole picture in view. */
+  fitView(): void;
   /** Destroys the instance and releases the canvas. */
   destroy(): void;
 }
@@ -126,6 +148,24 @@ export interface GraphInstanceOptions {
    * are told apart here so the app can answer them differently.
    */
   onnavigate?: (nodeId: string) => void;
+  /**
+   * The zoom the reader had when the view was opened.
+   *
+   * It is `null` when the reader never chose one: the picture is then
+   * **fitted** — the whole graph in view — and the fit is the zoom that
+   * picture starts with.
+   */
+  zoom?: number | null;
+  /**
+   * Called when the zoom of the picture changes.
+   *
+   * The app keeps the value: the zoom survives the change of the view of
+   * the graph — the two views are the same workspace.
+   *
+   * The **source** says who changed it: the reader (the wheel, the pinch,
+   * the controls) or the view (the fit of the picture).
+   */
+  onzoom?: (zoom: number, source: ZoomSource) => void;
 }
 
 /**
@@ -142,9 +182,32 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
     elements: [],
     style: GRAPH_STYLESHEET,
     layout: { ...DAGRE_LAYOUT },
-    minZoom: 0.1,
-    maxZoom: 3
+    minZoom: MIN_ZOOM,
+    maxZoom: MAX_ZOOM
   });
+
+  /**
+   * The zoom of the **reader**.
+   *
+   * It is `null` when the reader never chose one: the picture is then
+   * fitted — the whole graph in view — and the fit is the zoom the picture
+   * starts with. Once the reader has chosen one (the wheel, the pinch, the
+   * controls), the value is **theirs**: the picture never imposes a zoom
+   * again.
+   */
+  let readerZoom: number | null =
+    options.zoom === undefined || options.zoom === null ? null : clampZoom(options.zoom);
+
+  /** Whether the picture has been fitted once. */
+  let fitted = false;
+
+  /**
+   * Whether the instance is moving the viewport itself.
+   *
+   * A fit or a pan of the instance is not a choice of the reader, and it
+   * must not overwrite the value the reader has.
+   */
+  let adjustingViewport = false;
 
   core.on('tap', 'node', (event) => {
     const id = cardIdOf(event.target);
@@ -168,6 +231,23 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
   });
 
   /**
+   * The reader changed the zoom.
+   *
+   * The wheel, the pinch and the controls of the toolbar all end here.
+   */
+  core.on('zoom', () => {
+    if (adjustingViewport) {
+      return;
+    }
+
+    const zoom = clampZoom(core.zoom());
+
+    readerZoom = zoom;
+
+    options.onzoom?.(zoom, 'reader');
+  });
+
+  /**
    * The canvas follows the size of its container.
    *
    * The window is resized, a panel opens and the canvas gets narrower: the
@@ -178,6 +258,51 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
   const stopObserving = observeContainerSize(options.container, () => {
     core.resize();
   });
+
+  /**
+   * Puts the whole picture in view.
+   *
+   * It is the **fit**: every node of the picture inside the box of the
+   * canvas. When the reader already has a zoom, the fit only finds the
+   * place of the picture and the zoom of the reader is put back.
+   */
+  function fitPicture(keepZoom: boolean, source: ZoomSource): void {
+    const wanted = keepZoom ? readerZoom : null;
+
+    adjustingViewport = true;
+
+    try {
+      core.fit(undefined, FIT_PADDING);
+
+      if (wanted !== null) {
+        core.zoom(wanted);
+      }
+    } finally {
+      adjustingViewport = false;
+    }
+
+    readerZoom = clampZoom(core.zoom());
+
+    options.onzoom?.(readerZoom, source);
+  }
+
+  /**
+   * Changes the zoom around the **centre** of the canvas.
+   *
+   * @param level - The zoom the picture goes to.
+   */
+  function zoomAroundCentre(level: number): void {
+    const zoom = clampZoom(level);
+
+    if (zoom === core.zoom()) {
+      return;
+    }
+
+    core.zoom({
+      level: zoom,
+      renderedPosition: { x: core.width() / 2, y: core.height() / 2 }
+    });
+  }
 
   return {
     setElements(nodes, edges, elementOptions = {}) {
@@ -198,21 +323,14 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
       // and the text goes with it.
       syncCardText(core);
 
-      // A picture that does not fit is read at a zoom where the cards are
-      // still cards: the view centres on the root, the node the reader
-      // chose.
-      if (core.zoom() < MIN_READABLE_ZOOM) {
-        core.zoom(MIN_READABLE_ZOOM);
+      if (!fitted && core.elements().length > 0) {
+        // The picture is fitted the first time it is drawn — and only then:
+        // after that the zoom belongs to the reader.
+        fitted = true;
 
-        const focus = elementOptions.focusNodeId;
-
-        if (focus !== undefined && focus !== null) {
-          const node = core.getElementById(focus);
-
-          if (node.length > 0) {
-            core.center(node);
-          }
-        }
+        // The fit of the view: it is the zoom the picture starts with, and
+        // not a choice of the reader.
+        fitPicture(readerZoom !== null, 'view');
       }
     },
 
@@ -224,6 +342,7 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
       }
 
       const selected = core.getElementById(nodeId);
+
       if (selected.length > 0) {
         selected.addClass(SELECTED_CLASS);
       }
@@ -232,16 +351,66 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
     centerOn(nodeId) {
       const node = core.getElementById(nodeId);
 
-      if (node.length > 0) {
-        core.center(node);
+      if (node.length === 0) {
+        return;
       }
+
+      // The pan that is running is stopped: two pans at once would fight
+      // for the same place.
+      core.stop();
+
+      if (prefersReducedMotion()) {
+        core.center(node);
+
+        return;
+      }
+
+      core.animate({
+        center: { eles: node },
+        duration: PAN_DURATION,
+        easing: PAN_EASING
+      });
+    },
+
+    zoom() {
+      return clampZoom(core.zoom());
+    },
+
+    zoomIn() {
+      zoomAroundCentre(core.zoom() * ZOOM_STEP);
+    },
+
+    zoomOut() {
+      zoomAroundCentre(core.zoom() / ZOOM_STEP);
+    },
+
+    fitView() {
+      // The reader asked for the fit: it is their choice, and it becomes
+      // the zoom of the picture.
+      fitPicture(false, 'reader');
     },
 
     destroy() {
       // The observer dies with the instance: a canvas that is gone must not
       // be resized any more.
       stopObserving();
+
       core.destroy();
     }
   };
+}
+
+/**
+ * Whether the reader asked for less motion.
+ *
+ * A reader who asked for less motion gets the picture in its place at
+ * once: an instant pan is the correct behaviour for someone who asked for
+ * less movement.
+ */
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

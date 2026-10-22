@@ -4,8 +4,12 @@
  * Cytoscape draws to a `<canvas>`, which jsdom does not provide: the
  * module is mocked and the core is faked. The fake is **complete enough**
  * for the exploration instance — it holds the nodes and the relations, it
- * runs the layout, it centres the picture and it calls the handlers the
- * instance registered.
+ * runs the layout, it centres the picture, it moves the viewport and it
+ * calls the handlers the instance registered.
+ *
+ * The **viewport** is modelled: the zoom, the pan and the animation of the
+ * pan. The tests of the zoom need to know what the reader sees, and the
+ * tests of the smooth centring need to see the movement frame by frame.
  *
  * The point of the tests is the **behaviour** of the view — what it asks
  * for, what it draws and where it centres — not the drawing itself.
@@ -40,6 +44,22 @@ export interface Handler {
   handler: (event: unknown) => void;
 }
 
+/** The viewport of the fake: what the reader sees. */
+export interface FakeViewport {
+  /** The zoom of the picture. */
+  zoom: number;
+  /** The pan of the picture, in the rendered coordinates. */
+  pan: { x: number; y: number };
+}
+
+/** An animation of the viewport that the fake ran. */
+export interface FakeAnimation {
+  /** What the instance asked for. */
+  readonly options: Record<string, unknown>;
+  /** The pan the animation goes to. */
+  readonly target: { x: number; y: number };
+}
+
 export interface FakeCore {
   core: Record<string, unknown>;
   handlers: Handler[];
@@ -55,15 +75,67 @@ export interface FakeCore {
   placements: Array<{ id: string; position: { x: number; y: number } }>;
   nodes: Map<string, FakeNode>;
   edges: Map<string, FakeEdge>;
+  /** The viewport of the picture. */
+  viewport: FakeViewport;
+  /** The animations of the viewport that were asked for. */
+  animations: FakeAnimation[];
+  /** The zoom the fit of the picture gives. */
+  fitZoom: number;
+  /**
+   * Emits an event of the core, the way Cytoscape does.
+   *
+   * @param event - The name of the event.
+   * @param payload - What the event carries.
+   */
+  emit(event: string, payload?: unknown): void;
 }
 
-export function createFakeCore(): FakeCore {
+export interface FakeCoreOptions {
+  /** The zoom the fit of the picture gives. */
+  readonly fitZoom?: number;
+  /** The size of the canvas. */
+  readonly width?: number;
+  /** The size of the canvas. */
+  readonly height?: number;
+}
+
+/**
+ * The easing of the fake: the same shape the renderer uses.
+ *
+ * @param percent - How far the animation is.
+ * @returns The eased progress.
+ */
+function easeInOutCubic(percent: number): number {
+  return percent < 0.5
+    ? 4 * percent * percent * percent
+    : 1 - Math.pow(-2 * percent + 2, 3) / 2;
+}
+
+export function createFakeCore(options: FakeCoreOptions = {}): FakeCore {
   const nodes = new Map<string, FakeNode>();
   const edges = new Map<string, FakeEdge>();
   const handlers: Handler[] = [];
   const layouts: Array<Record<string, unknown>> = [];
   const placements: Array<{ id: string; position: { x: number; y: number } }> = [];
+  const animations: FakeAnimation[] = [];
   let placed = 0;
+
+  const width = options.width ?? 800;
+  const height = options.height ?? 600;
+
+  const viewport: FakeViewport = { zoom: 1, pan: { x: 0, y: 0 } };
+
+  /** The frames of the animation that is running. */
+  let frame = 0;
+  let running = false;
+
+  const emit = (event: string, payload?: unknown): void => {
+    for (const entry of handlers) {
+      if (entry.event === event) {
+        entry.handler(payload ?? { type: event });
+      }
+    }
+  };
 
   const nodeApi = (node: FakeNode) => ({
     id: () => node.id,
@@ -159,6 +231,17 @@ export function createFakeCore(): FakeCore {
     }
   });
 
+  /**
+   * The pan that puts an element in the middle of the canvas.
+   *
+   * @param node - The node the picture is centred on.
+   * @returns The pan the viewport goes to.
+   */
+  const panOf = (node: FakeNode): { x: number; y: number } => ({
+    x: width / 2 - node.position.x * viewport.zoom,
+    y: height / 2 - node.position.y * viewport.zoom
+  });
+
   const core = {
     on: (
       event: string,
@@ -211,8 +294,8 @@ export function createFakeCore(): FakeCore {
         }
       }
     },
-    layout: (options: Record<string, unknown>) => {
-      layouts.push(options);
+    layout: (layoutOptions: Record<string, unknown>) => {
+      layouts.push(layoutOptions);
       // The layout is an emitter: the instance listens to `layoutstop` to
       // report how long the layout took.
       return { run: () => undefined, one: vi.fn() };
@@ -228,13 +311,121 @@ export function createFakeCore(): FakeCore {
 
       return { length: 1, ...nodeApi(node) };
     },
-    center: vi.fn(),
-    fit: vi.fn(),
-    zoom: vi.fn(() => 1),
+    center: vi.fn((eles?: { id?: () => string }) => {
+      const id = eles?.id?.();
+
+      if (id === undefined) {
+        return;
+      }
+
+      const node = nodes.get(id);
+
+      if (node === undefined) {
+        return;
+      }
+
+      viewport.pan = panOf(node);
+
+      emit('pan');
+    }),
+    fit: vi.fn(() => {
+      // The fit puts the whole picture in view: the zoom of the fit is the
+      // one of the harness, and the picture is in the middle.
+      viewport.zoom = options.fitZoom ?? 0.42;
+      viewport.pan = { x: 0, y: 0 };
+
+      emit('zoom');
+      emit('pan');
+    }),
+    zoom: vi.fn((params?: number | { level: number }) => {
+      if (params === undefined) {
+        return viewport.zoom;
+      }
+
+      const level = typeof params === 'number' ? params : params.level;
+
+      viewport.zoom = level;
+
+      emit('zoom');
+      emit('pan');
+
+      return viewport.zoom;
+    }),
+    animate: vi.fn((animationOptions: Record<string, unknown>) => {
+      const center = animationOptions['center'] as { eles?: { id?: () => string } } | undefined;
+      const id = center?.eles?.id?.();
+
+      if (id === undefined) {
+        return core;
+      }
+
+      const node = nodes.get(id);
+
+      if (node === undefined) {
+        return core;
+      }
+
+      const target = panOf(node);
+
+      animations.push({ options: animationOptions, target });
+
+      // The movement is **eased** and it takes more than one frame: a pan
+      // that jumps is not a pan.
+      const start = { ...viewport.pan };
+      const steps = 4;
+
+      running = true;
+      frame = 0;
+
+      const step = (): void => {
+        if (!running) {
+          return;
+        }
+
+        frame += 1;
+
+        const percent = easeInOutCubic(frame / steps);
+
+        viewport.pan = {
+          x: start.x + (target.x - start.x) * percent,
+          y: start.y + (target.y - start.y) * percent
+        };
+
+        emit('pan');
+
+        if (frame >= steps) {
+          running = false;
+
+          return;
+        }
+
+        requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+
+      return core;
+    }),
+    stop: vi.fn(() => {
+      running = false;
+    }),
+    width: () => width,
+    height: () => height,
     destroy: vi.fn()
   };
 
-  return { core, handlers, layouts, placements, nodes, edges };
+  return {
+    core,
+    handlers,
+    layouts,
+    placements,
+    nodes,
+    edges,
+    viewport,
+    animations,
+    fitZoom: options.fitZoom ?? 0.42,
+    emit
+  };
 }
 
 /** Fires the handler the instance registered for an event. */

@@ -48,6 +48,7 @@
   import RootPicker from '$lib/components/RootPicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import WorkspaceToolbar from '$lib/components/WorkspaceToolbar.svelte';
+  import ZoomControls from '$lib/components/ZoomControls.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { formatNumber } from '$lib/i18n';
@@ -55,6 +56,7 @@
   import type { Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import { presentedNodeId, type FocusCriterion } from '$lib/graph/explore/focus';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
+  import type { ZoomAction } from '$lib/graph/explore/zoom';
   import type { TranslationKey } from '$lib/i18n';
   import { nodeSelection, edgeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { MediaQuery } from '$lib/layout/media.svelte';
@@ -152,13 +154,47 @@
   let edgeStyle = $state<EdgeStyle>('bezier');
 
   /**
-   * Whether the picture shows **only the neighbourhood** of the focus.
+   * The **zoom** of the picture.
    *
-   * The default is the whole working set: the exploration view is a
-   * landscape, and hiding what is far is a decision the reader makes when
-   * they want to concentrate.
+   * It is a property of the **view**, and the view belongs to the reader:
+   * it starts at the fit — the whole graph in view — and the wheel (the
+   * pinch, the controls of the toolbar) changes it.
+   *
+   * It lives in the page and not in the canvas, because the two views of
+   * the graph are the **same workspace**: the zoom survives the change of
+   * the mode, and it starts again at the fit when the page is opened
+   * afresh.
+   *
+   * It is `null` until the **reader chooses** one: a view that opens
+   * without a zoom of the reader fits its own picture — the whole graph in
+   * view — and the fit is not a choice. Once the reader has chosen one
+   * (the wheel, the pinch, the controls), the value is theirs: it survives
+   * the growth of the picture, a walk and the change of the mode.
    */
-  let onlyNeighbourhood = $state(false);
+  let viewZoom = $state<number | null>(null);
+
+  /** What the reader asked the zoom to do. */
+  let zoomAction = $state<ZoomAction>('in');
+
+  /**
+   * The number of the command of the zoom.
+   *
+   * It is a counter: the reader may ask for the same thing twice, and the
+   * second time is a second command.
+   */
+  let zoomRequest = $state(0);
+
+  /**
+   * The reader asks for a zoom.
+   *
+   * The command is a request: the canvas that is on screen answers it.
+   *
+   * @param action - What the reader asked for.
+   */
+  function requestZoom(action: ZoomAction): void {
+    zoomAction = action;
+    zoomRequest += 1;
+  }
 
   /** The node the user last clicked — the `manual` criterion. */
   let manualNodeId = $state<string | null>(null);
@@ -1095,20 +1131,16 @@
     {t('explore.focusActive', { label: t(FOCUS_LABELS[criterion]) })}
   </p>
 
+  <!--
+    The counts of the picture: how many nodes and how many relations are on
+    it. They are the truth — the picture is the whole working set, and
+    nothing that has been seen can be taken off it.
+  -->
   <p id="explore-scope-count" class="text-small text-muted">
-    {#if onlyNeighbourhood}
-      {t('explore.scopeFocused', {
-        shown: formatNumber(locale.locale, pictureNodes?.length ?? exploreNodes.length),
-        hidden: formatNumber(
-          locale.locale,
-          exploreNodes.length - (pictureNodes?.length ?? exploreNodes.length)
-        )
-      })}
-    {:else}
-      {t('explore.scopeAll', {
-        shown: formatNumber(locale.locale, exploreNodes.length)
-      })}
-    {/if}
+    {t('explore.scopeAll', {
+      nodes: formatNumber(locale.locale, pictureNodes?.length ?? exploreNodes.length),
+      relations: formatNumber(locale.locale, pictureEdges?.length ?? exploreEdges.length)
+    })}
   </p>
 
   <p class="hidden text-small text-muted min-[48rem]:block">
@@ -1167,6 +1199,16 @@
           onnavigate={navigateTo}
           centerNodeId={centerNodeId}
           centerRequest={centerRequest}
+          zoom={viewZoom}
+          onzoomchange={(next, source) => {
+            // Only the choice of the reader is kept: the fit of a view is
+            // the zoom that picture starts with, not a choice.
+            if (source === 'reader') {
+              viewZoom = next;
+            }
+          }}
+          zoomaction={zoomAction}
+          zoomrequest={zoomRequest}
           description={t('graph.canvasDescription', {
             nodes: formatNumber(locale.locale, graphNodes.length),
             edges: formatNumber(locale.locale, graphEdges.length)
@@ -1177,7 +1219,6 @@
       <ExplorationView
         nodes={exploreNodes}
         edges={exploreEdges}
-        {depth}
         onwalk={navigateTo}
         {walking}
         onpicture={reportPicture}
@@ -1189,7 +1230,16 @@
         onselectedge={selectEdge}
         presentedNodeId={explorePresented}
         {edgeStyle}
-        {onlyNeighbourhood}
+        zoom={viewZoom}
+        onzoomchange={(next, source) => {
+          // Only the choice of the reader is kept: the fit of a view is
+          // the zoom that picture starts with, not a choice.
+          if (source === 'reader') {
+            viewZoom = next;
+          }
+        }}
+        zoomaction={zoomAction}
+        zoomrequest={zoomRequest}
       />
     {/if}
   </div>
@@ -1287,6 +1337,17 @@
           >
             {t('graph.rootToggle')}
           </button>
+
+          <!--
+            The zoom: the property of the view, and it belongs to the
+            reader. The controls are quiet — the accent of the interface is
+            scarce, and the zoom is not the accent of the screen.
+          -->
+          <ZoomControls
+            onzoomin={() => requestZoom('in')}
+            onzoomout={() => requestZoom('out')}
+            onfit={() => requestZoom('fit')}
+          />
         </div>
       {:else}
         <ExploreControls
@@ -1298,13 +1359,11 @@
           onedgestylechange={(next) => {
             edgeStyle = next;
           }}
-          {onlyNeighbourhood}
-          ononlyneighbourhoodchange={(next) => {
-            onlyNeighbourhood = next;
-          }}
           {depth}
           ondepthchange={setDepth}
-          scopeCountId="explore-scope-count"
+          onzoomin={() => requestZoom('in')}
+          onzoomout={() => requestZoom('out')}
+          onfit={() => requestZoom('fit')}
         />
       {/if}
     {/snippet}

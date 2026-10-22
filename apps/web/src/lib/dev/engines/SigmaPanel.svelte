@@ -70,22 +70,7 @@
      * name of its own.
      */
     label?: string;
-    /**
-     * The smallest zoom the picture is fitted to.
-     *
-     * The default is the zoom in which the title of a card can be read.
-     */
-    readableScale?: number;
   }
-
-  /**
-   * The zoom in which the title of a card can still be read.
-   *
-   * It is the same rule as the canvas of Cytoscape (`MIN_READABLE_ZOOM`):
-   * the picture is fitted to the window, and it is never zoomed out past
-   * the zoom in which a card is a card and not a dot.
-   */
-  const MIN_READABLE_SCALE = 0.75;
 
   /**
    * The length a relation of the picture has, in the units of the graph.
@@ -107,7 +92,6 @@
     onsettled,
     oncontainer,
     onerror,
-    readableScale = MIN_READABLE_SCALE,
     label = undefined
   }: Props = $props();
 
@@ -416,17 +400,16 @@
    * Fits the picture to the panel.
    *
    * The rule is the one of the canvas of Cytoscape: the picture is fitted
-   * to the window, and it is never zoomed out past the zoom in which the
-   * title of a card can be **read** — a card whose title cannot be read is
-   * not a card.
+   * to the window — the whole graph in view, and nothing else.
    *
-   * The camera of Sigma knows the centre of the graph in its own
-   * coordinates (`0.5, 0.5`): the picture is centred there first, and the
-   * zoom is the one that makes the cards readable.
+   * The camera of Sigma has a **default framing**: the ratio `1` puts the
+   * whole graph in the space, whatever the size of the graph is, and the
+   * centre of the graph is the point `(0.5, 0.5)` of its own coordinates.
    *
-   * The zoom is measured **after** the picture has been drawn with the
-   * centred camera: the renderer keeps the matrix of the last picture, and
-   * a measure taken before it is a measure of the picture before.
+   * There is **no floor of readable size**: a floor would bring the camera
+   * closer than the whole picture, and the reader would see a corner of it
+   * instead of the picture. The engine that cannot show the whole picture
+   * says so in the readout of the comparison.
    */
   async function fitPicture(): Promise<void> {
     const instance = sigma;
@@ -437,58 +420,7 @@
 
     const camera = instance.getCamera();
 
-    // The picture is centred first: the camera of Sigma knows the centre
-    // of the graph in its own coordinates (`0.5, 0.5`).
     camera.setState({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
-    instance.refresh();
-    await nextPicture(instance);
-
-    const scale = graphScale();
-
-    if (!Number.isFinite(scale) || scale <= 0) {
-      return;
-    }
-
-    // The zoom is the one in which the cards can be read — and the picture
-    // is never zoomed out past it.
-    const wanted = Math.max(scale, readableScale);
-
-    if (Math.abs(wanted - scale) < 0.001) {
-      paint();
-      return;
-    }
-
-    // The relation between the zoom of the camera and the size of the
-    // picture is **measured**, not assumed: the camera is moved once, the
-    // picture is measured again, and the zoom that gives the wanted size
-    // is computed from the two measures.
-    const probe = 0.5;
-
-    camera.setState({ x: 0.5, y: 0.5, ratio: probe, angle: 0 });
-    instance.refresh();
-    await nextPicture(instance);
-
-    const probed = graphScale();
-
-    if (!Number.isFinite(probed) || probed <= 0) {
-      return;
-    }
-
-    // The exponent of the zoom: the size of the picture follows the zoom
-    // of the camera as a power.
-    const exponent = Math.log(probed / scale) / Math.log(probe);
-
-    if (!Number.isFinite(exponent) || Math.abs(exponent) < 0.01) {
-      return;
-    }
-
-    const ratio = Math.pow(wanted / scale, 1 / exponent);
-
-    if (!Number.isFinite(ratio) || ratio <= 0) {
-      return;
-    }
-
-    camera.setState({ x: 0.5, y: 0.5, ratio, angle: 0 });
     instance.refresh();
     await nextPicture(instance);
 

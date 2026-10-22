@@ -234,7 +234,7 @@ export const en: Dictionary<typeof es> = {
     windowNote:
       'The window is a **closed** graph, it comes in **creation** order and the API bounds it to {max} nodes, with no pagination.',
     hint:
-      'Drag the background to pan the canvas, use the wheel to zoom in or out and click a node to walk to it.',
+      'Drag the background to pan the canvas, use the wheel to zoom in or out and click a node to walk to it: the picture centres on the node without changing the zoom.',
     focusLabel: 'Presented node',
     focusRecent: 'The most recent',
     focusRelated: 'The most related',
@@ -244,12 +244,14 @@ export const en: Dictionary<typeof es> = {
     depthLabel: 'Depth',
     depthHelp:
       'How many hops are recovered around the node you click. It is the same depth the subgraph uses.',
-    onlyNeighbourhoodLabel: 'Only the node’s neighbourhood',
-    onlyNeighbourhoodHelp:
-      'With the switch on, the picture shows only the neighbourhood of the presented node, at the depth that is selected. The rest is hidden.',
-    scopeAll: 'The picture holds {shown} nodes: everything that has been seen.',
-    scopeFocused:
-      'The picture holds {shown} nodes; {hidden} fall outside the neighbourhood of the presented node.',
+    scopeAll:
+      'The picture holds {nodes} nodes and {relations} relations: everything that has been seen.',
+    zoomLabel: 'The zoom of the picture',
+    zoomTitle: 'Picture zoom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomFit: 'See the whole graph',
+    zoomFitShort: 'Fit',
     walking: 'Recovering the neighbourhood of “{title}”…',
     isolated: '“{title}” has no relations: its neighbourhood is empty.',
     edgeStyleLabel: 'Shape of the arrows',
@@ -282,10 +284,14 @@ export const en: Dictionary<typeof es> = {
    * they are proper nouns, and a proper noun is not translated.
    */
   engines: {
-    heading: 'The engines, side by side',
+    heading: 'The engines, one at a time',
     intro:
-      'The same window, the same nodes and the same relations in the five engines. This is a development surface: it does not exist in a production build.',
-    pageTitle: 'The engines, side by side',
+      'One single space for the five engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
+    pageTitle: 'The engines, one at a time',
+    tabsLabel: 'The engines, one at a time',
+    toolbarLabel: 'The bar of the engines',
+    readoutLabel: 'The measurements of the engine',
+    readoutHeading: 'The measurements of {name}',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
       'The incumbent: a hierarchical, deterministic layout, computed in one go.',
@@ -306,8 +312,13 @@ export const en: Dictionary<typeof es> = {
     sizeDemo: 'The demo ({count} nodes)',
     sizeStress: 'The ceiling of the API ({count} nodes)',
     edgeStyleLabel: 'Shape of the arrows',
-    measure: 'Measure the five engines',
+    measure: 'Measure the engine',
     measuring: 'Measuring…',
+    noMeasurement: 'It has not been measured yet.',
+    sharedLayoutSigma:
+      'It does not use the shared layout: it brings its own, the ForceAtlas2 force of Graphology.',
+    edgeStyleSigma:
+      'Sigma draws the five shapes the same: the choice of shape is not reproduced here.',
     rerun: 'Run the layout again',
     listToggle: 'See the list',
     listHeading: 'The picture as a list',
@@ -325,6 +336,8 @@ export const en: Dictionary<typeof es> = {
     overlapsValue: '{count} pairs',
     ticksLabel: 'Steps of the simulation',
     ticksValue: '{count} steps',
+    iterationsLabel: 'Iterations of the simulation',
+    iterationsValue: '{count} iterations',
     layoutFrameLabel: 'Frame of the layout',
     frameLayoutValue: '{value} ms',
     reproducibleLabel: 'Reproducible',
@@ -342,7 +355,7 @@ export const en: Dictionary<typeof es> = {
     empty: 'The window is empty: there is nothing to compare.',
     badgesLabel: 'The nodes of the window',
     sigmaUnavailable: 'This browser could not draw the WebGL canvas.',
-    findingsHeading: 'What the engines do not do alike',
+    findingsHeading: 'What this engine does differently',
     findingSigmaLabel:
       'Sigma does not write a multi-line title inside the shape of a node: the card is a picture painted on a 2D canvas, with the same pure module of the card.',
     findingSigmaEdges:

@@ -59,4 +59,17 @@ describe('the two dictionaries', () => {
 
     expect(untranslated).toEqual([]);
   });
+
+  it('has no copy of the switch that is gone', () => {
+    // The switch that hid the far nodes of the picture is gone: its copy
+    // is gone with it, in the two languages. A copy that talks about
+    // something that no longer exists is a hole in the interface.
+    const gone = ['onlyNeighbourhood', 'scopeFocused'];
+
+    for (const dictionary of [flat(es), flat(en)]) {
+      for (const key of Object.keys(dictionary)) {
+        expect(gone.some((name) => key.includes(name)), `${key} is a leftover`).toBe(false);
+      }
+    }
+  });
 });

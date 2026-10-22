@@ -505,12 +505,34 @@ Decided, and not to be re-opened without evidence:
       already folded — **never in `localStorage`**. The relation's name is
       also written on an **opaque** plate now, the same colour as the
       ground, instead of one that let the line through.
-- [ ] 3.30 The zoom as a property of the view: it starts at the fit (the
+- [x] 3.30 The zoom as a property of the view: it starts at the fit (the
       whole graph in view), the wheel changes it, and walking only re-centres
-      the view — smoothly, without touching the value.
-- [ ] 3.31 The comparison as a common playground: the same workspace frame,
+      the view — smoothly, without touching the value. Result: the zoom
+      stops being imposed. The `MIN_READABLE_ZOOM` clamp is gone, the
+      picture is fitted **once** when the view opens (every node inside the
+      box) and the reader owns the value from then on: the wheel changes it,
+      a re-layout does not, and a walk does not. The range is 0.05–3. The
+      value is `null` until the reader chooses one, and a view that opens
+      without a choice fits its own picture. The centring is **animated**
+      (320 ms, `ease-in-out-cubic`) and the animation carries **no zoom**,
+      so it cannot change it by accident. The decision about the fight with
+      the spring: **the spring settles first and then the view glides** —
+      the node's final place is only known when the simulation stops, and a
+      pan towards a moving target would have to be re-targeted every frame.
+      With `prefers-reduced-motion` the pan is instant.
+- [x] 3.31 The comparison as a common playground: the same workspace frame,
       the implementations as tabs in the same space, each one free to bring
-      everything it needs.
+      everything it needs. Result: the comparison is **the graph page's
+      frame** — the same floating panels, the same even ground, the same
+      toolbar rhythm, the same list as the text alternative — and the five
+      implementations are a **real tablist** (arrow keys, `Home`/`End`,
+      roving tabindex) that mounts one at a time in the same space: the
+      previous one is destroyed, so two engines never draw on the same
+      canvas. Each brings **its own** layout, painter and interactions, and
+      the comparison says so out loud when an implementation cannot use the
+      shared layout. The readout is **per implementation**: a report arrives
+      with the id of the engine that produced it, and switching tabs
+      forgets the numbers.
 - [ ] 3.32 The clone of `d3-dag` must not travel in the production bundle:
       it is a candidate, and it weighs 44 KB gzip there for nothing.
 - [ ] 3.27 The card as one object: the text becomes a child of the card

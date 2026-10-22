@@ -23,7 +23,16 @@ import {
 import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
-import { EDGE, EDGE_B, NODE_A, NODE_B, NODE_C, WORKSPACE_ID } from './fixtures/graph';
+import {
+  EDGE,
+  EDGE_B,
+  EDGE_C,
+  NEW_NODE,
+  NODE_A,
+  NODE_B,
+  NODE_C,
+  WORKSPACE_ID
+} from './fixtures/graph';
 import { ONTOLOGY } from './fixtures/ontology';
 import { createFakeCore, fire, nodeTarget } from './harness/cytoscape';
 import { contextWithLocale } from './harness/locale';
@@ -361,7 +370,48 @@ describe('walking the graph by clicking a node', () => {
     });
   });
 
-  it('hides the far nodes when the reader asks for it, and the count is the truth', async () => {
+  it('keeps everything after two walks, and the count is the truth', async () => {
+    stubFetch({
+      window: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
+      // The first walk brings the neighbourhood of the node that was
+      // clicked; the second one brings another node of the picture.
+      subgraph: (call) =>
+        call === 1
+          ? json({ nodes: [NODE_B, NODE_C], edges: [EDGE_B] })
+          : json({ nodes: [NODE_C, NEW_NODE], edges: [EDGE_C] })
+    });
+
+    await openExploration();
+
+    fire(core.handlers, 'tap', 'node', nodeTarget(NODE_C.id));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('La imagen tiene 3 nodos y 2 relaciones: todo lo que se ha visto.')
+      ).toBeInTheDocument();
+    });
+
+    // The second walk: the picture grows and it keeps everything it had.
+    fire(core.handlers, 'tap', 'node', nodeTarget(NEW_NODE.id));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('La imagen tiene 4 nodos y 3 relaciones: todo lo que se ha visto.')
+      ).toBeInTheDocument();
+    });
+
+    await openList();
+
+    const [nodeTable] = screen.getAllByRole('table');
+
+    // Every node that was ever on the picture is still on it.
+    expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
+    expect(within(nodeTable).getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
+    expect(within(nodeTable).getByRole('button', { name: NODE_C.title })).toBeInTheDocument();
+    expect(within(nodeTable).getByRole('button', { name: NEW_NODE.title })).toBeInTheDocument();
+  });
+
+  it('keeps everything that has been seen, and the count is the truth', async () => {
     stubFetch({
       window: () => json({ nodes: [NODE_A, NODE_B], edges: [EDGE] }),
       subgraph: () => json({ nodes: [NODE_B, NODE_C], edges: [EDGE_B] })
@@ -371,30 +421,24 @@ describe('walking the graph by clicking a node', () => {
 
     fire(core.handlers, 'tap', 'node', nodeTarget(NODE_C.id));
 
-    await waitFor(() => {
-      expect(screen.getByText('La imagen tiene 3 nodos: todo lo que se ha visto.')).toBeInTheDocument();
-    });
-
-    // The switch is off: the picture is the whole working set.
-    const toggle = screen.getByRole('checkbox', { name: 'Solo el entorno del nodo' });
-
-    expect(toggle).not.toBeChecked();
-
-    await fireEvent.click(toggle);
-
-    // The focus is the node that was clicked: at depth 1 its neighbourhood
-    // is the node itself and its one neighbour — and the count says so.
+    // The walk adds the neighbourhood of the node that was clicked, and the
+    // picture keeps everything it had: the switch that hid the far nodes is
+    // gone.
     await waitFor(() => {
       expect(
-        screen.getByText('La imagen tiene 2 nodos; 1 quedan fuera del entorno del nodo presentado.')
+        screen.getByText('La imagen tiene 3 nodos y 2 relaciones: todo lo que se ha visto.')
       ).toBeInTheDocument();
     });
+
+    expect(screen.queryByRole('checkbox', { name: 'Solo el entorno del nodo' })).toBeNull();
 
     await openList();
 
     const [nodeTable] = screen.getAllByRole('table');
 
-    expect(within(nodeTable).queryByRole('button', { name: NODE_A.title })).toBeNull();
+    // The list is the text alternative of the picture: it shows the same
+    // working set.
+    expect(within(nodeTable).getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
     expect(within(nodeTable).getByRole('button', { name: NODE_C.title })).toBeInTheDocument();
   });
 

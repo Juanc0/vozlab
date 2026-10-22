@@ -361,6 +361,44 @@ falls back to the raw value for an unknown one.
 The API's error `code` is a contract identifier and stays in English; the
 API's `message` is the API's own copy and stays as it is.
 
+## The zoom is the reader's
+
+The zoom is **a property of the view**, and the reader owns it.
+
+- When the view opens, the picture is **fitted once**: every node of the
+  window is inside the canvas's box. The old clamp that forced a minimum
+  zoom of 0.75 — so that a card whose title could not be read was never
+  drawn — is **gone**: at the fit the titles are small, and the reader is
+  the one who decides whether to zoom in to read.
+- The **wheel** changes it, within a range of 0.05 to 3. The value is
+  `null` until the reader chooses one, and a view that opens without a
+  choice fits its own picture.
+- **Walking never changes it.** A layout that only reshapes the picture
+  keeps the reader's zoom.
+- It survives switching between the *Subgrafo* and the *Explorar* modes —
+  they are the same workspace — and starts again at the fit when the page
+  is opened afresh.
+
+## Walking re-centres, smoothly
+
+Clicking a node re-requests the subgraph rooted at it and the view ends up
+**centred on that node**, with an **animated pan** (320 ms, eased) that
+carries **no zoom**, so it cannot change the value by accident.
+
+**The spring settles first and then the view glides.** The node's final
+place is only known when the simulation stops: a pan towards a moving
+target would have to be re-targeted on every frame, which is a fight, and
+it would land short.
+
+With `prefers-reduced-motion` the pan is **instant**.
+
+## Nothing that has been seen is taken off the picture
+
+The exploration view shows the **whole working set** — the window it
+started from plus every neighbourhood walked to. There is no control that
+hides the far nodes: what is on the picture stays on the picture, and the
+counts in the interface say the truth about it.
+
 ## The spring of the exploration view
 
 The exploration view is arranged by **`d3-force`**, and the collision that

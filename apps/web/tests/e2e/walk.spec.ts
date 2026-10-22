@@ -123,27 +123,23 @@ test('the exploration view walks the graph by clicking a node', async ({ page, a
   const shown = await scopeNumber(page, /tiene (\d+)/);
   expect(shown).toBeGreaterThan(0);
 
+  const relations = await scopeNumber(page, /(\d+) relaciones/);
+  expect(relations).toBeGreaterThan(0);
+
+  // The switch that hid the far nodes is gone: the picture is the whole
+  // working set, and nothing that has been seen can be taken off it.
+  await expect(page.getByRole('checkbox', { name: 'Solo el entorno del nodo' })).toHaveCount(0);
+
+  // The numbers say the truth: the nodes and the relations of the picture.
+  await expect(scope).toContainText('La imagen tiene');
+  await expect(scope).toContainText('nodos y');
+  await expect(scope).toContainText('relaciones');
+
   // The list follows the picture: it is the text alternative of the canvas.
   await openList(page);
 
   // The header row is not a node.
   await expect(nodeTable.getByRole('row')).toHaveCount(shown + 1);
-
-  // The far nodes: the reader's choice, and the numbers say the truth.
-  const toggle = page.getByRole('checkbox', { name: 'Solo el entorno del nodo' });
-  await expect(toggle).not.toBeChecked();
-
-  await toggle.click();
-
-  await expect(scope).toContainText('quedan fuera del entorno del nodo presentado');
-
-  const hidden = await scopeNumber(page, /(\d+) quedan/);
-  const focused = await scopeNumber(page, /tiene (\d+)/);
-
-  expect(focused + hidden).toBe(shown);
-
-  // The list follows the picture: the nodes that are hidden are not in it.
-  await expect(nodeTable.getByRole('row')).toHaveCount(focused + 1);
 });
 
 test('the list walks to a node too: it is the way a keyboard reaches it', async ({

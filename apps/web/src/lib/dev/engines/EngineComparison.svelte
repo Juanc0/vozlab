@@ -1,37 +1,45 @@
 <script lang="ts">
   /**
-   * The **comparison of the engines** — the same picture in three of them.
+   * The **comparison of the engines** — one workspace, one engine at a time.
    *
-   * The three panels get the **same** data (the same ids, the same nodes,
-   * the same relations) and the same interactions: pan, zoom, the hover
-   * preview, the badge that expands a node and the drag. What changes is
-   * the engine:
+   * The comparison is a **playground**: the frame is the frame of the graph
+   * page — the canvas fills the workspace on the even ground, the toolbar
+   * floats at the top over it, the other panels float over it and the page
+   * does not scroll — and the engines are the **tabs** of that space. They
+   * are not side by side: choosing one mounts it in the same space, and the
+   * one that was there is unmounted and gives its canvas back.
    *
-   * - **Cytoscape + dagre**: the incumbent. A deterministic, hierarchical
-   *   arrangement.
-   * - **Cytoscape + fcose**: the same canvas with the **force** layout — a
-   *   spring that settles and stops.
-   * - **Sigma.js + Graphology**: the WebGL renderer with the graph in the
-   *   client, arranged by the ForceAtlas2 layout of Graphology.
+   * The comparison gives every engine the same **data** (the same window,
+   * the same nodes, the same relations), the same **card** and the same
+   * **controls** over the picture (the size of the picture, the shape of
+   * the relations) — and it gets out of the way: the arrangement, the
+   * painter and the interactions are the engine's own.
+   *
+   * The **readout** belongs to the engine that is on screen: the time it
+   * took to settle, the pairs of cards that lie on top of each other,
+   * whether the same picture comes out twice and the relations the
+   * arrangement had to break are measured **on that engine**.
    *
    * The surface is **development only**: it is rendered only in a
-   * development build, and the code behind it is imported dynamically so
-   * it never reaches the bundle of the app.
+   * development build, and the code behind it is imported dynamically so it
+   * never reaches the bundle of the app.
    */
   import { onMount, untrack } from 'svelte';
   import { loadNodeWindow } from '$lib/api/graph';
-  import type { ApiFailure } from '$lib/api/failure';
+  import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
-  import { describeFailure } from '$lib/api/failure';
-  import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
+  import FloatingPanel from '$lib/components/FloatingPanel.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { formatNumber } from '$lib/i18n';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
-  import SigmaPanel from './SigmaPanel.svelte';
   import { comparisonGraph, type ComparisonGraph } from './comparison-data';
   import { registerForceLayout } from './fcose';
   import { measureFrames, summarizeFrames, type FrameSummary } from './frames';
+  import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
+  import EnginePanel from './EnginePanel.svelte';
+  import EngineReadout from './EngineReadout.svelte';
+  import EngineTabs from './EngineTabs.svelte';
 
   // The force layout of Cytoscape is registered **before** anything is
   // drawn: the extension is a global registration, and the picture must
@@ -61,7 +69,18 @@
     haystack: t('explore.edgeHaystack')
   };
 
-  /** The window of the workspace — the picture the panels draw. */
+  /** The ids of the tabs and of the panel cannot be fixed. */
+  const uid = $props.id();
+
+  /** The id of the panel the tabs control — the space of the picture. */
+  const panelId = `engine-panel-${uid}`;
+
+  /** The id of the tab of an engine. */
+  function tabId(engine: EngineId): string {
+    return `engine-tab-${engine}-${uid}`;
+  }
+
+  /** The window of the workspace — the picture the engine draws. */
   let windowNodes = $state.raw<NodeDto[]>([]);
   let windowEdges = $state.raw<SubgraphEdgeDto[]>([]);
   let loading = $state(false);
@@ -79,76 +98,78 @@
   /** The selected node. */
   let selectedNodeId = $state<string | null>(null);
 
-  /** The node the view presents. */
-  let presentedNodeId = $state<string | null>(null);
-
-  /** The token that asks the three panels to arrange the picture again. */
+  /** The token that asks the engine to arrange the picture again. */
   let layoutToken = $state(0);
 
-  /** The list — the text alternative of the three pictures. */
+  /** The list — the text alternative of the picture. */
   let listOpen = $state(false);
 
-  /** The measurements of the three engines. */
-  let frames = $state.raw<Map<string, FrameSummary>>(new Map());
+  /** The engine that is on screen. */
+  let activeEngine = $state<EngineId>('dagre');
 
-  /** The instants the layouts took, by engine. */
-  let layouts = $state.raw<
-    Map<
-      string,
-      {
-        ms: number;
-        settled: boolean;
-        iterations?: number;
-        overlaps?: number;
-        ticks?: number;
-        frameMs?: number;
-        reversedRelations?: readonly string[];
-      }
-    >
-  >(new Map());
+  /** The measurements of the frame time, by engine. */
+  let frames = $state.raw<Map<EngineId, FrameSummary>>(new Map());
+
+  /** What the engines reported about their arrangement, by engine. */
+  let layouts = $state.raw<Map<EngineId, EngineMeasurement>>(new Map());
 
   /** Whether the measurement is running. */
   let measuring = $state(false);
 
-  /**
-   * The failure of a panel, if it could not be drawn.
-   *
-   * A browser without WebGL leaves the panel of Sigma empty: the reader
-   * is told what happened instead of facing a blank space.
-   */
+  /** The element the engine draws in — the measurement is taken on it. */
+  let canvasElement = $state.raw<HTMLElement | undefined>(undefined);
+
+  /** The failure of the engine, if it could not be drawn. */
   let panelFailure = $state<string | null>(null);
 
-  /** The containers of the three panels, for the measurement. */
-  const panelElements = new Map<string, HTMLElement>();
+  /** The height of the floating toolbar. */
+  let toolbarHeight = $state(0);
+
+  /** The element of the floating toolbar. */
+  let toolbarElement: HTMLElement | undefined = $state();
 
   /**
-   * Keeps the element of a panel, for the measurement.
+   * The height of the toolbar is told to the page.
    *
-   * It is an **action**: the panels live in a list, and the measurement
-   * needs the element of each one of them.
+   * The list is the other half of the workspace and it must not run under
+   * the toolbar: the panel is measured, and the list starts below it.
    */
-  function capture(node: HTMLElement, id: string): { destroy: () => void } {
-    panelElements.set(id, node);
+  $effect(() => {
+    const element = toolbarElement;
 
-    return {
-      destroy(): void {
-        panelElements.delete(id);
-      }
+    if (element === undefined) {
+      return;
+    }
+
+    const report = (): void => {
+      toolbarHeight = element.offsetHeight;
     };
-  }
 
-  /** The picture the three panels draw. */
+    report();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(report);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  });
+
+  /** The picture the engine draws. */
   const picture = $derived.by<ComparisonGraph>(() =>
     comparisonGraph({ nodes: windowNodes, edges: windowEdges }, wanted)
   );
 
   /**
-   * The nodes the panels are given.
+   * The nodes the engine is given.
    *
-   * The array is a **new** one when the layout is asked again: the panels
-   * arrange the picture again when their data changes, and the panels
-   * themselves are not re-created — the places the user dragged the nodes
-   * to survive.
+   * The array is a **new** one when the layout is asked again: the engine
+   * arranges the picture again when its data changes, and the engine itself
+   * is not re-created — the places the user dragged the nodes to survive.
    */
   const panelNodes = $derived.by<NodeDto[]>(() => {
     void layoutToken;
@@ -156,7 +177,7 @@
     return [...picture.nodes];
   });
 
-  /** The relations the panels are given. */
+  /** The relations the engine is given. */
   const panelEdges = $derived.by<SubgraphEdgeDto[]>(() => {
     void layoutToken;
 
@@ -168,6 +189,15 @@
 
   /** The id of the node the view presents: the first one of the picture. */
   const presented = $derived(picture.nodes[0]?.id ?? null);
+
+  /** The engine that is on screen, as a descriptor. */
+  const descriptor = $derived(engineDescriptor(activeEngine));
+
+  /** The measurement of the engine that is on screen. */
+  const measurement = $derived(layouts.get(activeEngine));
+
+  /** The frame times of the engine that is on screen. */
+  const engineFrames = $derived(frames.get(activeEngine));
 
   onMount(() => {
     void load();
@@ -214,31 +244,67 @@
     expandedIds = next;
   }
 
-  /** The panel of an engine, for the measurement. */
-  function panelOf(name: string): HTMLElement | undefined {
-    return panelElements.get(name);
+  /**
+   * Forgets the measurements of an engine.
+   *
+   * The measurements belong to the picture they were taken on: an engine
+   * that is mounted again is a **new** picture, and the numbers of the old
+   * one are not its numbers.
+   *
+   * @param engine - The engine whose measurements are forgotten.
+   */
+  function forgetMeasurements(engine: EngineId): void {
+    if (frames.has(engine)) {
+      const next = new Map(frames);
+      next.delete(engine);
+      frames = next;
+    }
+
+    if (layouts.has(engine)) {
+      const next = new Map(layouts);
+      next.delete(engine);
+      layouts = next;
+    }
   }
 
   /**
-   * Keeps the report of a layout.
+   * Shows another engine.
+   *
+   * The engine that was on screen is unmounted and its canvas is released;
+   * the new one is mounted in the same space. The measurements of both are
+   * forgotten: they belong to a picture that is no longer on screen.
+   *
+   * @param engine - The engine the reader picked.
+   */
+  function selectEngine(engine: EngineId): void {
+    if (engine === activeEngine) {
+      return;
+    }
+
+    const previous = activeEngine;
+
+    activeEngine = engine;
+    panelFailure = null;
+
+    forgetMeasurements(previous);
+    forgetMeasurements(engine);
+  }
+
+  /**
+   * Keeps the report of an arrangement.
    *
    * The report arrives **inside** the effect of the canvas that ran the
    * layout: writing the state of the page from there is not allowed, and
    * the write is put in the queue of the microtasks — the page reads the
    * report on the next turn of the event loop.
+   *
+   * The report is stored **under the engine that produced it**: the engine
+   * that was on screen when the report arrived may be another one.
+   *
+   * @param engine - The engine that ran the arrangement.
+   * @param report - What the engine reported.
    */
-  function reportLayout(
-    engine: string,
-    report: {
-      ms: number;
-      settled: boolean;
-      iterations?: number;
-      overlaps?: number;
-      ticks?: number;
-      frameMs?: number;
-      reversedRelations?: readonly string[];
-    }
-  ): void {
+  function reportLayout(engine: EngineId, report: EngineMeasurement): void {
     queueMicrotask(() => {
       layouts.set(engine, report);
       layouts = new Map(layouts);
@@ -246,29 +312,27 @@
   }
 
   /**
-   * Measures the frame time of the three engines.
+   * Measures the frame time of the engine that is on screen.
    *
-   * The three panels are measured **one after the other**: the picture
-   * that is being measured is the only one that moves, so the frame that
-   * is measured is the frame of that engine.
+   * Only one engine is mounted, so the picture that is measured is the
+   * picture of that engine — and the frame that is measured belongs to it.
    */
   async function measure(): Promise<void> {
+    const element = canvasElement;
+    const engine = activeEngine;
+
+    if (element === undefined) {
+      return;
+    }
+
     measuring = true;
-    const next = new Map<string, FrameSummary>();
 
     try {
-      for (const name of ['dagre', 'd3', 'dag', 'fcose', 'sigma']) {
-        const element = panelOf(name);
+      const summary = summarizeFrames(await measureFrames(element));
 
-        if (element === undefined) {
-          continue;
-        }
-
-        const summary = summarizeFrames(await measureFrames(element));
-        next.set(name, summary);
-      }
+      frames.set(engine, summary);
+      frames = new Map(frames);
     } finally {
-      frames = next;
       measuring = false;
     }
   }
@@ -286,94 +350,158 @@
 
     untrack(() => {
       frames = new Map();
+      layouts = new Map();
     });
   });
 
   /** The number of nodes of the picture, written with the conventions of the locale. */
   const nodeCount = $derived(formatNumber(locale.locale, picture.nodes.length));
   const edgeCount = $derived(formatNumber(locale.locale, picture.edges.length));
-
-  /**
-   * The panels of the comparison: the same picture in five arrangements.
-   *
-   * The clone of `dagre` — the layered arrangement of `d3-dag` — is one
-   * of them: it is a **candidate**, and `dagre` stays in production.
-   */
-  const panels = $derived([
-    {
-      id: 'dagre',
-      name: t('engines.panelDagreName'),
-      note: t('engines.panelDagreNote'),
-      reproducible: t('engines.reproducibleDagre')
-    },
-    {
-      id: 'd3',
-      name: t('engines.panelD3Name'),
-      note: t('engines.panelD3Note'),
-      reproducible: t('engines.reproducibleD3')
-    },
-    {
-      id: 'dag',
-      name: t('engines.panelDagName'),
-      note: t('engines.panelDagNote'),
-      reproducible: t('engines.reproducibleDag')
-    },
-    {
-      id: 'fcose',
-      name: t('engines.panelFcoseName'),
-      note: t('engines.panelFcoseNote'),
-      reproducible: t('engines.reproducibleFcose')
-    },
-    {
-      id: 'sigma',
-      name: t('engines.panelSigmaName'),
-      note: t('engines.panelSigmaNote'),
-      reproducible: t('engines.reproducibleSigma')
-    }
-  ]);
-
-  /**
-   * The names of the relations that were **reversed** by an arrangement.
-   *
-   * They are the relations whose arrow is drawn against what the relation
-   * says: the reader has to be able to see **which** ones they are, and
-   * not only how many.
-   *
-   * @param engine - The engine of the panel.
-   * @returns The names of the relations, separated by commas.
-   */
-  function reversedNames(engine: string): string {
-    const ids = layouts.get(engine)?.reversedRelations ?? [];
-
-    const names = ids.map((id) => {
-      const relation = picture.edges.find((edge) => edge.id === id);
-
-      if (relation === undefined) {
-        return id;
-      }
-
-      const source = picture.nodes.find((node) => node.id === relation.sourceNodeId);
-      const target = picture.nodes.find((node) => node.id === relation.targetNodeId);
-
-      return `${source?.title ?? '?'} → ${target?.title ?? '?'}`;
-    });
-
-    return names.join(', ');
-  }
 </script>
 
-<div class="mx-auto max-w-[90rem] space-y-6 px-4 py-6">
-  <header class="space-y-2">
-    <h1 class="text-section font-sans">{t('engines.heading')}</h1>
-    <p class="max-w-measure text-body text-muted">{t('engines.intro')}</p>
-  </header>
+<svelte:head>
+  <title>{t('engines.pageTitle')}</title>
+</svelte:head>
+
+<!--
+  The **workspace**: the window is the page.
+
+  The picture is the whole area, on the even ground, and the panels float
+  over it — the toolbar at the top and the readout of the engine at the
+  bottom left. The page does not scroll: it is the same frame the graph
+  page has.
+-->
+<div class="relative h-full w-full overflow-hidden bg-ground">
+  <!--
+    The picture — or the list, which is its **text alternative**. They
+    share the same area: the toggle of the toolbar swaps them, and both
+    carry the same picture and the same selection.
+
+    The picture stays in the document when the list is on screen: the
+    engine keeps the place the reader left it.
+  -->
+  <div
+    class="absolute inset-0"
+    class:invisible={listOpen}
+    aria-hidden={listOpen ? 'true' : undefined}
+    inert={listOpen}
+  >
+    <!--
+      The panel of the tabs: the space of the picture. It is the panel the
+      tabs control, and it is labelled by the tab that is on screen.
+    -->
+    <div
+      role="tabpanel"
+      id={panelId}
+      aria-labelledby={tabId(activeEngine)}
+      tabindex="0"
+      class="h-full w-full"
+    >
+      <EnginePanel
+        engine={activeEngine}
+        nodes={panelNodes}
+        edges={panelEdges}
+        {expandedIds}
+        {selectedNodeId}
+        presentedNodeId={presented}
+        {edgeStyle}
+        label={`${t(descriptor.nameKey)} — ${t('engines.canvasLabel')}`}
+        onselect={(nodeId) => {
+          selectedNodeId = nodeId;
+        }}
+        ontoggle={toggleNode}
+        onlayout={reportLayout}
+        onerror={(message) => {
+          panelFailure = message;
+        }}
+        oncontainer={(element) => {
+          canvasElement = element;
+        }}
+      />
+    </div>
+  </div>
 
   <!--
-    The controls of the comparison: the size of the picture, the shape of
-    the relations, the measurement and the repetition of the layout.
+    The list: the text alternative of the picture, in the same area. It is
+    a real DOM list and it scrolls inside itself — never the page.
+
+    It starts **below the toolbar**: a list that runs under a floating
+    panel is a list the reader cannot click.
   -->
-  <section class="rounded-card bg-surface p-4">
-    <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
+  {#if listOpen}
+    <div
+      class="absolute inset-0 overflow-y-auto bg-ground pl-4"
+      style="padding-top: {toolbarHeight + 32}px; padding-right: 1rem; padding-bottom: calc(var(--notice-h, 0px) + 1rem)"
+    >
+      <GraphListView
+        summaryKey="explore.listSummary"
+        nodes={picture.nodes}
+        edges={picture.edges}
+        selection={selectedNodeId === null ? null : { kind: 'node', id: selectedNodeId }}
+        onselect={(selection) => {
+          selectedNodeId = selection?.kind === 'node' ? selection.id : null;
+        }}
+      />
+    </div>
+  {/if}
+
+  <!--
+    The **floating toolbar**: the frame of the picture. It holds the title,
+    the tabs of the engines and the controls over the picture.
+  -->
+  <FloatingPanel
+    placement="top-left"
+    label={t('engines.toolbarLabel')}
+    panelClass="max-w-[calc(100%-2rem)]"
+    bind:element={toolbarElement}
+  >
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
+      <h1 class="text-kpi">{t('engines.heading')}</h1>
+
+      <!--
+        The switch between the picture and its **text alternative**. It is
+        a real toggle: the state is announced (`aria-pressed`), and the
+        list is one click away — never behind a hover or a gesture.
+      -->
+      <button
+        type="button"
+        class="btn btn-secondary ml-auto aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
+        aria-pressed={listOpen}
+        onclick={() => {
+          listOpen = !listOpen;
+        }}
+      >
+        {t('engines.listToggle')}
+      </button>
+    </div>
+
+    <!--
+      The note of the comparison. On a narrow screen the picture is the
+      thing: the note goes.
+    -->
+    <p class="hidden max-w-measure px-3 text-small text-muted min-[48rem]:block">
+      {t('engines.intro')}
+    </p>
+
+    <!--
+      The tabs of the engines: the quiet control that chooses the
+      implementation that occupies the space.
+    -->
+    <div class="px-3 pt-2">
+      <EngineTabs
+        active={activeEngine}
+        onselect={selectEngine}
+        {panelId}
+        {tabId}
+      />
+    </div>
+
+    <!--
+      The controls over the picture: the size of the picture, the shape of
+      the relations, the measurement of the engine that is on screen and the
+      repetition of its arrangement.
+    -->
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-2 px-3 py-3">
       <div>
         <label for="engines-size" class="block text-small text-muted">
           {t('engines.sizeLabel')}
@@ -390,8 +518,12 @@
             }
           }}
         >
-          <option value={demoCount}>{t('engines.sizeDemo', { count: formatNumber(locale.locale, demoCount) })}</option>
-          <option value={200}>{t('engines.sizeStress', { count: formatNumber(locale.locale, 200) })}</option>
+          <option value={demoCount}>
+            {t('engines.sizeDemo', { count: formatNumber(locale.locale, demoCount) })}
+          </option>
+          <option value={200}>
+            {t('engines.sizeStress', { count: formatNumber(locale.locale, 200) })}
+          </option>
         </select>
       </div>
 
@@ -430,284 +562,59 @@
       >
         {t('engines.rerun')}
       </button>
-
-      <button
-        type="button"
-        class="btn btn-secondary"
-        aria-expanded={listOpen}
-        onclick={() => {
-          listOpen = !listOpen;
-        }}
-      >
-        {t('engines.listToggle')}
-      </button>
     </div>
 
-    <p class="mt-3 text-small text-muted">
+    <!--
+      The counts of the picture: the same nodes and the same relations for
+      every engine.
+    -->
+    <p class="px-3 pb-3 text-small text-muted">
       {t('engines.counts', { nodes: nodeCount, edges: edgeCount })}
     </p>
-  </section>
+  </FloatingPanel>
 
-  {#if failure !== null}
-    <p
-      role="alert"
-      class="rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink"
-    >
-      <span class="font-mono">{failure.code}</span> — {failure.message}
-    </p>
-  {:else if loading && picture.nodes.length === 0}
-    <p role="status" class="text-body text-muted">{t('engines.loading')}</p>
-  {:else if picture.nodes.length === 0}
-    <p class="text-body text-muted">{t('engines.empty')}</p>
-  {:else}
-    <!--
-      The three panels, side by side. They are the same picture in three
-      engines: the same nodes, the same relations and the same controls.
-    -->
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-      {#each panels as panel (panel.id)}
-        <section class="flex flex-col rounded-card bg-surface p-3">
-          <h2 class="text-body font-semibold">{panel.name}</h2>
-          <p class="mt-0.5 text-small text-muted">{panel.note}</p>
-
-          <!--
-            The readouts of the engine: the frame, the layout and whether
-            the picture has settled.
-          -->
-          <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-small">
-            <dt class="text-muted">{t('engines.frameLabel')}</dt>
-            <dd class="font-mono">
-              {#if frames.get(panel.id) === undefined}
-                —
-              {:else}
-                {t('engines.frameValue', {
-                  value: frames.get(panel.id)?.median.toFixed(2) ?? '—'
-                })}
-                <span class="text-muted">
-                  {t('engines.framePeak', {
-                    value: frames.get(panel.id)?.max.toFixed(2) ?? '—'
-                  })}
-                </span>
-                <span class="text-muted">
-                  {t('engines.frameCount', {
-                    count: formatNumber(locale.locale, frames.get(panel.id)?.frames ?? 0)
-                  })}
-                </span>
-              {/if}
-            </dd>
-
-            <dt class="text-muted">{t('engines.layoutLabel')}</dt>
-            <dd class="font-mono">
-              {layouts.get(panel.id) === undefined
-                ? '—'
-                : t('engines.layoutValue', {
-                    value: (layouts.get(panel.id)?.ms ?? 0).toFixed(1)
-                  })}
-            </dd>
-
-            <dt class="text-muted">{t('engines.settledLabel')}</dt>
-            <dd>
-              {layouts.get(panel.id) === undefined
-                ? '—'
-                : layouts.get(panel.id)?.settled === true
-                  ? t('engines.settledYes')
-                  : t('engines.settledNo')}
-            </dd>
-
-            <!--
-              The pairs of cards that lie on top of each other: the metric
-              that told the truth about the springs.
-            -->
-            <dt class="text-muted">{t('engines.overlapsLabel')}</dt>
-            <dd class="font-mono">
-              {layouts.get(panel.id)?.overlaps === undefined
-                ? '—'
-                : t('engines.overlapsValue', {
-                    count: formatNumber(locale.locale, layouts.get(panel.id)?.overlaps ?? 0)
-                  })}
-            </dd>
-
-            <!--
-              The steps of the simulation and the time a frame of it took:
-              the spring is run in slices, and the slices are what the
-              reader sees.
-            -->
-            <dt class="text-muted">{t('engines.ticksLabel')}</dt>
-            <dd class="font-mono">
-              {layouts.get(panel.id)?.ticks === undefined
-                ? '—'
-                : t('engines.ticksValue', {
-                    count: formatNumber(locale.locale, layouts.get(panel.id)?.ticks ?? 0)
-                  })}
-            </dd>
-
-            <dt class="text-muted">{t('engines.layoutFrameLabel')}</dt>
-            <dd class="font-mono">
-              {layouts.get(panel.id)?.frameMs === undefined
-                ? '—'
-                : t('engines.frameLayoutValue', {
-                    value: (layouts.get(panel.id)?.frameMs ?? 0).toFixed(2)
-                  })}
-            </dd>
-
-            <!--
-              Whether the same picture comes out twice. It is not the same
-              question for the five engines, and the answer says so.
-            -->
-            <dt class="text-muted">{t('engines.reproducibleLabel')}</dt>
-            <dd>{panel.reproducible}</dd>
-
-            <!--
-              The relations that were reversed to be able to order the
-              graph. It is the number that says the most about a layered
-              arrangement: the relations of VozLab have cycles, and the
-              arrangement has to break them.
-            -->
-            <dt class="text-muted">{t('engines.reversedLabel')}</dt>
-            <dd class="font-mono">
-              {layouts.get(panel.id)?.reversedRelations === undefined
-                ? '—'
-                : t('engines.reversedValue', {
-                    count: formatNumber(
-                      locale.locale,
-                      layouts.get(panel.id)?.reversedRelations?.length ?? 0
-                    )
-                  })}
-            </dd>
-          </dl>
-
-          <!--
-            The relations that were reversed, by name: the reader has to be
-            able to see **which** ones are drawn against what they say.
-
-            The list is folded away: ten relations with the titles of their
-            cards take the whole panel, and the picture is what the panel
-            is for.
-          -->
-          {#if (layouts.get(panel.id)?.reversedRelations?.length ?? 0) > 0}
-            <details class="mt-2 text-small">
-              <summary class="cursor-pointer text-muted">
-                {t('engines.reversedToggle', {
-                  count: formatNumber(
-                    locale.locale,
-                    layouts.get(panel.id)?.reversedRelations?.length ?? 0
-                  )
-                })}
-              </summary>
-              <p class="mt-1 text-muted">
-                {t('engines.reversedDetail', { relations: reversedNames(panel.id) })}
-              </p>
-            </details>
-          {/if}
-
-          <!--
-            The picture of the engine. The three panels are measured one
-            after the other, and the container of each one is kept.
-          -->
-          <div
-            use:capture={panel.id}
-            class="mt-3 h-[26rem] overflow-hidden rounded-control border border-rule bg-ground"
-          >
-            {#if panel.id === 'sigma' && panelFailure !== null}
-              <p
-                role="alert"
-                class="grid h-full place-items-center p-4 text-center text-small text-pill-negative-ink"
-              >
-                {panelFailure}
-              </p>
-            {:else if panel.id === 'sigma'}
-              <SigmaPanel
-                nodes={panelNodes}
-                edges={panelEdges}
-                {expandedIds}
-                {selectedNodeId}
-                presentedNodeId={presented}
-                {edgeStyle}
-                readableScale={0.08}
-                label={`${panel.name} — ${t('engines.canvasLabel')}`}
-                onselect={(id) => {
-                  selectedNodeId = id;
-                }}
-                ontoggle={toggleNode}
-                onsettled={(report) => {
-                  reportLayout('sigma', {
-                    ms: report.ms,
-                    settled: true,
-                    iterations: report.iterations,
-                    overlaps: report.overlaps
-                  });
-                }}
-                onerror={(message) => {
-                  panelFailure = message;
-                }}
-              />
-            {:else}
-              <ExplorationCanvas
-                nodes={panelNodes}
-                edges={panelEdges}
-                {expandedIds}
-                {selectedNodeId}
-                presentedNodeId={presented}
-                {edgeStyle}
-                layout={panel.id === 'fcose' ? 'fcose' : panel.id === 'd3' ? 'd3' : panel.id === 'dag' ? 'dag' : 'dagre'}
-                readableZoom={0.08}
-                label={`${panel.name} — ${t('engines.canvasLabel')}`}
-                onselect={(id) => {
-                  selectedNodeId = id;
-                }}
-                ontoggle={toggleNode}
-                onlayout={(report) => {
-                  reportLayout(panel.id, {
-                    ms: report.ms,
-                    settled: report.settled,
-                    overlaps: report.overlaps,
-                    ticks: report.ticks,
-                    frameMs: report.frameMs,
-                    reversedRelations: report.reversedRelations
-                  });
-                }}
-              />
-            {/if}
-          </div>
-        </section>
-      {/each}
-    </div>
-
-    <!--
-      The findings of the comparison: what the other two engines cannot do.
-    -->
-    <section class="rounded-card bg-surface p-4">
-      <h2 class="text-body font-semibold">{t('engines.findingsHeading')}</h2>
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-small text-muted">
-        <li>{t('engines.findingSigmaLabel')}</li>
-        <li>{t('engines.findingSigmaEdges')}</li>
-        <li>{t('engines.findingSigmaDashes')}</li>
-        <li>{t('engines.findingFcoseSeed')}</li>
-        <li>{t('engines.findingD3Collision')}</li>
-        <li>{t('engines.findingD3Seed')}</li>
-        <li>{t('engines.findingDagCycles')}</li>
-        <li>{t('engines.findingDagQuality')}</li>
-      </ul>
-    </section>
-
-    <!--
-      The list: the **text alternative** of the three pictures. A canvas is
-      a picture a screen reader cannot see, and the list is the real
-      alternative — one click away.
-    -->
-    {#if listOpen}
-      <section class="rounded-card bg-surface p-4">
-        <h2 class="text-body font-semibold">{t('engines.listHeading')}</h2>
-        <GraphListView
-          summaryKey="explore.listSummary"
-          nodes={picture.nodes}
-          edges={picture.edges}
-          selection={selectedNodeId === null ? null : { kind: 'node', id: selectedNodeId }}
-          onselect={(selection) => {
-            selectedNodeId = selection?.kind === 'node' ? selection.id : null;
-          }}
-        />
-      </section>
+  <!--
+    The **readout of the engine**: what was measured on the engine that is
+    on screen. It floats over the picture, at the other end of it from the
+    toolbar — the same rhythm the graph page has.
+  -->
+  <FloatingPanel
+    placement="bottom-left"
+    label={t('engines.readoutLabel')}
+    panelClass="max-h-[40vh] w-[min(26rem,calc(100%-2rem))] overflow-y-auto min-[48rem]:max-h-[calc(100%-var(--notice-h,0px)-18rem)]"
+  >
+    {#if failure !== null}
+      <p
+        role="alert"
+        class="m-3 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink"
+      >
+        <span class="font-mono">{failure.code}</span> — {failure.message}
+      </p>
+    {:else if loading && picture.nodes.length === 0}
+      <p role="status" class="p-3 text-body text-muted">{t('engines.loading')}</p>
+    {:else if picture.nodes.length === 0}
+      <p class="p-3 text-body text-muted">{t('engines.empty')}</p>
+    {:else}
+      <EngineReadout
+        engine={descriptor}
+        {measurement}
+        frames={engineFrames}
+        nodes={picture.nodes}
+        edges={picture.edges}
+      />
     {/if}
-  {/if}
+
+    <!--
+      A browser without WebGL leaves the engine of Sigma empty: the reader
+      is told what happened instead of facing a blank space.
+    -->
+    {#if panelFailure !== null}
+      <p
+        role="alert"
+        class="m-3 rounded-control bg-pill-negative-bg p-3 text-body text-pill-negative-ink"
+      >
+        {panelFailure}
+      </p>
+    {/if}
+  </FloatingPanel>
 </div>

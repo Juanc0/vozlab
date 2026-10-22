@@ -17,7 +17,8 @@
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
-  import { filterNeighbourhood, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
+  import { pictureOf, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
+  import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
@@ -31,8 +32,6 @@
     nodes?: NodeDto[];
     /** The relations of the working set. */
     edges?: SubgraphEdgeDto[];
-    /** The depth of a walk — it bounds the neighbourhood of the focus. */
-    depth?: number;
     /**
      * Called when the user **walks** to a node of the canvas.
      *
@@ -65,14 +64,35 @@
     presentedNodeId?: string | null;
     /** The shape the relations are drawn with. */
     edgeStyle?: EdgeStyle;
-    /** Whether the picture shows only the neighbourhood of the focus. */
-    onlyNeighbourhood?: boolean;
+    /**
+     * The zoom the reader had when the view was opened.
+     *
+     * It is `null` when the reader never chose one: the picture is then
+     * fitted — the whole graph in view — and the fit is the zoom that
+     * picture starts with.
+     */
+    zoom?: number | null;
+    /**
+     * Called when the zoom of the picture changes.
+     *
+     * The app keeps the value: the zoom survives the change of the view of
+     * the graph.
+     */
+    onzoomchange?: (zoom: number, source: ZoomSource) => void;
+    /** What the reader asked the zoom to do. */
+    zoomaction?: ZoomAction;
+    /**
+     * The number of the command of the zoom.
+     *
+     * It is a counter, and it is what tells a command from the one before
+     * it.
+     */
+    zoomrequest?: number;
   }
 
   let {
     nodes = [],
     edges = [],
-    depth = 1,
     onwalk,
     walking = false,
     onpicture,
@@ -84,7 +104,10 @@
     error = null,
     presentedNodeId = null,
     edgeStyle = 'bezier',
-    onlyNeighbourhood = false
+    zoom = null,
+    onzoomchange,
+    zoomaction = 'in',
+    zoomrequest = 0
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -218,18 +241,15 @@
   /**
    * The **picture**: what the canvas draws.
    *
-   * It is the whole working set, or the neighbourhood of the focus when
-   * the reader asks for it. The nodes that are not in the picture are not
-   * drawn: a node that is in the picture and a relation whose ends are not
-   * in the picture would be a line that goes nowhere.
+   * It is the **whole working set**: the window the view started from and
+   * every neighbourhood the reader has walked to. Nothing that has been on
+   * the picture can be taken off it — what has been seen stays on the
+   * picture.
+   *
+   * The relations are the ones whose **two ends** are in the picture: a
+   * relation with one end outside would be a line that goes nowhere.
    */
-  const picture = $derived.by<Neighbourhood>(() => {
-    if (!onlyNeighbourhood) {
-      return { nodes: [...nodes], edges: [...edges] };
-    }
-
-    return filterNeighbourhood(nodes, edges, presentedNodeId, depth);
-  });
+  const picture = $derived.by<Neighbourhood>(() => pictureOf(nodes, edges));
 
   /**
    * The picture is told to the app.
@@ -273,6 +293,10 @@
       {selectedNodeId}
       {selectedEdgeId}
       {presentedNodeId}
+      {zoom}
+      {onzoomchange}
+      {zoomaction}
+      {zoomrequest}
       onselect={onselect}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}

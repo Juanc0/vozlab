@@ -83,18 +83,17 @@ describe('the exploration view', () => {
     expect(core.core.center).toHaveBeenCalled();
   });
 
-  it('shows only the neighbourhood of the focus when the reader asks for it', async () => {
+  it('always shows the whole working set: nothing that has been seen is lost', async () => {
     await renderView({
       nodes: [NODE_A, NODE_B, NODE_C],
       edges: [EDGE, EDGE_C],
-      presentedNodeId: NODE_C.id,
-      onlyNeighbourhood: true,
-      depth: 0
+      presentedNodeId: NODE_C.id
     });
 
-    // The picture is the neighbourhood of the focus: at depth zero it is
-    // the focus alone.
-    expect(core.nodes.has(NODE_A.id)).toBe(false);
+    // Every node of the working set is on the picture, and the node the
+    // view presents is one of them.
+    expect(core.nodes.has(NODE_A.id)).toBe(true);
+    expect(core.nodes.has(NODE_B.id)).toBe(true);
     expect(core.nodes.has(NODE_C.id)).toBe(true);
   });
 

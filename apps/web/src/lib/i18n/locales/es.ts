@@ -259,7 +259,7 @@ export const es = {
     windowNote:
       'La ventana es un grafo **cerrado**, viene en orden de **creación** y la API la acota a {max} nodos, sin paginación.',
     hint:
-      'Arrastra el fondo para mover el lienzo, usa la rueda para acercar o alejar y haz clic en un nodo para caminar hacia él.',
+      'Arrastra el fondo para mover el lienzo, usa la rueda para acercar o alejar y haz clic en un nodo para caminar hacia él: la imagen se centra en el nodo sin cambiar el zoom.',
     focusLabel: 'Nodo presentado',
     focusRecent: 'El más reciente',
     focusRelated: 'El más relacionado',
@@ -269,12 +269,14 @@ export const es = {
     depthLabel: 'Profundidad',
     depthHelp:
       'Cuántos saltos se recuperan alrededor del nodo en el que haces clic. Es la misma profundidad que usa el subgrafo.',
-    onlyNeighbourhoodLabel: 'Solo el entorno del nodo',
-    onlyNeighbourhoodHelp:
-      'Con el interruptor activado, la imagen muestra solo el entorno del nodo presentado, a la profundidad elegida. El resto queda oculto.',
-    scopeAll: 'La imagen tiene {shown} nodos: todo lo que se ha visto.',
-    scopeFocused:
-      'La imagen tiene {shown} nodos; {hidden} quedan fuera del entorno del nodo presentado.',
+    scopeAll:
+      'La imagen tiene {nodes} nodos y {relations} relaciones: todo lo que se ha visto.',
+    zoomLabel: 'El zoom de la imagen',
+    zoomTitle: 'Zoom de la imagen',
+    zoomIn: 'Acercar la imagen',
+    zoomOut: 'Alejar la imagen',
+    zoomFit: 'Ver el grafo entero',
+    zoomFitShort: 'Ajustar',
     walking: 'Recuperando el entorno de «{title}»…',
     isolated: '«{title}» no tiene relaciones: su entorno está vacío.',
     edgeStyleLabel: 'Forma de las flechas',
@@ -308,10 +310,14 @@ export const es = {
    * they are proper nouns, and a proper noun is not translated.
    */
   engines: {
-    heading: 'Los motores, lado a lado',
+    heading: 'Los motores, de uno en uno',
     intro:
-      'La misma ventana, los mismos nodos y las mismas relaciones en los cinco motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
-    pageTitle: 'Los motores, lado a lado',
+      'Un mismo espacio para los cinco motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
+    pageTitle: 'Los motores, de uno en uno',
+    tabsLabel: 'Los motores, de uno en uno',
+    toolbarLabel: 'La barra de los motores',
+    readoutLabel: 'Las medidas del motor',
+    readoutHeading: 'Las medidas de {name}',
     panelDagreName: 'Cytoscape + dagre',
     panelDagreNote:
       'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
@@ -332,8 +338,13 @@ export const es = {
     sizeDemo: 'La demostración ({count} nodos)',
     sizeStress: 'El techo de la API ({count} nodos)',
     edgeStyleLabel: 'Forma de las flechas',
-    measure: 'Medir los cinco motores',
+    measure: 'Medir el motor',
     measuring: 'Midiendo…',
+    noMeasurement: 'Todavía no se ha medido.',
+    sharedLayoutSigma:
+      'No usa la disposición compartida: trae la suya, la fuerza de ForceAtlas2 de Graphology.',
+    edgeStyleSigma:
+      'Sigma dibuja las cinco formas igual: la elección de la forma no se reproduce aquí.',
     rerun: 'Repetir la disposición',
     listToggle: 'Ver la lista',
     listHeading: 'La imagen en forma de lista',
@@ -350,6 +361,8 @@ export const es = {
     overlapsValue: '{count} pares',
     ticksLabel: 'Pasos de la simulación',
     ticksValue: '{count} pasos',
+    iterationsLabel: 'Iteraciones de la simulación',
+    iterationsValue: '{count} iteraciones',
     layoutFrameLabel: 'Cuadro de la disposición',
     frameLayoutValue: '{value} ms por cuadro',
     reproducibleLabel: 'Sale igual dos veces',
@@ -367,7 +380,7 @@ export const es = {
     empty: 'La ventana está vacía: no hay nada que comparar.',
     badgesLabel: 'Los nodos de la ventana',
     sigmaUnavailable: 'Este navegador no pudo dibujar el lienzo WebGL.',
-    findingsHeading: 'Lo que los motores no hacen igual',
+    findingsHeading: 'Lo que este motor hace distinto',
     findingSigmaLabel:
       'Sigma no escribe un título de varias líneas dentro de la figura de un nodo: la tarjeta es una imagen pintada sobre un lienzo 2D, con el mismo módulo puro de la tarjeta.',
     findingSigmaEdges:

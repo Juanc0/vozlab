@@ -12,8 +12,14 @@
  * the shell would be a window without a page in it.
  */
 
-/** The paths whose page is a workspace. */
-export const WORKSPACE_PATHS: readonly string[] = ['/'];
+/**
+ * The paths whose page is a workspace.
+ *
+ * The comparison of the engines is one of them: it is a playground with the
+ * frame of the graph page — the picture fills the window, the panels float
+ * over it and the page does not scroll.
+ */
+export const WORKSPACE_PATHS: readonly string[] = ['/', '/engines'];
 
 /**
  * Whether the path is a workspace.

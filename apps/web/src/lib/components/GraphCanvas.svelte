@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
+  import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
   import type { GraphInstance } from '$lib/graph/cytoscape';
   import { ensureTitleFont } from '$lib/graph/node-card';
   import { getLocaleState } from '$lib/state/context';
@@ -46,6 +48,33 @@
     centerRequest?: number;
     /** The text alternative of the canvas. */
     description?: string;
+    /**
+     * The zoom the reader had when the view was opened.
+     *
+     * It is `null` when the reader never chose one: the picture is then
+     * fitted — the whole graph in view — and the fit is the zoom that
+     * picture starts with.
+     *
+     * The value is read **once**, when the canvas is created: the zoom
+     * belongs to the reader, and a new subgraph must not impose it again.
+     */
+    zoom?: number | null;
+    /**
+     * Called when the zoom of the picture changes.
+     *
+     * The app keeps the value: the zoom survives the change of the view of
+     * the graph — the two views are the same workspace.
+     */
+    onzoomchange?: (zoom: number, source: ZoomSource) => void;
+    /** What the reader asked the zoom to do. */
+    zoomaction?: ZoomAction;
+    /**
+     * The number of the command of the zoom.
+     *
+     * It is a counter, and it is what tells a command from the one before
+     * it: the reader may ask for the same thing twice.
+     */
+    zoomrequest?: number;
   }
 
   let {
@@ -57,7 +86,11 @@
     onnavigate,
     centerNodeId = null,
     centerRequest = 0,
-    description
+    description,
+    zoom = null,
+    onzoomchange,
+    zoomaction = 'in',
+    zoomrequest = 0
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -80,11 +113,14 @@
    */
   let selectHandler: ((nodeId: string | null) => void) | undefined;
   let navigateHandler: ((nodeId: string) => void) | undefined;
+  let zoomHandler: ((zoom: number, source: ZoomSource) => void) | undefined;
 
   $effect(() => {
     selectHandler = onselect;
     navigateHandler = onnavigate;
+    zoomHandler = onzoomchange;
   });
+
 
   /**
    * Creates the instance **once** and destroys it on unmount.
@@ -118,8 +154,16 @@
 
       created = createGraphInstance({
         container: element,
+        // The zoom of the reader is read **once**: it belongs to the
+        // reader, and the picture must not impose it again.
+        zoom: untrack(() => zoom),
         onselect: (nodeId) => selectHandler?.(nodeId),
-        onnavigate: (nodeId) => navigateHandler?.(nodeId)
+        onnavigate: (nodeId) => navigateHandler?.(nodeId),
+        onzoom: (next, source) => {
+          currentZoom = next;
+
+          zoomHandler?.(next, source);
+        }
       });
       instance = created;
     })();
@@ -162,6 +206,50 @@
   });
 
   /**
+   * The zoom the picture is at.
+   *
+   * It is the zoom of the picture, whatever its origin: the fit of the
+   * view or the choice of the reader.
+   */
+  let currentZoom = $state<number | null>(null);
+
+  /**
+   * The commands of the zoom of the reader.
+   *
+   * The toolbar asks and the canvas answers: the command carries the
+   * **number** that tells it from the one before it, and the canvas that is
+   * created later does not answer a command that was asked before it
+   * existed.
+   */
+  let lastZoomRequest = untrack(() => zoomrequest);
+
+  $effect(() => {
+    const graph = instance;
+    const request = zoomrequest;
+    const action = zoomaction;
+
+    if (graph === null || request === 0 || request === lastZoomRequest) {
+      return;
+    }
+
+    lastZoomRequest = request;
+
+    if (action === 'in') {
+      graph.zoomIn();
+
+      return;
+    }
+
+    if (action === 'out') {
+      graph.zoomOut();
+
+      return;
+    }
+
+    graph.fitView();
+  });
+
+  /**
    * Centres the picture on the node the user walked to.
    *
    * The effect is declared **after** the one that draws the elements: the
@@ -196,6 +284,7 @@
   role="img"
   aria-label={t('graph.canvasLabel')}
   aria-describedby={descriptionId}
+  data-zoom={currentZoom ?? undefined}
   class="h-full w-full overflow-hidden bg-ground"
 ></div>
 

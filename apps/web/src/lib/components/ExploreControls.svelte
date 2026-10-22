@@ -9,6 +9,7 @@
    * arrows have a help text that only the screen reader reads, and the
    * scope of the picture is said out loud under the row.
    */
+  import ZoomControls from '$lib/components/ZoomControls.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { EDGE_STYLES } from '$lib/graph/explore/edge-style';
   import { FOCUS_CRITERIA, type FocusCriterion } from '$lib/graph/explore/focus';
@@ -24,16 +25,16 @@
     edgeStyle: EdgeStyle;
     /** Called when the user changes the shape of the relations. */
     onedgestylechange: (edgeStyle: EdgeStyle) => void;
-    /** Whether the picture shows only the neighbourhood of the focus. */
-    onlyNeighbourhood: boolean;
-    /** Called when the user switches the far nodes on or off. */
-    ononlyneighbourhoodchange: (only: boolean) => void;
     /** The depth of a walk. */
     depth: number;
     /** Called when the user changes the depth. */
     ondepthchange: (depth: number) => void;
-    /** The id of the count of the picture — it is what the switch describes. */
-    scopeCountId: string;
+    /** Called when the reader comes closer to the picture. */
+    onzoomin?: () => void;
+    /** Called when the reader goes away from the picture. */
+    onzoomout?: () => void;
+    /** Called when the reader asks for the whole picture in view. */
+    onfit?: () => void;
   }
 
   let {
@@ -41,11 +42,11 @@
     oncriterionchange,
     edgeStyle,
     onedgestylechange,
-    onlyNeighbourhood,
-    ononlyneighbourhoodchange,
     depth,
     ondepthchange,
-    scopeCountId
+    onzoomin,
+    onzoomout,
+    onfit
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -164,35 +165,9 @@
   </div>
 
   <!--
-    The far nodes: the reader's choice. The switch says what it does and
-    the numbers say the truth: how many nodes are in the picture and how
-    many are hidden.
+    The zoom: the property of the view, and it belongs to the reader. The
+    controls are quiet — the accent of the interface is scarce, and the
+    zoom is not the accent of the screen.
   -->
-  <div class="min-w-0 shrink-0">
-    <label
-      for="explore-only-neighbourhood"
-      class="flex items-center gap-2 text-small text-muted"
-    >
-      <input
-        id="explore-only-neighbourhood"
-        type="checkbox"
-        class="size-[18px] accent-accent"
-        checked={onlyNeighbourhood}
-        aria-describedby="explore-only-neighbourhood-help {scopeCountId}"
-        onchange={(event) => {
-          const input = event.currentTarget;
-
-          if (!(input instanceof HTMLInputElement)) {
-            return;
-          }
-
-          ononlyneighbourhoodchange(input.checked);
-        }}
-      />
-      {t('explore.onlyNeighbourhoodLabel')}
-    </label>
-    <p id="explore-only-neighbourhood-help" class="sr-only">
-      {t('explore.onlyNeighbourhoodHelp')}
-    </p>
-  </div>
+  <ZoomControls {onzoomin} {onzoomout} {onfit} />
 </div>
