@@ -3,7 +3,9 @@
  *
  * The picture of the exploration view is arranged by `d3-force`: a
  * simulation that pushes the cards apart, pulls the ones that are related
- * together, comes to rest by itself and **stops**.
+ * together, and then **keeps breathing**. The spring is never switched off:
+ * at rest it drifts below a pixel per frame, and it wakes — with a real
+ * rearrangement — when the reader touches the picture.
  *
  * ## Why this module exists
  *
@@ -43,22 +45,34 @@
  *
  * - the simulation draws from a **seeded** generator (`lcg`), and the seed
  *   is a constant of the module ({@link FORCE_LAYOUT_SEED});
- * - the nodes start from the **circle** of `./layout` — the same seeding
- *   the force layout of `fcose` uses.
+ * - the nodes start from the **circle** of `./layout`.
  *
  * Two runs from the same start therefore give exactly the same places, and
  * the test says so with an exact comparison, not with a tolerance.
  *
- * ## The animation
+ * ## The living spring
  *
- * The spring is **seen**: the picture is arranged in slices, a few ticks
- * per frame, and the reader watches the cards find their place. When the
- * simulation comes to rest, the loop **stops**: there is no timer left and
- * nothing running.
+ * The spring is **seen**, and it does not die: the picture is arranged in
+ * slices, a few ticks per frame, and afterwards it is driven at an **idle**
+ * alpha — small enough to stay below the threshold of movement, large
+ * enough to be alive — at ten to fifteen hertz. A touch of the reader wakes
+ * it to a real rearrangement, and it cools back to the idle rhythm after
+ * {@link WAKE_COOLDOWN_MS}.
+ *
+ * The idle drift is a small deterministic impulse, not a random walk: the
+ * picture of the same graph breathes the same way every time.
  *
  * A reader who asked for less motion (`prefers-reduced-motion`) gets the
- * same picture **in one go**: the layout runs to its conclusion without the
- * intermediate frames, and the places are the same ones.
+ * same picture **in one go** and **never wakes**: the layout runs to its
+ * conclusion without the intermediate frames, and no idle driver is left
+ * running.
+ *
+ * ## The weight of a relation
+ *
+ * A relation the community has voted for pulls its two cards **closer and
+ * harder** than a relation nobody has voted for: the weight of the relation
+ * is its `communityScore`, scaled by {@link RELATION_SCORE_SCALE}. A
+ * relation without a score falls back to the uniform attraction.
  */
 
 import {
@@ -123,6 +137,56 @@ export const DEFAULT_COLLISION_PADDING = 8;
  */
 export const DEFAULT_COLLISION_ITERATIONS = 4;
 
+/**
+ * The alpha the picture is pulled back to when it is **at rest**.
+ *
+ * It is small on purpose: the spring keeps a sub-pixel drift — the picture
+ * is alive — and the movement stays below the threshold that says a shape
+ * has been reached.
+ */
+export const IDLE_ALPHA_TARGET = 0.005;
+
+/** The alpha a touch of the reader pulls the picture back to. */
+export const WAKE_ALPHA_TARGET = 0.1;
+
+/** How long the picture stays awake after the last contact, in milliseconds. */
+export const WAKE_COOLDOWN_MS = 1200;
+
+/**
+ * The interval of the idle ticks, in milliseconds.
+ *
+ * The idle spring runs at twelve hertz: a tenth of the frames of the
+ * browser is enough to see the picture breathe, and the battery of the
+ * reader is not spent on a picture that is already in its place.
+ */
+export const IDLE_INTERVAL_MS = 1000 / 12;
+
+/**
+ * The impulse of the idle breath, in pixels per tick.
+ *
+ * A tick of the browser is around sixteen milliseconds and the velocity
+ * keeps four tenths of itself from the tick before, so an impulse of this
+ * size becomes a drift of some two pixels a second: visible when the two
+ * pictures are compared, and below the threshold on every single frame.
+ */
+export const IDLE_DRIFT_IMPULSE = 0.16;
+
+/**
+ * The score of a relation that counts as a **full** weight.
+ *
+ * The scores of the seeded graph are small integers — most of them between
+ * zero and three, with the outstanding ones above ten. Five is the score
+ * that makes a relation pull with the whole of its weight; above it the
+ * relation is strong but not stronger.
+ */
+export const RELATION_SCORE_SCALE = 5;
+
+/** The distance a full-weight relation saves, in pixels. */
+export const RELATION_DISTANCE_RANGE = 60;
+
+/** The extra strength a full-weight relation brings. */
+export const RELATION_STRENGTH_RANGE = 0.8;
+
 /** A place in the picture, in the coordinates of the canvas. */
 export interface ForcePosition {
   /** The x of the place. */
@@ -184,6 +248,14 @@ export interface ForceEdgeInput {
   readonly source: string;
   /** The id of the node the relation goes to. */
   readonly target: string;
+  /**
+   * The score the community gave the relation.
+   *
+   * It is the weight of the attraction: a relation with a high score pulls
+   * its two cards closer and harder. A relation without a score falls back
+   * to the uniform attraction.
+   */
+  readonly communityScore?: number;
 }
 
 /** The options of the spring. */
@@ -270,6 +342,22 @@ export interface ForceLayout {
   readonly ticks: number;
   /** The alpha of the simulation: how much life the picture has left. */
   readonly alpha: number;
+  /**
+   * Changes the alpha the simulation is pulled back to.
+   *
+   * @param value - The new alpha target.
+   * @param options.snap - Whether the alpha **jumps** to the target when it
+   *   is below it. A touch of the reader wakes the picture at once; the
+   *   cool-down lets it fall back on its own.
+   */
+  setAlphaTarget(value: number, options?: { readonly snap?: boolean }): void;
+  /**
+   * Adds the impulse of the idle breath to every free node.
+   *
+   * It is called before an idle tick: the picture drifts by a fraction of a
+   * pixel, below the threshold that says a shape has been reached.
+   */
+  breathe(): void;
   /** The place of every node. */
   positions(): Map<string, ForcePosition>;
   /**
@@ -470,6 +558,56 @@ export function areaCharge(area: number, base = DEFAULT_CHARGE_STRENGTH): number
 }
 
 /**
+ * The weight of a relation, between zero and one.
+ *
+ * The weight is the `communityScore` of the relation over
+ * {@link RELATION_SCORE_SCALE}, clamped to the unit. A relation without a
+ * score weighs nothing: it keeps the uniform attraction of the spring.
+ *
+ * @param communityScore - The score of the relation, or `undefined`.
+ * @returns The weight of the relation, in the unit interval.
+ */
+export function relationWeight(communityScore?: number): number {
+  if (communityScore === undefined || !Number.isFinite(communityScore)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1, communityScore / RELATION_SCORE_SCALE));
+}
+
+/**
+ * The length a relation would like to have.
+ *
+ * A strong relation is **shorter**: the cards the community has tied
+ * together are read as a pair, and the distance says so.
+ *
+ * @param communityScore - The score of the relation, or `undefined`.
+ * @param base - The distance of a relation with no weight.
+ * @returns The distance of the relation, in pixels.
+ */
+export function relationDistance(
+  communityScore?: number,
+  base = DEFAULT_LINK_DISTANCE
+): number {
+  return base - RELATION_DISTANCE_RANGE * relationWeight(communityScore);
+}
+
+/**
+ * The strength of a relation.
+ *
+ * It is the strength the link would have without a score — the inverse of
+ * the smallest degree of its two ends, in `d3` — multiplied by the weight
+ * of the relation. A strong relation resists being stretched more.
+ *
+ * @param communityScore - The score of the relation, or `undefined`.
+ * @param base - The strength of a relation with no weight.
+ * @returns The strength of the relation.
+ */
+export function relationStrength(communityScore?: number, base = 1): number {
+  return base * (1 + RELATION_STRENGTH_RANGE * relationWeight(communityScore));
+}
+
+/**
  * The **rectangular collision** of the cards.
  *
  * Two cards that overlap are pushed apart along the axis of the least
@@ -577,9 +715,9 @@ export interface OverlapBox {
 /**
  * Counts the pairs of cards that overlap.
  *
- * It is the metric that told the truth about `fcose`: a layout that settles
- * in half a second can still leave hundreds of pairs of cards on top of
- * each other.
+ * It is the metric that tells the truth about a spring that looks settled:
+ * a layout can stop in half a second and still leave hundreds of pairs of
+ * cards on top of each other.
  *
  * @param boxes - The boxes of the picture.
  * @returns How many pairs overlap.
@@ -658,6 +796,8 @@ export function countOverlappingPairs(boxes: readonly OverlapBox[]): number {
 interface SimulationLink extends SimulationLinkDatum<ForceNode> {
   source: string | ForceNode;
   target: string | ForceNode;
+  /** The score the community gave the relation. */
+  communityScore?: number;
 }
 
 /**
@@ -722,7 +862,8 @@ export function createForceLayout(
 
   const links: SimulationLink[] = edges.map((edge) => ({
     source: edge.source,
-    target: edge.target
+    target: edge.target,
+    communityScore: edge.communityScore
   }));
 
   const simulation: Simulation<ForceNode, SimulationLink> = forceSimulation<ForceNode, SimulationLink>(
@@ -735,14 +876,26 @@ export function createForceLayout(
 
   const linkForce = forceLink<ForceNode, SimulationLink>(links)
     .id((node) => node.id)
-    .distance(linkDistance);
+    // A strong relation is shorter: the cards the community has tied
+    // together are read as a pair. The relation without a score keeps the
+    // uniform distance of the spring.
+    .distance((edge) => relationDistance(edge.communityScore, linkDistance));
 
-  // The strength of the relations is the one of `d3` unless the caller
-  // writes another one: passing `undefined` to the setter of the library
-  // would make the strength `NaN`.
-  if (linkStrength !== undefined) {
-    linkForce.strength(linkStrength);
-  }
+  // The strength of the relations is the one of `d3` — the inverse of the
+  // smallest degree — unless the caller writes another one: passing
+  // `undefined` to the setter of the library would make the strength `NaN`.
+  //
+  // The base strength is read **before** the function is replaced: a
+  // relation with a score keeps the shape of `d3` and grows with its
+  // weight.
+  const baseStrength = linkForce.strength() as (edge: SimulationLink) => number;
+
+  linkForce.strength((edge) =>
+    relationStrength(
+      edge.communityScore,
+      linkStrength === undefined ? baseStrength(edge) : linkStrength
+    )
+  );
 
   simulation
     .alphaMin(alphaMin)
@@ -815,6 +968,36 @@ export function createForceLayout(
       return simulation.alpha();
     },
 
+    setAlphaTarget(value: number, settings: { readonly snap?: boolean } = {}): void {
+      simulation.alphaTarget(value);
+
+      if (settings.snap === true && simulation.alpha() < value) {
+        // The touch wakes the picture **now**: waiting for the decay to
+        // climb would make the canvas feel asleep under the pointer.
+        simulation.alpha(value);
+      }
+    },
+
+    breathe(): void {
+      // The breath is a slow swirl, not a random walk: every node drifts
+      // along a direction of its own, and the phase turns with the ticks.
+      // The same graph breathes the same way every time.
+      const base = ticks * 0.14;
+
+      simulationNodes.forEach((node, index) => {
+        if (node.fx !== null || node.fy !== null) {
+          return;
+        }
+
+        // The golden angle spreads the directions of the nodes without
+        // ever repeating one exactly.
+        const angle = base + index * 2.399963229728653;
+
+        node.vx += Math.cos(angle) * IDLE_DRIFT_IMPULSE;
+        node.vy += Math.sin(angle) * IDLE_DRIFT_IMPULSE;
+      });
+    },
+
     positions(): Map<string, ForcePosition> {
       const places = new Map<string, ForcePosition>();
 
@@ -879,9 +1062,11 @@ export interface FrameScheduler {
    * Asks for a frame.
    *
    * @param callback - What runs in the frame.
+   * @param delayMs - How long to wait before the frame. It is omitted for a
+   *   frame of the browser: the idle spring runs at its own, slower pace.
    * @returns The handle of the frame.
    */
-  request(callback: () => void): number;
+  request(callback: () => void, delayMs?: number): number;
   /**
    * Cancels a frame.
    *
@@ -908,6 +1093,29 @@ export interface ForceDriverOptions {
   readonly onFrame?: (positions: Map<string, ForcePosition>, alpha: number) => void;
   /** Called when the picture comes to rest. */
   readonly onSettled?: (result: ForceLayoutResult) => void;
+  /**
+   * Whether the spring **breathes**.
+   *
+   * A living spring does not stop when it comes to rest: it cools to the
+   * idle rhythm, keeps a sub-pixel drift and wakes on contact. A spring
+   * that is not living is the animation of a one-pass arrangement: it stops
+   * as soon as the picture rests, exactly as it did before.
+   */
+  readonly living?: boolean;
+  /** The interval of the idle ticks, in milliseconds. */
+  readonly idleIntervalMs?: number;
+  /** The alpha of the idle breath. */
+  readonly idleAlpha?: number;
+  /** The alpha a touch wakes the picture to. */
+  readonly wakeAlpha?: number;
+  /** How long the picture stays awake after the last contact, in milliseconds. */
+  readonly cooldownMs?: number;
+  /**
+   * The clock of the driver.
+   *
+   * It is injected so a test can move the time without waiting for it.
+   */
+  readonly now?: () => number;
 }
 
 /** The driver of the spring. */
@@ -916,10 +1124,18 @@ export interface ForceDriver {
   start(): void;
   /** Stops the animation: nothing runs after this. */
   stop(): void;
+  /**
+   * Wakes the living spring: a touch of the reader.
+   *
+   * It does nothing for a driver that is not living, or that is stopped.
+   */
+  wake(): void;
   /** Whether the animation is running. */
   readonly running: boolean;
   /** Whether the picture has come to rest. */
   readonly settled: boolean;
+  /** Whether the living spring is awake. */
+  readonly awake: boolean;
   /** How many frames ran. */
   readonly frames: number;
 }
@@ -931,6 +1147,11 @@ export interface ForceDriver {
  * asks for another frame — **until** the picture comes to rest. Then it
  * stops: no frame is asked for, no timer is left, nothing runs.
  *
+ * A **living** driver does not stop at rest: it cools to the idle rhythm,
+ * keeps breathing at {@link IDLE_INTERVAL_MS} and wakes on {@link wake}. It
+ * is the spring of the exploration view; the one-pass animation is the
+ * path of the reader who asked for less motion.
+ *
  * @param layout - The spring.
  * @param options - The options of the driver.
  * @returns The driver.
@@ -941,16 +1162,57 @@ export function driveForceLayout(
 ): ForceDriver {
   const ticksPerFrame = options.ticksPerFrame ?? 4;
   const maxFrames = options.maxFrames ?? 600;
+  const living = options.living === true;
+  const idleIntervalMs = options.idleIntervalMs ?? IDLE_INTERVAL_MS;
+  const idleAlpha = options.idleAlpha ?? IDLE_ALPHA_TARGET;
+  const wakeAlpha = options.wakeAlpha ?? WAKE_ALPHA_TARGET;
+  const cooldownMs = options.cooldownMs ?? WAKE_COOLDOWN_MS;
+  const clock = options.now ?? now;
 
   let handle = 0;
   let running = false;
   let settled = false;
   let frames = 0;
+  let awake = false;
+  let lastContact = Number.NEGATIVE_INFINITY;
+
+  /** Puts the living spring back to its idle breath. */
+  function cool(): void {
+    awake = false;
+    layout.setAlphaTarget(idleAlpha);
+  }
 
   const frame = (): void => {
     handle = 0;
 
     if (!running) {
+      return;
+    }
+
+    if (living) {
+      if (awake && clock() - lastContact >= cooldownMs) {
+        // The contact is old enough: the picture goes back to its breath.
+        cool();
+      }
+
+      if (awake) {
+        layout.step(ticksPerFrame);
+      } else {
+        // One tick at the pace of the idle spring: the picture breathes
+        // instead of running.
+        layout.breathe();
+        layout.step(1);
+      }
+
+      frames += 1;
+
+      options.onFrame?.(layout.positions(), layout.alpha);
+
+      // The living spring **never stops by itself**: it asks for the next
+      // frame at the pace of what it is doing — the frames of the browser
+      // while it is awake, the idle interval when it is at rest.
+      handle = options.scheduler.request(frame, awake ? undefined : idleIntervalMs);
+
       return;
     }
 
@@ -981,6 +1243,18 @@ export function driveForceLayout(
       running = true;
       settled = false;
       frames = 0;
+
+      if (living) {
+        // A picture that is drawn wakes up: it has to find its shape, and
+        // the reader sees it move.
+        awake = true;
+        lastContact = clock();
+        layout.setAlphaTarget(wakeAlpha, { snap: true });
+        handle = options.scheduler.request(frame);
+
+        return;
+      }
+
       handle = options.scheduler.request(frame);
     },
 
@@ -997,12 +1271,41 @@ export function driveForceLayout(
       }
     },
 
+    wake(): void {
+      if (!living || !running) {
+        return;
+      }
+
+      lastContact = clock();
+
+      if (awake) {
+        // It was already awake: the contact only pushed the cool-down.
+        return;
+      }
+
+      awake = true;
+      layout.setAlphaTarget(wakeAlpha, { snap: true });
+
+      if (handle !== 0) {
+        // The idle frame that was waiting is replaced by a frame of the
+        // browser: the picture must wake **now**, not in eighty milliseconds.
+        options.scheduler.cancel(handle);
+        handle = 0;
+      }
+
+      handle = options.scheduler.request(frame);
+    },
+
     get running(): boolean {
       return running;
     },
 
     get settled(): boolean {
       return settled;
+    },
+
+    get awake(): boolean {
+      return awake;
     },
 
     get frames(): number {

@@ -275,6 +275,61 @@ describe('the walk that re-centres the picture', () => {
     expect(rendered).toBeCloseTo(400, 5);
   });
 
+  it('corrects the pan once when the living spring moves the node under it', async () => {
+    walk(NODE_C.id);
+
+    // The bounded watch ended at its deadline: the spring is still cooling,
+    // and the node moves while the pan is under way.
+    const node = core.nodes.get(NODE_C.id);
+
+    if (node === undefined) {
+      throw new Error('the node of the walk is missing');
+    }
+
+    node.position.x += 100;
+
+    for (let frame = 0; frame < 10; frame += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    // The walk took a second eased pan: the first one ended where the node
+    // was, and the node was no longer there.
+    expect(core.animations).toHaveLength(2);
+    expect(core.animations.at(-1)?.options['easing']).toBe('ease-in-out-cubic');
+
+    // The picture still ends centred, and the zoom is still the reader's.
+    const rendered = node.position.x * core.viewport.zoom + core.viewport.pan.x;
+
+    expect(rendered).toBeCloseTo(400, 5);
+  });
+
+  it('never chases the idle drift of the spring after the walk', async () => {
+    walk(NODE_C.id);
+
+    for (let frame = 0; frame < 8; frame += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    expect(core.animations).toHaveLength(1);
+
+    const node = core.nodes.get(NODE_C.id);
+
+    if (node === undefined) {
+      throw new Error('the node of the walk is missing');
+    }
+
+    // The spring breathes at rest: the node moves a little, and the view
+    // does not follow it. The walk is over.
+    node.position.x += 20;
+    node.position.y -= 20;
+
+    for (let frame = 0; frame < 8; frame += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    expect(core.animations).toHaveLength(1);
+  });
+
   it('puts the picture in its place at once when the reader asked for less motion', () => {
     motion(true);
 

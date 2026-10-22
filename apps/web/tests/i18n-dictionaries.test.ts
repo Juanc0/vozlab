@@ -28,9 +28,7 @@ const IDENTICAL: readonly string[] = [
   'locale.en',
   'engines.panelDagreName',
   'engines.panelD3Name',
-  'engines.panelDagName',
-  'engines.panelFcoseName',
-  'engines.panelSigmaName'
+  'engines.panelDagName'
 ];
 
 describe('the two dictionaries', () => {

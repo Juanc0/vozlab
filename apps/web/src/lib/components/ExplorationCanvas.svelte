@@ -36,10 +36,11 @@
     /**
      * The layout the picture is arranged with.
      *
-     * The default is `d3`: the **spring** of the app — a simulation of
-     * `d3-force` with a rectangular collision force, arranged in slices
-     * across the frames. The deterministic `dagre` and the `fcose` of the
-     * extension are there for the comparison of the engines.
+     * The default is `d3`: the **living spring** of the app — a simulation
+     * of `d3-force` with a rectangular collision force, arranged in slices
+     * across the frames, breathing at rest and waking on contact. The
+     * deterministic `dagre` and the clone of `d3-dag` are there for the
+     * comparison of the engines.
      */
     layout?: GraphLayout;
     /**
@@ -885,6 +886,9 @@
           onclick={() => toggleHandler?.(node.id)}
           onkeydown={(event) => moveFocus(event, index)}
           onmouseenter={(event) => {
+            // The badge is not an element of the canvas: the instance never
+            // sees the pointer, and the spring has to be woken here.
+            instance?.wake();
             hoveredNodeId = node.id;
             showNodePreview(node, event);
           }}
@@ -893,6 +897,7 @@
             hidePreview();
           }}
           onfocus={(event) => {
+            instance?.wake();
             focusedNodeId = node.id;
             showNodePreview(node, event);
           }}
@@ -956,6 +961,7 @@
           onclick={() => toggleEdgeHandler?.(edge.id)}
           onkeydown={(event) => moveRelationFocus(event, index)}
           onmouseenter={(event) => {
+            instance?.wake();
             hoveredEdgeId = edge.id;
             showEdgePreview(edge, event);
           }}
@@ -964,6 +970,7 @@
             hidePreview();
           }}
           onfocus={(event) => {
+            instance?.wake();
             focusedEdgeId = edge.id;
             showEdgePreview(edge, event);
           }}

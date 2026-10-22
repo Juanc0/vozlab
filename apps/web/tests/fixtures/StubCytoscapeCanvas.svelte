@@ -43,8 +43,7 @@
   const TIMES: Record<string, number> = {
     dagre: 11,
     d3: 22,
-    dag: 33,
-    fcose: 44
+    dag: 33
   };
 
   onMount(() => {

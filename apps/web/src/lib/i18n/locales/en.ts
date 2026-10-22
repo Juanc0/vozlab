@@ -286,7 +286,7 @@ export const en: Dictionary<typeof es> = {
   engines: {
     heading: 'The engines, one at a time',
     intro:
-      'One single space for the five engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
+      'One single space for the three engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
     pageTitle: 'The engines, one at a time',
     tabsLabel: 'The engines, one at a time',
     toolbarLabel: 'The bar of the engines',
@@ -297,16 +297,11 @@ export const en: Dictionary<typeof es> = {
       'The incumbent: a hierarchical, deterministic layout, computed in one go.',
     panelD3Name: 'Cytoscape + d3-force',
     panelD3Note:
-      'The spring of the app: a seeded simulation with a rectangular collision force.',
+      'The living spring of the app: a seeded simulation, a rectangular collision force and a rest that breathes.',
     panelDagName: 'Cytoscape + d3-dag',
     panelDagNote:
       'The clone of dagre with d3-dag: a layered layout that needs a graph without cycles, and breaks the ones it has in plain sight.',
-    panelFcoseName: 'Cytoscape + fcose',
-    panelFcoseNote:
-      'The same canvas with the force of CoSE: a simulation that settles and stops.',
-    panelSigmaName: 'Sigma.js + Graphology',
-    panelSigmaNote:
-      'The engine that draws with WebGL and keeps the graph in the client, with the force of ForceAtlas2.',
+    hierarchyStatic: 'A hierarchy does not breathe: its ranks are the drawing.',
     canvasLabel: 'The canvas of the comparison',
     sizeLabel: 'Size of the picture',
     sizeDemo: 'The demo ({count} nodes)',
@@ -315,10 +310,6 @@ export const en: Dictionary<typeof es> = {
     measure: 'Measure the engine',
     measuring: 'Measuring…',
     noMeasurement: 'It has not been measured yet.',
-    sharedLayoutSigma:
-      'It does not use the shared layout: it brings its own, the ForceAtlas2 force of Graphology.',
-    edgeStyleSigma:
-      'Sigma draws the five shapes the same: the choice of shape is not reproduced here.',
     rerun: 'Run the layout again',
     listToggle: 'See the list',
     listHeading: 'The picture as a list',
@@ -332,20 +323,26 @@ export const en: Dictionary<typeof es> = {
     settledLabel: 'Settled',
     settledYes: 'Yes',
     settledNo: 'Not yet',
+    motionLabel: 'Motion',
+    aliveAwake: 'Awake: the hand moved it',
+    aliveIdle: 'Alive: it moves at rest',
+    shapeLabel: 'Shape',
+    shapeReached: 'Reached below {threshold} px per step',
+    shapeMoving: 'Still looking for it',
+    aliveNote:
+      'The living spring does not settle: at rest it keeps moving below {threshold} px per step, and it wakes when the hand touches it. The shape is reached when the movement falls below that threshold; the simulation never stops.',
     overlapsLabel: 'Cards on top of each other',
     overlapsValue: '{count} pairs',
     ticksLabel: 'Steps of the simulation',
     ticksValue: '{count} steps',
-    iterationsLabel: 'Iterations of the simulation',
-    iterationsValue: '{count} iterations',
+    tickLabel: 'One step of the spring',
+    tickValue: '{value} ms per step',
     layoutFrameLabel: 'Frame of the layout',
     frameLayoutValue: '{value} ms',
     reproducibleLabel: 'Reproducible',
     reproducibleDagre: 'Yes: it is a function of the picture',
     reproducibleD3: 'Yes: the seed is fixed',
     reproducibleDag: 'Yes: it is a function of the picture',
-    reproducibleFcose: 'Yes, with randomize off',
-    reproducibleSigma: 'No convergence criterion',
     reversedLabel: 'Reversed relations',
     reversedValue: '{count} relations',
     reversedToggle: 'See the {count} reversed relations',
@@ -354,20 +351,13 @@ export const en: Dictionary<typeof es> = {
     loading: 'Loading the window…',
     empty: 'The window is empty: there is nothing to compare.',
     badgesLabel: 'The nodes of the window',
-    sigmaUnavailable: 'This browser could not draw the WebGL canvas.',
     findingsHeading: 'What this engine does differently',
-    findingSigmaLabel:
-      'Sigma does not write a multi-line title inside the shape of a node: the card is a picture painted on a 2D canvas, with the same pure module of the card.',
-    findingSigmaEdges:
-      'The edge programs of Sigma take no waypoints: they only receive the two ends of the relation. No shape needs a route any more, but Sigma draws the five of them the same —a straight line with an arrow—, so the choice of shape is not reproduced.',
-    findingSigmaDashes:
-      'Sigma has no dashed edge program: the pending status of a relation is only carried by its colour.',
-    findingFcoseSeed:
-      'fcose has no randomSeed: its spectral step draws the starting places, and the same picture does not come out twice.',
     findingD3Collision:
       'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
     findingD3Seed:
       'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
+    findingD3Living:
+      'The spring of d3-force does not settle: rest is a temperature above zero, so it keeps moving below the threshold and wakes when the hand touches it. Relations with more weight pull their cards closer.',
     findingDagCycles:
       'The relations of the graph have cycles, and a layered layout needs a graph without cycles: dagre breaks them silently —its acyclic.js file turns the relations around— and the d3-dag clone breaks them in plain sight. The two of them reverse the same number of relations, and only one of them says so.',
     findingDagQuality:

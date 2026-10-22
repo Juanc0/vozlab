@@ -3,10 +3,9 @@
    * The **panel of an engine** — the implementation that is on screen.
    *
    * The comparison does **not** impose a shared layout on the engines: each
-   * one brings its own arrangement (the layered one of `dagre`, the spring
-   * of `d3-force`, the clone of `d3-dag`, the force of `fcose` and the
-   * ForceAtlas2 of Graphology), its own painter (the canvas of Cytoscape or
-   * the WebGL of Sigma) and its own interactions.
+   * one brings its own arrangement (the layered one of `dagre`, the living
+   * spring of `d3-force`, the clone of `d3-dag`) and the canvas of
+   * Cytoscape paints all three.
    *
    * What the comparison gives it is the **room** and the **data**: the same
    * window, the same nodes and the same relations.
@@ -18,9 +17,8 @@
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
-    import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
+  import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
   import { createDagLayout } from './dag';
-  import SigmaPanel from './SigmaPanel.svelte';
 
   interface Props {
     /** The engine that is on screen. */
@@ -115,59 +113,39 @@
     mounts the new one in the same space.
   -->
   {#key engine}
-    {#if engine === 'sigma'}
-      <SigmaPanel
-        {nodes}
-        {edges}
-        {expandedIds}
-        {selectedNodeId}
-        {presentedNodeId}
-        {edgeStyle}
-        {label}
-        onselect={(nodeId) => onselect?.(nodeId)}
-        ontoggle={(nodeId) => ontoggle?.(nodeId)}
-        onsettled={(report) => {
-          onlayout?.('sigma', {
-            ms: report.ms,
-            // The spring of Graphology stops by itself: it has settled when
-            // it stops.
-            settled: true,
-            iterations: report.iterations,
-            overlaps: report.overlaps
-          });
-        }}
-        onerror={(message) => onerror?.(message)}
-      />
-    {:else}
-      <ExplorationCanvas
-        {nodes}
-        {edges}
-        {expandedIds}
-        {selectedNodeId}
-        {presentedNodeId}
-        {edgeStyle}
-        {label}
-        layout={descriptor.layout ?? 'dagre'}
-        /**
-         * The **clone** is handed over here: the library `d3-dag` is a
-         * dependency of this development surface, and the picture of the
-         * app never imports it.
-         */
-        dagLayout={createDagLayout}
-        onerror={(message) => onerror?.(message)}
-        onselect={(nodeId) => onselect?.(nodeId)}
-        ontoggle={(nodeId) => ontoggle?.(nodeId)}
-        onlayout={(report) => {
-          onlayout?.(engine, {
-            ms: report.ms,
-            settled: report.settled,
-            overlaps: report.overlaps,
-            ticks: report.ticks,
-            frameMs: report.frameMs,
-            reversedRelations: report.reversedRelations
-          });
-        }}
-      />
-    {/if}
+    <ExplorationCanvas
+      {nodes}
+      {edges}
+      {expandedIds}
+      {selectedNodeId}
+      {presentedNodeId}
+      {edgeStyle}
+      {label}
+      layout={descriptor.layout}
+      /**
+       * The **clone** is handed over here: the library `d3-dag` is a
+       * dependency of this development surface, and the picture of the
+       * app never imports it.
+       */
+      dagLayout={createDagLayout}
+      onerror={(message) => onerror?.(message)}
+      onselect={(nodeId) => onselect?.(nodeId)}
+      ontoggle={(nodeId) => ontoggle?.(nodeId)}
+      onlayout={(report) => {
+        onlayout?.(engine, {
+          ms: report.ms,
+          settled: report.settled,
+          overlaps: report.overlaps,
+          ticks: report.ticks,
+          frameMs: report.frameMs,
+          tickMs: report.tickMs,
+          alive: report.alive,
+          awake: report.awake,
+          shapeReached: report.shapeReached,
+          threshold: report.threshold,
+          reversedRelations: report.reversedRelations
+        });
+      }}
+    />
   {/key}
 </div>

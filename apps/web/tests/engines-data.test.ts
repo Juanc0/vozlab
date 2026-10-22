@@ -3,14 +3,12 @@
  *
  * The comparison is only worth anything if the three pictures are the same
  * picture: the same nodes, the same relations and the same ids. The test
- * builds the picture once and asks the two engines for their elements.
+ * builds the picture once and asks the canvas for its elements.
  */
 
-import Graph from 'graphology';
 import { describe, expect, it } from 'vitest';
 import { toGraphElements } from '$lib/graph/elements';
 import { comparisonGraph, edgeIds, nodeIds, syntheticNodes } from '$lib/dev/engines/comparison-data';
-import { fillSigmaGraph } from '$lib/dev/engines/sigma-graph';
 import { EDGE, EDGE_B, NODE_A, NODE_B, NODE_C } from './fixtures/graph';
 
 const DEMO = {
@@ -22,31 +20,25 @@ describe('the data of the comparison', () => {
   it('gives the three engines the same ids', () => {
     const picture = comparisonGraph(DEMO, 200);
 
-    // The picture of the two engines of Cytoscape: the cards of the nodes
-    // and the relations among them.
+    // The picture of the canvas: the cards of the nodes — with the text of
+    // the card as an element of its own — and the relations among them.
     const elements = toGraphElements(picture.nodes, picture.edges);
-    const cytoscapeNodes = elements
+    const canvasNodes = elements
       .filter((element) => element.group === 'nodes' && !element.data.id.includes('#'))
       .map((element) => element.data.id);
-    const cytoscapeEdges = elements
+    const canvasEdges = elements
       .filter((element) => element.group === 'edges')
       .map((element) => element.data.id);
 
-    // The picture of Sigma: the graph of Graphology.
-    const store = new Graph();
-    fillSigmaGraph(store, picture.nodes, picture.edges);
-
-    expect(store.nodes().length).toBe(picture.nodes.length);
-    expect(store.edges().length).toBe(picture.edges.length);
+    expect(canvasNodes).toHaveLength(picture.nodes.length);
+    expect(canvasEdges).toHaveLength(picture.edges.length);
 
     for (const id of nodeIds(picture)) {
-      expect(store.hasNode(id)).toBe(true);
-      expect(cytoscapeNodes).toContain(id);
+      expect(canvasNodes).toContain(id);
     }
 
     for (const id of edgeIds(picture)) {
-      expect(store.hasEdge(id)).toBe(true);
-      expect(cytoscapeEdges).toContain(id);
+      expect(canvasEdges).toContain(id);
     }
   });
 

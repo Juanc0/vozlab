@@ -421,14 +421,35 @@ no library does for cards is written here.
 The layout is a **pure module** — no DOM, no canvas, no Cytoscape — so it
 is unit-tested on its own and it survives a change of painter.
 
-**The ambition, not yet met.** The picture must be **alive but
-structured**: the clusters must stay legible and the nodes must keep
-drifting between them, rather than the graph settling into a ball or
-freezing in a hierarchy. The implementation above **settles and stops**,
-which is the right behaviour for a battery and the wrong one for the
-ambition; the way to have both is a **warm** simulation with a very low
-`alphaTarget`, suspended when the window is hidden and switched off
-entirely by `prefers-reduced-motion`. It is an open item, not a done one.
+**The ambition, met.** The picture is **alive but structured**: the
+clusters stay legible and the cards keep drifting between them.
+
+- **The idle drift**: `alphaTarget` 0.005, stepped at ~12 Hz — 0.890 ms per
+  tick at 200 cards, with a greatest movement of 0.281 px per tick. It is
+  a drift, not a jump, and it is cheap because the idle ticks run at a low
+  rate.
+- **The wake**: `alphaTarget` 0.1 while the reader is in contact with the
+  picture (a pointer moving over the canvas, a card grabbed, a card
+  hovered, a node focused, a walk, a zoom), cooling back to the idle
+  drift in **1.2 s** after the last contact. A dragged card is pinned, its
+  neighbours part and re-accommodate, and on release the card keeps its
+  place.
+- **The attraction is weighted by the relation's `communityScore`**: a
+  strong relation pulls its cards closer than a weak one, so the clusters
+  grow around the strong relations. Without a score the attraction is
+  uniform.
+- **A hidden tab stops the driver** (`visibilitychange`) and coming back
+  resumes it.
+- **`prefers-reduced-motion`**: the picture runs to rest and does not
+  drift. That reader gets a still picture, which is the correct behaviour
+  and not a degradation.
+- **The shape is reached, it is not "settled"**: the walk waits for the
+  wake's movement to fall below the threshold (or a deadline of 900 ms)
+  and then glides. The readout says **"Viva: se mueve en reposo"**, never
+  "asentada"; the idle drift never re-triggers a pan.
+
+`cytoscape-fcose` and force-atlas2 are **no longer in the comparison** —
+the research's verdict: dormant since 2023 and unable to draw the card.
 
 The measured comparison, on 200 nodes and 400 relations:
 

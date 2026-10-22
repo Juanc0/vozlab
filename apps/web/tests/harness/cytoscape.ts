@@ -184,6 +184,7 @@ export function createFakeCore(options: FakeCoreOptions = {}): FakeCore {
 
   const edgeApi = (edge: FakeEdge) => ({
     id: () => edge.id,
+    data: (key?: string) => (key === undefined ? edge.data : edge.data[key]),
     source: () => (nodes.get(edge.sourceId) as FakeNode).api,
     target: () => (nodes.get(edge.targetId) as FakeNode).api,
     // The middle of the line: the badge of a relation is placed on it.
@@ -351,6 +352,15 @@ export function createFakeCore(options: FakeCoreOptions = {}): FakeCore {
 
       return viewport.zoom;
     }),
+    pan: vi.fn((next?: { x: number; y: number }) => {
+      if (next !== undefined) {
+        viewport.pan = { ...next };
+
+        emit('pan');
+      }
+
+      return { ...viewport.pan };
+    }),
     animate: vi.fn((animationOptions: Record<string, unknown>) => {
       const center = animationOptions['center'] as { eles?: { id?: () => string } } | undefined;
       const id = center?.eles?.id?.();
@@ -395,6 +405,14 @@ export function createFakeCore(options: FakeCoreOptions = {}): FakeCore {
 
         if (frame >= steps) {
           running = false;
+
+          // The animation is over: the core tells the caller. A walk uses
+          // it to correct a pan that the breathing spring moved under it.
+          const complete = animationOptions['complete'];
+
+          if (typeof complete === 'function') {
+            complete();
+          }
 
           return;
         }

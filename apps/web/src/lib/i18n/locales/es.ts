@@ -312,7 +312,7 @@ export const es = {
   engines: {
     heading: 'Los motores, de uno en uno',
     intro:
-      'Un mismo espacio para los cinco motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
+      'Un mismo espacio para los tres motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
     pageTitle: 'Los motores, de uno en uno',
     tabsLabel: 'Los motores, de uno en uno',
     toolbarLabel: 'La barra de los motores',
@@ -323,16 +323,11 @@ export const es = {
       'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
     panelD3Name: 'Cytoscape + d3-force',
     panelD3Note:
-      'El resorte de la aplicación: una simulación con semilla y una fuerza de colisión rectangular.',
+      'El resorte vivo de la aplicación: una simulación con semilla, una fuerza de colisión rectangular y un reposo que respira.',
     panelDagName: 'Cytoscape + d3-dag',
     panelDagNote:
       'El clon de dagre con d3-dag: una disposición por capas que necesita que el grafo no tenga ciclos, y rompe los que tiene a la vista.',
-    panelFcoseName: 'Cytoscape + fcose',
-    panelFcoseNote:
-      'El mismo lienzo con la fuerza de CoSE: una simulación que se asienta y se detiene.',
-    panelSigmaName: 'Sigma.js + Graphology',
-    panelSigmaNote:
-      'El motor que dibuja con WebGL y guarda el grafo en el cliente, con la fuerza de ForceAtlas2.',
+    hierarchyStatic: 'Una jerarquía no respira: sus rangos son el dibujo.',
     canvasLabel: 'El lienzo de la comparación',
     sizeLabel: 'Tamaño de la imagen',
     sizeDemo: 'La demostración ({count} nodos)',
@@ -341,10 +336,6 @@ export const es = {
     measure: 'Medir el motor',
     measuring: 'Midiendo…',
     noMeasurement: 'Todavía no se ha medido.',
-    sharedLayoutSigma:
-      'No usa la disposición compartida: trae la suya, la fuerza de ForceAtlas2 de Graphology.',
-    edgeStyleSigma:
-      'Sigma dibuja las cinco formas igual: la elección de la forma no se reproduce aquí.',
     rerun: 'Repetir la disposición',
     listToggle: 'Ver la lista',
     listHeading: 'La imagen en forma de lista',
@@ -352,25 +343,32 @@ export const es = {
     frameLabel: 'Marco',
     frameValue: '{value} ms (mediana)',
     framePeak: 'El más lento: {value} ms',
-    frameCount: 'Cuadros medidos: {count}',    layoutLabel: 'Disposición',
+    frameCount: 'Cuadros medidos: {count}',
+    layoutLabel: 'Disposición',
     layoutValue: '{value} ms en total',
     settledLabel: 'Asentada',
     settledYes: 'Sí',
     settledNo: 'Todavía no',
+    motionLabel: 'Movimiento',
+    aliveAwake: 'Despierta: la mano la movió',
+    aliveIdle: 'Viva: se mueve en reposo',
+    shapeLabel: 'Forma',
+    shapeReached: 'Alcanzada por debajo de {threshold} px por paso',
+    shapeMoving: 'Todavía buscándola',
+    aliveNote:
+      'El resorte vivo no se asienta: en reposo sigue moviéndose por debajo de {threshold} px por paso, y despierta cuando la mano lo toca. La forma se alcanza cuando el movimiento queda por debajo de ese umbral; la simulación no se detiene.',
     overlapsLabel: 'Tarjetas encima',
     overlapsValue: '{count} pares',
     ticksLabel: 'Pasos de la simulación',
     ticksValue: '{count} pasos',
-    iterationsLabel: 'Iteraciones de la simulación',
-    iterationsValue: '{count} iteraciones',
+    tickLabel: 'Un paso del resorte',
+    tickValue: '{value} ms por paso',
     layoutFrameLabel: 'Cuadro de la disposición',
     frameLayoutValue: '{value} ms por cuadro',
     reproducibleLabel: 'Sale igual dos veces',
     reproducibleDagre: 'Sí: es una función de la imagen',
     reproducibleD3: 'Sí: la semilla es fija',
     reproducibleDag: 'Sí: es una función de la imagen',
-    reproducibleFcose: 'Sí, con randomize en falso',
-    reproducibleSigma: 'Sin criterio de convergencia',
     reversedLabel: 'Relaciones invertidas',
     reversedValue: '{count} relaciones',
     reversedToggle: 'Ver las {count} relaciones invertidas',
@@ -379,20 +377,13 @@ export const es = {
     loading: 'Cargando la ventana…',
     empty: 'La ventana está vacía: no hay nada que comparar.',
     badgesLabel: 'Los nodos de la ventana',
-    sigmaUnavailable: 'Este navegador no pudo dibujar el lienzo WebGL.',
     findingsHeading: 'Lo que este motor hace distinto',
-    findingSigmaLabel:
-      'Sigma no escribe un título de varias líneas dentro de la figura de un nodo: la tarjeta es una imagen pintada sobre un lienzo 2D, con el mismo módulo puro de la tarjeta.',
-    findingSigmaEdges:
-      'Los programas de arista de Sigma no aceptan puntos de paso: solo reciben los dos extremos de la relación. Ninguna forma necesita ya una ruta, pero Sigma dibuja las cinco igual —una recta con flecha—, así que la elección de la forma no se reproduce.',
-    findingSigmaDashes:
-      'Sigma no tiene programa de arista discontinua: el estado pendiente de una relación se ve solo en el color.',
-    findingFcoseSeed:
-      'fcose no tiene randomSeed: su paso espectral sortea las posiciones de partida, y la misma imagen no sale igual dos veces.',
     findingD3Collision:
       'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
     findingD3Seed:
       'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
+    findingD3Living:
+      'El resorte de d3-force no se asienta: el reposo es una temperatura distinta de cero, así que sigue moviéndose por debajo del umbral y despierta cuando la mano lo toca. Las relaciones con más peso acercan sus tarjetas.',
     findingDagCycles:
       'Las relaciones del grafo tienen ciclos, y una disposición por capas necesita un grafo sin ciclos: dagre los rompe en silencio —su archivo acyclic.js da la vuelta a las relaciones— y el clon de d3-dag los rompe a la vista. Las dos invierten el mismo número de relaciones, y solo una lo dice.',
     findingDagQuality:

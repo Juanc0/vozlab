@@ -72,27 +72,6 @@
   -->
   <p class="mt-1 text-small text-muted">{t(engine.noteKey)}</p>
 
-  <!--
-    The engine that brings its own arrangement says so: the comparison
-    offers the room and the data, and it does not impose a layout that the
-    engine cannot use.
-  -->
-  {#if engine.layout === null}
-    <p class="mt-2 rounded-control bg-raised p-2 text-small">
-      {t('engines.sharedLayoutSigma')}
-    </p>
-  {/if}
-
-  <!--
-    The shape of the relations is a control of the comparison, and the
-    engine that cannot reproduce it says so instead of pretending.
-  -->
-  {#if engine.id === 'sigma'}
-    <p class="mt-2 rounded-control bg-raised p-2 text-small">
-      {t('engines.edgeStyleSigma')}
-    </p>
-  {/if}
-
   <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-small">
     <dt class="text-muted">{t('engines.frameLabel')}</dt>
     <dd class="font-mono">
@@ -116,14 +95,36 @@
       {measurement === undefined ? '—' : t('engines.layoutValue', { value: measurement.ms.toFixed(1) })}
     </dd>
 
-    <dt class="text-muted">{t('engines.settledLabel')}</dt>
-    <dd>
-      {measurement === undefined
-        ? '—'
-        : measurement.settled
-          ? t('engines.settledYes')
-          : t('engines.settledNo')}
-    </dd>
+    <!--
+      The living spring is not settled, and the readout does not say it is:
+      it says whether the spring is awake and whether the picture reached its
+      shape below the threshold. A one-pass arrangement keeps the old row.
+    -->
+    {#if engine.id === 'd3' && measurement?.alive === true}
+      <dt class="text-muted">{t('engines.motionLabel')}</dt>
+      <dd>{measurement.awake ? t('engines.aliveAwake') : t('engines.aliveIdle')}</dd>
+
+      <dt class="text-muted">{t('engines.shapeLabel')}</dt>
+      <dd>
+        {measurement.shapeReached
+          ? t('engines.shapeReached', {
+              threshold: formatNumber(
+                locale.locale,
+                measurement.threshold ?? 1.5
+              )
+            })
+          : t('engines.shapeMoving')}
+      </dd>
+    {:else}
+      <dt class="text-muted">{t('engines.settledLabel')}</dt>
+      <dd>
+        {measurement === undefined
+          ? '—'
+          : measurement.settled
+            ? t('engines.settledYes')
+            : t('engines.settledNo')}
+      </dd>
+    {/if}
 
     <!--
       The pairs of cards that lie on top of each other: the metric that
@@ -151,15 +152,6 @@
           })}
     </dd>
 
-    <dt class="text-muted">{t('engines.iterationsLabel')}</dt>
-    <dd class="font-mono">
-      {measurement?.iterations === undefined
-        ? '—'
-        : t('engines.iterationsValue', {
-            count: formatNumber(locale.locale, measurement.iterations)
-          })}
-    </dd>
-
     <dt class="text-muted">{t('engines.layoutFrameLabel')}</dt>
     <dd class="font-mono">
       {measurement?.frameMs === undefined
@@ -167,9 +159,16 @@
         : t('engines.frameLayoutValue', { value: measurement.frameMs.toFixed(2) })}
     </dd>
 
+    <dt class="text-muted">{t('engines.tickLabel')}</dt>
+    <dd class="font-mono">
+      {measurement?.tickMs === undefined
+        ? '—'
+        : t('engines.tickValue', { value: measurement.tickMs.toFixed(3) })}
+    </dd>
+
     <!--
       Whether the same picture comes out twice. It is not the same question
-      for the five engines, and the answer says so.
+      for the three engines, and the answer says so.
     -->
     <dt class="text-muted">{t('engines.reproducibleLabel')}</dt>
     <dd>{t(engine.reproducibleKey)}</dd>
@@ -189,6 +188,20 @@
           })}
     </dd>
   </dl>
+
+  <!--
+    The living spring, said in words: it does not settle, it moves at rest,
+    and its shape is reached below a threshold. The two one-pass
+    arrangements carry their own note beside the tabs — a hierarchy does
+    not breathe.
+  -->
+  {#if engine.id === 'd3' && measurement?.alive === true}
+    <p class="mt-2 text-small text-muted" role="note" data-testid="alive-note">
+      {t('engines.aliveNote', {
+        threshold: formatNumber(locale.locale, measurement.threshold ?? 1.5)
+      })}
+    </p>
+  {/if}
 
   <!--
     The relations that were reversed, by name: the reader has to be able to

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  IDLE_ALPHA_TARGET,
   createForceLayout,
   runForceLayoutToRest,
   type ForceEdgeInput,
@@ -118,5 +119,61 @@ describe('the measurements of the spring', () => {
     // over every card. The bound is loose: the machine that runs the
     // suite may be busy.
     expect(at1000).toBeLessThan(at200 * 20);
+  }, 30000);
+
+  it('breathes at rest below the threshold, and the idle tick stays inside a frame', () => {
+    const { nodes, edges } = fixture(200);
+    const layout = createForceLayout(nodes, edges);
+
+    // The picture is almost at rest: the idle breath is all that is left.
+    layout.step(299);
+    layout.setAlphaTarget(IDLE_ALPHA_TARGET);
+
+    const previous = layout.nodes.map((node) => ({ x: node.x, y: node.y }));
+
+    let greatest = 0;
+    let moved = 0;
+    let tickMs = 0;
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      const began = performance.now();
+
+      layout.breathe();
+      layout.step(1);
+
+      tickMs += performance.now() - began;
+
+      let step = 0;
+
+      layout.nodes.forEach((node, index) => {
+        const last = previous[index];
+
+        if (last === undefined) {
+          return;
+        }
+
+        step = Math.max(step, Math.hypot(node.x - last.x, node.y - last.y));
+        last.x = node.x;
+        last.y = node.y;
+      });
+
+      greatest = Math.max(greatest, step);
+      moved += step;
+    }
+
+    const perTick = tickMs / 20;
+
+    console.log(
+      `idle breath at 200 cards: ${perTick.toFixed(3)} ms a tick, ${greatest.toFixed(3)} px a tick (greatest)`
+    );
+
+    // The breath is real: the picture moves.
+    expect(moved).toBeGreaterThan(0);
+    // And it stays below the threshold of the shape (1.5 px).
+    expect(greatest).toBeLessThan(1.5);
+    // The idle tick stays inside a frame; the gate is the same loose one of
+    // the measurement above, because the machine that runs the suite may be
+    // busy.
+    expect(perTick).toBeLessThan(20);
   }, 30000);
 });

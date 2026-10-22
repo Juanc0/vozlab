@@ -270,3 +270,19 @@ Observable notebook behind the product owner's reference, and the two
 research passes of 2026-10-21 (the paint engines and the layout engines),
 whose measurements were taken with esbuild on this repository's pnpm store
 and with Playwright 1.64 and headless Chromium.
+
+## 9. What has been built since
+
+The shortlist is being worked through in the order §5.3 proposed. The
+decisions of the product owner and the outcomes are recorded here so the
+document does not age into a wish list.
+
+| the research said | the board | the outcome |
+| --- | --- | --- |
+| the spring settles and stops; the ambition is a picture that keeps drifting | **3.26** | **done** — the living spring: an idle drift (`alphaTarget` 0.005 at ~12 Hz, 0.281 px per tick at 200 cards), a wake to 0.1 on contact with a 1.2 s cool-down, no ticks in a hidden tab, and a still picture under `prefers-reduced-motion`. The attraction is weighted by the relation's `communityScore`, which is what makes the picture *half organised*. |
+| the card as one object, with compound nodes | ~~3.27~~ | **dropped** — a compound node is sized by its children (as `elements.ts` already documents) and the card is the one that must keep its shape. The goal is met by the painter below, where the card *is* one `<g>`. |
+| a third painter: `d3` + SVG | **3.28** | **in progress** — the full candidate, with the same feature set as the incumbent. |
+| `d3-dag` as a clone of dagre | **3.25** | **done** — 1.7 ms against dagre's 16 ms on the demo, and the finding: **dagre reverses 10 of the 35 arrows of the seeded demo in silence**. |
+| delete Sigma and `cytoscape-fcose` | — | **done** — removed from the comparison, with their dependencies and their copy. |
+| AntV G6 v5, only if the yardstick changes | — | **not built** — 393 KB and an imperative framework that fights the runes. |
+| `cytoscape-euler` (2026-05) | — | **open** — the spring inside the incumbent; a candidate if the living spring ever wants to go back to Cytoscape's own extensions. |

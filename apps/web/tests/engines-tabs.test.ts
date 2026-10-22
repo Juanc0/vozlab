@@ -20,16 +20,12 @@ import { localeContext } from './harness/locale';
 import { EDGE, NODE_A, NODE_B } from './fixtures/graph';
 
 /**
- * The canvas of Cytoscape and the panel of Sigma are **stubbed**: the tests
- * are about the frame, the tabs and the attribution of the measurements —
- * not about the drawing.
+ * The canvas of Cytoscape is **stubbed**: the tests are about the frame,
+ * the tabs and the attribution of the measurements — not about the
+ * drawing.
  */
 vi.mock('../src/lib/components/ExplorationCanvas.svelte', async () => ({
   default: (await import('./fixtures/StubCytoscapeCanvas.svelte')).default
-}));
-
-vi.mock('../src/lib/dev/engines/SigmaPanel.svelte', async () => ({
-  default: (await import('./fixtures/StubSigmaPanel.svelte')).default
 }));
 
 vi.mock('$app/environment', () => ({
@@ -66,9 +62,9 @@ describe('the tabs of the engines', () => {
 
     const tabs = screen.getAllByRole('tab');
 
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(3);
     expect(tabs[0]).toHaveAccessibleName('Cytoscape + dagre');
-    expect(tabs[4]).toHaveAccessibleName('Sigma.js + Graphology');
+    expect(tabs[2]).toHaveAccessibleName('Cytoscape + d3-dag');
 
     // The selected tab is the only one in the tab order, and it is the one
     // that is announced as selected.
@@ -84,13 +80,13 @@ describe('the tabs of the engines', () => {
     expect(onselect).toHaveBeenCalledWith('d3');
 
     await fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' });
-    expect(onselect).toHaveBeenCalledWith('sigma');
+    expect(onselect).toHaveBeenCalledWith('dag');
 
     await fireEvent.keyDown(tabs[0], { key: 'Home' });
     expect(onselect).toHaveBeenCalledWith('dagre');
 
     await fireEvent.keyDown(tabs[0], { key: 'End' });
-    expect(onselect).toHaveBeenCalledWith('sigma');
+    expect(onselect).toHaveBeenCalledWith('dag');
   });
 });
 
@@ -131,15 +127,14 @@ describe('the comparison of the engines', () => {
 
     expect(screen.getAllByRole('img')).toHaveLength(1);
 
-    // The engine that draws with WebGL is mounted in the same space, and
-    // the canvas of Cytoscape is gone.
-    await fireEvent.click(screen.getByRole('tab', { name: 'Sigma.js + Graphology' }));
+    // The clone of dagre is mounted in the same space, and the canvas of
+    // the living spring is gone.
+    await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + d3-dag' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('sigma-canvas')).toBeInTheDocument();
+      expect(screen.getByTestId('cytoscape-canvas')).toHaveAttribute('data-layout', 'dag');
     });
 
-    expect(screen.queryByTestId('cytoscape-canvas')).toBeNull();
     expect(screen.getAllByRole('img')).toHaveLength(1);
   });
 
@@ -154,11 +149,19 @@ describe('the comparison of the engines', () => {
       expect(screen.getByTestId('cytoscape-canvas')).toHaveAttribute('data-layout', 'dag');
     });
 
-    await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + fcose' }));
+    // The layered arrangements carry their own note: a hierarchy does not
+    // breathe, and the interface says so.
+    expect(screen.getByTestId('hierarchy-note')).toHaveTextContent(
+      'Una jerarquía no respira: sus rangos son el dibujo.'
+    );
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + d3-force' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('cytoscape-canvas')).toHaveAttribute('data-layout', 'fcose');
+      expect(screen.getByTestId('cytoscape-canvas')).toHaveAttribute('data-layout', 'd3');
     });
+
+    expect(screen.queryByTestId('hierarchy-note')).toBeNull();
   });
 
   it('reports the measurements of the engine that is on screen, and never the ones of the one before', async () => {
@@ -179,17 +182,14 @@ describe('the comparison of the engines', () => {
 
     expect(screen.queryByText(/11\.0 ms en total/)).toBeNull();
 
-    // The engine that brings its own arrangement says so.
-    await fireEvent.click(screen.getByRole('tab', { name: 'Sigma.js + Graphology' }));
+    // The clone of dagre is a third engine, and its measurement is its own.
+    await fireEvent.click(screen.getByRole('tab', { name: 'Cytoscape + d3-dag' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/55\.0 ms en total/)).toBeInTheDocument();
+      expect(screen.getByText(/33\.0 ms en total/)).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/22\.0 ms en total/)).toBeNull();
-    expect(
-      screen.getByText(/No usa la disposición compartida: trae la suya/)
-    ).toBeInTheDocument();
   });
 
   it('offers the list as the text alternative of the picture', async () => {

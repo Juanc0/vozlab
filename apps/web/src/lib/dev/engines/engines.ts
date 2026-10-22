@@ -17,15 +17,16 @@ import type { GraphLayout } from '$lib/graph/explore/layout';
 import type { TranslationKey } from '$lib/i18n';
 
 /** The engines of the comparison. */
-export type EngineId = 'dagre' | 'd3' | 'dag' | 'fcose' | 'sigma';
+export type EngineId = 'dagre' | 'd3' | 'dag';
 
 /**
  * What a **measurement** of an engine says.
  *
  * It is the union of what the engines report: the layouts of Cytoscape
  * report the time they took, whether they settled, the pairs of cards that
- * lie on top of each other and the relations they had to break; the spring
- * of Sigma reports the same, with the number of iterations instead.
+ * lie on top of each other and the relations they had to break. The living
+ * spring adds what makes it different: it is **alive**, it wakes, and it
+ * reaches its shape below a threshold of movement.
  *
  * The report is **attributed to the engine that produced it** — never to
  * the engine that was on screen when it arrived.
@@ -39,10 +40,18 @@ export interface EngineMeasurement {
   readonly overlaps?: number;
   /** The steps of the simulation. */
   readonly ticks?: number;
-  /** The iterations of the simulation of Graphology. */
-  readonly iterations?: number;
   /** The time a frame of the arrangement took, in milliseconds. */
   readonly frameMs?: number;
+  /** The time a tick of the spring took, in milliseconds. */
+  readonly tickMs?: number;
+  /** Whether the spring breathes instead of stopping. */
+  readonly alive?: boolean;
+  /** Whether the living spring is awake. */
+  readonly awake?: boolean;
+  /** Whether the picture reached its shape below the threshold. */
+  readonly shapeReached?: boolean;
+  /** The movement below which the picture is said to have its shape. */
+  readonly threshold?: number;
   /** The relations the arrangement had to break to order the graph. */
   readonly reversedRelations?: readonly string[];
 }
@@ -60,11 +69,10 @@ export interface EngineDescriptor {
   /**
    * The layout the engine arranges the picture with.
    *
-   * It is `null` when the engine **brings its own**: Sigma has no shared
-   * layout, it arranges the picture with the ForceAtlas2 of Graphology.
-   * The comparison says so out loud instead of hiding it.
+   * Every engine of the comparison uses the canvas of Cytoscape: the
+   * comparison no longer carries a second painter.
    */
-  readonly layout: GraphLayout | null;
+  readonly layout: GraphLayout;
   /** The findings of the comparison that concern this engine. */
   readonly findingKeys: readonly TranslationKey[];
 }
@@ -73,7 +81,7 @@ export interface EngineDescriptor {
  * The engines of the comparison, in the order the tabs show them.
  *
  * The order is the order of the **freedom**: the deterministic arrangement
- * first, then the springs, and the WebGL renderer last.
+ * first, then the living spring, then the clone of `dagre`.
  */
 export const ENGINES: readonly EngineDescriptor[] = [
   {
@@ -90,7 +98,11 @@ export const ENGINES: readonly EngineDescriptor[] = [
     noteKey: 'engines.panelD3Note',
     reproducibleKey: 'engines.reproducibleD3',
     layout: 'd3',
-    findingKeys: ['engines.findingD3Collision', 'engines.findingD3Seed']
+    findingKeys: [
+      'engines.findingD3Collision',
+      'engines.findingD3Seed',
+      'engines.findingD3Living'
+    ]
   },
   {
     id: 'dag',
@@ -99,26 +111,6 @@ export const ENGINES: readonly EngineDescriptor[] = [
     reproducibleKey: 'engines.reproducibleDag',
     layout: 'dag',
     findingKeys: ['engines.findingDagCycles', 'engines.findingDagQuality']
-  },
-  {
-    id: 'fcose',
-    nameKey: 'engines.panelFcoseName',
-    noteKey: 'engines.panelFcoseNote',
-    reproducibleKey: 'engines.reproducibleFcose',
-    layout: 'fcose',
-    findingKeys: ['engines.findingFcoseSeed']
-  },
-  {
-    id: 'sigma',
-    nameKey: 'engines.panelSigmaName',
-    noteKey: 'engines.panelSigmaNote',
-    reproducibleKey: 'engines.reproducibleSigma',
-    layout: null,
-    findingKeys: [
-      'engines.findingSigmaLabel',
-      'engines.findingSigmaEdges',
-      'engines.findingSigmaDashes'
-    ]
   }
 ];
 

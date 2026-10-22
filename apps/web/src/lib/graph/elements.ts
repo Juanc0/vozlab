@@ -153,6 +153,13 @@ export interface GraphEdgeElement {
     label: string;
     status: string;
     color: string;
+    /**
+     * The score the community gave the relation.
+     *
+     * The spring of the exploration view reads it: a relation with a high
+     * score pulls its two cards closer and harder.
+     */
+    communityScore: number;
     /** Whether the relation is drawn as a card with its whole content. */
     expanded: boolean;
   };
@@ -572,6 +579,7 @@ export function toEdgeElement(
       label: expanded ? '' : displayName(edge.relationDisplayNames, locale, edge.relationKey),
       status: edge.status,
       color: edgeColor(edge.status),
+      communityScore: edge.communityScore,
       expanded
     }
   };

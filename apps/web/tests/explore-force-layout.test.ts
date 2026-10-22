@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_COLLISION_PADDING,
   FORCE_LAYOUT_SEED,
+  IDLE_ALPHA_TARGET,
+  IDLE_INTERVAL_MS,
+  WAKE_ALPHA_TARGET,
+  WAKE_COOLDOWN_MS,
   applyRectangularCollision,
   areaCharge,
   countOverlappingPairs,
   createForceLayout,
   driveForceLayout,
   lcg,
+  relationDistance,
+  relationStrength,
+  relationWeight,
   runForceLayoutToRest,
   type ForceEdgeInput,
   type ForceNode,
@@ -58,18 +65,33 @@ function fixture(count: number): {
 function manualScheduler(): {
   scheduler: FrameScheduler;
   drain: () => void;
+  runOne: () => void;
   pending: () => number;
+  lastDelay: () => number | undefined;
 } {
   let next = 1;
-  const queue = new Map<number, () => void>();
+  const queue = new Map<number, { callback: () => void; delay: number | undefined }>();
+
+  function runOne(): void {
+    const first = queue.entries().next();
+
+    if (first.done === true) {
+      return;
+    }
+
+    const [handle, entry] = first.value;
+
+    queue.delete(handle);
+    entry.callback();
+  }
 
   return {
     scheduler: {
-      request(callback: () => void): number {
+      request(callback: () => void, delayMs?: number): number {
         const handle = next;
 
         next += 1;
-        queue.set(handle, callback);
+        queue.set(handle, { callback, delay: delayMs });
 
         return handle;
       },
@@ -81,20 +103,13 @@ function manualScheduler(): {
       let guard = 0;
 
       while (queue.size > 0 && guard < 2000) {
-        const first = queue.entries().next();
-
-        if (first.done === true) {
-          return;
-        }
-
-        const [handle, callback] = first.value;
-
-        queue.delete(handle);
-        callback();
+        runOne();
         guard += 1;
       }
     },
-    pending: () => queue.size
+    runOne,
+    pending: () => queue.size,
+    lastDelay: () => [...queue.values()].at(-1)?.delay
   };
 }
 
@@ -119,6 +134,26 @@ function box(
     height,
     mass: width * height
   };
+}
+
+/** The greatest distance a card travelled between two pictures. */
+function greatestDistance(
+  before: ReadonlyMap<string, { x: number; y: number }>,
+  after: ReadonlyMap<string, { x: number; y: number }>
+): number {
+  let greatest = 0;
+
+  for (const [id, place] of after) {
+    const last = before.get(id);
+
+    if (last === undefined) {
+      continue;
+    }
+
+    greatest = Math.max(greatest, Math.hypot(place.x - last.x, place.y - last.y));
+  }
+
+  return greatest;
 }
 
 describe('the spring of the exploration view', () => {
@@ -303,5 +338,203 @@ describe('the spring of the exploration view', () => {
     const heldPlace = held.positions().get(nodes[0]?.id ?? '');
 
     expect(freePlace?.x).not.toBe(heldPlace?.x);
+  });
+
+  it('breathes at rest: the idle tick moves the cards, and below the threshold', () => {
+    const { nodes, edges } = fixture(24);
+    const layout = createForceLayout(nodes, edges);
+
+    // The picture is almost at rest: the breath is the only thing left.
+    layout.step(299);
+    layout.setAlphaTarget(IDLE_ALPHA_TARGET);
+
+    const before = layout.positions();
+
+    layout.breathe();
+    layout.step(1);
+
+    const moved = greatestDistance(before, layout.positions());
+
+    expect(moved).toBeGreaterThan(0);
+    // The threshold of the shape of the exploration view is 1.5 px.
+    expect(moved).toBeLessThan(1.5);
+  });
+
+  it('moves the idle spring at twelve hertz, and only after the wake cools', () => {
+    const { nodes, edges } = fixture(24);
+    const layout = createForceLayout(nodes, edges);
+    const frames = manualScheduler();
+    let clock = 0;
+
+    const driver = driveForceLayout(layout, {
+      scheduler: frames.scheduler,
+      living: true,
+      now: () => clock
+    });
+
+    driver.start();
+
+    // The picture is drawn awake: it has to find its shape.
+    expect(driver.awake).toBe(true);
+    expect(layout.alpha).toBeGreaterThanOrEqual(WAKE_ALPHA_TARGET);
+
+    for (let frame = 0; frame < 10; frame += 1) {
+      clock += 16.7;
+      frames.runOne();
+    }
+
+    expect(driver.awake).toBe(true);
+
+    // The contact is old enough: the spring cools.
+    clock += WAKE_COOLDOWN_MS;
+    frames.runOne();
+
+    expect(driver.awake).toBe(false);
+
+    // The next frame is an idle one, at ten to fifteen hertz.
+    const interval = frames.lastDelay() ?? 0;
+
+    expect(interval).toBeGreaterThanOrEqual(1000 / 15);
+    expect(interval).toBeLessThanOrEqual(1000 / 10);
+    expect(interval).toBeCloseTo(IDLE_INTERVAL_MS, 5);
+
+    // Let the idle spring lose the speed of the wake, and then look at one
+    // idle tick: it moves, and it stays below the threshold.
+    for (let frame = 0; frame < 40; frame += 1) {
+      clock += IDLE_INTERVAL_MS;
+      frames.runOne();
+    }
+
+    const before = layout.positions();
+
+    clock += IDLE_INTERVAL_MS;
+    frames.runOne();
+
+    const moved = greatestDistance(before, layout.positions());
+
+    expect(moved).toBeGreaterThan(0);
+    expect(moved).toBeLessThan(1.5);
+
+    driver.stop();
+  });
+
+  it('wakes on contact and cools back to the idle rhythm after the cooldown', () => {
+    const { nodes, edges } = fixture(24);
+    const layout = createForceLayout(nodes, edges);
+    const frames = manualScheduler();
+    let clock = 0;
+
+    const driver = driveForceLayout(layout, {
+      scheduler: frames.scheduler,
+      living: true,
+      now: () => clock
+    });
+
+    driver.start();
+
+    // The picture cools once the contact is a cooldown old.
+    clock += WAKE_COOLDOWN_MS;
+    frames.runOne();
+
+    expect(driver.awake).toBe(false);
+
+    // A touch of the reader wakes it: the alpha jumps to the wake target.
+    driver.wake();
+    clock += 1;
+
+    expect(driver.awake).toBe(true);
+    expect(layout.alpha).toBeGreaterThanOrEqual(WAKE_ALPHA_TARGET);
+
+    // A second of contact keeps it awake; the cool-down is counted from
+    // the last contact, not from the first.
+    clock += 1000;
+    frames.runOne();
+
+    expect(driver.awake).toBe(true);
+
+    clock += WAKE_COOLDOWN_MS;
+    frames.runOne();
+
+    expect(driver.awake).toBe(false);
+
+    driver.stop();
+  });
+
+  it('pulls a strong relation closer than a weak one', () => {
+    const nodes: ForceNodeInput[] = [
+      { id: 'left', width: CARD.width, height: CARD.height },
+      { id: 'right', width: CARD.width, height: CARD.height }
+    ];
+
+    // The weight of a relation is its community score over five, clamped.
+    expect(relationWeight(undefined)).toBe(0);
+    expect(relationWeight(5)).toBe(1);
+    expect(relationWeight(12)).toBe(1);
+    expect(relationWeight(-3)).toBe(0);
+
+    const weak = createForceLayout(nodes, [{ source: 'left', target: 'right' }]);
+    const strong = createForceLayout(nodes, [
+      { source: 'left', target: 'right', communityScore: 5 }
+    ]);
+
+    runForceLayoutToRest(weak);
+    runForceLayoutToRest(strong);
+
+    const distanceOf = (layout: ReturnType<typeof createForceLayout>): number => {
+      const left = layout.positions().get('left');
+      const right = layout.positions().get('right');
+
+      return Math.hypot((right?.x ?? 0) - (left?.x ?? 0), (right?.y ?? 0) - (left?.y ?? 0));
+    };
+
+    expect(relationDistance(5)).toBeLessThan(relationDistance(undefined));
+    expect(relationStrength(5, 1)).toBeGreaterThan(relationStrength(undefined, 1));
+    expect(distanceOf(strong)).toBeLessThan(distanceOf(weak));
+  });
+
+  it('pins a dragged card, moves its neighbours around it, and keeps its place on release', () => {
+    const nodes: ForceNodeInput[] = [
+      { id: 'left', width: CARD.width, height: CARD.height, x: -220, y: 0 },
+      { id: 'held', width: CARD.width, height: CARD.height, x: 0, y: 0 },
+      { id: 'right', width: CARD.width, height: CARD.height, x: 220, y: 0 }
+    ];
+    const edges: ForceEdgeInput[] = [
+      { source: 'left', target: 'held' },
+      { source: 'held', target: 'right' }
+    ];
+
+    const free = createForceLayout(nodes, edges);
+    const held = createForceLayout(nodes, edges);
+
+    runForceLayoutToRest(free);
+
+    const place = { x: -777, y: 555 };
+    const neighbourBefore = free.positions().get('left');
+
+    held.pin('held', place);
+    runForceLayoutToRest(held);
+
+    const pinned = held.positions().get('held');
+    const neighbourAfter = held.positions().get('left');
+
+    // The dragged card does not move.
+    expect(pinned).toEqual(place);
+
+    // Its neighbours part around the place it was dragged to.
+    expect(
+      Math.hypot(
+        (neighbourAfter?.x ?? 0) - (neighbourBefore?.x ?? 0),
+        (neighbourAfter?.y ?? 0) - (neighbourBefore?.y ?? 0)
+      )
+    ).toBeGreaterThan(10);
+
+    // The release keeps the place: the next arrangement is pinned to it.
+    const released = createForceLayout(nodes, edges, {
+      pinned: new Map([['held', place]])
+    });
+
+    runForceLayoutToRest(released);
+
+    expect(released.positions().get('held')).toEqual(place);
   });
 });

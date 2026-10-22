@@ -51,11 +51,7 @@ export async function measureFrames(
   frames = MEASURED_FRAMES
 ): Promise<number[]> {
   const canvases = [...element.querySelectorAll('canvas')];
-
-  // The wheel has to reach the engine: Sigma listens on its own **mouse**
-  // canvas, and Cytoscape on the canvas of the picture.
-  const canvas =
-    canvases.find((candidate) => candidate.classList.contains('sigma-mouse')) ?? canvases[0];
+  const canvas = canvases[0];
 
   if (canvas === undefined) {
     return [];

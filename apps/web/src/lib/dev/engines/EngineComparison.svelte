@@ -34,17 +34,11 @@
   import { formatNumber } from '$lib/i18n';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import { comparisonGraph, type ComparisonGraph } from './comparison-data';
-  import { registerForceLayout } from './fcose';
   import { measureFrames, summarizeFrames, type FrameSummary } from './frames';
   import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
   import EnginePanel from './EnginePanel.svelte';
   import EngineReadout from './EngineReadout.svelte';
   import EngineTabs from './EngineTabs.svelte';
-
-  // The force layout of Cytoscape is registered **before** anything is
-  // drawn: the extension is a global registration, and the picture must
-  // never ask for a layout that does not exist.
-  registerForceLayout();
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
@@ -497,6 +491,21 @@
     </div>
 
     <!--
+      The layered arrangements do not breathe: their ranks are the picture,
+      and there is nothing to wake. The comparison says so out loud, so the
+      still picture is not read as a broken spring.
+    -->
+    {#if descriptor.layout === 'dagre' || descriptor.layout === 'dag'}
+      <p
+        role="note"
+        data-testid="hierarchy-note"
+        class="max-w-measure px-3 pt-2 text-small text-muted"
+      >
+        {t('engines.hierarchyStatic')}
+      </p>
+    {/if}
+
+    <!--
       The controls over the picture: the size of the picture, the shape of
       the relations, the measurement of the engine that is on screen and the
       repetition of its arrangement.
@@ -605,8 +614,8 @@
     {/if}
 
     <!--
-      A browser without WebGL leaves the engine of Sigma empty: the reader
-      is told what happened instead of facing a blank space.
+      An engine that could not draw the picture says what happened: the
+      reader is told instead of facing a blank space.
     -->
     {#if panelFailure !== null}
       <p

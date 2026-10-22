@@ -447,8 +447,6 @@ Decided, and not to be re-opened without evidence:
       node under the reader's hand. The list view, the text alternative,
       carries a **Caminar** button per row: the canvas is not reachable by
       keyboard.
-- [ ] 3.22 The optimistic concurrency: the version column, the
-      compare-and-set, the conflict and its copy.
 - [x] 3.24 The spring of the exploration view: `d3-force` with a rectangular
       collision force of our own. Result: `d3-force` (3 KB) replaces
       `cytoscape-fcose` as the layout of the exploration view, and the
@@ -493,9 +491,30 @@ Decided, and not to be re-opened without evidence:
       times faster (1.7 ms against 16 ms on the demo, 102 ms against 682 ms
       on 200 nodes) and it is pinned to `quality: 'fast'`, because the
       `medium` preset took **90 seconds** on the same graph.
-- [ ] 3.26 The living spring: the picture stays half organised and keeps
+- [x] 3.26 The living spring: the picture stays half organised and keeps
       drifting between the clusters, and the simulation sleeps when the
-      window is hidden.
+      window is hidden. Result: the spring **breathes**. At rest it drifts
+      with `alphaTarget` 0.005 at ~12 Hz — **0.890 ms per tick** at 200
+      cards and a greatest movement of **0.281 px per tick**, a drift and
+      not a jump; contact with the picture (a pointer moving over the
+      canvas, a card grabbed, a card hovered, a node focused, a walk, a
+      zoom) raises it to 0.1, and it **cools back in 1.2 s**. A dragged
+      card is pinned, its neighbours part, and on release it keeps its
+      place. A hidden tab stops the driver and coming back resumes it;
+      with `prefers-reduced-motion` the picture runs to rest and does not
+      drift. **The attraction is weighted by the relation's
+      `communityScore`** — the data the traversal already orders by — so a
+      strong relation pulls its cards closer and the clusters grow around
+      the strong relations: that is the half-organised picture, not a
+      uniform ball. The edge element carries the score now. And the readout
+      stops lying: it says **"Viva: se mueve en reposo"**, because a living
+      spring never settles; the walk waits for the wake's movement to fall
+      (or 900 ms) and then glides. **0 overlapping card pairs** while it
+      drifts. Same batch, the research's verdicts on the playground:
+      **Sigma.js and `cytoscape-fcose` are gone** — tabs, code, copy,
+      dependencies and lockfile — and the two hierarchies say in the
+      interface what they cannot do: "Una jerarquía no respira: sus rangos
+      son el dibujo".
 - [x] 3.29 The workspace's collapsible panels: the navigation folds into a
       **rail of icons** (56 px), the inspector is **collapsed by default**
       (the walk through the graph happens without it) and the root picker
@@ -542,10 +561,21 @@ Decided, and not to be re-opened without evidence:
       **type-only** import, which is erased at compile time. The production
       bundle lost **177 KB raw / 35 KB gzip**, and `sugiyama`, `decross` and
       `zherebko` are in **no file** of it.
-- [ ] 3.27 The card as one object: the text becomes a child of the card
-      instead of a loose element resynchronised on every frame of a drag.
 - [ ] 3.28 A third painter in the comparison: `d3` and a hand-written SVG
-      painter, with the card as one `<g>`.
+      painter, with the card as one `<g>`. **The next batch**, and the
+      **full candidate**: the card as one `<g>`, the relations with their
+      opaque plates, pan/zoom (`d3-zoom`), drag (`d3-drag`), hover,
+      selection, the walk, the list as the text alternative and the readout
+      — the same feature set as the incumbent, so the comparison is fair.
+      It brings the **living spring** as its arrangement. The research
+      measured it: **22.8 KB gzip against 158 KB**, 4 007 DOM elements for
+      200 cards / 400 relations, **12.9 ms to build against 114 ms**,
+      59.7 fps of pan and 52.2 fps at 1 000 nodes. It **subsumes 3.27** —
+      the card as one object comes free with the `<g>` — so **3.27 is off
+      the board**: the compound-node mechanism it proposed collides with
+      what `elements.ts` already documents (in Cytoscape a compound node is
+      sized by its children, and the card is the one that must keep its
+      shape).
 
 ## Phase 4 — Platform, QA and operations
 

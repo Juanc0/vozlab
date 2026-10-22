@@ -36,14 +36,6 @@ vi.mock('../src/lib/components/ExplorationCanvas.svelte', async () => ({
   default: (await import('./fixtures/StubCytoscapeCanvas.svelte')).default
 }));
 
-/**
- * The panel of Sigma is **stubbed** as well: it draws with WebGL, and
- * jsdom has no WebGL.
- */
-vi.mock('../src/lib/dev/engines/SigmaPanel.svelte', async () => ({
-  default: (await import('./fixtures/StubSigmaPanel.svelte')).default
-}));
-
 /** Cytoscape needs a `<canvas>`; jsdom has none. The module is mocked. */
 const { cytoscapeMock } = vi.hoisted(() => {
   const factory = vi.fn();

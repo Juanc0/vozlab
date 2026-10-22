@@ -38,12 +38,7 @@ import {
 import { observeContainerSize } from '../resize';
 import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
-import {
-  explorationLayoutOptions,
-  pinTransform,
-  seedCirclePositions,
-  type GraphLayout
-} from './layout';
+import { exploreLayoutOptions, pinTransform, type GraphLayout } from './layout';
 import {
   countOverlappingPairs,
   createForceLayout,
@@ -96,9 +91,9 @@ export interface LayoutReport {
   /**
    * The number of pairs of cards that overlap.
    *
-   * It is the metric that told the truth about `fcose`: a layout that
-   * settles in half a second can still leave hundreds of pairs of cards
-   * on top of each other.
+   * It is the metric that tells the truth about a spring that looks
+   * settled: a layout can stop in half a second and still leave hundreds
+   * of pairs of cards on top of each other.
    */
   readonly overlaps: number;
   /**
@@ -115,6 +110,34 @@ export interface LayoutReport {
    * the cards in their places) and not the wait for the browser.
    */
   readonly frameMs?: number;
+  /**
+   * The time a tick of the simulation took, in milliseconds.
+   *
+   * It is the work of the spring itself, without the drawing of the cards:
+   * the number that says what the idle breath costs.
+   */
+  readonly tickMs?: number;
+  /**
+   * Whether the spring **breathes**.
+   *
+   * A living spring does not settle: it moves at rest, below the threshold,
+   * and wakes on contact. The readout says so instead of calling it
+   * settled.
+   */
+  readonly alive?: boolean;
+  /** Whether the living spring is awake. */
+  readonly awake?: boolean;
+  /**
+   * Whether the picture has reached its shape.
+   *
+   * It is `true` when the movement of the last step fell below
+   * {@link LayoutReport.threshold}. The bounded watch of a walk also ends
+   * at a deadline; a picture that only ended by the deadline has **not**
+   * reached its shape, and the readout must not say it has.
+   */
+  readonly shapeReached?: boolean;
+  /** The movement below which the picture is said to have its shape. */
+  readonly threshold?: number;
   /**
    * The relations whose arrow is drawn **against** the flow of the picture.
    *
@@ -218,10 +241,10 @@ export interface ExplorationElementsOptions {
   /**
    * The layout the picture is arranged with.
    *
-   * The default is `d3`: the **spring** of the app, a simulation of
+   * The default is `d3`: the **living spring** of the app, a simulation of
    * `d3-force` with a rectangular collision force. The deterministic
-   * `dagre` and the `fcose` of the extension are there for the comparison
-   * of the engines.
+   * `dagre` and the clone of `d3-dag` are there for the comparison of the
+   * engines; neither of them moves after it has computed the picture.
    */
   layout?: GraphLayout;
   /**
@@ -293,6 +316,15 @@ export interface ExplorationInstance {
   /** Draws the relations again — after a drag, for instance. */
   /** Draws the relations again, with the shape that is selected. */
   refreshEdgeStyles(): void;
+  /**
+   * Wakes the living spring.
+   *
+   * The canvas calls it when the reader touches the picture from the
+   * **overlay** — the badge of a node, the badge of a relation — because
+   * those controls are not elements of the canvas and the instance never
+   * sees the pointer. A reader who asked for less motion is never woken.
+   */
+  wake(): void;
   /** Where every node is, in the rendered coordinates of the canvas. */
   positions(): Map<string, RenderedBox>;
   /** Where the line of every relation is, in the rendered coordinates. */
@@ -336,6 +368,28 @@ const PAN_DURATION = 320;
  * glitch, and a pan that moves at a constant speed reads as a machine.
  */
 const PAN_EASING = 'ease-in-out-cubic';
+
+/**
+ * How far the node of a walk may end from the middle of the canvas before
+ * the pan is corrected, in rendered pixels.
+ *
+ * The target of a pan is computed when the pan starts. The living spring is
+ * still breathing at the deadline of the bounded watch, so the node can
+ * move a few pixels while the pan is under way. The correction is a **new
+ * eased pan** that ends where the node ended — and it is bounded: the idle
+ * drift that follows is a fraction of a pixel, and it never moves the
+ * picture again.
+ */
+const PAN_CORRECTION_THRESHOLD = 4;
+
+/**
+ * How many corrections a single walk may take.
+ *
+ * The spring cools over the second that follows the contact, and it keeps
+ * moving the node while it does. Three corrections cover the cool-down;
+ * the limit is what keeps a breathing picture from chasing its own drift.
+ */
+const PAN_CORRECTION_LIMIT = 3;
 
 /**
  * The room the picture keeps around itself when it is fitted, in pixels.
@@ -451,15 +505,22 @@ export function createExplorationInstance(
   let adjustingViewport = false;
 
   /**
-   * The greatest movement of the picture, in pixels.
+   * The greatest movement of the picture, in the last step, in pixels.
    *
-   * It is the distance a card travelled since the last time the picture was
-   * drawn. A picture whose cards do not move any more has **settled**: the
-   * layout is done and nothing keeps running.
+   * It is the distance a card travelled since the picture was drawn the
+   * time before. A movement below {@link SETTLE_MOVEMENT} says the picture
+   * has its **shape**; it does not say the spring is stopped — the living
+   * spring keeps breathing below the threshold.
    */
   let movement = Number.POSITIVE_INFINITY;
 
-  /** Whether the picture has come to rest. */
+  /**
+   * Whether the picture has come to rest.
+   *
+   * It is only true for a one-pass layout, or for the spring of a reader
+   * who asked for less motion. The living spring is never settled: it
+   * breathes.
+   */
   let settled = false;
 
   /** The places the cards were in the last time the picture was drawn. */
@@ -468,10 +529,32 @@ export function createExplorationInstance(
   /**
    * How far a card may travel and still be said to have moved, in pixels.
    *
-   * It is a pixel and a half: below it the picture is at rest, and the
-   * layout is stopped.
+   * It is a pixel and a half: below it the picture has its shape. The idle
+   * breath is a fraction of a pixel, so it never crosses the threshold.
    */
   const SETTLE_MOVEMENT = 1.5;
+
+  /**
+   * The least time the watch of a walk runs, in frames.
+   *
+   * The first frame of a spring can be quiet — the cards are where the
+   * previous picture left them — and a watch that ends on it would pan the
+   * viewport before the picture moves. Eight frames are about a seventh of
+   * a second: enough to see the spring start.
+   */
+  const WATCH_MIN_FRAMES = 8;
+
+  /**
+   * The longest the watch of a walk waits, in milliseconds.
+   *
+   * The watch ends when the movement falls below the threshold **or** at
+   * this deadline. The deadline is what keeps a walk from waiting forever
+   * on a living spring, which never stops moving.
+   */
+  const WATCH_DEADLINE_MS = 900;
+
+  /** How often the living spring reports its state, in milliseconds. */
+  const REPORT_INTERVAL_MS = 500;
 
   /**
    * How many ticks of the spring run in one frame.
@@ -493,14 +576,8 @@ export function createExplorationInstance(
   /** The driver of the spring: the frames it asks for. */
   let springDriver: ForceDriver | null = null;
 
-  /**
-   * Whether the reader is **dragging** a card.
-   *
-   * The spring does not fight the pointer: while the card is being dragged,
-   * the simulation is paused and the card keeps the place the pointer puts
-   * it in.
-   */
-  let dragging = false;
+  /** Whether the document is hidden: the spring is paused while it is. */
+  let pageHidden = false;
 
   /**
    * Whether the reader asked for less motion.
@@ -528,6 +605,51 @@ export function createExplorationInstance(
   }
 
   /**
+   * Pauses the spring without forgetting it.
+   *
+   * It is what a hidden tab does: the frames of a document nobody sees are
+   * frames spent on nothing, and the browser may throttle them anyway. The
+   * spring and its places are kept, and the picture resumes where it was.
+   */
+  function pauseSpring(): void {
+    springDriver?.stop();
+  }
+
+  /** Resumes the spring of the picture, if there is one. */
+  function resumeSpring(): void {
+    if (spring === null || springDriver === null) {
+      return;
+    }
+
+    springDriver.start();
+  }
+
+  /**
+   * The tab was hidden or shown.
+   *
+   * A hidden tab stops the spring; the tab that comes back wakes it. The
+   * picture is not rearranged: it continues from the places it had.
+   */
+  function onVisibilityChange(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    pageHidden = document.visibilityState === 'hidden';
+
+    if (pageHidden) {
+      pauseSpring();
+      return;
+    }
+
+    resumeSpring();
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+
+  /**
    * Puts the cards where the spring put them.
    *
    * @param places - The place of every card.
@@ -547,6 +669,11 @@ export function createExplorationInstance(
     // hangs under its card: the picture moved, and they go with it.
     syncRelationCards();
     syncCardText(core);
+
+    // The movement is measured where the places are applied and not on a
+    // `render` event: a pan or a zoom also renders the picture, and it
+    // would say the picture moved when the cards did not.
+    movement = greatestMovement();
   }
 
   /**
@@ -568,15 +695,55 @@ export function createExplorationInstance(
   /**
    * The frames of the animation.
    *
-   * They are the frames of the browser: the spring runs in slices and the
-   * picture is drawn between the slices.
+   * They are the frames of the browser while the spring is awake. The idle
+   * spring asks for a **timeout** instead: it breathes at twelve hertz,
+   * and sixty frames a second of a picture that is already in its place is
+   * battery spent on nothing.
+   *
+   * The handles of the two kinds live in different spaces, so the scheduler
+   * remembers which one it gave out: cancelling a timeout with the number
+   * of a frame would cancel a frame of another picture.
    */
+  const pendingFrames = new Map<number, () => void>();
+  let nextFrameHandle = 1;
+
   const frames = {
-    request(callback: () => void): number {
-      return requestAnimationFrame(callback);
+    request(callback: () => void, delayMs?: number): number {
+      const handle = nextFrameHandle;
+
+      nextFrameHandle += 1;
+
+      if (delayMs === undefined) {
+        const frame = requestAnimationFrame(() => {
+          if (pendingFrames.delete(handle)) {
+            callback();
+          }
+        });
+
+        pendingFrames.set(handle, () => cancelAnimationFrame(frame));
+
+        return handle;
+      }
+
+      const timer = setTimeout(() => {
+        if (pendingFrames.delete(handle)) {
+          callback();
+        }
+      }, delayMs);
+
+      pendingFrames.set(handle, () => clearTimeout(timer));
+
+      return handle;
     },
     cancel(handle: number): void {
-      cancelAnimationFrame(handle);
+      const cancel = pendingFrames.get(handle);
+
+      if (cancel === undefined) {
+        return;
+      }
+
+      pendingFrames.delete(handle);
+      cancel();
     }
   };
 
@@ -605,7 +772,19 @@ export function createExplorationInstance(
     return greatest;
   }
 
+  /** Wakes the living spring: a touch of the reader. */
+  function wakeSpring(): void {
+    if (pageHidden) {
+      // A hidden tab is not touched: the spring resumes when it is shown.
+      return;
+    }
+
+    springDriver?.wake();
+  }
+
   core.on('tap', 'node', (event) => {
+    wakeSpring();
+
     // The card of a relation is a node of its own: a tap on it is a tap on
     // the relation, not on a node of the window.
     const relation = relationIdOf(event.target);
@@ -624,13 +803,23 @@ export function createExplorationInstance(
   });
 
   core.on('tap', (event) => {
+    wakeSpring();
+
     if (event.target === core) {
       options.onselect(null);
     }
   });
 
+  // The pointer moves over the picture: the spring wakes, even when it is
+  // not over a card. The idle breath is for a picture nobody is touching.
+  core.on('mousemove', () => {
+    wakeSpring();
+  });
+
   for (const kind of ['node', 'edge'] as const) {
     core.on('mouseover', kind, (event) => {
+      wakeSpring();
+
       const position = event.renderedPosition;
       const target = event.target;
 
@@ -654,42 +843,53 @@ export function createExplorationInstance(
     });
   }
 
-  core.on('grab', 'node', () => {
-    // The reader has the pointer down on a card: the spring stops, so the
-    // picture does not fight the pointer.
-    dragging = true;
-    springDriver?.stop();
-  });
-
-  core.on('dragfree', 'node', (event) => {
-    dragging = false;
+  core.on('grab', 'node', (event) => {
+    // The reader has the pointer down on a card: the card is **pinned**,
+    // where it is, and the spring works around it. The picture is not
+    // paused: the neighbours part to make room, which is the movement the
+    // reader reads as "the card has weight".
+    wakeSpring();
 
     const place = event.target.position();
 
-    // The card keeps the place it was put: the spring is told about it, so
-    // the simulation works around it.
     spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
-
-    options.ondrag(cardIdOf(event.target), place);
-
-    // The spring goes on with the rest of the picture.
-    if (spring !== null && springDriver !== null && !spring.settled) {
-      springDriver.start();
-    }
   });
 
-  // The text of a card follows the card while the user drags it, and the
-  // card of a relation follows its line.
-  core.on('drag', 'node', () => {
+  core.on('drag', 'node', (event) => {
+    // The card follows the pointer, and the spring is told where it is:
+    // the collision takes the pinned card as an obstacle and the links pull
+    // the neighbours, so the cards around it part.
+    const place = event.target.position();
+
+    spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
+    wakeSpring();
+
     syncRelationCards();
     syncCardText(core);
   });
 
-  core.on('render', () => {
-    movement = greatestMovement();
+  core.on('dragfree', 'node', (event) => {
+    const place = event.target.position();
 
-    if (movement < SETTLE_MOVEMENT) {
-      settled = true;
+    // The card keeps the place it was put: the spring is told about it, so
+    // the simulation works around it. It is pinned for the rest of the
+    // view, and a later layout starts from that place.
+    spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
+
+    options.ondrag(cardIdOf(event.target), place);
+    wakeSpring();
+  });
+
+  core.on('render', () => {
+    // The spring measures its own movement when it applies its places. The
+    // other layouts do not: their movement is measured here, when the
+    // picture is drawn.
+    if (layout !== 'd3') {
+      movement = greatestMovement();
+
+      if (movement < SETTLE_MOVEMENT) {
+        settled = true;
+      }
     }
 
     options.onrender();
@@ -712,6 +912,10 @@ export function createExplorationInstance(
     const zoom = clampZoom(core.zoom());
 
     readerZoom = zoom;
+
+    // The reader has touched the picture: the spring wakes, even if the
+    // wheel was only a way of reading the titles.
+    wakeSpring();
 
     options.onzoom?.(zoom, 'reader');
   });
@@ -933,17 +1137,21 @@ export function createExplorationInstance(
    * the node over {@link PAN_DURATION} milliseconds, eased in and out. The
    * zoom is **not** touched: a walk moves the picture, not the zoom.
    *
-   * The pan does not fight the spring: the spring has already settled when
-   * the pan starts, so the node is in its final place and the picture ends
-   * centred on it.
+   * The pan does not fight the spring: the bounded watch has already
+   * reached the shape — or its deadline — when the pan starts. The spring
+   * may still be cooling while the pan runs, so the node can move under it;
+   * the pan is **corrected** as the pan ends, and the corrections stop when
+   * the node is on the mark or the cool-down budget is spent. The idle drift
+   * that follows never moves the picture again.
    *
    * A reader who asked for less motion gets the picture in its place at
    * once: an instant pan is the correct behaviour for someone who asked
    * for less movement.
    *
    * @param nodeId - The id of the node the picture is centred on.
+   * @param corrections - How many corrections this walk has taken.
    */
-  function panTo(nodeId: string): void {
+  function panTo(nodeId: string, corrections = 0): void {
     const node = core.getElementById(nodeId);
 
     if (node.length === 0) {
@@ -963,8 +1171,41 @@ export function createExplorationInstance(
     core.animate({
       center: { eles: node },
       duration: PAN_DURATION,
-      easing: PAN_EASING
+      easing: PAN_EASING,
+      complete: () => {
+        if (corrections >= PAN_CORRECTION_LIMIT) {
+          return;
+        }
+
+        const current = core.getElementById(nodeId);
+
+        if (current.length === 0) {
+          return;
+        }
+
+        if (distanceFromCentre(current.position()) <= PAN_CORRECTION_THRESHOLD) {
+          return;
+        }
+
+        panTo(nodeId, corrections + 1);
+      }
     });
+  }
+
+  /**
+   * How far a node is from the middle of the canvas, in rendered pixels.
+   *
+   * @param node - The node to measure.
+   * @returns The distance from the middle of the canvas.
+   */
+  function distanceFromCentre(node: Position): number {
+    const zoom = core.zoom();
+    const pan = core.pan();
+
+    return Math.hypot(
+      node.x * zoom + pan.x - core.width() / 2,
+      node.y * zoom + pan.y - core.height() / 2
+    );
   }
 
   /**
@@ -1005,8 +1246,8 @@ export function createExplorationInstance(
    * - after that, the zoom is the reader's and nothing imposes it again:
    *   the picture grows and the zoom stays;
    * - a **walk** moves the picture onto the node the reader walked to, with
-   *   an eased pan. The spring settles first, so the pan does not fight the
-   *   simulation and the picture ends centred on the node;
+   *   an eased pan. The bounded watch ends first, so the pan does not
+   *   fight the simulation and the picture ends centred on the node;
    * - a layout that only rearranged the picture keeps the place the reader
    *   has, unless it left the node the view presents far behind.
    *
@@ -1058,16 +1299,21 @@ export function createExplorationInstance(
   }
 
   /**
-   * Runs the **spring** of the exploration view.
+   * Runs the **living spring** of the exploration view.
    *
    * The spring is the pure module of `./force-layout`: the cards are
    * given to it with the **real size** of their cards, and it answers with
-   * the places they find.
+   * the places they find. The picture is arranged **in slices**, across the
+   * frames, and then it keeps breathing: it never stops.
    *
-   * The picture is arranged **in slices**, across the frames: the reader
-   * sees the cards find their place, and the simulation stops by itself
-   * when it comes to rest. A reader who asked for less motion gets the
-   * same picture in one go.
+   * The viewport is not moved while the spring is arranging the picture.
+   * A **bounded watch** decides when the picture has a shape: the movement
+   * falls below the threshold, or the deadline passes. Only then is the
+   * picture fitted or panned — once per arrangement, and never again by
+   * the idle drift.
+   *
+   * A reader who asked for less motion gets the same picture in one go,
+   * and no driver is left running: the spring never wakes.
    *
    * @param presentedNodeId - The node the view presents.
    * @param grew - Whether the picture holds nodes it did not hold before.
@@ -1125,7 +1371,16 @@ export function createExplorationInstance(
     });
 
     core.edges().forEach((edge) => {
-      links.push({ source: edge.source().id(), target: edge.target().id() });
+      // The weight of the relation is the score the community gave it. It
+      // is read from the element: the data of the picture is the only
+      // truth of the spring.
+      const score = edge.data('communityScore');
+
+      links.push({
+        source: edge.source().id(),
+        target: edge.target().id(),
+        communityScore: typeof score === 'number' ? score : undefined
+      });
     });
 
     const created = createForceLayout(inputs, links, { pinned });
@@ -1145,41 +1400,74 @@ export function createExplorationInstance(
     // The relations are drawn with the shape the view was given.
     refreshEdgeStyles();
 
-    // The picture is centred: the spring arranges it around the origin,
-    // and the viewport has to show it.
-    //
-    // It is done **once**: the picture that follows keeps the place the
-    // reader has, and the walk moves the picture with an eased pan.
+    // The picture is centred: the spring arranges it around the origin, and
+    // the viewport has to show it. It is done **once**: the picture that
+    // follows keeps the place the reader has, and the walk moves the picture
+    // with an eased pan.
     if (!fitted) {
       core.center(core.elements());
     }
 
-    const report = (): void => {
-      movement = greatestMovement();
+    /** Whether the bounded watch of this arrangement is over. */
+    let watchDone = false;
 
-      if (movement < SETTLE_MOVEMENT) {
-        settled = true;
-      }
+    /** How many frames the bounded watch has seen. */
+    let watchFrames = 0;
+
+    /** Whether the picture reached its shape below the threshold. */
+    let shapeReached = false;
+
+    /** The instant the bounded watch started. */
+    const watchStartedAt = Date.now();
+
+    /** The instant the last report went out. */
+    let lastReportAt = watchStartedAt;
+
+    const report = (): void => {
+      const result = created.result();
 
       options.onlayout?.({
         layout: 'd3',
-        ms: created.result().ms,
-        settled: created.settled,
+        ms: result.ms,
+        settled: result.settled,
         movement,
         overlaps: overlappingPairs(),
-        ticks: created.ticks,
-        frameMs: median(frameTimes)
+        ticks: result.ticks,
+        frameMs: median(frameTimes),
+        tickMs: result.ticks === 0 ? 0 : result.ms / result.ticks,
+        alive: true,
+        awake: springDriver?.awake === true,
+        shapeReached,
+        threshold: SETTLE_MOVEMENT
       });
     };
 
     if (prefersReducedMotion()) {
       // Less motion: the picture is arranged in one go, and it is the same
-      // picture the animated path arrives at.
+      // picture the animated path arrives at. **No driver is created**: the
+      // spring does not breathe, and no touch can wake it.
       const result = runForceLayoutToRest(created);
 
       applyPlaces(result.positions);
       presentPicture(presentedNodeId, grew);
-      report();
+      movement = result.settled ? 0 : Number.POSITIVE_INFINITY;
+      shapeReached = result.settled;
+      settled = result.settled;
+
+      options.onlayout?.({
+        layout: 'd3',
+        ms: result.ms,
+        settled: result.settled,
+        movement,
+        overlaps: result.overlaps,
+        ticks: result.ticks,
+        frameMs: median(frameTimes),
+        tickMs: result.ticks === 0 ? 0 : result.ms / result.ticks,
+        alive: false,
+        awake: false,
+        shapeReached,
+        threshold: SETTLE_MOVEMENT
+      });
 
       spring = null;
 
@@ -1189,26 +1477,44 @@ export function createExplorationInstance(
     springDriver = driveForceLayout(created, {
       scheduler: frames,
       ticksPerFrame: TICKS_PER_FRAME,
+      living: true,
       onFrame: (places) => {
-        if (dragging) {
-          // The reader has the pointer down on a card: the picture does not
-          // move under the pointer.
-          return;
-        }
-
         const began = performance.now();
 
         applyPlaces(places);
 
         frameTimes.push(performance.now() - began);
-      },
-      onSettled: () => {
-        springDriver = null;
+        watchFrames += 1;
 
-        // The picture has come to rest: it is framed and the report goes
-        // out.
-        presentPicture(presentedNodeId, grew);
-        report();
+        const at = Date.now();
+        const quiet = watchFrames >= WATCH_MIN_FRAMES && movement < SETTLE_MOVEMENT;
+        const late = at - watchStartedAt >= WATCH_DEADLINE_MS;
+
+        if (!watchDone) {
+          if (!quiet && !late) {
+            return;
+          }
+
+          watchDone = true;
+          shapeReached = movement < SETTLE_MOVEMENT;
+
+          // The watch is the **only** thing that moves the viewport after
+          // an arrangement. A walk glides to its node here; the idle drift
+          // that follows never re-triggers it.
+          presentPicture(presentedNodeId, grew);
+          report();
+          lastReportAt = at;
+
+          return;
+        }
+
+        // The readout follows the living spring: a report every half a
+        // second is enough to say whether it is awake and whether the shape
+        // has been reached, and it is not a frame of the picture.
+        if (at - lastReportAt >= REPORT_INTERVAL_MS) {
+          report();
+          lastReportAt = at;
+        }
       }
     });
 
@@ -1312,8 +1618,6 @@ export function createExplorationInstance(
 
     presentPicture(presentedNodeId, grew);
 
-    movement = greatestMovement();
-
     options.onlayout?.({
       layout: 'dag',
       ms: result.ms,
@@ -1338,35 +1642,10 @@ export function createExplorationInstance(
       return;
     }
 
-    const layoutOptions = explorationLayoutOptions(currentLayout);
-
-    if (currentLayout === 'fcose') {
-      // The **force** layout needs a start: a simulation that begins with
-      // every node in the same place has nothing to push apart. The nodes
-      // are placed on a circle, deterministically, so the same graph always
-      // starts from the same picture.
-      const cards = cardNodes(core.elements());
-      const seeds = seedCirclePositions(cards.length);
-
-      cards.forEach((card, index) => {
-        const seed = seeds[index];
-
-        if (seed !== undefined) {
-          card.position(seed);
-        }
-      });
-
-      // The nodes the user dragged keep their place. The force layout is
-      // **told** about them: its glide would fight a place set by hand.
-      const constraints = [...pinned.entries()].map(([nodeId, position]) => ({
-        nodeId,
-        position
-      }));
-
-      if (constraints.length > 0 && 'fixedNodeConstraint' in layoutOptions) {
-        layoutOptions.fixedNodeConstraint = constraints;
-      }
-    }
+    // `dagre` is the only layout left in this branch: the living spring
+    // and the clone of `d3-dag` are handled above. It computes the picture
+    // once, and it stops.
+    const layoutOptions = exploreLayoutOptions();
 
     // The picture is about to move: it has not settled yet.
     settled = false;
@@ -1509,6 +1788,10 @@ export function createExplorationInstance(
 
     refreshEdgeStyles,
 
+    wake() {
+      wakeSpring();
+    },
+
     positions() {
       const boxes = new Map<string, RenderedBox>();
 
@@ -1603,6 +1886,12 @@ export function createExplorationInstance(
       // The observer dies with the instance: a canvas that is gone must not
       // be resized any more.
       stopObserving();
+
+      // The listener of the tab dies with it: a hidden tab must not keep a
+      // reference to a canvas that is gone.
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
 
       // The spring dies with it: no frame is asked for a canvas that is
       // not there any more.

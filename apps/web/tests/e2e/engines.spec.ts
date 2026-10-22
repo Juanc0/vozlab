@@ -27,14 +27,18 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
     page.getByRole('heading', { name: 'Los motores, de uno en uno' })
   ).toBeVisible();
 
-  // The engines are a **tablist**: five tabs, one of them selected.
+  // The engines are a **tablist**: three tabs, one of them selected.
   const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveCount(3);
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
-  // The first engine is on screen, and it is the **only** picture.
+  // The first engine is on screen, and it is the **only** picture. A
+  // hierarchy does not breathe, and the interface says so.
   await expect(page.getByRole('img', { name: /Cytoscape \+ dagre/ })).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(1);
+  await expect(page.getByTestId('hierarchy-note')).toHaveText(
+    'Una jerarquía no respira: sus rangos son el dibujo.'
+  );
 
   // The keyboard moves between the tabs, and the engine that is chosen
   // takes over the same space.
@@ -45,6 +49,13 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
   await expect(page.getByRole('img', { name: /Cytoscape \+ d3-force/ })).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(1);
 
+  // The living spring says it is alive and moves at rest: it is never
+  // called settled, and no hierarchy note is shown for it.
+  const growReadout = page.getByRole('region', { name: 'Las medidas del motor' });
+  await expect(growReadout.getByTestId('alive-note')).toBeVisible();
+  await expect(growReadout.getByText(/Viva: se mueve en reposo|Despierta/)).toBeVisible();
+  await expect(page.getByTestId('hierarchy-note')).toHaveCount(0);
+
   // The third tab is the **clone** of dagre: the layered arrangement of
   // `d3-dag`. The library is a dependency of the comparison alone — the
   // picture of the app never imports it — and the comparison hands the
@@ -53,6 +64,7 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
 
   await expect(page.getByRole('img', { name: /Cytoscape \+ d3-dag/ })).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(1);
+  await expect(page.getByTestId('hierarchy-note')).toBeVisible();
 
   const readout = page.getByRole('region', { name: 'Las medidas del motor' });
 
@@ -67,20 +79,8 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
 
   await expect(reversed).toHaveText(/^\d+ relaciones$/);
 
-  // The last engine draws with WebGL: a browser that cannot draw it says
-  // so instead of leaving a blank space.
-  await page.keyboard.press('End');
-
-  await expect(tabs.nth(4)).toHaveAttribute('aria-selected', 'true');
-
-  const sigma = page.getByRole('img', { name: /Sigma\.js \+ Graphology/ });
-
-  if ((await sigma.count()) === 0) {
-    await expect(page.getByRole('alert')).toBeVisible();
-  } else {
-    await expect(sigma).toBeVisible();
-    await expect(page.getByRole('img')).toHaveCount(1);
-  }
+  // The deprecated engines are gone: no tab, no copy, no canvas.
+  await expect(page.getByRole('tab', { name: /Sigma|fcose/ })).toHaveCount(0);
 
   // The workspace is the window: the page does not scroll.
   await expect

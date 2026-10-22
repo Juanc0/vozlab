@@ -24,7 +24,6 @@
 
 import type { Position } from 'cytoscape';
 import type { DagreLayoutOptions } from 'cytoscape-dagre';
-import { CARD_WIDTH } from '../node-card';
 
 /**
  * The separation between two nodes.
@@ -93,122 +92,22 @@ export function exploreLayoutOptions(): DagreLayoutOptions {
  * The layouts the exploration view can arrange the picture with.
  *
  * `dagre` is the layout of the app: a deterministic arrangement, never a
- * physics simulation. `fcose` is the **force** layout of the extension —
- * it is kept for the comparison of the engines.
+ * physics simulation. It computes the picture **once** and stops.
  *
- * `d3` is the **spring of the app**: the pure module of `./force-layout`,
- * a simulation of `d3-force` with a rectangular collision force. It is
- * arranged in slices across the frames, so the reader sees the picture
- * find its place, and it stops by itself when it comes to rest.
+ * `d3` is the **living spring of the app**: the pure module of
+ * `./force-layout`, a simulation of `d3-force` with a rectangular collision
+ * force. It is arranged in slices across the frames, and it never stops:
+ * it breathes at rest and wakes on contact. It is the only layout that
+ * moves after the shape is reached.
  *
  * `dag` is the **clone of `dagre`** — the layered arrangement of `d3-dag`.
  * It is a **candidate**: it is in the comparison of the engines and nowhere
  * else, and `dagre` stays in production. The library is a dependency of
  * the **development surface**, and the comparison hands the clone over to
  * the instance when it mounts the engine — the instance never imports it.
+ * Like `dagre`, it computes the picture once and stops.
  */
-export type GraphLayout = 'dagre' | 'fcose' | 'd3' | 'dag';
-
-/**
- * The options of the **force** layout of `fcose`.
- *
- * They are the options of the extension, written down here so the layout
- * does not have to be imported to be arranged: the extension itself is
- * registered by the development surface that uses it, and the library is
- * **not** a part of the bundle of the app.
- */
-export interface FcoseLayoutOptions {
-  name: 'fcose';
-  /** The quality of the simulation: `default` is the one of the extension. */
-  quality: 'default';
-  /**
-   * Whether the simulation starts from random places.
-   *
-   * `fcose` has **no** `randomSeed`: its spectral step draws its starting
-   * places with `Math.random()`, and there is no way to seed it. The only
-   * reproducible picture is the one that starts from the places the nodes
-   * already have — which is what `randomize: false` means.
-   */
-  randomize: boolean;
-  /** The separation between two nodes, in pixels. */
-  nodeSeparation: number;
-  /** The length an edge would like to have, in pixels. */
-  idealEdgeLength: number;
-  /** How much an edge resists being stretched. */
-  edgeElasticity: number;
-  /** The gravity that keeps the picture together. */
-  gravity: number;
-  /**
-   * The repulsion between two nodes.
-   *
-   * The default of the extension is a constant: every node pushes the
-   * others with the same force, whatever its size. A node of the app is a
-   * **card** — a rectangle of a hundred and forty pixels — and a constant
-   * repulsion lets the cards lie on top of each other. The repulsion is
-   * therefore taken from the **area** of the card.
-   */
-  nodeRepulsion: (node: { outerWidth(): number; outerHeight(): number }) => number;
-  /** The number of iterations of the simulation. */
-  numIter: number;
-  /** Whether the picture glides to its new place. */
-  animate: boolean;
-  /** The duration of the glide, in milliseconds. */
-  animationDuration: number;
-  /** The easing of the glide. */
-  animationEasing: string;
-  /** Whether the viewport is fitted to the picture. */
-  fit: boolean;
-  /**
-   * The nodes that must not move.
-   *
-   * The nodes the user dragged keep their place: the force layout is told
-   * about them, because a place set by hand would fight the glide.
-   */
-  fixedNodeConstraint?: Array<{ nodeId: string; position: Position }>;
-}
-
-/** The options of the force layout of `fcose`. */
-export function fcoseLayoutOptions(): FcoseLayoutOptions {
-  return {
-    name: 'fcose',
-    quality: 'default',
-    // The simulation starts from the places the nodes already have: the
-    // extension has no seed, and this is the only way the same graph gives
-    // the same picture twice.
-    randomize: false,
-    nodeSeparation: NODE_SEPARATION,
-    idealEdgeLength: CARD_WIDTH * 1.4,
-    edgeElasticity: 0.45,
-    gravity: 0.25,
-    // The repulsion follows the **area** of the card: a card of a hundred
-    // and forty pixels pushes the others as much as the extension's
-    // constant, and a bigger card pushes them more.
-    nodeRepulsion: (node) => {
-      const area = node.outerWidth() * node.outerHeight();
-
-      return (4500 * area) / (CARD_WIDTH * 60);
-    },
-    numIter: 2500,
-    // The picture **glides** to its new place: the spring the reader sees
-    // is this glide, and it always ends.
-    animate: true,
-    animationDuration: 800,
-    animationEasing: 'ease-out',
-    fit: false
-  };
-}
-
-/**
- * The options of the layout the exploration view is arranged with.
- *
- * @param layout - The layout to arrange the picture with.
- * @returns The options of the layout.
- */
-export function explorationLayoutOptions(
-  layout: Exclude<GraphLayout, 'd3' | 'dag'>
-): DagreLayoutOptions | FcoseLayoutOptions {
-  return layout === 'fcose' ? fcoseLayoutOptions() : exploreLayoutOptions();
-}
+export type GraphLayout = 'dagre' | 'd3' | 'dag';
 
 /**
  * The places the force layout starts from.
