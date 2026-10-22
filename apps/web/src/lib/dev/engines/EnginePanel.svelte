@@ -19,6 +19,7 @@
   import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
     import { engineDescriptor, type EngineId, type EngineMeasurement } from './engines';
+  import { createDagLayout } from './dag';
   import SigmaPanel from './SigmaPanel.svelte';
 
   interface Props {
@@ -147,6 +148,13 @@
         {edgeStyle}
         {label}
         layout={descriptor.layout ?? 'dagre'}
+        /**
+         * The **clone** is handed over here: the library `d3-dag` is a
+         * dependency of this development surface, and the picture of the
+         * app never imports it.
+         */
+        dagLayout={createDagLayout}
+        onerror={(message) => onerror?.(message)}
         onselect={(nodeId) => onselect?.(nodeId)}
         ontoggle={(nodeId) => ontoggle?.(nodeId)}
         onlayout={(report) => {

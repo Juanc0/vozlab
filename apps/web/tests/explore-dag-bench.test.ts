@@ -17,12 +17,12 @@ import cytoscape from 'cytoscape';
 import type { CytoscapeOptions } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import {
-  createDagLayout,
   relationsAgainstFlow,
   type DagEdgeInput,
   type DagNodeInput,
   type DagPosition
 } from '$lib/graph/explore/dag-layout';
+import { createDagLayout } from '$lib/dev/engines/dag';
 import { countOverlappingPairs } from '$lib/graph/explore/force-layout';
 import { cyclicFixture } from '$lib/dev/engines/dag-fixture';
 

@@ -18,6 +18,13 @@
     selectedNodeId?: string | null;
     presentedNodeId?: string | null;
     edgeStyle?: string;
+    /**
+     * The **clone** the comparison hands over.
+     *
+     * The stub says whether it got one: the clone is the dependency of the
+     * development surface, and the picture of the app never has one.
+     */
+    dagLayout?: unknown;
     onselect?: (nodeId: string | null) => void;
     ontoggle?: (nodeId: string) => void;
     onlayout?: (report: {
@@ -30,7 +37,7 @@
     }) => void;
   }
 
-  let { layout = 'dagre', label = 'El lienzo', onlayout }: Props = $props();
+  let { layout = 'dagre', label = 'El lienzo', dagLayout = undefined, onlayout }: Props = $props();
 
   /** The time each arrangement takes — the number says which engine it is. */
   const TIMES: Record<string, number> = {
@@ -52,4 +59,10 @@
   });
 </script>
 
-<div data-testid="cytoscape-canvas" data-layout={layout} role="img" aria-label={label}></div>
+<div
+  data-testid="cytoscape-canvas"
+  data-layout={layout}
+  data-dag-layout={typeof dagLayout === 'function' ? 'clone' : 'none'}
+  role="img"
+  aria-label={label}
+></div>

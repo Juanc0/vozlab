@@ -5,6 +5,7 @@
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import type { ExplorationInstance, LayoutReport, RenderedBox, RenderedRelation } from '$lib/graph/explore/instance';
   import type { GraphLayout } from '$lib/graph/explore/layout';
+  import type { DagLayoutRunner } from '$lib/graph/explore/dag-layout';
   import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
   import { edgeColor, formatAttributeValue } from '$lib/graph/elements';
   import { shortPseudonym } from '$lib/graph/relation-card';
@@ -113,6 +114,23 @@
      * surface that compares the engines is the only reader.
      */
     onlayout?: (report: LayoutReport) => void;
+    /**
+     * The **clone of `dagre`** — the layered arrangement of `d3-dag`.
+     *
+     * It is **handed over** and not imported: the library is a dependency
+     * of the development surface that compares the engines, and a canvas
+     * that imported it would carry it into the production bundle. The
+     * canvas of the app is arranged with `dagre` or with the spring, and
+     * neither of them needs the clone.
+     */
+    dagLayout?: DagLayoutRunner;
+    /**
+     * Called when the picture could not be arranged.
+     *
+     * The app does not read it: the development surface that compares the
+     * engines is the only reader.
+     */
+    onerror?: (message: string) => void;
   }
 
   let {
@@ -136,7 +154,9 @@
     ontoggle,
     onselectedge,
     ontoggleedge,
-    onlayout
+    onlayout,
+    dagLayout = undefined,
+    onerror = undefined
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -256,6 +276,8 @@
   let toggleEdgeHandler: ((edgeId: string) => void) | undefined;
   let layoutHandler: ((report: LayoutReport) => void) | undefined;
   let zoomHandler: ((zoom: number, source: ZoomSource) => void) | undefined;
+  let errorHandler: ((message: string) => void) | undefined;
+  let dagLayoutRunner: DagLayoutRunner | undefined;
 
   $effect(() => {
     selectHandler = onselect;
@@ -265,6 +287,8 @@
     toggleEdgeHandler = ontoggleedge;
     layoutHandler = onlayout;
     zoomHandler = onzoomchange;
+    errorHandler = onerror;
+    dagLayoutRunner = dagLayout;
   });
 
   /**
@@ -302,6 +326,10 @@
         // The zoom of the reader is read **once**: it belongs to the
         // reader, and the picture must not impose it again.
         zoom: untrack(() => zoom),
+        // The **clone** is read once too: the comparison of the engines
+        // hands it over when it mounts the engine, and the canvas of the
+        // app never gets one.
+        dagLayout: untrack(() => dagLayoutRunner),
         onselect: (nodeId) => selectHandler?.(nodeId),
         onnavigate: (nodeId) => navigateHandler?.(nodeId),
         onselectedge: (edgeId) => selectEdgeHandler?.(edgeId),
@@ -345,6 +373,9 @@
         },
         onlayout: (report) => {
           layoutHandler?.(report);
+        },
+        onerror: (message) => {
+          errorHandler?.(message);
         },
         onrender: () => {
           if (created !== null) {

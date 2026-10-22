@@ -533,8 +533,15 @@ Decided, and not to be re-opened without evidence:
       shared layout. The readout is **per implementation**: a report arrives
       with the id of the engine that produced it, and switching tabs
       forgets the numbers.
-- [ ] 3.32 The clone of `d3-dag` must not travel in the production bundle:
-      it is a candidate, and it weighs 44 KB gzip there for nothing.
+- [x] 3.32 The clone of `d3-dag` must not travel in the production bundle:
+      it is a candidate, and it weighs 44 KB gzip there for nothing. Result:
+      the **arrangement** moved to the development surface (the only module
+      that imports `d3-dag`), the module in the graph layer stayed **pure**
+      (the cycle detection, the count against the flow, the types), and the
+      production canvas receives the clone **through an option** — with a
+      **type-only** import, which is erased at compile time. The production
+      bundle lost **177 KB raw / 35 KB gzip**, and `sugiyama`, `decross` and
+      `zherebko` are in **no file** of it.
 - [ ] 3.27 The card as one object: the text becomes a child of the card
       instead of a loose element resynchronised on every frame of a drag.
 - [ ] 3.28 A third painter in the comparison: `d3` and a hand-written SVG

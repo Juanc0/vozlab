@@ -16,13 +16,13 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  createDagLayout,
   detectCycles,
   relationsAgainstFlow,
   type DagEdgeInput,
   type DagNodeInput,
   type DagPosition
 } from '$lib/graph/explore/dag-layout';
+import { createDagLayout } from '$lib/dev/engines/dag';
 import { countOverlappingPairs } from '$lib/graph/explore/force-layout';
 import { cyclicFixture } from '$lib/dev/engines/dag-fixture';
 import cytoscape from 'cytoscape';

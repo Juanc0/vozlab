@@ -45,6 +45,28 @@ test('the engines are tabs of one workspace: one at a time, and the list is the 
   await expect(page.getByRole('img', { name: /Cytoscape \+ d3-force/ })).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(1);
 
+  // The third tab is the **clone** of dagre: the layered arrangement of
+  // `d3-dag`. The library is a dependency of the comparison alone — the
+  // picture of the app never imports it — and the comparison hands the
+  // clone over to the picture it mounts.
+  await page.getByRole('tab', { name: 'Cytoscape + d3-dag' }).click();
+
+  await expect(page.getByRole('img', { name: /Cytoscape \+ d3-dag/ })).toBeVisible();
+  await expect(page.getByRole('img')).toHaveCount(1);
+
+  const readout = page.getByRole('region', { name: 'Las medidas del motor' });
+
+  // The time the arrangement took.
+  await expect(readout.getByText(/ms en total/)).toBeVisible();
+
+  // The relations the arrangement had to reverse to order the graph: a
+  // **number**, and not the dash of an engine that does not report them.
+  const reversed = readout
+    .locator('dt', { hasText: 'Relaciones invertidas' })
+    .locator('xpath=following-sibling::dd[1]');
+
+  await expect(reversed).toHaveText(/^\d+ relaciones$/);
+
   // The last engine draws with WebGL: a browser that cannot draw it says
   // so instead of leaving a blank space.
   await page.keyboard.press('End');

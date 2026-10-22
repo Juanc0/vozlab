@@ -101,10 +101,11 @@ export function exploreLayoutOptions(): DagreLayoutOptions {
  * arranged in slices across the frames, so the reader sees the picture
  * find its place, and it stops by itself when it comes to rest.
  *
- * `dag` is the **clone of `dagre`** — the pure module of `./dag-layout`,
- * a layered arrangement of `d3-dag`. It is a **candidate**: it is in the
- * comparison of the engines and nowhere else, and `dagre` stays in
- * production.
+ * `dag` is the **clone of `dagre`** — the layered arrangement of `d3-dag`.
+ * It is a **candidate**: it is in the comparison of the engines and nowhere
+ * else, and `dagre` stays in production. The library is a dependency of
+ * the **development surface**, and the comparison hands the clone over to
+ * the instance when it mounts the engine — the instance never imports it.
  */
 export type GraphLayout = 'dagre' | 'fcose' | 'd3' | 'dag';
 

@@ -56,9 +56,9 @@ import {
   type ForcePosition
 } from './force-layout';
 import {
-  createDagLayout,
   relationsAgainstFlow,
   type DagEdgeInput,
+  type DagLayoutRunner,
   type DagNodeInput
 } from './dag-layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
@@ -179,6 +179,28 @@ export interface ExplorationInstanceOptions {
    * the controls) or the view (the fit of the picture).
    */
   onzoom?: (zoom: number, source: ZoomSource) => void;
+  /**
+   * Called when the picture could not be arranged.
+   *
+   * The app does not ask for it: the production picture is arranged with
+   * `dagre` or with the spring, and neither of them fails. The development
+   * surface that compares the engines is the only reader.
+   */
+  onerror?: (message: string) => void;
+  /**
+   * The **clone of `dagre`** — the layered arrangement of `d3-dag`.
+   *
+   * It is **handed over**, not imported: the library `d3-dag` is a
+   * dependency of the **development surface** only, and an instance that
+   * imported it would carry forty kilobytes of Sugiyama into the
+   * production bundle for a layout that only the comparison of the engines
+   * ever asks for.
+   *
+   * The comparison gives it to the instance when it mounts the engine. A
+   * production instance never gets one, and the `dag` layout is never
+   * chosen there.
+   */
+  dagLayout?: DagLayoutRunner;
 }
 
 /** How the elements of the exploration view are drawn. */
@@ -1237,11 +1259,27 @@ export function createExplorationInstance(
    * The clone is a **candidate**: it is in the comparison of the engines
    * and nowhere else. `dagre` stays in production.
    *
+   * The clone is **handed over** by the comparison of the engines and not
+   * imported here: the library is the dependency of the development
+   * surface, and the production bundle must not carry it.
+   *
    * The arrangement is **synchronous** — a layered arrangement is computed
    * once — and it breaks the cycles of the relation graph on the way: the
    * relations it breaks are reported, so the reader is told.
    */
   function runDagLayout(presentedNodeId: string | null, grew: boolean): void {
+    const clone = options.dagLayout;
+
+    if (clone === undefined) {
+      // The clone was asked for and it was not given: the picture says so
+      // instead of arranging itself with something else.
+      options.onerror?.(
+        '[vozlab/web] The clone of dagre was asked for and it was not given to the picture.'
+      );
+
+      return;
+    }
+
     const inputs: DagNodeInput[] = [];
     const links = relationEdges();
 
@@ -1253,7 +1291,7 @@ export function createExplorationInstance(
       });
     });
 
-    const result = createDagLayout(inputs, links);
+    const result = clone(inputs, links);
 
     // The picture is about to move: it has not settled yet.
     settled = false;

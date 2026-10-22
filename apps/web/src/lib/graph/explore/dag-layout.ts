@@ -1,11 +1,11 @@
 /**
- * The **DAG layout** — a clone of the layout of `dagre` that arranges the
- * picture with `d3-dag`.
+ * The **DAG layout** — the **pure** part of the clone of the layout of
+ * `dagre`.
  *
  * The clone exists because the technology is worth trying **without losing
- * what is there**: `cytoscape-dagre` stays in production, and this module
- * is a second arrangement of the same picture, side by side with the
- * first one, in the comparison of the engines.
+ * what is there**: `cytoscape-dagre` stays in production, and the clone is
+ * a second arrangement of the same picture, side by side with the first
+ * one, in the comparison of the engines.
  *
  * ## What a DAG is
  *
@@ -29,14 +29,22 @@
  * noticed, because nobody had counted. It is a live bug of the product,
  * and this module counts it.
  *
- * ## What this module does
+ * ## What this module is
  *
- * It is a **pure module** — no DOM, no canvas, no Cytoscape. It takes the
- * nodes (with the **real size** of their cards), the relations and the
- * options, and it answers with the **places** of the nodes. The reason is
- * the same as the reason of `./force-layout`: a layout that returns places
- * is testable without a canvas, and it survives a change of painter. The
- * painter is under review.
+ * It is a **pure module** — no DOM, no canvas, no Cytoscape — and it holds
+ * the two things that are pure:
+ *
+ * - the **cycles** of the relation graph are found, and the relations that
+ *   close them are named;
+ * - the **measure of the flow**: the relations whose arrow is drawn
+ *   against the flow of the picture.
+ *
+ * The **arrangement itself** — the Sugiyama of `d3-dag` — is **not** here:
+ * the library belongs to the **development surface** (`$lib/dev/engines/dag`),
+ * and the comparison of the engines hands it to the instance when it mounts
+ * the engine. A production bundle carries the cycles and the measure, and
+ * none of the library: the measure is what the report of `dagre` needs,
+ * and the report is the only thing that reads it.
  *
  * The cycles are handled **visibly**:
  *
@@ -59,43 +67,7 @@
  * writing that hangs under its card and that the painter places by hand. It
  * is not a node of the layout: the clone arranges the **cards**, and the
  * text goes with the card, as it does with every other layout.
- *
- * ## The quality preset
- *
- * The preset is **pinned to `fast`**, and it must stay pinned. The presets
- * of `d3-dag` have a brutal cliff: `medium` — the default — solves a
- * simplex program per layer, and on a graph of four hundred relations it
- * took **ninety seconds**. `fast` arranges the same picture in a fraction
- * of a second. Whoever touches this line has to measure the graph of two
- * hundred nodes before touching it again.
  */
-
-import { dagre } from 'd3-dag';
-
-/**
- * The quality of the layout of `d3-dag`.
- *
- * It is **pinned to `fast`** on purpose: `medium` — the default of the
- * library — solves a linear program per layer, and on the fixture of two
- * hundred nodes and four hundred relations it took ninety seconds. The
- * cliff is a trap for whoever touches this line next.
- */
-export const DAG_QUALITY = 'fast';
-
-/**
- * The separation between two cards of the same layer, in pixels.
- *
- * It is the same separation the layout of `dagre` uses: the card holds its
- * own text, and the gap between two cards only has to hold the air.
- */
-export const DAG_NODE_SEPARATION = 40;
-
-/**
- * The separation between two layers, in pixels.
- *
- * It is the room the relation and its label need between two columns.
- */
-export const DAG_RANK_SEPARATION = 80;
 
 /** The direction the layers flow in. */
 export type DagRankDir = 'LR' | 'TB';
@@ -181,10 +153,18 @@ export interface DagLayoutResult {
   readonly ms: number;
 }
 
-/** The clock of the module. */
-function now(): number {
-  return typeof performance === 'undefined' ? Date.now() : performance.now();
-}
+/**
+ * The **clone** — the arrangement of the picture with `d3-dag`.
+ *
+ * It is a **function**, not a class, and it is **handed over** to the
+ * instance instead of being imported by it: the library `d3-dag` is a
+ * dependency of the **development surface** only, and an instance that
+ * imported it would carry it into the production bundle.
+ */
+export type DagLayoutRunner = (
+  nodes: readonly DagNodeInput[],
+  edges: readonly DagEdgeInput[]
+) => DagLayoutResult;
 
 /**
  * The relations that come out of a node, in the order they were given.
@@ -357,98 +337,4 @@ export function relationsAgainstFlow(
   }
 
   return against;
-}
-
-/**
- * Arranges the picture with `d3-dag`, breaking the cycles of the graph.
- *
- * The cycles are broken by **reversing** the relations that close them —
- * the back edges of the depth-first walk of {@link detectCycles}. The
- * result is always acyclic: the back edges of a depth-first walk are a
- * **feedback arc set**, and reversing all of them leaves a graph with no
- * cycle. (The theorem is checked over every graph of up to four nodes in
- * the test of the module, and it is the same rule `dagre` follows in its
- * `acyclic.js`.)
- *
- * @param nodes - The nodes of the picture, with the real size of their
- *   cards.
- * @param edges - The relations of the picture.
- * @param options - The options of the layout.
- * @returns The places of the nodes, the relations that were reversed and
- *   the cycles that were found.
- */
-export function createDagLayout(
-  nodes: readonly DagNodeInput[],
-  edges: readonly DagEdgeInput[],
-  options: DagLayoutOptions = {}
-): DagLayoutResult {
-  const rankDir = options.rankDir ?? 'LR';
-  const nodeSep = options.nodeSep ?? DAG_NODE_SEPARATION;
-  const rankSep = options.rankSep ?? DAG_RANK_SEPARATION;
-
-  const { cycles, backEdges } = detectCycles(nodes, edges);
-  const broken = new Set(backEdges);
-
-  const graph = new dagre.graphlib.Graph();
-
-  graph.setGraph({
-    rankdir: rankDir,
-    nodesep: nodeSep,
-    ranksep: rankSep,
-    // The preset is **pinned**: see {@link DAG_QUALITY}.
-    quality: DAG_QUALITY
-  });
-
-  graph.setDefaultEdgeLabel(() => ({}));
-
-  for (const node of nodes) {
-    // `d3-dag` refuses a node without a size: the layout is built for
-    // boxes, and a card of the app is a box. The size is clamped so a
-    // card of zero pixels — a node without a title — does not stop the
-    // layout.
-    graph.setNode(node.id, {
-      width: Math.max(1, node.width),
-      height: Math.max(1, node.height)
-    });
-  }
-
-  for (const edge of edges) {
-    if (!graph.hasNode(edge.source) || !graph.hasNode(edge.target)) {
-      continue;
-    }
-
-    // A relation of a node with itself is a cycle of one: it cannot be
-    // laid out, and it is left out of the layout.
-    if (edge.source === edge.target) {
-      continue;
-    }
-
-    const reversed = broken.has(edge.id);
-
-    graph.setEdge(
-      reversed ? edge.target : edge.source,
-      reversed ? edge.source : edge.target
-    );
-  }
-
-  const began = now();
-
-  dagre.layout(graph);
-
-  const ms = now() - began;
-
-  const positions = new Map<string, DagPosition>();
-
-  for (const node of nodes) {
-    const place = graph.node(node.id);
-
-    positions.set(node.id, { x: place.x, y: place.y });
-  }
-
-  return {
-    positions,
-    brokenRelations: [...broken],
-    cycles,
-    ms
-  };
 }
