@@ -12,8 +12,8 @@ import type { ApplyServiceWorkerUpdate } from './register';
 class PwaState {
   /** A new service worker is waiting for the user to accept the reload. */
   needsRefresh = $state(false);
-  /** The app shell is cached and the app is usable offline. */
-  offlineReady = $state(false);
+  /** The app shell is cached, so the app opens instantly. */
+  shellCached = $state(false);
   /** Last registration error, if any. */
   error = $state<string | null>(null);
 
@@ -24,8 +24,8 @@ class PwaState {
     this.needsRefresh = true;
   }
 
-  setOfflineReady(): void {
-    this.offlineReady = true;
+  markShellCached(): void {
+    this.shellCached = true;
   }
 
   setError(error: unknown): void {

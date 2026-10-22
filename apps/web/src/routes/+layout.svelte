@@ -81,7 +81,7 @@
     // prompt of the shell.
     void registerServiceWorker({
       onNeedRefresh: (applyUpdate) => pwaState.setNeedRefresh(applyUpdate),
-      onOfflineReady: () => pwaState.setOfflineReady(),
+      onOfflineReady: () => pwaState.markShellCached(),
       onRegisterError: (error) => pwaState.setError(error)
     });
   });

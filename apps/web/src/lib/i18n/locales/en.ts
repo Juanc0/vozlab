@@ -695,11 +695,11 @@ export const en: Dictionary<typeof es> = {
   },
 
   pwa: {
-    errorTitle: 'The offline support could not be enabled',
+    errorTitle: 'The app could not be cached',
     errorHint:
-      'The app keeps working, but it will not be available offline.',
-    offlineReady:
-      'VozLab is ready to work offline: the app is cached on this device.',
+      'VozLab keeps working with a connection; without one, the app does not open.',
+    shellCached:
+      'VozLab is cached on this device: the app opens instantly. The data needs a connection.',
     dismiss: 'Got it'
   },
 

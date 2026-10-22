@@ -15,7 +15,7 @@ export type ApplyServiceWorkerUpdate = () => Promise<void>;
 export interface PwaHandlers {
   /** A new service worker is waiting: prompt the user before reloading. */
   onNeedRefresh?: (applyUpdate: ApplyServiceWorkerUpdate) => void;
-  /** The application shell has been cached and the app works offline. */
+  /** The application shell has been cached: the app opens instantly. */
   onOfflineReady?: () => void;
   /** The service worker could not be registered. */
   onRegisterError?: (error: unknown) => void;

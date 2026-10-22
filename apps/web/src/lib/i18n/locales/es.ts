@@ -737,11 +737,11 @@ export const es = {
 
   /** The state of the PWA itself. */
   pwa: {
-    errorTitle: 'No se ha podido activar el soporte sin conexión',
+    errorTitle: 'No se ha podido guardar la aplicación en caché',
     errorHint:
-      'La aplicación sigue funcionando, pero no estará disponible sin conexión.',
-    offlineReady:
-      'VozLab está listo para funcionar sin conexión: la aplicación está en la caché de este dispositivo.',
+      'VozLab sigue funcionando con conexión; sin ella, la aplicación no se abre.',
+    shellCached:
+      'VozLab ya está en la caché de este dispositivo: la aplicación se abre al instante. Los datos necesitan conexión.',
     dismiss: 'Entendido'
   },
 

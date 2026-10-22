@@ -602,8 +602,15 @@ Decided, and not to be re-opened without evidence:
 - [ ] 3.33 The comparison's chrome: the readout and the essay fold, so the
       picture is the picture — at 1440 and at 375 — and the size selector
       never shows an empty value.
-- [ ] 3.34 The shell's copy says online-first: the toast no longer promises
+- [x] 3.34 The shell's copy says online-first: the toast no longer promises
       "ready to work offline", which is false — the data needs the network.
+      Result: the notice says what is true — **"VozLab ya está en la caché de
+      este dispositivo: la aplicación se abre al instante. Los datos
+      necesitan conexión."** — and the code stops lying with it: the flag is
+      `shellCached`, the handler is `markShellCached()`, the dictionary key is
+      `pwa.shellCached`, and the registration error says the app does not
+      open without a connection instead of talking about "offline support".
+      It was found by looking at a screenshot, not by a test.
 
 ## Phase 4 — Platform, QA and operations
 
