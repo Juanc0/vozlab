@@ -4,8 +4,8 @@
  * The picture of the exploration view is arranged by `d3-force`: a
  * simulation that pushes the cards apart, pulls the ones that are related
  * together, and then **keeps breathing**. The spring is never switched off:
- * at rest it drifts below a pixel per frame, and it wakes — with a real
- * rearrangement — when the reader touches the picture.
+ * at rest every card sways on a small circle of its own, and the spring
+ * wakes — with a real rearrangement — when the reader touches the picture.
  *
  * ## Why this module exists
  *
@@ -54,13 +54,12 @@
  *
  * The spring is **seen**, and it does not die: the picture is arranged in
  * slices, a few ticks per frame, and afterwards it is driven at an **idle**
- * alpha — small enough to stay below the threshold of movement, large
- * enough to be alive — at ten to fifteen hertz. A touch of the reader wakes
- * it to a real rearrangement, and it cools back to the idle rhythm after
- * {@link WAKE_COOLDOWN_MS}.
- *
- * The idle drift is a small deterministic impulse, not a random walk: the
- * picture of the same graph breathes the same way every time.
+ * alpha at twenty hertz. A touch of the reader wakes it to a real
+ * rearrangement, and it cools back to the idle rhythm after
+ * {@link WAKE_COOLDOWN_MS}. The arrangement the spring gave the cards is
+ * **held**: what keeps moving is the breath — a small deterministic sway of
+ * every card around its place, not a random walk — so the picture of the
+ * same graph breathes the same way every time.
  *
  * A reader who asked for less motion (`prefers-reduced-motion`) gets the
  * same picture **in one go** and **never wakes**: the layout runs to its
@@ -125,6 +124,18 @@ export const DEFAULT_LINK_DISTANCE = 170;
  */
 export const DEFAULT_CHARGE_STRENGTH = -450;
 
+/**
+ * How far the charge of a card reaches, in model pixels.
+ *
+ * A charge without a reach pushes a card that has lost its links — and the
+ * neighbour of a window that hangs from one relation is one — **out of the
+ * picture**: the repulsion decays with the square of the distance and never
+ * stops. The reach is cut where the communities of the demo end, so the
+ * far field is zero and an almost-isolated card stays where the picture can
+ * be fitted around it.
+ */
+export const DEFAULT_CHARGE_MAX_DISTANCE = 900;
+
 /** The room two cards keep between them, in pixels. */
 export const DEFAULT_COLLISION_PADDING = 8;
 
@@ -140,9 +151,9 @@ export const DEFAULT_COLLISION_ITERATIONS = 4;
 /**
  * The alpha the picture is pulled back to when it is **at rest**.
  *
- * It is small on purpose: the spring keeps a sub-pixel drift — the picture
- * is alive — and the movement stays below the threshold that says a shape
- * has been reached.
+ * It is small on purpose: the spring holds the arrangement it gave the
+ * cards, the breath is the sway of the positions, and the movement stays
+ * below the threshold that says a shape has been reached.
  */
 export const IDLE_ALPHA_TARGET = 0.005;
 
@@ -155,21 +166,33 @@ export const WAKE_COOLDOWN_MS = 1200;
 /**
  * The interval of the idle ticks, in milliseconds.
  *
- * The idle spring runs at twelve hertz: a tenth of the frames of the
+ * The idle spring runs at twenty hertz: a third of the frames of the
  * browser is enough to see the picture breathe, and the battery of the
- * reader is not spent on a picture that is already in its place.
+ * reader is not spent on a picture that is already in its place. The rate
+ * is **constant**: an idle spring never stops while the picture is on
+ * screen — it stops when the tab or the panel is hidden.
  */
-export const IDLE_INTERVAL_MS = 1000 / 12;
+export const IDLE_INTERVAL_MS = 1000 / 20;
 
 /**
- * The impulse of the idle breath, in pixels per tick.
+ * The radius of the breath of a card, in model pixels.
  *
- * A tick of the browser is around sixteen milliseconds and the velocity
- * keeps four tenths of itself from the tick before, so an impulse of this
- * size becomes a drift of some two pixels a second: visible when the two
- * pictures are compared, and below the threshold on every single frame.
+ * The picture is **alive**: every card sways around its place on a small
+ * circle of its own, at the pace of the idle ticks. The breath is
+ * **bounded** — a card never wanders further than this from the place the
+ * spring gave it — so the fit of the view and the card the reader clicks
+ * stay where they were. A spring that drifts without a bound walks out of
+ * the picture it was fitted into.
  */
-export const IDLE_DRIFT_IMPULSE = 0.16;
+export const IDLE_SWAY_PX = 5;
+
+/**
+ * How fast the phase of the breath turns, in radians per tick.
+ *
+ * At the idle pace this is a full circle every six seconds: the picture
+ * moves a few pixels a second — visible, calm, and never stopped.
+ */
+export const IDLE_SWAY_RATE = 0.05;
 
 /**
  * The score of a relation that counts as a **full** weight.
@@ -301,6 +324,15 @@ export interface ForceLayoutOptions {
   readonly collisionIterations?: number;
   /** The most ticks the simulation runs before it gives up. */
   readonly maxTicks?: number;
+  /**
+   * Whether the spring is **alive**.
+   *
+   * A living spring is never capped by {@link maxTicks} and never says it
+   * has come to rest: it is meant to keep breathing for as long as the
+   * picture is on screen. Stopping it is the caller's business — the driver
+   * stops on a hidden tab, and the panel stops when it is unmounted.
+   */
+  readonly living?: boolean;
   /** The places of the nodes that must not move. */
   readonly pinned?: ReadonlyMap<string, ForcePosition>;
 }
@@ -351,13 +383,6 @@ export interface ForceLayout {
    *   cool-down lets it fall back on its own.
    */
   setAlphaTarget(value: number, options?: { readonly snap?: boolean }): void;
-  /**
-   * Adds the impulse of the idle breath to every free node.
-   *
-   * It is called before an idle tick: the picture drifts by a fraction of a
-   * pixel, below the threshold that says a shape has been reached.
-   */
-  breathe(): void;
   /** The place of every node. */
   positions(): Map<string, ForcePosition>;
   /**
@@ -821,10 +846,16 @@ export function createForceLayout(
   const linkDistance = options.linkDistance ?? DEFAULT_LINK_DISTANCE;
   const linkStrength = options.linkStrength ?? undefined;
   const chargeStrength = options.chargeStrength ?? DEFAULT_CHARGE_STRENGTH;
-  const chargeMaxDistance = options.chargeMaxDistance ?? Infinity;
+  const chargeMaxDistance = options.chargeMaxDistance ?? DEFAULT_CHARGE_MAX_DISTANCE;
   const collisionPadding = options.collisionPadding ?? DEFAULT_COLLISION_PADDING;
   const collisionIterations = options.collisionIterations ?? DEFAULT_COLLISION_ITERATIONS;
-  const maxTicks = options.maxTicks ?? 600;
+  const living = options.living === true;
+
+  // A **living** spring is not capped: the cap is the brake of a one-pass
+  // animation, and a living spring is meant to keep breathing for as long
+  // as the picture is on screen. Stopping it is the caller's business — the
+  // driver stops on a hidden tab, and the panel stops when it is unmounted.
+  const maxTicks = living ? Number.POSITIVE_INFINITY : (options.maxTicks ?? 600);
 
   // The nodes of the simulation: the card of every node, with its real
   // size, and the place it starts from.
@@ -950,7 +981,10 @@ export function createForceLayout(
         ticks += 1;
         simulationMs += now() - began;
 
-        if (simulation.alpha() < alphaMin) {
+        // A living spring **never comes to rest**: the breath is the point,
+        // and calling it settled would stop the driver and freeze the
+        // picture. Only the caller stops it (a hidden tab, an unmount).
+        if (!living && simulation.alpha() < alphaMin) {
           settled = true;
         }
       }
@@ -978,32 +1012,29 @@ export function createForceLayout(
       }
     },
 
-    breathe(): void {
-      // The breath is a slow swirl, not a random walk: every node drifts
-      // along a direction of its own, and the phase turns with the ticks.
-      // The same graph breathes the same way every time.
-      const base = ticks * 0.14;
-
-      simulationNodes.forEach((node, index) => {
-        if (node.fx !== null || node.fy !== null) {
-          return;
-        }
-
-        // The golden angle spreads the directions of the nodes without
-        // ever repeating one exactly.
-        const angle = base + index * 2.399963229728653;
-
-        node.vx += Math.cos(angle) * IDLE_DRIFT_IMPULSE;
-        node.vy += Math.sin(angle) * IDLE_DRIFT_IMPULSE;
-      });
-    },
-
     positions(): Map<string, ForcePosition> {
       const places = new Map<string, ForcePosition>();
 
-      for (const node of simulationNodes) {
-        places.set(node.id, { x: node.x, y: node.y });
-      }
+      // The breath of the picture: a card sways on a small circle of its
+      // own around the place the spring gave it, and the phase turns with
+      // the ticks. It is an **offset of the picture**, not a force: the
+      // arrangement, the collision and the fit stay where they are, and
+      // the sway can never walk the picture out of the view.
+      const phase = ticks * IDLE_SWAY_RATE;
+
+      simulationNodes.forEach((node, index) => {
+        // The golden angle spreads the phases of the cards without ever
+        // repeating one exactly; the pinned card is held by the reader and
+        // does not sway. A hierarchy does not breathe, and neither does the
+        // reader who asked for less motion.
+        const angle = phase + index * 2.399963229728653;
+        const sway = living && node.fx === null && node.fy === null ? IDLE_SWAY_PX : 0;
+
+        places.set(node.id, {
+          x: node.x + Math.cos(angle) * sway,
+          y: node.y + Math.sin(angle) * sway
+        });
+      });
 
       return places;
     },
@@ -1097,7 +1128,7 @@ export interface ForceDriverOptions {
    * Whether the spring **breathes**.
    *
    * A living spring does not stop when it comes to rest: it cools to the
-   * idle rhythm, keeps a sub-pixel drift and wakes on contact. A spring
+   * idle rhythm, keeps its breath and wakes on contact. A spring
    * that is not living is the animation of a one-pass arrangement: it stops
    * as soon as the picture rests, exactly as it did before.
    */
@@ -1198,9 +1229,9 @@ export function driveForceLayout(
       if (awake) {
         layout.step(ticksPerFrame);
       } else {
-        // One tick at the pace of the idle spring: the picture breathes
-        // instead of running.
-        layout.breathe();
+        // One tick at the pace of the idle spring. The spring holds its
+        // arrangement and the **breath** of the picture is the sway of the
+        // positions: the picture is alive without walking out of its fit.
         layout.step(1);
       }
 

@@ -1060,7 +1060,11 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
           communityScore: edge.communityScore
         })
       ),
-      { pinned }
+      // The painter's arrangement is the app's living spring: it drifts for
+      // as long as the panel is on screen and stops only when the tab or the
+      // panel is hidden. The reader who asked for less motion gets the
+      // one-pass arrangement, which has to be able to rest.
+      { pinned, living: !prefersReducedMotion() }
     );
 
     applyPlaces();

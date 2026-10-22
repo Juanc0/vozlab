@@ -406,7 +406,9 @@ no library does for cards is written here.
 
 - **Deterministic**: a seeded LCG and a fixed circular start. Two runs
   give **exactly** the same positions.
-- **It stops by itself**: `alpha < alphaMin`, in 300 ticks.
+- **A one-pass run stops by itself**: `alpha < alphaMin`, in 300 ticks —
+  that is the reduced-motion path. The living spring of the exploration
+  view **never comes to rest by itself**.
 - **It is stepped in slices** of three ticks per frame, so the reader sees
   the picture rearrange — the spring is the point — and the interface never
   stalls. `prefers-reduced-motion` runs it in one go, to the same picture.
@@ -424,14 +426,31 @@ is unit-tested on its own and it survives a change of painter.
 **The ambition, met.** The picture is **alive but structured**: the
 clusters stay legible and the cards keep drifting between them.
 
-- **The idle drift**: `alphaTarget` 0.005, stepped at ~12 Hz — 0.890 ms per
-  tick at 200 cards, with a greatest movement of 0.281 px per tick. It is
-  a drift, not a jump, and it is cheap because the idle ticks run at a low
-  rate.
+- **The idle breath**: the arrangement the spring gave the cards is held,
+  and every card **sways** around its place on a small circle of its own —
+  radius 5 model px, a full circle every six seconds — as an **offset of
+  the positions**, not as a force: the fit, the collision and the centre
+  of a card the reader clicks never walk. The idle spring ticks at ~20 Hz
+  (0.890 ms per tick at 200 cards); the sway is what the reader sees, and
+  the wake ticks three times per frame, so the breath is livelier under
+  the pointer.
+- **It never stops while the picture is on screen.** A living spring is not
+  capped by the tick count of a one-pass run (that cap is a freeze in
+  disguise) and it never reports itself settled: it ticks on until the
+  caller stops it.
+- **The repulsion has a reach**: 900 model px. A charge without a reach
+  pushes a card that hangs from a single relation out of the picture
+  forever — the picture grows a few pixels a second and the fit erodes.
+  With the reach cut, the arrangement stays inside its fit.
+- **The fit of the view is taken from the picture the spring arrives at**:
+  the same arrangement is run in one go, at the alpha of the awake spring
+  (400 ticks), before the first frame. A fit taken from the frames of the
+  animation is a fit around a smaller picture, and the cards of the edge
+  walk out of the box as the arrangement settles.
 - **The wake**: `alphaTarget` 0.1 while the reader is in contact with the
   picture (a pointer moving over the canvas, a card grabbed, a card
   hovered, a node focused, a walk, a zoom), cooling back to the idle
-  drift in **1.2 s** after the last contact. A dragged card is pinned, its
+  breath in **1.2 s** after the last contact. A dragged card is pinned, its
   neighbours part and re-accommodate, and on release the card keeps its
   place.
 - **The attraction is weighted by the relation's `communityScore`**: a
@@ -439,7 +458,9 @@ clusters stay legible and the cards keep drifting between them.
   grow around the strong relations. Without a score the attraction is
   uniform.
 - **A hidden tab stops the driver** (`visibilitychange`) and coming back
-  resumes it.
+  resumes it where it was. A panel that is no longer shown **destroys** its
+  spring — the comparison unmounts the previous engine, the graph page
+  unmounts the canvas on a route change — so nothing ticks off screen.
 - **`prefers-reduced-motion`**: the picture runs to rest and does not
   drift. That reader gets a still picture, which is the correct behaviour
   and not a degradation.

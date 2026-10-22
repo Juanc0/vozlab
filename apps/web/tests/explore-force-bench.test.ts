@@ -123,13 +123,15 @@ describe('the measurements of the spring', () => {
 
   it('breathes at rest below the threshold, and the idle tick stays inside a frame', () => {
     const { nodes, edges } = fixture(200);
-    const layout = createForceLayout(nodes, edges);
+    const layout = createForceLayout(nodes, edges, { living: true });
 
-    // The picture is almost at rest: the idle breath is all that is left.
+    // The picture is almost at rest: the breath is all that is left.
     layout.step(299);
     layout.setAlphaTarget(IDLE_ALPHA_TARGET);
 
-    const previous = layout.nodes.map((node) => ({ x: node.x, y: node.y }));
+    const previous = new Map(
+      [...layout.positions()].map(([id, place]) => [id, { x: place.x, y: place.y }])
+    );
 
     let greatest = 0;
     let moved = 0;
@@ -138,23 +140,24 @@ describe('the measurements of the spring', () => {
     for (let tick = 0; tick < 20; tick += 1) {
       const began = performance.now();
 
-      layout.breathe();
       layout.step(1);
+
+      const places = layout.positions();
 
       tickMs += performance.now() - began;
 
       let step = 0;
 
-      layout.nodes.forEach((node, index) => {
-        const last = previous[index];
+      places.forEach((place, id) => {
+        const last = previous.get(id);
 
         if (last === undefined) {
           return;
         }
 
-        step = Math.max(step, Math.hypot(node.x - last.x, node.y - last.y));
-        last.x = node.x;
-        last.y = node.y;
+        step = Math.max(step, Math.hypot(place.x - last.x, place.y - last.y));
+        last.x = place.x;
+        last.y = place.y;
       });
 
       greatest = Math.max(greatest, step);

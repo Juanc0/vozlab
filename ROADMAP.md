@@ -494,7 +494,7 @@ Decided, and not to be re-opened without evidence:
 - [x] 3.26 The living spring: the picture stays half organised and keeps
       drifting between the clusters, and the simulation sleeps when the
       window is hidden. Result: the spring **breathes**. At rest it drifts
-      with `alphaTarget` 0.005 at ~12 Hz — **0.890 ms per tick** at 200
+      with `alphaTarget` 0.005 at ~12 Hz (raised to 20 Hz in 3.35) — **0.890 ms per tick** at 200
       cards and a greatest movement of **0.281 px per tick**, a drift and
       not a jump; contact with the picture (a pointer moving over the
       canvas, a card grabbed, a card hovered, a node focused, a walk, a
@@ -624,6 +624,39 @@ Decided, and not to be re-opened without evidence:
       `pwa.shellCached`, and the registration error says the app does not
       open without a connection instead of talking about "offline support".
       It was found by looking at a screenshot, not by a test.
+- [x] 3.35 The living spring never stops while it is shown: the motion used
+      to freeze a few seconds after the first contact, and now it runs for
+      as long as the picture is on screen. Result: the freeze was the
+      **tick cap of the layout** — a one-pass run rests at 300 ticks, and
+      the cap of 600 cut the living spring off while its driver kept asking
+      for frames, which is a freeze in disguise. A living spring is now
+      never capped and never reports itself settled; it stops only because
+      the caller stops it. The idle pace went from 12 to **20 Hz**: every
+      card **sways** around its place on a 5 model px circle, a full circle
+      every six seconds — about **3 px/s** of travel at the fit — and the
+      picture reads as alive instead of almost still, without the
+      arrangement walking. The two ways
+      of not being shown keep it quiet, as asked: **a hidden browser tab**
+      stops the driver (and coming back resumes it) and **a panel that is
+      no longer shown** destroys its painter and its spring — another engine
+      in the comparison, another route in the graph page. Measured with the
+      document hidden: **0 ticks in 2 s** in both the SVG painter and the
+      Cytoscape canvas, and both moving again on return; at rest both tick
+      at 20/s.
+
+      Measuring the freeze surfaced two more defects of the living picture.
+      The **charge had no reach**: a card that hangs from a single relation
+      was pushed out of the picture forever, so the arrangement grew a few
+      pixels a second and the fit eroded — the charge now reaches **900
+      model px**. And the **fit of the view was taken from the frames of
+      the animation**, before the arrangement had arrived: the cards of the
+      edge opened outside the canvas and a click on one missed. The fit is
+      now taken from the **one-pass picture at the awake alpha** (400
+      ticks) — the same arrangement the animation arrives at, because the
+      spring is deterministic. The whole graph opens inside the canvas and
+      stays there: **0 of 25 badges outside over 10 s** in the E2E, and the
+      three E2E journeys that the moving picture had broken (the walk by
+      click, the fit, the walk that pans) pass again.
 
 ## Phase 4 — Platform, QA and operations
 

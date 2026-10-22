@@ -258,3 +258,65 @@ test('at 375 the folded chrome leaves the picture the room', async ({ page, api 
   await expect(measurements).toHaveAttribute('aria-expanded', 'true');
   await expect(readout.getByText('Disposición', { exact: true })).toBeVisible();
 });
+
+test('the living spring never stops while it is shown, and sleeps with the tab', async ({
+  page,
+  api
+}) => {
+  // A node of its own, so the picture is not empty.
+  await api.createNode({ typeKey: 'Problem', title: `${api.marker} living node` });
+
+  await page.goto('/engines');
+  await waitForApp(page);
+
+  await page.getByRole('tab', { name: 'SVG + d3' }).click();
+
+  const card = page.locator('g[data-node-id]').first();
+
+  await expect(card).toBeVisible();
+
+  // The wake of the mount has cooled: what moves the picture now is the
+  // **idle drift**, and it has to move it.
+  await page.waitForTimeout(1600);
+
+  const before = await card.getAttribute('transform');
+
+  await page.waitForTimeout(1200);
+
+  const after = await card.getAttribute('transform');
+
+  // The picture is alive: it moves while it is on screen, with no reset and
+  // no stop.
+  expect(after).not.toBe(before);
+
+  // The browser tab is hidden: nobody is looking at the picture.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden'
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  await page.waitForTimeout(400);
+
+  const hidden = await card.getAttribute('transform');
+
+  await page.waitForTimeout(1200);
+
+  // A hidden picture spends no frame: the place does not move.
+  expect(await card.getAttribute('transform')).toBe(hidden);
+
+  // It comes back where it was, and it moves again.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible'
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  await page.waitForTimeout(1200);
+
+  expect(await card.getAttribute('transform')).not.toBe(hidden);
+});

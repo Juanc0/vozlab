@@ -44,6 +44,7 @@ import {
   createForceLayout,
   driveForceLayout,
   runForceLayoutToRest,
+  WAKE_ALPHA_TARGET,
   type ForceDriver,
   type ForceEdgeInput,
   type ForceLayout,
@@ -377,7 +378,7 @@ const PAN_EASING = 'ease-in-out-cubic';
  * still breathing at the deadline of the bounded watch, so the node can
  * move a few pixels while the pan is under way. The correction is a **new
  * eased pan** that ends where the node ended — and it is bounded: the idle
- * drift that follows is a fraction of a pixel, and it never moves the
+ * breath that follows is a fraction of a pixel, and it never moves the
  * picture again.
  */
 const PAN_CORRECTION_THRESHOLD = 4;
@@ -441,6 +442,61 @@ function median(values: readonly number[]): number {
 }
 
 /**
+ * The box a picture of cards takes, in model coordinates.
+ *
+ * A card is a rectangle around the point the spring gives it: the fit has
+ * to make room for the whole rectangle, not for the points.
+ */
+interface PictureBox {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minY: number;
+  readonly maxY: number;
+}
+
+/**
+ * How many ticks the one-pass arrangement of the fit runs, in ticks.
+ *
+ * The spring of the fit is put at the alpha of the awake spring, which
+ * does not fall to zero on its own: the arrangement runs for a fixed
+ * stretch, long enough for the cards of the edge to reach the place the
+ * awake picture keeps them at.
+ */
+const SETTLED_TICKS = 400;
+
+/**
+ * The box of the cards of a picture.
+ *
+ * @param places - The place of every card.
+ * @param cards - The cards, with the size of each one.
+ * @returns The box, or `null` when the picture has no card.
+ */
+function pictureBox(
+  places: ReadonlyMap<string, ForcePosition>,
+  cards: readonly ForceNodeInput[]
+): PictureBox | null {
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const card of cards) {
+    const place = places.get(card.id);
+
+    if (place === undefined) {
+      continue;
+    }
+
+    minX = Math.min(minX, place.x - card.width / 2);
+    maxX = Math.max(maxX, place.x + card.width / 2);
+    minY = Math.min(minY, place.y - card.height / 2);
+    maxY = Math.max(maxY, place.y + card.height / 2);
+  }
+
+  return Number.isFinite(minX) ? { minX, maxX, minY, maxY } : null;
+}
+
+/**
  * Creates the Cytoscape instance of the exploration view.
  *
  * The instance starts **empty**: the elements are applied by
@@ -494,6 +550,17 @@ export function createExplorationInstance(
    * view, and every picture after it keeps the zoom of the reader.
    */
   let fitted = false;
+
+  /**
+   * The box of the picture the spring arrives at, in model coordinates.
+   *
+   * It is arranged **in one go** when the view opens, so the fit of the
+   * view is the fit of the picture the animation is on its way to — not of
+   * the smaller picture a frame of the animation happens to show. The
+   * spring is deterministic: the one-pass picture is the picture the
+   * animation arrives at. It is used once, by the first fit.
+   */
+  let settledBox: PictureBox | null = null;
 
   /**
    * Whether the instance is moving the viewport itself.
@@ -696,7 +763,7 @@ export function createExplorationInstance(
    * The frames of the animation.
    *
    * They are the frames of the browser while the spring is awake. The idle
-   * spring asks for a **timeout** instead: it breathes at twelve hertz,
+   * spring asks for a **timeout** instead: it breathes at twenty hertz,
    * and sixty frames a second of a picture that is already in its place is
    * battery spent on nothing.
    *
@@ -1068,7 +1135,27 @@ export function createExplorationInstance(
     adjustingViewport = true;
 
     try {
-      core.fit(undefined, FIT_PADDING);
+      if (settledBox === null) {
+        core.fit(undefined, FIT_PADDING);
+      } else {
+        const box = settledBox;
+        settledBox = null;
+
+        const width = Math.max(1, box.maxX - box.minX);
+        const height = Math.max(1, box.maxY - box.minY);
+        const level = clampZoom(
+          Math.min(
+            (core.width() - FIT_PADDING * 2) / width,
+            (core.height() - FIT_PADDING * 2) / height
+          )
+        );
+
+        core.zoom(level);
+        core.pan({
+          x: core.width() / 2 - ((box.minX + box.maxX) / 2) * level,
+          y: core.height() / 2 - ((box.minY + box.maxY) / 2) * level
+        });
+      }
 
       const floor = readableZoom;
 
@@ -1141,7 +1228,7 @@ export function createExplorationInstance(
    * reached the shape — or its deadline — when the pan starts. The spring
    * may still be cooling while the pan runs, so the node can move under it;
    * the pan is **corrected** as the pan ends, and the corrections stop when
-   * the node is on the mark or the cool-down budget is spent. The idle drift
+   * the node is on the mark or the cool-down budget is spent. The breath
    * that follows never moves the picture again.
    *
    * A reader who asked for less motion gets the picture in its place at
@@ -1383,7 +1470,16 @@ export function createExplorationInstance(
       });
     });
 
-    const created = createForceLayout(inputs, links, { pinned });
+    // The spring of the exploration view is **alive**: it drifts for as long
+    // as the picture is on screen, and it stops only because the view stops
+    // it — a hidden tab, the canvas unmounted. It is never capped by a tick
+    // count, because a cap is a freeze in disguise. The reader who asked for
+    // less motion is the exception: that path runs to rest in one go, and a
+    // living spring would never rest.
+    const created = createForceLayout(inputs, links, {
+      pinned,
+      living: !prefersReducedMotion()
+    });
 
     spring = created;
 
@@ -1472,6 +1568,23 @@ export function createExplorationInstance(
       spring = null;
 
       return;
+    }
+
+    if (!fitted) {
+      // The fit of the view is taken from the picture **arranged in one
+      // go**: a fit taken while the spring is still on its way is a fit
+      // around a smaller picture, and the cards of the edge walk out of
+      // the box as the arrangement settles.
+      //
+      // The picture is arranged at the alpha of the **awake** spring: the
+      // awake arrangement is the widest one — the idle picture is a little
+      // closer — so the box holds every picture the living spring takes.
+      const settledLayout = createForceLayout(inputs, links, { pinned, living: false });
+
+      settledLayout.setAlphaTarget(WAKE_ALPHA_TARGET);
+      settledLayout.step(SETTLED_TICKS);
+
+      settledBox = pictureBox(settledLayout.positions(), inputs);
     }
 
     springDriver = driveForceLayout(created, {

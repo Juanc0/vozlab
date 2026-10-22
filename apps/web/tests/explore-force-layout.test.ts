@@ -342,15 +342,15 @@ describe('the spring of the exploration view', () => {
 
   it('breathes at rest: the idle tick moves the cards, and below the threshold', () => {
     const { nodes, edges } = fixture(24);
-    const layout = createForceLayout(nodes, edges);
+    const layout = createForceLayout(nodes, edges, { living: true });
 
-    // The picture is almost at rest: the breath is the only thing left.
+    // The spring holds the arrangement: the breath is the only thing left,
+    // and it is the sway of the cards around their places.
     layout.step(299);
     layout.setAlphaTarget(IDLE_ALPHA_TARGET);
 
     const before = layout.positions();
 
-    layout.breathe();
     layout.step(1);
 
     const moved = greatestDistance(before, layout.positions());
@@ -360,7 +360,7 @@ describe('the spring of the exploration view', () => {
     expect(moved).toBeLessThan(1.5);
   });
 
-  it('moves the idle spring at twelve hertz, and only after the wake cools', () => {
+  it('moves the idle spring at twenty hertz, and only after the wake cools', () => {
     const { nodes, edges } = fixture(24);
     const layout = createForceLayout(nodes, edges);
     const frames = manualScheduler();
@@ -391,16 +391,18 @@ describe('the spring of the exploration view', () => {
 
     expect(driver.awake).toBe(false);
 
-    // The next frame is an idle one, at ten to fifteen hertz.
+    // The next frame is an idle one, at the pace of the idle spring.
     const interval = frames.lastDelay() ?? 0;
 
-    expect(interval).toBeGreaterThanOrEqual(1000 / 15);
-    expect(interval).toBeLessThanOrEqual(1000 / 10);
+    expect(interval).toBeGreaterThan(1000 / 30);
+    expect(interval).toBeLessThan(1000 / 15);
     expect(interval).toBeCloseTo(IDLE_INTERVAL_MS, 5);
 
     // Let the idle spring lose the speed of the wake, and then look at one
-    // idle tick: it moves, and it stays below the threshold.
-    for (let frame = 0; frame < 40; frame += 1) {
+    // idle tick: it moves, and it stays below the threshold. The cool pulls
+    // the picture back to the idle arrangement, and that return is slow at
+    // five thousandths of alpha: it is not the breath yet.
+    for (let frame = 0; frame < 300; frame += 1) {
       clock += IDLE_INTERVAL_MS;
       frames.runOne();
     }
@@ -414,6 +416,66 @@ describe('the spring of the exploration view', () => {
 
     expect(moved).toBeGreaterThan(0);
     expect(moved).toBeLessThan(1.5);
+
+    driver.stop();
+  });
+
+  it('never freezes: a living spring keeps drifting past the cap of a one-pass run', () => {
+    const { nodes, edges } = fixture(24);
+
+    // A one-pass spring is capped: the cap is the brake of an animation.
+    const onePass = createForceLayout(nodes, edges);
+    onePass.step(700);
+
+    // A one-pass spring rests by itself: 300 ticks, and then no more.
+    expect(onePass.ticks).toBe(300);
+    expect(onePass.settled).toBe(true);
+
+    // The living spring is not capped: the cap would be a freeze in disguise.
+    const living = createForceLayout(nodes, edges, { living: true });
+    living.setAlphaTarget(IDLE_ALPHA_TARGET);
+    living.step(700);
+
+    const before = living.positions();
+
+    living.step(1);
+
+    expect(living.ticks).toBe(701);
+    expect(living.settled).toBe(false);
+    expect(greatestDistance(before, living.positions())).toBeGreaterThan(0);
+  });
+
+  it('never stops while it is alive: the driver keeps asking for frames', () => {
+    const { nodes, edges } = fixture(24);
+    const layout = createForceLayout(nodes, edges, { living: true });
+    const frames = manualScheduler();
+    let clock = 0;
+
+    const driver = driveForceLayout(layout, {
+      scheduler: frames.scheduler,
+      living: true,
+      now: () => clock
+    });
+
+    driver.start();
+
+    // More frames than the cap of a one-pass spring: the living one is
+    // still asking for the next, and its picture has not frozen.
+    for (let frame = 0; frame < 800; frame += 1) {
+      clock += IDLE_INTERVAL_MS;
+      frames.runOne();
+    }
+
+    const before = layout.positions();
+
+    clock += IDLE_INTERVAL_MS;
+    frames.runOne();
+
+    expect(driver.running).toBe(true);
+    expect(frames.pending()).toBe(1);
+    expect(layout.ticks).toBeGreaterThan(600);
+    expect(driver.settled).toBe(false);
+    expect(greatestDistance(before, layout.positions())).toBeGreaterThan(0);
 
     driver.stop();
   });
