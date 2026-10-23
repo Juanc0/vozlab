@@ -12,8 +12,7 @@
    * stays until the new one is ready, the region is `aria-busy` and a
    * polite live region says what is happening.
    */
-  import { untrack } from 'svelte';
-  import type { ApiFailure } from '$lib/api/failure';
+    import type { ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import SvgGraphCanvas from '$lib/components/SvgGraphCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
@@ -125,14 +124,6 @@
   let expandedIds = $state.raw<Set<string>>(new Set<string>());
 
   /**
-   * The nodes the user **collapsed**.
-   *
-   * An explicit choice of the user beats the default: the node the view
-   * presents is expanded on its own, and the user may close it.
-   */
-  let collapsed = $state.raw<Set<string>>(new Set<string>());
-
-  /**
    * The relations that are drawn as a card with their whole content.
    *
    * A relation of the window carries its attributes, its author and its
@@ -153,11 +144,9 @@
   let lastShown: Set<string> | null = null;
 
   const shown = $derived.by<Set<string>>(() => {
+    // Only the reader's choices expand a card now — the badge, the double
+    // click or the `E` key. Selection alone does not unfold anything.
     const next = new Set(expandedIds);
-
-    if (presentedNodeId !== null && !collapsed.has(presentedNodeId)) {
-      next.add(presentedNodeId);
-    }
 
     // The same set when nothing changed: the canvas must not draw the
     // picture again for a set that holds the same nodes.
@@ -188,18 +177,14 @@
   /** The user expanded or collapsed a node. */
   function toggleNode(nodeId: string): void {
     const next = new Set(expandedIds);
-    const closed = new Set(collapsed);
 
     if (next.has(nodeId)) {
       next.delete(nodeId);
-      closed.add(nodeId);
     } else {
       next.add(nodeId);
-      closed.delete(nodeId);
     }
 
     expandedIds = next;
-    collapsed = closed;
   }
 
   /** The user expanded or collapsed a relation. */
@@ -215,31 +200,6 @@
     expandedEdgeIds = next;
   }
 
-  /** The last node the view presented. */
-  let lastPresented: string | null = null;
-
-  /**
-   * The presented node is **expanded**.
-   *
-   * The view presents a node and shows it: a card the reader can read from
-   * the picture itself. The expansion is remembered, so the node stays a
-   * card when the view presents another one — but the card is drawn with
-   * the **first** picture (see {@link shown}), so the picture is not drawn
-   * twice.
-   */
-  $effect(() => {
-    const current = presentedNodeId;
-
-    if (current === null || current === lastPresented) {
-      return;
-    }
-
-    lastPresented = current;
-
-    untrack(() => {
-      expandedIds = new Set([...expandedIds, current]);
-    });
-  });
 
   /**
    * The **picture**: what the canvas draws.

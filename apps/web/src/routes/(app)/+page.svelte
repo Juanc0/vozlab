@@ -1292,11 +1292,11 @@
 
       <!--
         Reordenar el lienzo es una acción de la vista, no del lector: va al
-        final de la fila, separada de la búsqueda y de los controles.
+        final del conjunto, separada de la búsqueda y de los controles.
       -->
       <button
         type="button"
-        class="btn btn-secondary ml-auto shrink-0"
+        class="btn btn-secondary shrink-0"
         onclick={() => {
           rearrangeTick += 1;
         }}
@@ -1381,14 +1381,6 @@
     {/snippet}
 
     {#snippet readout()}
-      <!--
-        The note of the mode. On a narrow screen the panel is a scroller
-        and the picture is the thing: the note goes.
-      -->
-      <p class="hidden text-small text-muted min-[48rem]:block">
-        {t('graph.modeHint')}
-      </p>
-
       {#if viewMode === 'subgraph'}
         <p class="mt-1 text-small text-muted">
           {t('graph.bounds', {

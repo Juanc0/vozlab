@@ -832,6 +832,16 @@ Decided, and not to be re-opened without evidence:
       Result: `pnpm turbo run build type-check test` green (9/9, 528
       tests web).
 
+- [x] 3.58 Selection and chrome corrections: the painter no longer clears
+      a relation selection on report — relations really select now
+      (verified with a browser test); a single click a card **only
+      selects** it — the presented node is no longer auto-expanded, so
+      cards unfold by double click, the badge or `E` only; the toolbar is
+      one centred set (title to the left, search + controls + both actions
+      to its right) and the "two views" hint is gone.
+      Result: `pnpm turbo run build type-check test` green (9/9, 528 tests
+      web).
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

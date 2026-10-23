@@ -1124,7 +1124,6 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       event.stopPropagation();
       event.preventDefault();
       options.onselectedge?.(edge.id);
-      options.onselect?.(null);
     };
 
     group.addEventListener('click', selectThis);

@@ -133,38 +133,38 @@
   label={t('graph.toolbarLabel')}
   panelClass="w-full {panelClass}"
 >
-  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-3">
+  <!--
+    One row, centred as a set: the title to the left, and **to its right**
+    every control and action of the view. A toolbar whose parts fly to the
+    corners is a toolbar nobody scans; controls that stay together are
+    scanned in one pass.
+  -->
+  <div class="flex flex-wrap items-start justify-center gap-x-6 gap-y-2 px-3 py-3">
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
       the workspace opens.
     -->
-    <h1 class="text-kpi">{t('graph.heading')}</h1>
+    <h1 class="text-kpi self-center">{t('graph.heading')}</h1>
 
-    <div class="ml-auto flex items-center gap-2">
+    <div class="flex flex-wrap items-end justify-center gap-x-6 gap-y-2">
+      {@render controls?.()}
+
       <!--
         The one filled button of the interface: it creates a node, and it
         is the only action of the screen that is painted with the accent.
       -->
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled={newNodeDisabled}
-        onclick={onnewnode}
-      >
-        {t('graph.newNode')}
-      </button>
-
+      <div class="pb-0.5">
+        <button
+          type="button"
+          class="btn btn-primary"
+          disabled={newNodeDisabled}
+          onclick={onnewnode}
+        >
+          {t('graph.newNode')}
+        </button>
+      </div>
     </div>
-  </div>
-
-  <!--
-    The controls of the view on screen. They are **many** — the criterion
-    of the focus, the depth, the shape of the arrows, the far nodes — and a
-    phone has no room for them: there the row is a horizontal scroller.
-  -->
-  <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-3 pb-3">
-    {@render controls?.()}
   </div>
 
   <!--
