@@ -41,11 +41,9 @@
   import ExploreControls from '$lib/components/ExploreControls.svelte';
   import ExplorationView from '$lib/components/ExplorationView.svelte';
   import FloatingPanel from '$lib/components/FloatingPanel.svelte';
-  import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
-  import RootPicker from '$lib/components/RootPicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import WorkspaceToolbar from '$lib/components/WorkspaceToolbar.svelte';
   import ZoomControls from '$lib/components/ZoomControls.svelte';
@@ -1520,33 +1518,6 @@
     readouts of the exploration window. It is at the other end of the
     picture from the inspector.
   -->
-  {#if viewMode === 'subgraph'}
-    <FloatingPanel
-      id={ROOT_PICKER_ID}
-      placement="bottom-left"
-      label={t('graph.rootPanelLabel')}
-      panelClass="w-[min(20rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-18rem)] overflow-y-auto"
-      hidden={!rootPickerOpen}
-    >
-      <RootPicker
-        nodes={rootNodes}
-        {rootId}
-        loading={rootsLoading}
-        error={rootsError}
-        hasMore={rootCursor !== null}
-        onselect={selectRoot}
-        onmore={() => {
-          if (rootCursor !== null) {
-            void loadRoots(rootCursor);
-          }
-        }}
-      />
-
-      <p class="border-t border-rule px-3 py-2 text-small text-muted">
-        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
-      </p>
-    </FloatingPanel>
-  {/if}
 
 
   <!--
