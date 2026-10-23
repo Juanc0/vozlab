@@ -150,10 +150,11 @@ describe('the responsive layout of the graph page', () => {
     const sheet = screen.getByRole('dialog', { name: 'Inspección' });
     expect(sheet).toHaveAttribute('aria-modal', 'true');
 
-    // The toggle says that the panel is open — even though the background
-    // is inert now and the toggle is out of the tree of the screen reader.
-    const opener = document.querySelector('[aria-controls="vozlab-inspector-sheet"]');
-    expect(opener).toHaveAttribute('aria-expanded', 'true');
+    // The panel is open; its collapse button lives inside it now.
+    expect(screen.getByRole('button', { name: 'Ocultar el inspector' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
   });
 
   it('folds the column of the inspector above xl', async () => {

@@ -63,6 +63,8 @@
      * of its own inside it — it is flat, and the panel is what floats.
      */
     flat?: boolean;
+    /** Called when the user wants to collapse the inspector. */
+    oncollapse?: () => void;
     /** Called when the user wants to propose a correction of the selection. */
     onsuggest?: (target: CorrectionTarget) => void;
     /** Called when the user wants to relate the selected node to another one. */
@@ -86,6 +88,7 @@
     panelId: givenPanelId,
     showHeading = true,
     flat = false,
+    oncollapse,
     onsuggest,
     onrelate,
     onsaved,
@@ -250,6 +253,17 @@
     document.getElementById(tabId(tab.id))?.focus();
   }
 </script>
+
+{#if oncollapse}
+  <button
+    type="button"
+    class="mb-2 btn btn-secondary text-small"
+    aria-expanded={true}
+    onclick={oncollapse}
+  >
+    {t('inspector.collapse')}
+  </button>
+{/if}
 
 <aside aria-labelledby={showHeading ? 'inspector-heading' : undefined} class="min-w-0">
   {#if showHeading}

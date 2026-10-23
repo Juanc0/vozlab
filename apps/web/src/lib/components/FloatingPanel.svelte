@@ -15,7 +15,7 @@
 
   interface Props {
     /** Where the panel floats inside the workspace. */
-    placement?: 'top-left' | 'top-right' | 'bottom-left';
+    placement?: 'top-left' | 'top-right' | 'bottom-left' | 'top';
     /**
      * The name of the panel.
      *
@@ -65,7 +65,8 @@
     // the shell: it is in the same corner of the window.
     'top-left': 'left-4 top-4',
     'top-right': 'right-4 top-4',
-    'bottom-left': 'left-4 bottom-[calc(var(--notice-h,0px)+1rem)]'
+    'bottom-left': 'left-4 bottom-[calc(var(--notice-h,0px)+1rem)]',
+    'top': 'left-0 right-0 top-0'
   };
 </script>
 

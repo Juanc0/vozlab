@@ -129,9 +129,9 @@
 
 <FloatingPanel
   bind:element={panel}
-  placement="top-left"
+  placement="top"
   label={t('graph.toolbarLabel')}
-  {panelClass}
+  panelClass="w-full {panelClass}"
 >
   <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
     <!--
@@ -140,38 +140,6 @@
       the workspace opens.
     -->
     <h1 class="text-kpi">{t('graph.heading')}</h1>
-
-    <!--
-      The switch between the two views of the graph. It is a piece of the
-      state of the screen, not of the URL: the URL stays clean and both
-      views stay reachable.
-
-      The radio is the control and the label is its face: the focus is
-      shown on the label (`peer-focus-visible`), because the radio itself is
-      hidden from the sight.
-    -->
-    <fieldset>
-      <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
-      <div class="inline-flex gap-1 rounded-control bg-raised p-1">
-        {#each VIEW_MODES as mode (mode)}
-          <input
-            type="radio"
-            id="graph-view-{mode}-{uid}"
-            name={groupName}
-            value={mode}
-            class="peer sr-only"
-            checked={viewMode === mode}
-            onchange={() => onviewmodechange(mode)}
-          />
-          <label
-            for="graph-view-{mode}-{uid}"
-            class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-3 py-1.5 text-body font-medium text-muted hover:text-text peer-checked:bg-accent-soft peer-checked:font-semibold peer-checked:text-accent-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
-          >
-            {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
-          </label>
-        {/each}
-      </div>
-    </fieldset>
 
     <div class="ml-auto flex items-center gap-2">
       <!--
@@ -187,42 +155,6 @@
         {t('graph.newNode')}
       </button>
 
-      <!--
-        The switch between the picture and its **text alternative**. It is
-        a real toggle: the state is announced (`aria-pressed`), and the
-        list is one click away — never behind a hover or a gesture.
-      -->
-      <button
-        type="button"
-        class="btn btn-secondary aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
-        aria-pressed={listOpen}
-        aria-describedby={listDescriptionId}
-        onclick={onlisttoggle}
-      >
-        {t('graph.listToggle')}
-      </button>
-
-      <!--
-        The toggle of the inspector. It is the **same** control in the two
-        widths: it folds the floating panel of a wide screen and it opens
-        the sheet of a narrow one. It lives in the toolbar because it has
-        to be reachable when the panel is closed.
-      -->
-      <button
-        type="button"
-        class="btn btn-secondary"
-        aria-expanded={inspectorOpen}
-        aria-controls={inspectorControlsId}
-        onclick={(event) => {
-          // Safari does not focus a button that is clicked: the focus is
-          // given to the button by hand, or the panel cannot give it back
-          // when it closes.
-          event.currentTarget.focus();
-          oninspectortoggle();
-        }}
-      >
-        {inspectorOpen ? t('inspector.collapse') : t('inspector.expand')}
-      </button>
     </div>
   </div>
 

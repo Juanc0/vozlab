@@ -281,6 +281,7 @@
    * and the reader turns it on when they want to read a thing.
    */
   let inspectorOpen = $state(!panels.inspectorCollapsed);
+  let readoutOpen = $state(true);
 
   /**
    * The width at which the inspector is a panel over the picture.
@@ -1430,12 +1431,16 @@
           {ledger}
           panelId={`${INSPECTOR_PANEL_ID}-tabpanel`}
           flat
+          oncollapse={() => {
+            inspectorOpen = false;
+          }}
           onsuggest={openCorrection}
           onrelate={openEdgeDialog}
           reconcileEdge={reconcileEdgeScore}
         />
       </FloatingPanel>
     {/if}
+
   {:else}
     <Sheet
       open={inspectorOpen}
@@ -1450,11 +1455,28 @@
         {ledger}
         panelId={`${INSPECTOR_PANEL_ID}-tabpanel`}
         showHeading={false}
+        oncollapse={() => {
+          inspectorOpen = false;
+        }}
         onsuggest={openCorrection}
         onrelate={openEdgeDialog}
         reconcileEdge={reconcileEdgeScore}
       />
     </Sheet>
+  {/if}
+
+  {#if !inspectorOpen}
+    <button
+      type="button"
+      class="pointer-events-auto absolute right-4 top-4 z-10 btn btn-secondary"
+      aria-expanded={inspectorOpen}
+      aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
+      onclick={() => {
+        inspectorOpen = true;
+      }}
+    >
+      {t('inspector.expand')}
+    </button>
   {/if}
 
   <!--
@@ -1488,12 +1510,21 @@
         <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
       </p>
     </FloatingPanel>
-  {:else if wideLayout.matches}
+  {:else if wideLayout.matches && readoutOpen}
     <FloatingPanel
       placement="bottom-left"
       label={t('explore.readoutLabel')}
       panelClass="w-[min(24rem,calc(100%-2rem))]"
     >
+      <button
+        type="button"
+        class="mb-2 btn btn-secondary text-small"
+        onclick={() => {
+          readoutOpen = false;
+        }}
+      >
+        Cerrar
+      </button>
       <div class="space-y-1 p-3">
         {@render exploreReadout()}
       </div>
@@ -1502,6 +1533,18 @@
         <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
       </p>
     </FloatingPanel>
+  {/if}
+
+  {#if !readoutOpen && wideLayout.matches}
+    <button
+      type="button"
+      class="pointer-events-auto absolute bottom-4 left-4 z-10 btn btn-secondary"
+      onclick={() => {
+        readoutOpen = true;
+      }}
+    >
+      {t('explore.readoutLabel')}
+    </button>
   {/if}
 
   <!--
