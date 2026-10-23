@@ -81,9 +81,9 @@ function encodePng(width, height, rgba) {
 /* Drawing                                                                    */
 /* -------------------------------------------------------------------------- */
 
-const BACKGROUND = [0x1e, 0x3a, 0x8a]; // #1e3a8a — the manifest theme_color
-const NODE = [0xf8, 0xfa, 0xfc];
-const EDGE = [0xbf, 0xdb, 0xfe];
+const BACKGROUND = [0x18, 0x3d, 0x6c]; // #183d6c — the manifest theme_color (brand-900)
+const NODE = [0xf5, 0xf8, 0xfb]; // #f5f8fb — the ground
+const EDGE = [0xc1, 0xda, 0xfd]; // #c1dafd — brand-200
 
 /** Normalised (0..1) coordinates of the three graph nodes. */
 const NODES = [

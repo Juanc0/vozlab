@@ -1372,25 +1372,38 @@
       {/if}
 
       <!--
-        The state of a walk: it is said out loud, and the region is always
-        in the document — a live region that appears with its text is not
-        announced by every reader.
+        The outcome of the last creation, **seen**: the paragraph is only
+        rendered when there is something to see, so the block never keeps
+        the row of the title above the middle of the panel. What is said
+        out loud lives in the live region below.
       -->
+      {#if notice}
+        <p class="text-body">
+          {notice.text}
+          {#if notice.link}
+            <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
+          {/if}
+        </p>
+      {/if}
+    {/snippet}
+
+    <!--
+      The **live regions**: what the view says out loud. They are always
+      in the document — a live region that appears with its text is not
+      announced by every reader — and they are `sr-only`, so they never
+      push the row of the title away from the middle of the panel.
+    -->
+    {#snippet live()}
       <p aria-live="polite" class="sr-only">
         {#if walking}
           {t('explore.walking', { title: walkTargetTitle ?? '' })}
         {/if}
       </p>
 
-      <!--
-        The outcome of the last creation. The region is always in the
-        document: a live region that appears with its text is not
-        announced by every reader.
-      -->
-      <p role="status" class="text-body">
+      <p role="status" class="sr-only">
         {notice?.text ?? ''}
         {#if notice?.link}
-          <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
+          {notice.link.label}
         {/if}
       </p>
     {/snippet}

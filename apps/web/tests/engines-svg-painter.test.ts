@@ -177,12 +177,13 @@ describe('the SVG painter', () => {
     const active = card(NODE_A.id).querySelector('rect.vozlab-svg-card-box');
     const pending = card(NODE_B.id).querySelector('rect.vozlab-svg-card-box');
 
-    // The active card carries no mark; the pending one carries a border of
-    // two pixels in the colour of the status.
+    // The active card carries a soft brand edge (one pixel); the pending one
+    // carries a border of two pixels in the colour of the status.
     expect(active).toHaveAttribute('fill', '#ffffff');
-    expect(active).toHaveAttribute('stroke', 'none');
+    expect(active).toHaveAttribute('stroke', '#99c0f6');
+    expect(active).toHaveAttribute('stroke-width', '1');
     expect(pending).toHaveAttribute('fill', '#ffffff');
-    expect(pending).toHaveAttribute('stroke', '#92400e');
+    expect(pending).toHaveAttribute('stroke', '#6d5fa3');
     expect(pending).toHaveAttribute('stroke-width', '2');
   });
 
@@ -262,7 +263,7 @@ describe('the SVG painter', () => {
     );
     expect(card(NODE_B.id).querySelector('rect.vozlab-svg-card-box')).toHaveAttribute(
       'stroke',
-      '#2563eb'
+      '#2f72c6'
     );
     expect(card(NODE_A.id).querySelector('rect.vozlab-svg-presented')).toHaveAttribute(
       'opacity',
@@ -289,7 +290,7 @@ describe('the SVG painter', () => {
 
     const text = edge?.querySelector('text.vozlab-svg-edge-label-text');
 
-    expect(plate).toHaveAttribute('fill', '#f9fafb');
+    expect(plate).toHaveAttribute('fill', '#f5f8fb');
     expect(plate).toHaveAttribute('fill-opacity', '1');
     expect(edge?.querySelector('path.vozlab-svg-arrow')).not.toBeNull();
     expect(text?.textContent).toBe('Sugiere');

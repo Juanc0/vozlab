@@ -275,7 +275,7 @@
 
   <section
     aria-labelledby="proposal-filters-heading"
-    class="rounded-card bg-surface p-4"
+    class="rounded-card bg-secondary-100 p-4"
   >
     <h2 id="proposal-filters-heading">
       {t('proposals.filtersHeading')}
@@ -348,7 +348,7 @@
           The loading state keeps the shape of the table it replaces: flat
           grey bars at the real size of the rows.
         -->
-        <div class="rounded-card bg-surface p-4" role="status" aria-live="polite">
+        <div class="rounded-card bg-secondary-100 p-4" role="status" aria-live="polite">
           <span class="sr-only">{t('proposals.loading')}</span>
           {#each [0, 1, 2, 3, 4] as row (row)}
             <div class="skeleton mb-3 w-full last:mb-0"></div>
@@ -367,7 +367,7 @@
         -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div
-          class="overflow-x-auto rounded-card bg-surface"
+          class="overflow-x-auto rounded-card bg-secondary-100"
           role="region"
           aria-label={t('proposals.listRegion')}
           tabindex="0"
@@ -437,7 +437,7 @@
     </section>
 
     <aside aria-labelledby="proposal-detail-heading" class="min-w-0">
-      <section class="rounded-card bg-surface p-4">
+      <section class="rounded-card bg-secondary-100 p-4">
         <h2 id="proposal-detail-heading" class="sr-only">{t('proposals.detailHeading')}</h2>
 
         {#if focusError}

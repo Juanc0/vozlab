@@ -383,7 +383,7 @@ const PAN_CORRECTION_LIMIT = 3;
  * The room is the air of the design system: the picture does not touch the
  * edge of the canvas.
  */
-const FIT_PADDING = 30;
+const FIT_PADDING = 24;
 
 /**
  * Whether the picture holds the same nodes as the ones it is given.
@@ -447,7 +447,7 @@ interface PictureBox {
  * stretch, long enough for the cards of the edge to reach the place the
  * awake picture keeps them at.
  */
-const SETTLED_TICKS = 400;
+const SETTLED_TICKS = 800;
 
 /**
  * The box of the cards of a picture.
@@ -507,6 +507,9 @@ export function createExplorationInstance(
 
   let edgeStyle: EdgeStyle = 'bezier';
   let pinned = new Map<string, Position>();
+
+  /** Whether the current grab turned into a real drag. */
+  let dragMoved = false;
   let idleSway = options.idleSway !== false;
   let lastNodes: readonly NodeDto[] = [];
   let lastEdges: readonly SubgraphEdgeDto[] = [];
@@ -578,6 +581,7 @@ export function createExplorationInstance(
    * view, and every picture after it keeps the zoom of the reader.
    */
   let fitted = false;
+  let userInteracted = false;
 
   /**
    * The box of the picture the spring arrives at, in model coordinates.
@@ -953,10 +957,9 @@ export function createExplorationInstance(
 
   core.on('grab', 'node', (event) => {
     // The reader has the pointer down on a card: the card is **pinned**,
-    // where it is, and the spring works around it. The picture is not
-    // paused: the neighbours part to make room, which is the movement the
-    // reader reads as "the card has weight".
-    wakeSpring();
+    // where it is. The spring is not woken yet — a plain click must not
+    // move the picture. The wake happens only when the card actually moves.
+    dragMoved = false;
 
     const place = event.target.position();
 
@@ -967,6 +970,8 @@ export function createExplorationInstance(
     // The card follows the pointer, and the spring is told where it is:
     // the collision takes the pinned card as an obstacle and the links pull
     // the neighbours, so the cards around it part.
+    dragMoved = true;
+
     const place = event.target.position();
 
     spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
@@ -981,10 +986,15 @@ export function createExplorationInstance(
 
     // The card is released: the spring takes it back and it moves with the
     // rest of the picture. It is not pinned for the rest of the view — the
-    // reader can move it again.
+    // reader can move it again. Only a real drag wakes the spring; a plain
+    // click leaves the picture still.
     spring?.unpin(cardIdOf(event.target));
 
-    wakeSpring();
+    if (dragMoved) {
+      wakeSpring();
+    }
+
+    dragMoved = false;
   });
 
   core.on('render', () => {
@@ -1017,6 +1027,10 @@ export function createExplorationInstance(
     }
 
     const zoom = clampZoom(core.zoom());
+
+    if (!adjustingViewport) {
+      userInteracted = true;
+    }
 
     readerZoom = zoom;
 
@@ -1392,6 +1406,32 @@ export function createExplorationInstance(
       // The fit of the view: it is the zoom the picture starts with, and
       // not a choice of the reader.
       fitPicture(readerZoom !== null, 'view');
+
+      // The first fit is taken on a settled arrangement, but the living
+      // spring keeps compacting for a while. Re-fit a couple of times
+      // over the first seconds so the picture settles into a tighter frame,
+      // unless the reader has already taken the zoom into their own hands.
+      const refit = (delay: number): void => {
+        setTimeout(() => {
+          if (userInteracted) {
+            return;
+          }
+          if (core.elements().length === 0) {
+            return;
+          }
+          adjustingViewport = true;
+          try {
+            core.fit(undefined, FIT_PADDING);
+            readerZoom = clampZoom(core.zoom());
+            options.onzoom?.(readerZoom, 'view');
+          } finally {
+            adjustingViewport = false;
+          }
+        }, delay);
+      };
+
+      refit(900);
+      refit(2200);
 
       return;
     }

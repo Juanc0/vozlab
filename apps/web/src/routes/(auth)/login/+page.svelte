@@ -103,7 +103,7 @@
     </p>
   </div>
 
-  <div class="rounded-card bg-surface p-6">
+  <div class="rounded-card bg-brand-100 p-6">
     <button
       type="button"
       class="btn btn-primary"
@@ -116,7 +116,7 @@
     </p>
   </div>
 
-  <div class="rounded-card bg-surface p-6">
+  <div class="rounded-card bg-brand-100 p-6">
     <h2>{t('login.joiningHeading')}</h2>
     <p class="mt-2 text-body text-muted max-w-measure">
       {t('login.joiningText')}
@@ -130,7 +130,7 @@
   </div>
 
   {#if isDevelopmentBuild()}
-    <div class="rounded-card bg-surface p-6">
+    <div class="rounded-card bg-brand-100 p-6">
       <h2>{t('login.devHeading')}</h2>
       <p class="mt-2 text-body text-muted max-w-measure">
         <RichText text={t('login.devText')} />
@@ -187,7 +187,7 @@ pnpm --filter @vozlab/database db:mint-token -- --as moderator
 pnpm --filter @vozlab/database db:mint-token -- --as member</code></pre>
     </div>
   {:else}
-    <div class="rounded-card bg-surface p-6">
+    <div class="rounded-card bg-brand-100 p-6">
       <h2>{t('login.localHeading')}</h2>
       <p class="mt-2 text-body text-muted max-w-measure">
         {t('login.localText')}

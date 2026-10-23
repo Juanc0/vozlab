@@ -143,7 +143,7 @@
 <dialog
   bind:this={dialog}
   id="vozlab-dialog-{uid}"
-  class="m-auto w-[min(34rem,calc(100vw-1rem))] rounded-card bg-surface p-0 text-text shadow-float backdrop:bg-text/40"
+  class="m-auto w-[min(34rem,calc(100vw-1rem))] rounded-card bg-brand-100 p-0 text-text shadow-float backdrop:bg-text/40"
   aria-labelledby={titleId}
   aria-describedby={describedby}
   tabindex="-1"

@@ -10,16 +10,35 @@ deviations: the hue is VozLab's own blue in place of the dealt raspberry
 (the style's own *face* section offers the ladder built from the brand's
 own hue), and the type is IBM Plex instead of the dealt DM Sans.
 
+The palette is arranged in **three rings**:
+
+1. **Principal — VozLab's blue.** The full hue on the marks that act
+   (the one filled button, the selection, the relations of the canvas);
+   its pale tints do every area of work.
+2. **Secundario — the indigo-violet.** A *subordinate* hue (lower
+   chroma than the blue, never a second accent) for the governance
+   layer: what is waiting for a decision wears it — the `PENDING` mark
+   of a node, the dashed relation of a proposal, the badge of an open
+   proposal.
+3. **Auxiliar — the functional trio.** Green, red and amber with their
+   pale pills: success, failure and warning. These never decorate; they
+   only report.
+
+Around the rings sit the **neutrals**, tinted with the blue of the brand
+(never pure grey — a tint reads as intentional).
+
 ## The three layers of the tokens
 
 `apps/web/src/app.css` holds one Tailwind 4 `@theme` block with three
 layers.
 
-### 1. The raw brand palette
+### 1. The raw palettes
 
-`--color-brand-50…950`, the Tailwind `blue` scale, kept whole. It is the
-**source** of the ladder and nothing in the interface refers to it
-directly.
+`--color-brand-50…950` and `--color-secondary-50…950`, the two ladders,
+kept whole. They are the **source** of the roles and nothing in the
+interface refers to them directly. The blue is generated at a fixed hue
+with varying lightness and chroma in OKLCH and shipped as sRGB; the
+violet is a lower-chroma hue that never competes with it.
 
 ### 2. The roles
 
@@ -27,24 +46,28 @@ A role says what a colour *does*, never what it looks like.
 
 | role | value | what it is for |
 | --- | --- | --- |
-| `--color-ground` | `#f9fafb` | the page |
+| `--color-ground` | `#f5f8fb` | the page |
 | `--color-surface` | `#ffffff` | a panel, a card, a field |
-| `--color-raised` | `#f3f4f6` | a tone step: the hover of a row, a nested panel |
-| `--color-border` | `#e5e7eb` | the edge of something with no label of its own |
-| `--color-rule` | `#f2f2f2` | a rule between sections |
-| `--color-control` | `#d1d5db` | the edge of a control that carries its own label |
-| `--color-control-strong` | `#7d8798` | the edge of a **text field**, whose edge is all that says where to type |
-| `--color-text` | `#111827` | the running text |
-| `--color-muted` | `#5f6672` | the meta, the labels |
-| `--color-faint` | `#6b6b6b` | the placeholders |
-| `--color-accent` | `#2563eb` | the full hue: small marks only |
-| `--color-accent-soft` | `#eff6ff` | the 50 tint: the areas |
-| `--color-accent-track` | `#dbeafe` | the 100 tint: the tracks |
-| `--color-accent-ink` | `#1e3a8a` | the 900: the text on a tint |
+| `--color-raised` | `#eceff5` | a tone step: the hover of a row, a nested panel |
+| `--color-border` | `#dce1e8` | the edge of something with no label of its own |
+| `--color-rule` | `#e9ecf1` | a rule between sections |
+| `--color-control` | `#c0c6ce` | the edge of a control that carries its own label |
+| `--color-control-strong` | `#818995` | the edge of a **text field**, whose edge is all that says where to type |
+| `--color-text` | `#1b2128` | the running text |
+| `--color-muted` | `#656c76` | the meta, the labels |
+| `--color-faint` | `#6e757e` | the placeholders |
+| `--color-accent` | `#2f72c6` | the full hue: small marks only |
+| `--color-accent-hover` | `#2260ad` | the accent under the pointer |
+| `--color-accent-soft` | `#f1f6fe` | the 50 tint: the areas |
+| `--color-accent-track` | `#dfecfe` | the 100 tint: the tracks |
+| `--color-accent-ink` | `#1c4c8a` | the 800: the text on a tint |
+| `--color-secondary` | `#6d5fa3` | what waits for a decision |
 | `--color-positive` / `--color-negative` / `--color-warning` | `#247b50` / `#c4242a` / `#92400e` | the status colours |
 
 Each status has a **pill pair** (`--color-pill-*-bg` and
-`--color-pill-*-ink`): a pale ground with the dark ink of the same hue.
+`--color-pill-*-ink`): a pale ground with the dark ink of the same hue —
+positive, negative, warning, **secondary** (an open proposal) and
+neutral.
 
 The names `--color-ink`, `--color-ink-muted`, `--color-line`,
 `--color-line-strong` and `--color-surface-muted` **do not exist any more**.
@@ -57,7 +80,9 @@ component.
 `--sidebar-width: 230px`, `--gap: 24px`, `--pad: 24px`,
 `--control-height: 32px`, `--container-measure: 56ch`.
 
-The type: `--text-title: 32px/38`, `--text-section: 18px/24`,
+The type: `--text-display: 38px/44` (the title of a workspace, on the
+picture itself), `--text-title: 32px/38`, `--text-brand: 20px/24` (the
+wordmark in the navigation column), `--text-section: 18px/24`,
 `--text-kpi: 24px/30`, `--text-body: 14px/20`, `--text-small: 12px/16`.
 
 ## The accent ladder
@@ -112,16 +137,17 @@ screens, and they hold for every surface:
 
 | pair | ratio |
 | --- | --- |
-| `--color-text` on `--color-surface` / on `--color-ground` | 17.74:1 / 16.98:1 |
-| `--color-muted` on surface / ground / raised | 5.78 / 5.54 / 5.26:1 |
-| `--color-faint` on surface | 5.33:1 |
-| `--color-accent-ink` on `--color-accent-soft` | 9.52:1 |
-| the focus ring on the ground / on the tint | 4.95:1 / 4.75:1 |
-| white on `--color-accent` (the filled button) | 5.17:1 |
-| the pill pairs (positive / negative / warning / neutral) | 8.30 / 8.63 / 6.84 / 9.37:1 |
-| `--color-control-strong` on surface / ground | 3.63 / 3.47:1 |
+| `--color-text` on `--color-surface` / on `--color-ground` | 16.22:1 / 15.22:1 |
+| `--color-muted` on surface / ground / raised | 5.30 / 4.98 / 4.60:1 |
+| `--color-faint` on surface | 4.66:1 |
+| `--color-accent-ink` on `--color-accent-soft` | 7.90:1 |
+| the focus ring on the ground / on the tint | 4.54:1 / 4.46:1 |
+| white on `--color-accent` (the filled button) | 4.84:1 |
+| `--color-secondary` on surface / ground | 5.50 / 5.16:1 |
+| the pill pairs (positive / negative / warning / neutral / secondary) | 8.30 / 8.63 / 6.84 / 9.40 / 5.79:1 |
+| `--color-control-strong` on surface / ground | 3.53 / 3.31:1 |
 
-`--color-control` on white is 1.47:1, below the 3:1 of SC 1.4.11, so it
+`--color-control` on white is 1.72:1, below the 3:1 of SC 1.4.11, so it
 is only used for the edge of a control that carries its own label. The
 edge of a **text field** uses `--color-control-strong`.
 
@@ -136,7 +162,7 @@ edge of a **text field** uses `--color-control-strong`.
 | the measure | 56ch on every running text |
 | the row | 45px |
 | the control | 32px, a 6px radius |
-| the card | an 8px radius, **no edge**, no shadow |
+| the card | an 8px radius, **no edge**, no shadow — its background is a soft tint of the ring it belongs to (principal blue by default, secondary violet on governance surfaces), not pure white |
 
 ## The canvas and its cards
 
@@ -152,9 +178,17 @@ wall of colour, not a picture of a graph — and a fill by status says
 nothing, because every node of a healthy graph has the same status.
 
 The **status** of a node is a **mark** on the card: a border of two pixels
-in the colour of the status (`--color-warning`, `--color-negative`,
-`--color-muted`). The default status (`ACTIVE`) wears **no mark at all**:
-the card is the card.
+in the colour of the status — `--color-secondary` for `PENDING` (it waits
+for a decision, and that is not a warning), `--color-negative` for
+`REJECTED`, `--color-muted` for `DRAFT`/`MERGED`/`DEPRECATED`. The default
+status (`ACTIVE`) wears a **soft brand edge** (one pixel, `brand-300`): the
+card carries the hue of the brand at the strength of an edge, and that edge
+is not a status mark.
+
+The relations wear the same language: an `ACTIVE` relation is the blue of
+the brand at the strength a line needs (3.4:1 on the ground), a `PENDING`
+one wears the secondary as a dashed line, a `DRAFT` one is written in the
+muted ink, and a rejected one is the negative of the palette.
 
 The **type** of the node is the categorical series of the graph — the
 difference between a problem and an idea — and it is the one thing on the

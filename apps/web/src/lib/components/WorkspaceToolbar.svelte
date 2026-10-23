@@ -53,6 +53,16 @@
     controls?: Snippet;
     /** The failures and the notices of the view on screen. */
     status?: Snippet;
+    /**
+     * The **live regions** of the view: what is said out loud to a reader
+     * of a screen reader.
+     *
+     * They are always in the document and they live **outside the flow**:
+     * a live region that appears with its text is not announced, and a
+     * region in the flow would push the row of the title above the middle
+     * of the panel even when nothing is being said.
+     */
+    live?: Snippet;
     /** The readouts of the view on screen. */
     readout?: Snippet;
   }
@@ -72,6 +82,7 @@
     onbottom,
     controls,
     status,
+    live,
     readout
   }: Props = $props();
 
@@ -146,10 +157,12 @@
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
-      the workspace opens. It keeps the `h1` of the design system — the
-      serif of 32px — the toolbar does not shrink it.
+      the workspace opens. It wears the **display** size — one step above
+      the page title of a document — because it sits on the picture
+      itself. On a phone it keeps the smaller title: the toolbar is
+      crowded there and the picture needs the room.
     -->
-    <h1 class="self-center justify-self-start">{t('graph.heading')}</h1>
+    <h1 class="self-center justify-self-start sm:text-display">{t('graph.heading')}</h1>
 
     <div class="flex min-w-0 flex-wrap items-end justify-center gap-x-4 gap-y-2">
       {@render controls?.()}
@@ -174,16 +187,35 @@
   <!--
     The failures and the notices of the view on screen. They are said out
     loud here, over the picture: a failure never leaves a blank canvas.
+
+    The block keeps its bottom padding **only when it holds something**,
+    and only for element children: a block that keeps its padding when it
+    is empty pushes the row of the title above the middle of the panel,
+    and the title and the action have to sit at the vertical centre of
+    the bar.
   -->
-  <div class="px-7 pb-3 empty:pb-0">
+  <div class="px-7 pb-3 [&:not(:has(>*))]:pb-0">
     {@render status?.()}
   </div>
 
   <!--
+    The live regions of the view. They are rendered bare — no block of
+    their own — because they are `sr-only`: absolutely positioned, out of
+    the flow, and they must exist before their text changes to be
+    announced. The panel never grows or shrinks with them.
+  -->
+  {@render live?.()}
+
+  <!--
     The readouts of the view on screen: what the picture is and what it is
     not.
+
+    The block keeps its bottom padding **only when it holds something**:
+    an empty block with padding of its own would push the row of the title
+    above the middle of the panel, and the title and the action have to
+    sit at the vertical centre of the bar.
   -->
-  <div class="px-7 pb-3">
+  <div class="px-7 pb-3 [&:not(:has(>*))]:pb-0">
     {@render readout?.()}
   </div>
 

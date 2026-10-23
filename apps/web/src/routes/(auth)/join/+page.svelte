@@ -92,7 +92,7 @@
     </p>
   </div>
 
-  <form class="space-y-5 rounded-card bg-surface p-6" onsubmit={submit}>
+  <form class="space-y-5 rounded-card bg-brand-100 p-6" onsubmit={submit}>
     <div>
       <label for="event-code" class="field-label">
         {t('join.codeLabel')} <span class="font-normal text-muted">{t('common.required')}</span>

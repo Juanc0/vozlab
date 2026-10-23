@@ -19,9 +19,10 @@
    * - the **session** becomes a control that opens a menu with the identity
    *   and the sign-out inside it: the identity stays readable, and it is
    *   still announced by the control itself;
-   * - the **language selector** sits at the bottom with the session: it
-   *   changes the whole application, and its rail version opens the same
-   *   selector inside its own menu.
+   * - the **language selector** sits at the bottom of the column, just
+   *   **above** the session: it changes the whole application, and the
+   *   sign-out — the way out — is the last thing of the column. Its rail
+   *   version opens the same selector inside its own menu.
    */
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -233,12 +234,18 @@
 <div class="flex h-full flex-col gap-6">
   <!--
     The identity of the product: its mark and its name.
+
+    The name is set in the **wordmark** size — one step above a section
+    title — and the mark is drawn at thirty-two pixels: the name of the
+    product is the first thing the column says, and it carries the
+    spacing the column keeps from the top edge (the padding of the
+    column, not a margin of its own).
   -->
-  <div class="flex items-center gap-2 {collapsed ? 'justify-center' : ''}">
+  <div class="flex items-center gap-2.5 {collapsed ? 'justify-center' : ''}">
     <span aria-hidden="true" class="shrink-0 text-accent">
       <svg
-        width="24"
-        height="24"
+        width="32"
+        height="32"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -257,7 +264,7 @@
     {#if collapsed}
       <span class="sr-only">{title}</span>
     {:else}
-      <span class="text-section font-semibold leading-none text-text">{title}</span>
+      <span class="text-brand font-semibold leading-none text-text">{title}</span>
     {/if}
   </div>
 
@@ -408,15 +415,21 @@
   {:else}
     <WorkspaceSelector />
 
+    <!--
+      The foot of the column, at the very bottom: the **language** first
+      and the **session** under it. The sign-out is the way out of the
+      application, so it is the last thing of the column — and the
+      language, which changes every screen of it, sits right above.
+    -->
     <div class="mt-auto space-y-3 border-t border-rule pt-4">
-      {@render sessionBlock()}
-
       <div>
         <p class="mb-1 text-small text-muted">
           {t('locale.label')}
         </p>
         <LocaleSelector />
       </div>
+
+      {@render sessionBlock()}
     </div>
   {/if}
 </div>

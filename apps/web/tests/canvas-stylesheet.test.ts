@@ -46,14 +46,14 @@ describe('the marks of the canvas', () => {
   it('writes the meta line in the muted ink', () => {
     const meta = rule(GRAPH_STYLESHEET, `node.${META_CLASS}`);
 
-    expect(meta?.['color']).toBe('#5f6672');
+    expect(meta?.['color']).toBe('#656c76');
   });
 
   it('gives the selection the accent and its pale underlay', () => {
     const selected = rule(EXPLORE_STYLESHEET, `node.${SELECTED_CLASS}`);
 
-    expect(selected?.['border-color']).toBe('#2563eb');
-    expect(selected?.['underlay-color']).toBe('#2563eb');
+    expect(selected?.['border-color']).toBe('#2f72c6');
+    expect(selected?.['underlay-color']).toBe('#2f72c6');
     expect(selected?.['underlay-opacity']).toBe(0.12);
   });
 
@@ -62,7 +62,7 @@ describe('the marks of the canvas', () => {
 
     // The ring is the ink and not a colour of the status: it says "this is
     // the one the view is showing you", which is not a state of the node.
-    expect(presented?.['outline-color']).toBe('#111827');
+    expect(presented?.['outline-color']).toBe('#1b2128');
     expect(presented?.['outline-width']).toBe('3px');
   });
 
@@ -73,7 +73,7 @@ describe('the marks of the canvas', () => {
     for (const stylesheet of [GRAPH_STYLESHEET, EXPLORE_STYLESHEET]) {
       const edge = rule(stylesheet, 'edge');
 
-      expect(edge?.['text-background-color']).toBe('#f9fafb');
+      expect(edge?.['text-background-color']).toBe('#f5f8fb');
       expect(edge?.['text-background-opacity']).toBe(1);
     }
   });

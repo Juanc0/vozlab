@@ -377,7 +377,7 @@
   const replyParent = $derived(posts.find((post) => post.id === replyParentId) ?? null);
 </script>
 
-<section aria-labelledby={headingId} class={bare ? '' : 'rounded-card bg-surface p-4'}>
+<section aria-labelledby={headingId} class={bare ? '' : 'rounded-card bg-brand-100 p-4'}>
   <h2 id={headingId}>
     {sectionHeading}
   </h2>

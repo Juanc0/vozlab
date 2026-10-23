@@ -91,7 +91,7 @@ const PAN_EASING = 'ease-in-out-cubic';
 /**
  * The room the picture keeps around itself when it is fitted, in pixels.
  */
-const FIT_PADDING = 30;
+const FIT_PADDING = 20;
 
 /** What the canvas reports back to the app. */
 export interface GraphInstance {
@@ -183,7 +183,8 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
     style: GRAPH_STYLESHEET,
     layout: { ...DAGRE_LAYOUT },
     minZoom: MIN_ZOOM,
-    maxZoom: MAX_ZOOM
+    maxZoom: MAX_ZOOM,
+    autoungrabify: true
   });
 
   /**
@@ -200,6 +201,7 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
 
   /** Whether the picture has been fitted once. */
   let fitted = false;
+  let userInteracted = false;
 
   /**
    * Whether the instance is moving the viewport itself.
@@ -239,6 +241,8 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
     if (adjustingViewport) {
       return;
     }
+
+    userInteracted = true;
 
     const zoom = clampZoom(core.zoom());
 
@@ -331,6 +335,22 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
         // The fit of the view: it is the zoom the picture starts with, and
         // not a choice of the reader.
         fitPicture(readerZoom !== null, 'view');
+
+        // The container may not have its final size yet on the first paint;
+        // re-fit a moment later so the picture lands in a tighter frame.
+        setTimeout(() => {
+          if (userInteracted) {
+            return;
+          }
+          adjustingViewport = true;
+          try {
+            core.fit(undefined, FIT_PADDING);
+            readerZoom = clampZoom(core.zoom());
+            options.onzoom?.(readerZoom, 'view');
+          } finally {
+            adjustingViewport = false;
+          }
+        }, 400);
       }
     },
 

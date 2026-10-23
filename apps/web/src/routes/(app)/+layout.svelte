@@ -50,9 +50,14 @@
    * The rail is 56 pixels wide and it holds a touch target of 44: the
    * padding has to leave room for it, or the column grows a scrollbar that
    * nothing asked for.
+   *
+   * The padding is the **same on every route** — the graph is a workspace
+   * and the proposals screen is a document, and the column must not move
+   * or change width between them. The top padding is the air the mark of
+   * the product keeps from the top edge of the window.
    */
   const navPadding = $derived(
-    panels.navCollapsed ? 'px-1' : isWorkspace ? 'pl-4 pr-6 sm:pl-6' : 'pr-6'
+    `pt-6 ${panels.navCollapsed ? 'px-1' : 'px-4 sm:px-6'}`
   );
 
   onMount(() => {
@@ -205,7 +210,7 @@
       -->
       <aside
         aria-label={t('app.workspaceAndSections')}
-        class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
+        class="hidden min-w-0 border-r border-brand-200 bg-brand-100 lg:block lg:overflow-y-auto {isWorkspace
           ? 'h-full'
           : 'sticky top-0 h-dvh'} {navPadding}"
       >
@@ -213,9 +218,15 @@
       </aside>
     {/if}
 
-    <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : ''}">
+    <!--
+      The page. In a **workspace** it is the whole area — no padding, the
+      canvas is the window. In a document it carries the padding the shell
+      used to carry: the column of the navigation is beside it, at the
+      edge of the window, and both keep the same air on every route.
+    -->
+    <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : 'px-4 py-6 sm:px-6 sm:py-8'}">
       {#if status === 'no-membership'}
-        <section class="rounded-card bg-surface p-6">
+        <section class="rounded-card bg-brand-100 p-6">
           <h1>{t('app.noWorkspaceHeading')}</h1>
           <p class="mt-2 max-w-measure text-body text-muted">
             {t('app.noWorkspaceText')}
@@ -230,7 +241,7 @@
     </div>
   </div>
 {:else if status === 'failed'}
-  <section role="alert" class="max-w-measure rounded-card bg-surface p-6">
+  <section role="alert" class="max-w-measure rounded-card bg-brand-100 p-6">
     <h1 class="text-section font-sans">{t('app.restoreFailedHeading')}</h1>
     <p class="mt-2 text-body text-muted">
       {#if connectivityState.offline}

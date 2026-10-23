@@ -88,9 +88,9 @@
   {id}
   {style}
   aria-label={label}
-  class="pointer-events-auto absolute z-10 rounded-card bg-surface {flat
+  class="pointer-events-auto absolute z-10 rounded-card bg-brand-100 {flat
     ? ''
-    : 'border border-border shadow-float'} {PLACEMENT[placement]} {panelClass} {hidden ? 'hidden' : ''}"
+    : 'border border-brand-200 shadow-float'} {PLACEMENT[placement]} {panelClass} {hidden ? 'hidden' : ''}"
 >
   {@render children?.()}
 </section>

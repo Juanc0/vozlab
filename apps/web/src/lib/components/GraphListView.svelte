@@ -135,7 +135,7 @@
     -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
-      class="mt-2 overflow-x-auto rounded-card bg-surface"
+      class="mt-2 overflow-x-auto rounded-card bg-brand-100"
       role="region"
       aria-label={t('graph.listNodesRegion')}
       tabindex="0"
@@ -213,7 +213,7 @@
 
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
-      class="mt-2 overflow-x-auto rounded-card bg-surface"
+      class="mt-2 overflow-x-auto rounded-card bg-brand-100"
       role="region"
       aria-label={t('graph.listRelationsRegion')}
       tabindex="0"

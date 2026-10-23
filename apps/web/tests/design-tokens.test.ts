@@ -41,12 +41,13 @@ const ROLES = [
   'accent-soft',
   'accent-track',
   'accent-ink',
+  'secondary',
   'positive',
   'negative',
   'warning'
 ] as const;
 
-/** The four pill pairs: a pale tint and the dark ink of the same hue. */
+/** The pill pairs: a pale tint and the dark ink of the same hue. */
 const PILLS = [
   'pill-positive-bg',
   'pill-positive-ink',
@@ -54,6 +55,8 @@ const PILLS = [
   'pill-negative-ink',
   'pill-warning-bg',
   'pill-warning-ink',
+  'pill-secondary-bg',
+  'pill-secondary-ink',
   'pill-neutral-bg',
   'pill-neutral-ink'
 ] as const;
@@ -70,22 +73,31 @@ const GEOMETRY = [
 ] as const;
 
 /** The type: the sizes and the weights. */
-const SIZES = ['text-title', 'text-section', 'text-kpi', 'text-body', 'text-small'] as const;
+const SIZES = [
+  'text-display',
+  'text-title',
+  'text-section',
+  'text-brand',
+  'text-kpi',
+  'text-body',
+  'text-small'
+] as const;
 
 /** The values the sheet prints, with the hue of the brand. */
 const VALUES: Readonly<Record<string, string>> = {
-  ground: '#f9fafb',
+  ground: '#f5f8fb',
   surface: '#ffffff',
-  raised: '#f3f4f6',
-  border: '#e5e7eb',
-  rule: '#f2f2f2',
-  control: '#d1d5db',
-  text: '#111827',
-  muted: '#5f6672',
-  accent: '#2563eb',
-  'accent-soft': '#eff6ff',
-  'accent-track': '#dbeafe',
-  'accent-ink': '#1e3a8a',
+  raised: '#eceff5',
+  border: '#dce1e8',
+  rule: '#e9ecf1',
+  control: '#c0c6ce',
+  text: '#1b2128',
+  muted: '#656c76',
+  accent: '#2f72c6',
+  'accent-soft': '#f1f6fe',
+  'accent-track': '#dfecfe',
+  'accent-ink': '#1c4c8a',
+  secondary: '#6d5fa3',
   positive: '#247b50',
   negative: '#c4242a',
   warning: '#92400e',
@@ -95,8 +107,10 @@ const VALUES: Readonly<Record<string, string>> = {
   'pill-negative-ink': '#831c1e',
   'pill-warning-bg': '#fffbeb',
   'pill-warning-ink': '#92400e',
-  'pill-neutral-bg': '#f3f4f6',
-  'pill-neutral-ink': '#374151',
+  'pill-secondary-bg': '#e9e6fe',
+  'pill-secondary-ink': '#5c508b',
+  'pill-neutral-bg': '#eceff5',
+  'pill-neutral-ink': '#363e48',
   'radius-card': '8px',
   'radius-control': '6px',
   'row-height': '45px',
@@ -104,8 +118,10 @@ const VALUES: Readonly<Record<string, string>> = {
   gap: '24px',
   pad: '24px',
   'control-height': '32px',
+  'text-display': '38px',
   'text-title': '32px',
   'text-section': '18px',
+  'text-brand': '20px',
   'text-kpi': '24px',
   'text-body': '14px',
   'text-small': '12px'
@@ -143,7 +159,7 @@ describe('the token layer', () => {
     }
   });
 
-  it('exposes the four pill pairs', () => {
+  it('exposes every pill pair', () => {
     for (const pill of PILLS) {
       expect(APP_CSS).toContain(`--color-${pill}:`);
     }
@@ -173,9 +189,10 @@ describe('the token layer', () => {
     }
   });
 
-  it('keeps the raw brand palette as the source of the ladder', () => {
+  it('keeps the raw palettes as the source of the two ladders', () => {
     for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]) {
       expect(APP_CSS).toContain(`--color-brand-${step}:`);
+      expect(APP_CSS).toContain(`--color-secondary-${step}:`);
     }
   });
 
@@ -229,8 +246,9 @@ describe('the token layer', () => {
     expect(SELECTION_COLOR).toBe(VALUES.accent);
     expect(PRESENTED_COLOR).toBe(VALUES.text);
 
-    // The mark of a status is the colour of the status.
-    expect(nodeStatusBorder('PENDING').color).toBe(VALUES.warning);
+    // The mark of a status is the colour of the status: what waits for a
+    // decision wears the secondary of the palette, never the accent.
+    expect(nodeStatusBorder('PENDING').color).toBe(VALUES.secondary);
     expect(nodeStatusBorder('REJECTED').color).toBe(VALUES.negative);
     expect(nodeStatusBorder('MERGED').color).toBe(VALUES.muted);
   });

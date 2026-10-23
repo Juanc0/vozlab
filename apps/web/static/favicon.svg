@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VozLab">
-  <rect width="64" height="64" rx="14" fill="#1e3a8a" />
-  <g stroke="#bfdbfe" stroke-width="4" stroke-linecap="round">
+  <rect width="64" height="64" rx="14" fill="#183d6c" />
+  <g stroke="#c1dafd" stroke-width="4" stroke-linecap="round">
     <line x1="19" y1="20" x2="45" y2="20" />
     <line x1="19" y1="20" x2="32" y2="46" />
     <line x1="45" y1="20" x2="32" y2="46" />
   </g>
-  <g fill="#f8fafc">
+  <g fill="#f5f8fb">
     <circle cx="19" cy="20" r="7.5" />
     <circle cx="45" cy="20" r="7.5" />
     <circle cx="32" cy="46" r="7.5" />

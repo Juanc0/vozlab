@@ -30,19 +30,19 @@ export const CARD_COLOR = '#ffffff';
  * It is the ground of the design system (`--color-ground`), and it is the
  * colour of the plate behind the name of a relation.
  */
-export const GROUND_COLOR = '#f9fafb';
+export const GROUND_COLOR = '#f5f8fb';
 
 /** The ink of the title of a card: the text of the interface. */
-export const CARD_INK = '#111827';
+export const CARD_INK = '#1b2128';
 
 /** The ink of the meta line of a card: the muted text of the interface. */
-export const CARD_META_INK = '#5f6672';
+export const CARD_META_INK = '#656c76';
 
 /** The colour of the selection: the accent of the interface. */
-export const SELECTION_COLOR = '#2563eb';
+export const SELECTION_COLOR = '#2f72c6';
 
 /** The colour of the ring of the node the view presents: the ink. */
-export const PRESENTED_COLOR = '#111827';
+export const PRESENTED_COLOR = '#1b2128';
 
 /**
  * The border of the card of a relation.
@@ -51,7 +51,7 @@ export const PRESENTED_COLOR = '#111827';
  * separated from the ground of the canvas by a **tone step**, exactly like
  * the cards of the interface are.
  */
-export const RELATION_CARD_BORDER = '#e5e7eb';
+export const RELATION_CARD_BORDER = '#dce1e8';
 
 /**
  * The border of a card, by the status of the node.
@@ -59,26 +59,38 @@ export const RELATION_CARD_BORDER = '#e5e7eb';
  * The default status carries **no mark**: the card is the card. The other
  * statuses carry a border of two pixels in the colour of the status — a
  * mark on the card, not a rule between sections.
+ *
+ * `PENDING` wears the **secondary** of the palette (`--color-secondary`,
+ * the indigo-violet of the governance layer): it is waiting for a
+ * decision, and that is not a warning.
  */
 const STATUS_BORDER_COLORS: Record<NodeStatus, string> = {
   ACTIVE: CARD_META_INK,
-  PENDING: '#92400e',
+  PENDING: '#6d5fa3',
   DRAFT: CARD_META_INK,
   MERGED: CARD_META_INK,
   DEPRECATED: CARD_META_INK,
   REJECTED: '#c4242a'
 };
 
-/** The colour of a relation, by its status. */
+/**
+ * The colour of a relation, by its status.
+ *
+ * An active relation is the **product itself** — the knowledge of the
+ * workspace — and it is drawn in the blue of the brand at the strength a
+ * line needs (3.4:1 on the ground). A relation that waits wears the
+ * secondary, a draft is written in the muted ink, and a rejected one is
+ * the negative of the palette.
+ */
 const EDGE_COLORS: Record<EdgeStatus, string> = {
-  ACTIVE: '#475569',
-  PENDING: '#92400e',
-  DRAFT: '#5f6672',
+  ACTIVE: '#4987d9',
+  PENDING: '#8273bb',
+  DRAFT: '#656c76',
   REJECTED: '#c4242a'
 };
 
 /** The colour of a node of an unknown status. */
-const FALLBACK_COLOR = '#5f6672';
+const FALLBACK_COLOR = '#656c76';
 
 /**
  * The border of the card of a node, by its status.
@@ -88,7 +100,10 @@ const FALLBACK_COLOR = '#5f6672';
  */
 export function nodeStatusBorder(status: NodeStatus): { width: number; color: string } {
   if (status === 'ACTIVE') {
-    return { width: 0, color: FALLBACK_COLOR };
+    // A soft brand edge on every card: the card is no longer borderless,
+    // it carries the hue of the brand at the strength of an edge. It is
+    // not a status mark (those are 2px and override it).
+    return { width: 1, color: '#99c0f6' };
   }
 
   return { width: 2, color: STATUS_BORDER_COLORS[status] ?? FALLBACK_COLOR };

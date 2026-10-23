@@ -178,12 +178,19 @@
 
     A workspace takes the whole area: the canvas is that area, and the
     panels float over it.
+
+    A page **with a navigation** carries no padding of its own here: the
+    navigation column and the page pad themselves, so the column starts
+    at the very same edge of the window on every route — a column that
+    moves with the route is a column of a different width, twice.
   -->
   <main
     id="main-content"
     class="w-full flex-1 {workspace
       ? 'min-h-0 overflow-hidden'
-      : 'mx-auto px-4 py-6 sm:px-6 sm:py-8'}"
+      : navigation
+        ? ''
+        : 'mx-auto px-4 py-6 sm:px-6 sm:py-8'}"
   >
     {@render children?.()}
   </main>

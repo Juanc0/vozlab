@@ -602,7 +602,7 @@
           {/if}
         </p>
 
-        <div class="mt-2 overflow-x-auto rounded-card bg-surface">
+        <div class="mt-2 overflow-x-auto rounded-card bg-brand-100">
           <table class="w-full border-collapse text-left text-body">
             <caption class="sr-only">
               {t('correction.tableCaption')}

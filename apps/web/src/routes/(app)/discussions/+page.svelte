@@ -151,7 +151,7 @@
     </p>
   </div>
 
-  <section aria-labelledby="discussion-target-heading" class="rounded-card bg-surface p-4">
+  <section aria-labelledby="discussion-target-heading" class="rounded-card bg-brand-100 p-4">
     <h2 id="discussion-target-heading">
       {t('discussions.targetHeading')}
     </h2>

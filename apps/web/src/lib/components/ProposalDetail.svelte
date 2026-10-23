@@ -242,7 +242,17 @@
       <h2 id={headingId}>
         {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
-      <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
+      <!--
+        The badge of the status. What waits for a decision wears the
+        **secondary** of the palette — the indigo-violet of the governance
+        layer — and everything else stays neutral: the status of a
+        proposal is not a warning, and it is not the accent either.
+      -->
+      <span
+        class="rounded-control px-1.5 py-0.5 text-small {proposal.status === 'PENDING'
+          ? 'bg-pill-secondary-bg text-pill-secondary-ink'
+          : 'bg-pill-neutral-bg text-pill-neutral-ink'}"
+      >
         {locale.status('proposal', proposal.status)}
       </span>
     </div>

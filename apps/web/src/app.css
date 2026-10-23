@@ -69,45 +69,70 @@
 /*
  * VozLab design tokens (Tailwind v4 — CSS first, no `tailwind.config.js`).
  *
- * The layer has three parts:
+ * The colour system is **three rings around one hue**, all of it drawn in
+ * OKLCH (perceptually uniform steps, the hue held fixed while only the
+ * lightness and the chroma move) and shipped as sRGB hex so the interface
+ * and the canvas painters read the very same values:
  *
- * 1. the **raw brand palette** (`--color-brand-50…950`) — the Tailwind
- *    `blue` scale. It is the source of the ladder and it is kept whole:
- *    the roles below are the only ones the interface uses.
- * 2. the **roles** — the vocabulary the components are written in. A role
- *    says what a colour *does* (`--color-ground`, `--color-muted`), never
- *    what it looks like. The old names (`--color-ink`, `--color-ink-muted`,
- *    `--color-line`, `--color-surface-muted`) are gone.
- * 3. the **geometry** and the **type** — the numbers every screen shares.
+ * 1. **Principal — the blue.** The interactive and brand hue: the one
+ *    filled button, the focus ring, the active navigation row, the
+ *    selection of the canvas. Full strength on the small marks, pale tints
+ *    doing every area of work.
+ * 2. **Secundario — the indigo-violet.** A *subordinate* hue (lower
+ *    chroma than the blue, never a second accent) for the governance
+ *    layer: what is waiting for a decision wears it — the `PENDING` mark
+ *    of a node, the dashed relation of a proposal, the badge of an open
+ *    proposal. It separates "in review" from both the accent and the
+ *    warning trio.
+ * 3. **Auxiliar — the functional trio.** Green, red and amber with their
+ *    pastel pills: success, failure and warning. These never decorate;
+ *    they only report.
  *
- * The palette is the *accent ladder*: one hue at full strength on the
- * small marks (the one filled button, the active nav icon, the data
- * series) and its pale tints doing every area of work (the active nav row,
- * the badges, the tracks). The hue is the brand's own blue — the style
- * this app was drawn with deals a raspberry, and its own "face" section
- * offers the ladder built from the brand's own hue instead.
+ * Around the rings sit the **neutrals**, tinted with the blue of the brand
+ * (never pure grey — a tint reads as intentional) and the **geometry** and
+ * the **type** every screen shares.
+ *
+ * A role says what a colour *does* (`--color-ground`, `--color-muted`),
+ * never what it looks like. The raw ladders (`--color-brand-*`,
+ * `--color-secondary-*`) are kept whole as the documented source of the
+ * roles, but the roles below are the only vocabulary the components use.
  */
 @theme {
-  /* 1. The raw brand palette — the source of the ladder. */
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-  --color-brand-950: #172554;
+  /* 1. The raw palettes — the source of the two ladders. */
+  /* Principal: the blue of the brand. */
+  --color-brand-50: #f1f6fe;
+  --color-brand-100: #dfecfe;
+  --color-brand-200: #c1dafd;
+  --color-brand-300: #99c0f6;
+  --color-brand-400: #6da2e8;
+  --color-brand-500: #4987d9;
+  --color-brand-600: #2f72c6;
+  --color-brand-700: #2260ad;
+  --color-brand-800: #1c4c8a;
+  --color-brand-900: #183d6c;
+  --color-brand-950: #0c213b;
+
+  /* Secundario: the indigo-violet of the governance layer. */
+  --color-secondary-50: #f4f3fb;
+  --color-secondary-100: #e8e5f7;
+  --color-secondary-200: #d4cff0;
+  --color-secondary-300: #b8b0e2;
+  --color-secondary-400: #9b8fd0;
+  --color-secondary-500: #8273bb;
+  --color-secondary-600: #6d5fa3;
+  --color-secondary-700: #5c508b;
+  --color-secondary-800: #493f6e;
+  --color-secondary-900: #3a3258;
+  --color-secondary-950: #1f1a30;
 
   /* 2. The roles. */
-  --color-ground: #f9fafb;
+  /* The neutrals: the blue of the brand, almost without chroma. */
+  --color-ground: #f5f8fb;
   --color-surface: #ffffff;
-  --color-raised: #f3f4f6;
-  --color-border: #e5e7eb;
-  --color-rule: #f2f2f2;
-  --color-control: #d1d5db;
+  --color-raised: #eceff5;
+  --color-border: #dce1e8;
+  --color-rule: #e9ecf1;
+  --color-control: #c0c6ce;
   /*
    * The edge of a **text field**.
    *
@@ -115,17 +140,24 @@
    * (a button, a select in a filter row). A text field is different: its
    * edge is the only thing that tells the user where to type, so it must
    * reach the 3:1 of WCAG 2.2 SC 1.4.11 (non-text contrast) against the
-   * surface it sits on. `#7d8798` is 3.6:1 on `--color-surface`.
+   * surface it sits on. `#818995` is 3.5:1 on `--color-surface`.
    */
-  --color-control-strong: #7d8798;
-  --color-text: #111827;
-  --color-muted: #5f6672;
-  --color-faint: #6b6b6b;
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
-  --color-accent-soft: #eff6ff;
-  --color-accent-track: #dbeafe;
-  --color-accent-ink: #1e3a8a;
+  --color-control-strong: #818995;
+  --color-text: #1b2128;
+  --color-muted: #656c76;
+  --color-faint: #6e757e;
+
+  /* Principal: the blue, on the marks that act. */
+  --color-accent: #2f72c6;
+  --color-accent-hover: #2260ad;
+  --color-accent-soft: #f1f6fe;
+  --color-accent-track: #dfecfe;
+  --color-accent-ink: #1c4c8a;
+
+  /* Secundario: what waits for a decision wears it. */
+  --color-secondary: #6d5fa3;
+
+  /* Auxiliar: the functional trio — it reports, it never decorates. */
   --color-positive: #247b50;
   --color-negative: #c4242a;
   --color-warning: #92400e;
@@ -135,8 +167,10 @@
   --color-pill-negative-ink: #831c1e;
   --color-pill-warning-bg: #fffbeb;
   --color-pill-warning-ink: #92400e;
-  --color-pill-neutral-bg: #f3f4f6;
-  --color-pill-neutral-ink: #374151;
+  --color-pill-secondary-bg: #e9e6fe;
+  --color-pill-secondary-ink: #5c508b;
+  --color-pill-neutral-bg: #eceff5;
+  --color-pill-neutral-ink: #363e48;
 
   /* 3. The geometry. */
   --container-measure: 56ch;
@@ -161,8 +195,23 @@
     'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   --font-serif: 'IBM Plex Serif', ui-serif, Georgia, 'Times New Roman', Times, serif;
+  /*
+   * The display size: the title of a **workspace** — the title that sits
+   * on the picture itself and is the first thing a reader sees. It is one
+   * step above the page title (`--text-title`) and it is only ever set on
+   * that title, so a document page keeps the ordinary `h1`.
+   */
+  --text-display: 38px;
+  --text-display--line-height: 44px;
   --text-title: 32px;
   --text-title--line-height: 38px;
+  /*
+   * The wordmark of the product: the name next to the mark in the
+   * navigation column. The name of a product is not a heading — it is set
+   * in the interface face, one step above a section title.
+   */
+  --text-brand: 20px;
+  --text-brand--line-height: 24px;
   --text-section: 18px;
   --text-section--line-height: 24px;
   --text-kpi: 24px;
@@ -179,9 +228,11 @@
 
   /*
    * The only shadow of the interface: what truly floats (the drawer, the
-   * sheet and the dialog). Nothing that rests on the page has one.
+   * sheet and the dialog). Nothing that rests on the page has one. The
+   * tint is the ink of the interface, so the shadow belongs to the same
+   * hue as everything it falls on.
    */
-  --shadow-float: 0 8px 24px rgb(17 24 39 / 0.08);
+  --shadow-float: 0 8px 24px rgb(27 33 40 / 0.08);
 }
 
 /*
@@ -379,7 +430,7 @@
    *
    * It is the accent at full strength and it is visible on every surface
    * of the app: the ground, the panels, the tints and the raised tone all
-   * sit far enough from it (the accent is 4.8:1 on white and 4.6:1 on the
+   * sit far enough from it (the accent is 4.8:1 on white and 4.5:1 on the
    * ground).
    */
   :focus-visible {

@@ -598,7 +598,7 @@
         y2: card.y - line.ny * side * (card.height / 2),
         // The leader wears the **colour of the relation**: it is the line of
         // that relation that the card belongs to.
-        color: relation === undefined ? '#9aa1ad' : edgeColor(relation.status)
+        color: relation === undefined ? '#818995' : edgeColor(relation.status)
       });
     }
 
@@ -1029,7 +1029,7 @@
     <div
       role="status"
       aria-live="polite"
-      class="pointer-events-none absolute z-10 w-56 rounded-card bg-surface p-3 text-small shadow-float"
+      class="pointer-events-none absolute z-10 w-56 rounded-card bg-brand-100 p-3 text-small shadow-float"
       style="left: {Math.min(preview.x + 12, Math.max(0, (container?.clientWidth ?? 0) - 268))}px; top: {preview.y +
         12}px"
     >

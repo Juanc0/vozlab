@@ -128,7 +128,7 @@ const BADGE_RADIUS = 8;
 const DRAG_THRESHOLD = 3;
 
 /** The border of a card when the pointer is over it: the rule of a control. */
-const HOVER_INK = '#d1d5db';
+const HOVER_INK = '#c0c6ce';
 
 /** The visible focus ring: the accent, two pixels, outside the card. */
 const FOCUS_RING = SELECTION_COLOR;

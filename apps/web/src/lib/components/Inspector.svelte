@@ -302,7 +302,7 @@
     Inside a **floating panel** there is no second surface: the panel
     itself is the surface, and the inspector is flat inside it.
   -->
-  <div class={flat ? 'mt-3' : 'mt-2 rounded-card bg-surface p-4'}>
+  <div class={flat ? 'mt-3' : 'mt-2 rounded-card bg-brand-100 p-4'}>
     <div
       role="tablist"
       aria-label={t('inspector.tabsLabel')}
