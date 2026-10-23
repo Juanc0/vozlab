@@ -924,8 +924,8 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     // it moves with it and it is part of the same `<g>`.
     const badge = element('g', {
       class: 'vozlab-svg-badge',
-      transform: `translate(${halfWidth + BADGE_GAP + BADGE_RADIUS} ${
-        -halfHeight - BADGE_GAP - BADGE_RADIUS
+      transform: `translate(${-halfWidth + BADGE_GAP + BADGE_RADIUS} ${
+        -halfHeight + BADGE_GAP + BADGE_RADIUS
       })`,
       'aria-hidden': 'true'
     });

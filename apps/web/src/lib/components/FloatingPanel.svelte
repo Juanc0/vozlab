@@ -46,6 +46,8 @@
     hidden?: boolean;
     /** The element of the panel — the page measures it. */
     element?: HTMLElement | undefined;
+    /** An inline style of the panel — its exact offset. */
+    style?: string;
     children?: Snippet;
   }
 
@@ -57,6 +59,7 @@
     flat = false,
     hidden = false,
     element = $bindable(undefined),
+    style,
     children
   }: Props = $props();
 
@@ -78,6 +81,7 @@
 <section
   bind:this={element}
   {id}
+  {style}
   aria-label={label}
   class="pointer-events-auto absolute z-10 rounded-card bg-surface {flat
     ? ''

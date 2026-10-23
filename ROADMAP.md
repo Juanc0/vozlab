@@ -815,6 +815,14 @@ Decided, and not to be re-opened without evidence:
       tests web** (62 files); `pnpm turbo run build type-check test`
       green.
 
+- [x] 3.56 Workspace chrome cleanup: the readout panel at the bottom left
+      is gone; the inspector collapses with the quiet chevron icon of the
+      navigation rail; the expand badge of a node sits **inside** the card,
+      at its top-left corner; the inspector floats below the toolbar, and
+      the toolbar reorganises its row (search first, view controls, at the
+      end the "Desenredar"). Result: `pnpm turbo run build type-check test`
+      green (9/9, 528 tests web).
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

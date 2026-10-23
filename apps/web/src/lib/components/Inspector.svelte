@@ -257,11 +257,25 @@
 {#if oncollapse}
   <button
     type="button"
-    class="mb-2 btn btn-secondary text-small"
+    class="btn-quiet grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
     aria-expanded={true}
+    title={t('inspector.collapse')}
     onclick={oncollapse}
   >
-    {t('inspector.collapse')}
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 3.5 5.5 8l4.5 4.5" />
+    </svg>
+    <span class="sr-only">{t('inspector.collapse')}</span>
   </button>
 {/if}
 

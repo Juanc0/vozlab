@@ -72,9 +72,6 @@
   const panels = getPanelsState();
   const t = locale.t;
 
-  /** The depths the API accepts. */
-  const depthOptions = Array.from({ length: SUBGRAPH_MAX_DEPTH + 1 }, (_, index) => index);
-
   /** The newest nodes of the workspace — the root picker. */
   let rootNodes = $state.raw<NodeDto[]>([]);
   let rootCursor = $state<string | null>(null);
@@ -281,7 +278,6 @@
    * and the reader turns it on when they want to read a thing.
    */
   let inspectorOpen = $state(!panels.inspectorCollapsed);
-  let readoutOpen = $state(true);
 
   /**
    * The width at which the inspector is a panel over the picture.
@@ -1246,65 +1242,71 @@
     onheight={setToolbarHeight}
   >
     {#snippet controls()}
-      <ExploreControls
-          {criterion}
-          oncriterionchange={(next) => {
-            criterion = next;
+      <!--
+        Encontrar un nodo es la acción más usada del lienzo: la búsqueda va
+        primero, a la izquierda de la fila de controles.
+      -->
+      <div class="min-w-0 shrink-0">
+        <label for="node-search" class="block text-small text-muted">
+          Buscar nodo
+        </label>
+        <input
+          id="node-search"
+          type="search"
+          class="field mt-0.5 w-56"
+          placeholder="Título…"
+          bind:value={searchQuery}
+          onkeydown={(event) => {
+            if (event.key !== 'Enter') {
+              return;
+            }
+
+            const query = searchQuery.trim().toLowerCase();
+
+            if (query === '') {
+              return;
+            }
+
+            const match = exploreNodes.find((node) =>
+              node.title.toLowerCase().includes(query)
+            );
+
+            if (match !== undefined) {
+              navigateTo(match.id);
+            }
           }}
-          {edgeStyle}
-          onedgestylechange={(next) => {
-            edgeStyle = next;
-          }}
-          {depth}
-          ondepthchange={setDepth}
-          onzoomin={() => requestZoom('in')}
-          onzoomout={() => requestZoom('out')}
-          onfit={() => requestZoom('fit')}
         />
+      </div>
 
-        <div class="flex items-end gap-2">
-          <div>
-            <label for="node-search" class="block text-small text-muted">
-              Buscar nodo
-            </label>
-            <input
-              id="node-search"
-              type="search"
-              class="field mt-0.5"
-              placeholder="Título…"
-              bind:value={searchQuery}
-              onkeydown={(event) => {
-                if (event.key !== 'Enter') {
-                  return;
-                }
+      <ExploreControls
+        {criterion}
+        oncriterionchange={(next) => {
+          criterion = next;
+        }}
+        {edgeStyle}
+        onedgestylechange={(next) => {
+          edgeStyle = next;
+        }}
+        {depth}
+        ondepthchange={setDepth}
+        onzoomin={() => requestZoom('in')}
+        onzoomout={() => requestZoom('out')}
+        onfit={() => requestZoom('fit')}
+      />
 
-                const query = searchQuery.trim().toLowerCase();
-
-                if (query === '') {
-                  return;
-                }
-
-                const match = exploreNodes.find((node) =>
-                  node.title.toLowerCase().includes(query)
-                );
-
-                if (match !== undefined) {
-                  navigateTo(match.id);
-                }
-              }}
-            />
-          </div>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            onclick={() => {
-              rearrangeTick += 1;
-            }}
-          >
-            Desenredar
-          </button>
-        </div>
+      <!--
+        Reordenar el lienzo es una acción de la vista, no del lector: va al
+        final de la fila, separada de la búsqueda y de los controles.
+      -->
+      <button
+        type="button"
+        class="btn btn-secondary ml-auto shrink-0"
+        onclick={() => {
+          rearrangeTick += 1;
+        }}
+      >
+        Desenredar
+      </button>
     {/snippet}
 
     {#snippet status()}
@@ -1424,6 +1426,7 @@
         id={INSPECTOR_PANEL_ID}
         placement="top-right"
         panelClass="w-[min(24rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-2rem)] overflow-y-auto p-3"
+        style="top: {toolbarHeight + 16}px"
       >
         <Inspector
           {selection}
@@ -1510,42 +1513,8 @@
         <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
       </p>
     </FloatingPanel>
-  {:else if wideLayout.matches && readoutOpen}
-    <FloatingPanel
-      placement="bottom-left"
-      label={t('explore.readoutLabel')}
-      panelClass="w-[min(24rem,calc(100%-2rem))]"
-    >
-      <button
-        type="button"
-        class="mb-2 btn btn-secondary text-small"
-        onclick={() => {
-          readoutOpen = false;
-        }}
-      >
-        Cerrar
-      </button>
-      <div class="space-y-1 p-3">
-        {@render exploreReadout()}
-      </div>
-
-      <p class="border-t border-rule px-3 py-2 text-small text-muted">
-        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
-      </p>
-    </FloatingPanel>
   {/if}
 
-  {#if !readoutOpen && wideLayout.matches}
-    <button
-      type="button"
-      class="pointer-events-auto absolute bottom-4 left-4 z-10 btn btn-secondary"
-      onclick={() => {
-        readoutOpen = true;
-      }}
-    >
-      {t('explore.readoutLabel')}
-    </button>
-  {/if}
 
   <!--
     The description of the list: what the alternative is and why it is
