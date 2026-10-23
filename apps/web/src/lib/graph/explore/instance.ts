@@ -40,10 +40,13 @@ import { cytoscape } from '../cytoscape-runtime';
 import { edgeStyleProperties, type EdgeStyle } from './edge-style';
 import { exploreLayoutOptions, pinTransform, type GraphLayout } from './layout';
 import {
+  countEdgeCrossings,
+  DEFAULT_SEED_SPACING,
   countOverlappingPairs,
   createForceLayout,
   driveForceLayout,
   runForceLayoutToRest,
+  IDLE_ALPHA_TARGET,
   WAKE_ALPHA_TARGET,
   type ForceDriver,
   type ForceEdgeInput,
@@ -51,12 +54,6 @@ import {
   type ForceNodeInput,
   type ForcePosition
 } from './force-layout';
-import {
-  relationsAgainstFlow,
-  type DagEdgeInput,
-  type DagLayoutRunner,
-  type DagNodeInput
-} from './dag-layout';
 import { relationCardPlacement, type CardBox } from '../relation-card';
 import { EXPLORE_STYLESHEET, PRESENTED_CLASS, SELECTED_CLASS } from './stylesheet';
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, clampZoom, type ZoomSource } from './zoom';
@@ -139,22 +136,16 @@ export interface LayoutReport {
   readonly shapeReached?: boolean;
   /** The movement below which the picture is said to have its shape. */
   readonly threshold?: number;
-  /**
-   * The relations whose arrow is drawn **against** the flow of the picture.
-   *
-   * A layered arrangement has to break the cycles of the relation graph to
-   * be able to order the nodes, and the relations it breaks are drawn
-   * against what they say. `dagre` breaks them **silently**; this report
-   * is how the surface of the comparison tells the reader how many of them
-   * there were.
-   */
-  readonly reversedRelations?: readonly string[];
+  /** How many pairs of edges cross in the picture. */
+  readonly edgeCrossings?: number;
 }
 
 /** What the exploration instance reports. */
 export interface ExplorationInstanceOptions {
   /** The DOM element the canvas is drawn in. */
   container: HTMLElement;
+  /** Whether the cards breathe at rest. Defaults to `true`. */
+  idleSway?: boolean;
   /** Called with the id of the tapped node, or `null` for the background. */
   onselect: (nodeId: string | null) => void;
   /**
@@ -211,20 +202,6 @@ export interface ExplorationInstanceOptions {
    * surface that compares the engines is the only reader.
    */
   onerror?: (message: string) => void;
-  /**
-   * The **clone of `dagre`** — the layered arrangement of `d3-dag`.
-   *
-   * It is **handed over**, not imported: the library `d3-dag` is a
-   * dependency of the **development surface** only, and an instance that
-   * imported it would carry forty kilobytes of Sugiyama into the
-   * production bundle for a layout that only the comparison of the engines
-   * ever asks for.
-   *
-   * The comparison gives it to the instance when it mounts the engine. A
-   * production instance never gets one, and the `dag` layout is never
-   * chosen there.
-   */
-  dagLayout?: DagLayoutRunner;
 }
 
 /** How the elements of the exploration view are drawn. */
@@ -243,17 +220,16 @@ export interface ExplorationElementsOptions {
    * The layout the picture is arranged with.
    *
    * The default is `d3`: the **living spring** of the app, a simulation of
-   * `d3-force` with a rectangular collision force. The deterministic
-   * `dagre` and the clone of `d3-dag` are there for the comparison of the
-   * engines; neither of them moves after it has computed the picture.
+   * `d3-force` with a rectangular collision force. `dagre` is the
+   * deterministic arrangement: it computes the picture once and stops.
    */
   layout?: GraphLayout;
   /**
    * The smallest zoom the picture is fitted to.
    *
    * It is the **floor of the fit**, and it is asked for by the callers that
-   * need it: the comparison of the engines draws three pictures at once and
-   * asks for a smaller one, so that the three pictures can be seen whole.
+   * need it: the comparison of the engines asks for a smaller one, so that
+   * the whole picture fits in the playground.
    *
    * The app asks for **nothing**: the fit of the picture is the fit, and
    * the reader decides afterwards whether to come closer to read the
@@ -317,6 +293,8 @@ export interface ExplorationInstance {
   /** Draws the relations again — after a drag, for instance. */
   /** Draws the relations again, with the shape that is selected. */
   refreshEdgeStyles(): void;
+  /** Re-runs the layout on the current picture. */
+  rearrange(): void;
   /**
    * Wakes the living spring.
    *
@@ -326,6 +304,13 @@ export interface ExplorationInstance {
    * sees the pointer. A reader who asked for less motion is never woken.
    */
   wake(): void;
+  /**
+   * Turns the idle sway on or off.
+   *
+   * A picture that is not allowed to breathe keeps its places, and the
+   * spring only moves when the reader touches it.
+   */
+  setIdleSway(value: boolean): void;
   /** Where every node is, in the rendered coordinates of the canvas. */
   positions(): Map<string, RenderedBox>;
   /** Where the line of every relation is, in the rendered coordinates. */
@@ -522,6 +507,49 @@ export function createExplorationInstance(
 
   let edgeStyle: EdgeStyle = 'bezier';
   let pinned = new Map<string, Position>();
+  let idleSway = options.idleSway !== false;
+  let lastNodes: readonly NodeDto[] = [];
+  let lastEdges: readonly SubgraphEdgeDto[] = [];
+  let lastElementOptions: ExplorationElementsOptions | null = null;
+  // Why a node is held still: 'hover' or 'select'. A node is pinned while
+  // at least one reason holds, and released when none do. This keeps a node
+  // that is both hovered and selected from being released too early.
+  const stoppedReasons = new Map<string, Set<string>>();
+  let currentSelected: string | null = null;
+
+  function stopNode(nodeId: string, reason: string): void {
+    let reasons = stoppedReasons.get(nodeId);
+
+    if (reasons === undefined) {
+      reasons = new Set<string>();
+      stoppedReasons.set(nodeId, reasons);
+
+      const node = core.getElementById(nodeId);
+
+      if (node.length > 0) {
+        const place = node.position();
+
+        spring?.pin(nodeId, { x: place.x, y: place.y });
+      }
+    }
+
+    reasons.add(reason);
+  }
+
+  function releaseNode(nodeId: string, reason: string): void {
+    const reasons = stoppedReasons.get(nodeId);
+
+    if (reasons === undefined) {
+      return;
+    }
+
+    reasons.delete(reason);
+
+    if (reasons.size === 0) {
+      stoppedReasons.delete(nodeId);
+      spring?.unpin(nodeId);
+    }
+  }
   let layout: GraphLayout = 'dagre';
 
   /**
@@ -743,6 +771,20 @@ export function createExplorationInstance(
     movement = greatestMovement();
   }
 
+  /** The pairs of edges that cross, in the coordinates of the canvas. */
+  function countEdgeCrossingsFromCore(): number {
+    const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+
+    core.edges().forEach((edge) => {
+      const s = edge.source().position();
+      const tgt = edge.target().position();
+
+      segments.push({ x1: s.x, y1: s.y, x2: tgt.x, y2: tgt.y });
+    });
+
+    return countEdgeCrossings(segments);
+  }
+
   /**
    * The pairs of cards that overlap, in the coordinates of the canvas.
    *
@@ -850,8 +892,6 @@ export function createExplorationInstance(
   }
 
   core.on('tap', 'node', (event) => {
-    wakeSpring();
-
     // The card of a relation is a node of its own: a tap on it is a tap on
     // the relation, not on a node of the window.
     const relation = relationIdOf(event.target);
@@ -870,8 +910,6 @@ export function createExplorationInstance(
   });
 
   core.on('tap', (event) => {
-    wakeSpring();
-
     if (event.target === core) {
       options.onselect(null);
     }
@@ -885,10 +923,13 @@ export function createExplorationInstance(
 
   for (const kind of ['node', 'edge'] as const) {
     core.on('mouseover', kind, (event) => {
-      wakeSpring();
+      const target = event.target;
+
+      if (kind === 'node') {
+        stopNode(cardIdOf(target), 'hover');
+      }
 
       const position = event.renderedPosition;
-      const target = event.target;
 
       options.onpreview(
         {
@@ -938,12 +979,11 @@ export function createExplorationInstance(
   core.on('dragfree', 'node', (event) => {
     const place = event.target.position();
 
-    // The card keeps the place it was put: the spring is told about it, so
-    // the simulation works around it. It is pinned for the rest of the
-    // view, and a later layout starts from that place.
-    spring?.pin(cardIdOf(event.target), { x: place.x, y: place.y });
+    // The card is released: the spring takes it back and it moves with the
+    // rest of the picture. It is not pinned for the rest of the view — the
+    // reader can move it again.
+    spring?.unpin(cardIdOf(event.target));
 
-    options.ondrag(cardIdOf(event.target), place);
     wakeSpring();
   });
 
@@ -1478,7 +1518,8 @@ export function createExplorationInstance(
     // living spring would never rest.
     const created = createForceLayout(inputs, links, {
       pinned,
-      living: !prefersReducedMotion()
+      living: !prefersReducedMotion(),
+      idleSway
     });
 
     spring = created;
@@ -1528,6 +1569,7 @@ export function createExplorationInstance(
         settled: result.settled,
         movement,
         overlaps: overlappingPairs(),
+        edgeCrossings: countEdgeCrossingsFromCore(),
         ticks: result.ticks,
         frameMs: median(frameTimes),
         tickMs: result.ticks === 0 ? 0 : result.ms / result.ticks,
@@ -1634,113 +1676,6 @@ export function createExplorationInstance(
     springDriver.start();
   }
 
-  /**
-   * The relations of the picture, as the layouts see them.
-   *
-   * The text of a card is an element of its own and it takes no part in
-   * the layouts: only the relations between the cards do.
-   */
-  function relationEdges(): DagEdgeInput[] {
-    const links: DagEdgeInput[] = [];
-
-    core.edges().forEach((edge) => {
-      links.push({
-        id: edge.id(),
-        source: edge.source().id(),
-        target: edge.target().id()
-      });
-    });
-
-    return links;
-  }
-
-  /**
-   * The relations whose arrow is drawn **against** the flow of the picture.
-   *
-   * It is the measure that compares the two layered arrangements on the
-   * same thing: `dagre` reverses the relations that close a cycle and
-   * draws them against what they say, and the clone of `dagre` does the
-   * same — but it says which ones.
-   */
-  function reversedRelations(): string[] {
-    const places = new Map<string, ForcePosition>();
-
-    cardNodes(core.elements()).forEach((card) => {
-      places.set(card.id(), card.position());
-    });
-
-    return [...relationsAgainstFlow(places, relationEdges(), 'LR')];
-  }
-
-  /**
-   * Runs the **clone of `dagre`** — the layered arrangement of `d3-dag`.
-   *
-   * The clone is a **candidate**: it is in the comparison of the engines
-   * and nowhere else. `dagre` stays in production.
-   *
-   * The clone is **handed over** by the comparison of the engines and not
-   * imported here: the library is the dependency of the development
-   * surface, and the production bundle must not carry it.
-   *
-   * The arrangement is **synchronous** — a layered arrangement is computed
-   * once — and it breaks the cycles of the relation graph on the way: the
-   * relations it breaks are reported, so the reader is told.
-   */
-  function runDagLayout(presentedNodeId: string | null, grew: boolean): void {
-    const clone = options.dagLayout;
-
-    if (clone === undefined) {
-      // The clone was asked for and it was not given: the picture says so
-      // instead of arranging itself with something else.
-      options.onerror?.(
-        '[vozlab/web] The clone of dagre was asked for and it was not given to the picture.'
-      );
-
-      return;
-    }
-
-    const inputs: DagNodeInput[] = [];
-    const links = relationEdges();
-
-    cardNodes(core.elements()).forEach((card) => {
-      inputs.push({
-        id: card.id(),
-        width: card.outerWidth(),
-        height: card.outerHeight()
-      });
-    });
-
-    const result = clone(inputs, links);
-
-    // The picture is about to move: it has not settled yet.
-    settled = false;
-    movement = Number.POSITIVE_INFINITY;
-    lastPositions = new Map<string, Position>();
-
-    applyPlaces(result.positions);
-
-    // The nodes the user dragged keep the place they were put.
-    applyPinnedPlaces();
-
-    // The card of a relation is placed beside its line, and the text of a
-    // card hangs under its card: the picture moved, and they go with it.
-    syncRelationCards();
-    syncCardText(core);
-
-    refreshEdgeStyles();
-
-    presentPicture(presentedNodeId, grew);
-
-    options.onlayout?.({
-      layout: 'dag',
-      ms: result.ms,
-      settled: true,
-      movement,
-      overlaps: overlappingPairs(),
-      reversedRelations: result.brokenRelations
-    });
-  }
-
   /** Runs the layout and puts the picture back where it belongs. */
   function runLayout(presentedNodeId: string | null, grew: boolean): void {
     const currentLayout = layout;
@@ -1750,14 +1685,8 @@ export function createExplorationInstance(
       return;
     }
 
-    if (currentLayout === 'dag') {
-      runDagLayout(presentedNodeId, grew);
-      return;
-    }
-
-    // `dagre` is the only layout left in this branch: the living spring
-    // and the clone of `d3-dag` are handled above. It computes the picture
-    // once, and it stops.
+    // `dagre` is the only layout left in this branch: the living spring is
+    // handled above. It computes the picture once, and it stops.
     const layoutOptions = exploreLayoutOptions();
 
     // The picture is about to move: it has not settled yet.
@@ -1800,14 +1729,7 @@ export function createExplorationInstance(
         settled,
         movement,
         overlaps: overlappingPairs(),
-        // The relations that the layout had to break to order the graph:
-        // `dagre` breaks them silently, and the report is how the
-        // comparison of the engines tells the reader how many there were.
-        //
-        // The number is only meaningful for a **layered** arrangement: a
-        // force layout has no layers and no flow, and a relation is not
-        // "against" anything in it.
-        reversedRelations: currentLayout === 'dagre' ? reversedRelations() : undefined
+        edgeCrossings: countEdgeCrossingsFromCore()
       });
     });
 
@@ -1836,6 +1758,9 @@ export function createExplorationInstance(
 
   return {
     setElements(nodes, edges, elementOptions) {
+      lastNodes = nodes;
+      lastEdges = edges;
+      lastElementOptions = elementOptions;
       edgeStyle = elementOptions.edgeStyle;
       pinned = new Map(elementOptions.pinned);
       layout = elementOptions.layout ?? 'd3';
@@ -1867,9 +1792,18 @@ export function createExplorationInstance(
     },
 
     setSelected(nodeId) {
+      if (currentSelected !== null && currentSelected !== nodeId) {
+        releaseNode(currentSelected, 'select');
+      }
+
       cardNodes(core.elements()).removeClass(SELECTED_CLASS);
 
       if (nodeId === null) {
+        if (currentSelected !== null) {
+          releaseNode(currentSelected, 'select');
+        }
+
+        currentSelected = null;
         return;
       }
 
@@ -1877,6 +1811,8 @@ export function createExplorationInstance(
 
       if (selected.length > 0) {
         selected.addClass(SELECTED_CLASS);
+        stopNode(nodeId, 'select');
+        currentSelected = nodeId;
       }
     },
 
@@ -1901,8 +1837,146 @@ export function createExplorationInstance(
 
     refreshEdgeStyles,
 
+    rearrange() {
+      if (core.elements().length === 0) {
+        return;
+      }
+
+      const inputs: ForceNodeInput[] = [];
+      const links: ForceEdgeInput[] = [];
+
+      cardNodes(core.elements()).forEach((card) => {
+        inputs.push({
+          id: card.id(),
+          width: card.outerWidth(),
+          height: card.outerHeight()
+        });
+      });
+
+      core.edges().forEach((edge) => {
+        links.push({
+          source: edge.source().id(),
+          target: edge.target().id(),
+          communityScore: edge.data('communityScore')
+        });
+      });
+
+      const runShake = (shake: number, finalPositions: Map<string, ForcePosition> | null): void => {
+        if (shake >= 8) {
+          // Leave the living spring where the shakes ended.
+          if (spring !== null && finalPositions !== null) {
+            for (const node of spring.nodes) {
+              const place = finalPositions.get(node.id);
+
+              if (place !== undefined) {
+                node.x = place.x;
+                node.y = place.y;
+                node.vx = 0;
+                node.vy = 0;
+                node.fx = null;
+                node.fy = null;
+              }
+            }
+
+            spring.setAlphaTarget(IDLE_ALPHA_TARGET, { snap: true });
+            applyPlaces(spring.positions());
+          }
+
+          options.onlayout?.({
+            layout: 'd3',
+            ms: 0,
+            settled: true,
+            movement: 0,
+            overlaps: overlappingPairs(),
+            ticks: 0,
+            frameMs: 0,
+            tickMs: 0,
+            alive: true,
+            awake: springDriver?.awake === true,
+            shapeReached: true,
+            threshold: SETTLE_MOVEMENT,
+            edgeCrossings: countEdgeCrossingsFromCore()
+          });
+
+          return;
+        }
+
+        const layout = createForceLayout(inputs, links, {
+          pinned,
+          living: false,
+          seed: shake + 1,
+          seedSpacing: DEFAULT_SEED_SPACING
+        });
+
+        layout.setAlphaTarget(WAKE_ALPHA_TARGET, { snap: true });
+        runForceLayoutToRest(layout);
+
+        const positions = layout.positions();
+
+        cardNodes(core.elements()).forEach((card) => {
+          const place = positions.get(card.id());
+
+          if (place !== undefined) {
+            card.position({ x: place.x, y: place.y });
+          }
+        });
+
+        syncRelationCards();
+        syncCardText(core);
+
+        if (countEdgeCrossingsFromCore() === 0) {
+          // Done early: sync spring and report.
+          if (spring !== null) {
+            for (const node of spring.nodes) {
+              const place = positions.get(node.id);
+
+              if (place !== undefined) {
+                node.x = place.x;
+                node.y = place.y;
+                node.vx = 0;
+                node.vy = 0;
+                node.fx = null;
+                node.fy = null;
+              }
+            }
+
+            spring.setAlphaTarget(IDLE_ALPHA_TARGET, { snap: true });
+            applyPlaces(spring.positions());
+          }
+
+          options.onlayout?.({
+            layout: 'd3',
+            ms: 0,
+            settled: true,
+            movement: 0,
+            overlaps: overlappingPairs(),
+            ticks: 0,
+            frameMs: 0,
+            tickMs: 0,
+            alive: true,
+            awake: springDriver?.awake === true,
+            shapeReached: true,
+            threshold: SETTLE_MOVEMENT,
+            edgeCrossings: countEdgeCrossingsFromCore()
+          });
+
+          return;
+        }
+
+        // Yield to the UI between shakes so the picture repaints.
+        setTimeout(() => runShake(shake + 1, positions), 16);
+      };
+
+      setTimeout(() => runShake(0, null), 0);
+    },
+
     wake() {
       wakeSpring();
+    },
+
+    setIdleSway(value: boolean) {
+      idleSway = value;
+      spring?.setIdleSway(value);
     },
 
     positions() {

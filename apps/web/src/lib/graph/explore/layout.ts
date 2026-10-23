@@ -91,23 +91,20 @@ export function exploreLayoutOptions(): DagreLayoutOptions {
 /**
  * The layouts the exploration view can arrange the picture with.
  *
- * `dagre` is the layout of the app: a deterministic arrangement, never a
- * physics simulation. It computes the picture **once** and stops.
+ * `dagre` is the **deterministic** arrangement, never a physics
+ * simulation: it computes the picture **once** and stops. The app does not
+ * choose it for the exploration view — the living spring is the
+ * arrangement of the graph page — but it is the static picture the tests of
+ * the viewport use, and the one the comparison used before the layered
+ * engines left.
  *
  * `d3` is the **living spring of the app**: the pure module of
  * `./force-layout`, a simulation of `d3-force` with a rectangular collision
  * force. It is arranged in slices across the frames, and it never stops:
  * it breathes at rest and wakes on contact. It is the only layout that
  * moves after the shape is reached.
- *
- * `dag` is the **clone of `dagre`** — the layered arrangement of `d3-dag`.
- * It is a **candidate**: it is in the comparison of the engines and nowhere
- * else, and `dagre` stays in production. The library is a dependency of
- * the **development surface**, and the comparison hands the clone over to
- * the instance when it mounts the engine — the instance never imports it.
- * Like `dagre`, it computes the picture once and stops.
  */
-export type GraphLayout = 'dagre' | 'd3' | 'dag';
+export type GraphLayout = 'dagre' | 'd3';
 
 /**
  * The places the force layout starts from.

@@ -85,7 +85,9 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'target-arrow-color': 'data(color)',
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
-      width: '1.5px',
+      // The arrow is a relation: it has to be seen. A line thinner than two
+      // pixels disappears on a dense picture, and its triangle with it.
+      width: '2px',
       // The relation's name is a phrase, not a key: it has to be read at
       // a glance, so it is set at the small size and not smaller.
       'font-size': '11px',
@@ -99,11 +101,6 @@ export const EXPLORE_STYLESHEET: StylesheetJson = [
       'text-background-opacity': 1,
       'text-background-padding': '2px',
       'text-rotation': 'autorotate',
-      // The haystack shape is the exaggerated one: the arc it draws has to
-      // be seen, not guessed. The radius is a **fraction** of the size of the
-      // node, not a number of pixels: Cytoscape refuses anything that
-      // is not between zero and one.
-      'haystack-radius': 1,
       'overlay-opacity': 0
     }
   },

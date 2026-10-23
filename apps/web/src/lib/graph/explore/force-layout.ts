@@ -112,6 +112,10 @@ export const REFERENCE_CARD_AREA = CARD_WIDTH * 60;
  */
 export const DEFAULT_LINK_DISTANCE = 170;
 
+/** How far apart two cards start on the seed circle. Larger than the link
+ *  distance, so the picture opens up before the spring pulls it together. */
+export const DEFAULT_SEED_SPACING = 260;
+
 /**
  * The repulsion of a card of the reference area.
  *
@@ -155,13 +159,13 @@ export const DEFAULT_COLLISION_ITERATIONS = 4;
  * cards, the breath is the sway of the positions, and the movement stays
  * below the threshold that says a shape has been reached.
  */
-export const IDLE_ALPHA_TARGET = 0.005;
+export const IDLE_ALPHA_TARGET = 0.08;
 
 /** The alpha a touch of the reader pulls the picture back to. */
 export const WAKE_ALPHA_TARGET = 0.1;
 
 /** How long the picture stays awake after the last contact, in milliseconds. */
-export const WAKE_COOLDOWN_MS = 1200;
+export const WAKE_COOLDOWN_MS = 5000;
 
 /**
  * The interval of the idle ticks, in milliseconds.
@@ -172,7 +176,7 @@ export const WAKE_COOLDOWN_MS = 1200;
  * is **constant**: an idle spring never stops while the picture is on
  * screen — it stops when the tab or the panel is hidden.
  */
-export const IDLE_INTERVAL_MS = 1000 / 20;
+export const IDLE_INTERVAL_MS = 1000 / 12;
 
 /**
  * The radius of the breath of a card, in model pixels.
@@ -184,7 +188,7 @@ export const IDLE_INTERVAL_MS = 1000 / 20;
  * stay where they were. A spring that drifts without a bound walks out of
  * the picture it was fitted into.
  */
-export const IDLE_SWAY_PX = 5;
+export const IDLE_SWAY_PX = 1;
 
 /**
  * How fast the phase of the breath turns, in radians per tick.
@@ -322,6 +326,12 @@ export interface ForceLayoutOptions {
   readonly seedSpacing?: number;
   /** How many passes the collision makes on every tick. */
   readonly collisionIterations?: number;
+  /**
+   * Whether the cards breathe at rest (the idle sway). `false` keeps the
+   * picture quiet: the spring still wakes on contact, but it does not
+   * sway on its own.
+   */
+  readonly idleSway?: boolean;
   /** The most ticks the simulation runs before it gives up. */
   readonly maxTicks?: number;
   /**
@@ -385,12 +395,23 @@ export interface ForceLayout {
   setAlphaTarget(value: number, options?: { readonly snap?: boolean }): void;
   /** The place of every node. */
   positions(): Map<string, ForcePosition>;
+  /** Whether the cards breathe at rest. */
+  idleSway: boolean;
+  /** Turns the idle sway on or off. */
+  setIdleSway(value: boolean): void;
   /**
    * Fixes a node to a place.
    *
    * A node the reader dragged is fixed: the spring works around it.
    */
   pin(id: string, place: ForcePosition): void;
+  /**
+   * Releases a node the reader dropped.
+   *
+   * The spring takes it back: it is no longer an obstacle and it moves
+   * with the rest of the picture.
+   */
+  unpin(id: string): void;
   /** The number of pairs of cards that overlap right now. */
   overlaps(): number;
   /** What the spring tells about itself. */
@@ -834,6 +855,38 @@ interface SimulationLink extends SimulationLinkDatum<ForceNode> {
  * @param options - The options of the spring.
  * @returns The spring.
  */
+/**
+ * Whether two segments cross.
+ *
+ * A proper crossing: the endpoints of each segment lie on opposite sides
+ * of the other segment. Touching at an endpoint does not count — that is a
+ * shared node, not a crossing.
+ */
+function segmentsCross(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number
+): boolean {
+  const cross = (ox: number, oy: number, px: number, py: number, qx: number, qy: number): number =>
+    (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+
+  const d1 = cross(cx, cy, dx, dy, ax, ay);
+  const d2 = cross(cx, cy, dx, dy, bx, by);
+  const d3 = cross(ax, ay, bx, by, cx, cy);
+  const d4 = cross(ax, ay, bx, by, dx, dy);
+
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+
+  return false;
+}
+
 export function createForceLayout(
   nodes: readonly ForceNodeInput[],
   edges: readonly ForceEdgeInput[],
@@ -844,12 +897,14 @@ export function createForceLayout(
   const alphaDecay = options.alphaDecay ?? 1 - Math.pow(alphaMin, 1 / 300);
   const velocityDecay = options.velocityDecay ?? 0.4;
   const linkDistance = options.linkDistance ?? DEFAULT_LINK_DISTANCE;
+  const baseLinkDistance = linkDistance;
   const linkStrength = options.linkStrength ?? undefined;
   const chargeStrength = options.chargeStrength ?? DEFAULT_CHARGE_STRENGTH;
   const chargeMaxDistance = options.chargeMaxDistance ?? DEFAULT_CHARGE_MAX_DISTANCE;
   const collisionPadding = options.collisionPadding ?? DEFAULT_COLLISION_PADDING;
   const collisionIterations = options.collisionIterations ?? DEFAULT_COLLISION_ITERATIONS;
   const living = options.living === true;
+  let idleSway = options.idleSway !== false;
 
   // A **living** spring is not capped: the cap is the brake of a one-pass
   // animation, and a living spring is meant to keep breathing for as long
@@ -859,7 +914,7 @@ export function createForceLayout(
 
   // The nodes of the simulation: the card of every node, with its real
   // size, and the place it starts from.
-  const seeds = seedCirclePositions(nodes.length, seedRadius(nodes.length, options.seedSpacing ?? DEFAULT_LINK_DISTANCE));
+  const seeds = seedCirclePositions(nodes.length, seedRadius(nodes.length, options.seedSpacing ?? DEFAULT_SEED_SPACING));
 
   const simulationNodes: ForceNode[] = nodes.map((node, index) => {
     const seedPlace = seeds[index];
@@ -945,6 +1000,169 @@ export function createForceLayout(
     )
     .force('center', forceCenter<ForceNode>(0, 0));
 
+  // **Centroid** — an invisible control node connected to every visible
+  // node. It is the long-range attraction the charge alone does not give:
+  // the charge repels at short distance, and the centroid pulls the distant
+  // ones back, so the whole graph stays together and on screen instead of
+  // stretching into a single line.
+  simulation.force('centroid', (alpha: number) => {
+    if (alpha < 0.01) {
+      return;
+    }
+
+    const strength = 0.02 * alpha;
+
+    for (const node of simulationNodes) {
+      if (node.fx !== null) {
+        continue;
+      }
+
+      node.vx += -node.x * strength;
+      node.vy += -node.y * strength;
+    }
+  });
+
+  // **Uncrossing** — the edges try not to lie on top of each other. When two
+  // edges cross, their endpoints are pushed apart a little, so the picture
+  // searches for the arrangement that hurts the least, like a gradient
+  // descent over the crossings, until it rests.
+  simulation.force('uncross', (alpha: number) => {
+    if (alpha < 0.01) {
+      return;
+    }
+
+    const strength = 0.05 * alpha;
+
+    for (let i = 0; i < links.length; i += 1) {
+      for (let j = i + 1; j < links.length; j += 1) {
+        const a = links[i].source as ForceNode;
+        const b = links[i].target as ForceNode;
+        const c = links[j].source as ForceNode;
+        const d = links[j].target as ForceNode;
+
+        if (a === c || a === d || b === c || b === d) {
+          continue;
+        }
+
+        if (!segmentsCross(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)) {
+          continue;
+        }
+
+        const mx1 = (a.x + b.x) / 2;
+        const my1 = (a.y + b.y) / 2;
+        const mx2 = (c.x + d.x) / 2;
+        const my2 = (c.y + d.y) / 2;
+        const dx = mx1 - mx2;
+        const dy = my1 - my2;
+        const dist = Math.hypot(dx, dy) || 1;
+        const push = strength / dist;
+        const px = dx * push;
+        const py = dy * push;
+
+        if (a.fx === null) {
+          a.vx += px;
+          a.vy += py;
+        }
+
+        if (b.fx === null) {
+          b.vx += px;
+          b.vy += py;
+        }
+
+        if (c.fx === null) {
+          c.vx -= px;
+          c.vy -= py;
+        }
+
+        if (d.fx === null) {
+          d.vx -= px;
+          d.vy -= py;
+        }
+      }
+    }
+  });
+
+  // **Radial spreading** — the neighbours of a common node spread around it,
+  // equidistant, forming a loose circle instead of piling up on one side.
+  simulation.force('radial', (alpha: number) => {
+    if (alpha < 0.01) {
+      return;
+    }
+
+    const adjacency = new Map<string, string[]>();
+
+    for (const link of links) {
+      const s = (link.source as ForceNode).id;
+      const t = (link.target as ForceNode).id;
+
+      if (!adjacency.has(s)) {
+        adjacency.set(s, []);
+      }
+
+      if (!adjacency.has(t)) {
+        adjacency.set(t, []);
+      }
+
+      adjacency.get(s)!.push(t);
+      adjacency.get(t)!.push(s);
+    }
+
+    const byId = new Map(simulationNodes.map((node) => [node.id, node]));
+    const strength = 0.04 * alpha;
+
+    for (const [centerId, neighbours] of adjacency) {
+      if (neighbours.length < 3) {
+        continue;
+      }
+
+      const center = byId.get(centerId);
+
+      if (center === undefined) {
+        continue;
+      }
+
+      const targetAngle = (2 * Math.PI) / neighbours.length;
+
+      for (let i = 0; i < neighbours.length; i += 1) {
+        for (let j = i + 1; j < neighbours.length; j += 1) {
+          const a = byId.get(neighbours[i]);
+          const b = byId.get(neighbours[j]);
+
+          if (a === undefined || b === undefined) {
+            continue;
+          }
+
+          if (a.fx !== null || b.fx !== null) {
+            continue;
+          }
+
+          const angleA = Math.atan2(a.y - center.y, a.x - center.x);
+          const angleB = Math.atan2(b.y - center.y, b.x - center.x);
+          let diff = Math.abs(angleA - angleB);
+
+          if (diff > Math.PI) {
+            diff = 2 * Math.PI - diff;
+          }
+
+          if (diff >= targetAngle * 0.9) {
+            continue;
+          }
+
+          // Push the two neighbours apart, tangentially around the center.
+          const mid = (angleA + angleB) / 2;
+          const tx = -Math.sin(mid);
+          const ty = Math.cos(mid);
+          const push = strength;
+
+          a.vx += tx * push;
+          a.vy += ty * push;
+          b.vx -= tx * push;
+          b.vy -= ty * push;
+        }
+      }
+    }
+  });
+
   // The seed of the generator: the picture is the same one every time.
   simulation.randomSource(lcg(seed));
 
@@ -963,6 +1181,13 @@ export function createForceLayout(
   const layout: ForceLayout = {
     nodes: simulationNodes,
 
+    idleSway,
+
+    setIdleSway(value: boolean): void {
+      idleSway = value;
+      layout.idleSway = value;
+    },
+
     step(count = 1): void {
       for (let index = 0; index < count; index += 1) {
         if (settled || ticks >= maxTicks) {
@@ -970,6 +1195,13 @@ export function createForceLayout(
         }
 
         const began = now();
+
+        // **Annealing** of the links: they start long and shorten as the
+        // picture settles, so the nodes begin far apart and the spring
+        // pulls them together gradually, with room to uncross on the way.
+        const annealedDistance = baseLinkDistance * (1 + 2 * simulation.alpha());
+
+        linkForce.distance((edge) => relationDistance(edge.communityScore, annealedDistance));
 
         simulation.tick(1);
 
@@ -1028,7 +1260,7 @@ export function createForceLayout(
         // does not sway. A hierarchy does not breathe, and neither does the
         // reader who asked for less motion.
         const angle = phase + index * 2.399963229728653;
-        const sway = living && node.fx === null && node.fy === null ? IDLE_SWAY_PX : 0;
+        const sway = living && idleSway && node.fx === null && node.fy === null ? IDLE_SWAY_PX : 0;
 
         places.set(node.id, {
           x: node.x + Math.cos(angle) * sway,
@@ -1050,6 +1282,17 @@ export function createForceLayout(
       node.fy = place.y;
       node.x = place.x;
       node.y = place.y;
+    },
+
+    unpin(id: string): void {
+      const node = simulationNodes.find((candidate) => candidate.id === id);
+
+      if (node === undefined) {
+        return;
+      }
+
+      node.fx = null;
+      node.fy = null;
     },
 
     overlaps(): number {
@@ -1343,4 +1586,29 @@ export function driveForceLayout(
       return frames;
     }
   };
+}
+
+/**
+ * Counts the pairs of **edges that cross**.
+ *
+ * Two edges cross when their segments intersect in the plane. It is the
+ * measure the comparison shows: how tangled the drawing is.
+ */
+export function countEdgeCrossings(
+  segments: readonly { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number }[]
+): number {
+  let count = 0;
+
+  for (let i = 0; i < segments.length; i += 1) {
+    for (let j = i + 1; j < segments.length; j += 1) {
+      const a = segments[i];
+      const b = segments[j];
+
+      if (segmentsCross(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2)) {
+        count += 1;
+      }
+    }
+  }
+
+  return count;
 }

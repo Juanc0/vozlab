@@ -15,7 +15,7 @@
   import { untrack } from 'svelte';
   import type { ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
-  import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
+  import SvgGraphCanvas from '$lib/components/SvgGraphCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { pictureOf, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
@@ -64,6 +64,8 @@
     presentedNodeId?: string | null;
     /** The shape the relations are drawn with. */
     edgeStyle?: EdgeStyle;
+    /** Increment to re-run the layout on the current picture. */
+    rearrangeTick?: number;
     /**
      * The zoom the reader had when the view was opened.
      *
@@ -104,6 +106,7 @@
     error = null,
     presentedNodeId = null,
     edgeStyle = 'bezier',
+    rearrangeTick = 0,
     zoom = null,
     onzoomchange,
     zoomaction = 'in',
@@ -284,24 +287,20 @@
       {t('explore.empty')}
     </p>
   {:else}
-    <ExplorationCanvas
+    <SvgGraphCanvas
       nodes={picture.nodes}
       edges={picture.edges}
       expandedIds={shown}
-      {expandedEdgeIds}
-      {edgeStyle}
-      {selectedNodeId}
-      {selectedEdgeId}
-      {presentedNodeId}
-      {zoom}
-      {onzoomchange}
+      selectedNodeId={selectedNodeId}
+      presentedNodeId={presentedNodeId}
+      edgeStyle={edgeStyle}
+      {rearrangeTick}
       {zoomaction}
       {zoomrequest}
+      label={t('explore.canvasLabel')}
       onselect={onselect}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}
-      onselectedge={(edgeId) => onselectedge?.(edgeId)}
-      ontoggleedge={toggleEdge}
     />
   {/if}
 </div>

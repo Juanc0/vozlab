@@ -129,7 +129,9 @@
    * clean (FR-04) and both views stay reachable.
    */
   type ViewMode = 'subgraph' | 'explore';
-  let viewMode = $state<ViewMode>('subgraph');
+  let viewMode = $state<ViewMode>('explore');
+  let searchQuery = $state('');
+  let rearrangeTick = $state(0);
 
   /** The label of every criterion of the focus. */
   const FOCUS_LABELS: Record<FocusCriterion, TranslationKey> = {
@@ -1169,79 +1171,32 @@
     aria-hidden={listOpen ? 'true' : undefined}
     inert={listOpen}
   >
-    {#if viewMode === 'subgraph'}
-      {#if rootId === null}
-        <p
-          class="grid h-full place-items-center p-6 text-center text-body text-muted"
-        >
-          <span
-            class="rounded-card border border-dashed border-border px-6 py-4"
-          >
-            {t('graph.pickRoot')}
-          </span>
-        </p>
-      {:else if graphLoading && !graphLoaded}
-        <!--
-          The canvas has its own shape: the loading state is the flat grey
-          band of the canvas, and the layout does not move when the graph
-          lands.
-        -->
-        <div role="status" aria-live="polite" class="h-full bg-raised">
-          <span class="sr-only">{t('graph.loadingSubgraph')}</span>
-        </div>
-      {:else if graphLoaded}
-        <GraphCanvas
-          nodes={graphNodes}
-          edges={graphEdges}
-          selectedNodeId={selectedNodeId}
-          rootNodeId={rootId}
-          onselect={selectNode}
-          onnavigate={navigateTo}
-          centerNodeId={centerNodeId}
-          centerRequest={centerRequest}
-          zoom={viewZoom}
-          onzoomchange={(next, source) => {
-            // Only the choice of the reader is kept: the fit of a view is
-            // the zoom that picture starts with, not a choice.
-            if (source === 'reader') {
-              viewZoom = next;
-            }
-          }}
-          zoomaction={zoomAction}
-          zoomrequest={zoomRequest}
-          description={t('graph.canvasDescription', {
-            nodes: formatNumber(locale.locale, graphNodes.length),
-            edges: formatNumber(locale.locale, graphEdges.length)
-          })}
-        />
-      {/if}
-    {:else}
-      <ExplorationView
-        nodes={exploreNodes}
-        edges={exploreEdges}
-        onwalk={navigateTo}
-        {walking}
-        onpicture={reportPicture}
-        loading={windowLoading}
-        error={windowError}
-        selectedNodeId={selectedNodeId}
-        selectedEdgeId={selectedEdgeId}
-        onselect={selectNode}
-        onselectedge={selectEdge}
-        presentedNodeId={explorePresented}
-        {edgeStyle}
-        zoom={viewZoom}
-        onzoomchange={(next, source) => {
-          // Only the choice of the reader is kept: the fit of a view is
-          // the zoom that picture starts with, not a choice.
-          if (source === 'reader') {
-            viewZoom = next;
-          }
-        }}
-        zoomaction={zoomAction}
-        zoomrequest={zoomRequest}
-      />
-    {/if}
+    <ExplorationView
+      nodes={exploreNodes}
+      edges={exploreEdges}
+      onwalk={navigateTo}
+      {walking}
+      onpicture={reportPicture}
+      loading={windowLoading}
+      error={windowError}
+      selectedNodeId={selectedNodeId}
+      selectedEdgeId={selectedEdgeId}
+      onselect={selectNode}
+      onselectedge={selectEdge}
+      presentedNodeId={explorePresented}
+      {edgeStyle}
+      {rearrangeTick}
+      zoom={viewZoom}
+      onzoomchange={(next, source) => {
+        // Only the choice of the reader is kept: the fit of a view is
+        // the zoom that picture starts with, not a choice.
+        if (source === 'reader') {
+          viewZoom = next;
+        }
+      }}
+      zoomaction={zoomAction}
+      zoomrequest={zoomRequest}
+    />
   </div>
 
   <!--
@@ -1290,67 +1245,7 @@
     onheight={setToolbarHeight}
   >
     {#snippet controls()}
-      {#if viewMode === 'subgraph'}
-        <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <div>
-            <label for="subgraph-depth" class="block text-small text-muted">
-              {t('graph.depthLabel')}
-            </label>
-            <select
-              id="subgraph-depth"
-              class="field mt-0.5"
-              value={depth}
-              onchange={handleDepthChange}
-            >
-              {#each depthOptions as option (option)}
-                <option value={option}>{option}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div>
-            <label for="subgraph-limit" class="block text-small text-muted">
-              {t('graph.maxNodesLabel')}
-            </label>
-            <input
-              id="subgraph-limit"
-              type="number"
-              min="1"
-              max={SUBGRAPH_MAX_NODES}
-              class="field mt-0.5 w-24"
-              value={limit}
-              onchange={handleLimitChange}
-            />
-          </div>
-
-          <!--
-            The toggle of the panel of the root picker. It is the control
-            of a panel that floats over the picture, so it announces its
-            state and points at the panel it opens.
-          -->
-          <button
-            type="button"
-            class="btn btn-secondary"
-            aria-expanded={rootPickerOpen}
-            aria-controls={ROOT_PICKER_ID}
-            onclick={toggleRootPicker}
-          >
-            {t('graph.rootToggle')}
-          </button>
-
-          <!--
-            The zoom: the property of the view, and it belongs to the
-            reader. The controls are quiet — the accent of the interface is
-            scarce, and the zoom is not the accent of the screen.
-          -->
-          <ZoomControls
-            onzoomin={() => requestZoom('in')}
-            onzoomout={() => requestZoom('out')}
-            onfit={() => requestZoom('fit')}
-          />
-        </div>
-      {:else}
-        <ExploreControls
+      <ExploreControls
           {criterion}
           oncriterionchange={(next) => {
             criterion = next;
@@ -1365,7 +1260,50 @@
           onzoomout={() => requestZoom('out')}
           onfit={() => requestZoom('fit')}
         />
-      {/if}
+
+        <div class="flex items-end gap-2">
+          <div>
+            <label for="node-search" class="block text-small text-muted">
+              Buscar nodo
+            </label>
+            <input
+              id="node-search"
+              type="search"
+              class="field mt-0.5"
+              placeholder="Título…"
+              bind:value={searchQuery}
+              onkeydown={(event) => {
+                if (event.key !== 'Enter') {
+                  return;
+                }
+
+                const query = searchQuery.trim().toLowerCase();
+
+                if (query === '') {
+                  return;
+                }
+
+                const match = exploreNodes.find((node) =>
+                  node.title.toLowerCase().includes(query)
+                );
+
+                if (match !== undefined) {
+                  navigateTo(match.id);
+                }
+              }}
+            />
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => {
+              rearrangeTick += 1;
+            }}
+          >
+            Desenredar
+          </button>
+        </div>
     {/snippet}
 
     {#snippet status()}

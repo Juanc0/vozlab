@@ -34,26 +34,19 @@ import type {
 const engines = {
   heading: 'Los motores, de uno en uno',
   intro:
-    'Un mismo espacio para los cuatro motores: se elige uno de las pestañas y ocupa la pantalla. Cada motor trae su propia disposición, su propio dibujo y sus propias medidas. Es una superficie de desarrollo: en una compilación de producción no existe.',
+    'Un mismo espacio para los dos dibujos del resorte vivo: se elige uno de las pestañas y ocupa la pantalla. La disposición es la misma —el resorte de la aplicación— y cada motor trae su propio dibujo, sus propias medidas y su propio cromo. Es una superficie de desarrollo: en una compilación de producción no existe.',
   pageTitle: 'Los motores, de uno en uno',
   tabsLabel: 'Los motores, de uno en uno',
   toolbarLabel: 'La barra de los motores',
   readoutLabel: 'Las medidas del motor',
   readoutToggle: 'Todas las medidas',
   essayToggle: '¿Qué es esto?',
-  panelDagreName: 'Cytoscape + dagre',
-  panelDagreNote:
-    'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
   panelD3Name: 'Cytoscape + d3-force',
   panelD3Note:
     'El resorte vivo de la aplicación: una simulación con semilla, una fuerza de colisión rectangular y un reposo que respira.',
   panelSvgName: 'SVG + d3',
   panelSvgNote:
     'El pintor propio: cada tarjeta es un solo <g> —el rectángulo, el título partido, la línea de tipo y el cuerpo— y cada relación un <path>. No trae disposición propia: lo reparte el resorte vivo, y la lectura mide lo que cuesta la imagen. Sus cinco formas son aproximaciones de las curvas de Cytoscape, y todo lo que Cytoscape resuelve por dentro aquí está escrito a mano.',
-  panelDagName: 'Cytoscape + d3-dag',
-  panelDagNote:
-    'El clon de dagre con d3-dag: una disposición por capas que necesita que el grafo no tenga ciclos, y rompe los que tiene a la vista.',
-  hierarchyStatic: 'Una jerarquía no respira: sus rangos son el dibujo.',
   canvasLabel: 'El lienzo de la comparación',
   pictureLabel: 'La imagen de la comparación',
   sizeLabel: 'Tamaño de la imagen',
@@ -91,7 +84,9 @@ const engines = {
   aliveNote:
     'El resorte vivo no se asienta: en reposo sigue moviéndose por debajo de {threshold} px por paso, y despierta cuando la mano lo toca. La forma se alcanza cuando el movimiento queda por debajo de ese umbral; la simulación no se detiene.',
   overlapsLabel: 'Tarjetas encima',
+  edgeCrossingsLabel: 'Aristas cruzadas',
   overlapsValue: '{count} pares',
+  edgeCrossingsValue: '{count} cruces',
   overlapsOne: '{count} par',
   stateLabel: 'Estado',
   stateAlive: 'Viva',
@@ -105,15 +100,8 @@ const engines = {
   layoutFrameLabel: 'Cuadro de la disposición',
   frameLayoutValue: '{value} ms por cuadro',
   reproducibleLabel: 'Sale igual dos veces',
-  reproducibleDagre: 'Sí: es una función de la imagen',
   reproducibleD3: 'Sí: la semilla es fija',
   reproducibleSvg: 'Sí: la semilla es fija',
-  reproducibleDag: 'Sí: es una función de la imagen',
-  reversedLabel: 'Relaciones invertidas',
-  reversedValue: '{count} relaciones',
-  reversedToggle: 'Ver las {count} relaciones invertidas',
-  reversedDetail:
-    'Se invirtieron para poder ordenar el grafo, y su flecha queda contra lo que dicen: {relations}.',
   loading: 'Cargando la ventana…',
   empty: 'La ventana está vacía: no hay nada que comparar.',
   svgPainterError: 'El pintor SVG no pudo dibujar la imagen.',
@@ -129,10 +117,6 @@ const engines = {
     'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
   findingD3Living:
     'El resorte de d3-force no se asienta: el reposo es una temperatura distinta de cero, así que sigue moviéndose por debajo del umbral y despierta cuando la mano lo toca. Las relaciones con más peso acercan sus tarjetas.',
-  findingDagCycles:
-    'Las relaciones del grafo tienen ciclos, y una disposición por capas necesita un grafo sin ciclos: dagre los rompe en silencio —su archivo acyclic.js da la vuelta a las relaciones— y el clon de d3-dag los rompe a la vista. Las dos invierten el mismo número de relaciones, y solo una lo dice.',
-  findingDagQuality:
-    'El clon usa el ajuste rápido de d3-dag a propósito: el ajuste por defecto resuelve un programa lineal por capa, y en un grafo de cuatrocientas relaciones tardó noventa segundos.'
 };
 
 export const es = {

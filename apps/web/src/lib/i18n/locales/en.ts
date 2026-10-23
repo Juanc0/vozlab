@@ -25,26 +25,19 @@ import { es } from './es';
 const engines = {
   heading: 'The engines, one at a time',
   intro:
-    'One single space for the four engines: one of them is picked from the tabs and it takes over the screen. Every engine brings its own layout, its own painting and its own measurements. This is a development surface: it does not exist in a production build.',
+    'One single space for the two painters of the living spring: one of them is picked from the tabs and it takes over the screen. The arrangement is the same — the spring of the app — and every engine brings its own painting, its own measurements and its own chrome. This is a development surface: it does not exist in a production build.',
   pageTitle: 'The engines, one at a time',
   tabsLabel: 'The engines, one at a time',
   toolbarLabel: 'The bar of the engines',
   readoutLabel: 'The measurements of the engine',
   readoutToggle: 'All the measurements',
   essayToggle: 'What is this?',
-  panelDagreName: 'Cytoscape + dagre',
-  panelDagreNote:
-    'The incumbent: a hierarchical, deterministic layout, computed in one go.',
   panelD3Name: 'Cytoscape + d3-force',
   panelD3Note:
     'The living spring of the app: a seeded simulation, a rectangular collision force and a rest that breathes.',
   panelSvgName: 'SVG + d3',
   panelSvgNote:
     'The painter we own: every card is one <g> — the rectangle, the wrapped title, the meta line and the body — and every relation a <path>. It brings no layout of its own: the living spring arranges it, and the readout measures what the picture costs. Its five shapes are approximations of Cytoscape\'s curves, and everything Cytoscape does inside is written by hand here.',
-  panelDagName: 'Cytoscape + d3-dag',
-  panelDagNote:
-    'The clone of dagre with d3-dag: a layered layout that needs a graph without cycles, and breaks the ones it has in plain sight.',
-  hierarchyStatic: 'A hierarchy does not breathe: its ranks are the drawing.',
   canvasLabel: 'The canvas of the comparison',
   pictureLabel: 'The picture of the comparison',
   sizeLabel: 'Size of the picture',
@@ -82,7 +75,9 @@ const engines = {
   aliveNote:
     'The living spring does not settle: at rest it keeps moving below {threshold} px per step, and it wakes when the hand touches it. The shape is reached when the movement falls below that threshold; the simulation never stops.',
   overlapsLabel: 'Cards on top of each other',
+  edgeCrossingsLabel: 'Crossed edges',
   overlapsValue: '{count} pairs',
+  edgeCrossingsValue: '{count} crossings',
   overlapsOne: '{count} pair',
   stateLabel: 'State',
   stateAlive: 'Alive',
@@ -96,15 +91,8 @@ const engines = {
   layoutFrameLabel: 'Frame of the layout',
   frameLayoutValue: '{value} ms',
   reproducibleLabel: 'Reproducible',
-  reproducibleDagre: 'Yes: it is a function of the picture',
   reproducibleD3: 'Yes: the seed is fixed',
   reproducibleSvg: 'Yes: the seed is fixed',
-  reproducibleDag: 'Yes: it is a function of the picture',
-  reversedLabel: 'Reversed relations',
-  reversedValue: '{count} relations',
-  reversedToggle: 'See the {count} reversed relations',
-  reversedDetail:
-    'They were reversed to be able to order the graph, and their arrow ends up against what they say: {relations}.',
   loading: 'Loading the window…',
   empty: 'The window is empty: there is nothing to compare.',
   svgPainterError: 'The SVG painter could not draw the picture.',
@@ -120,10 +108,6 @@ const engines = {
     'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
   findingD3Living:
     'The spring of d3-force does not settle: rest is a temperature above zero, so it keeps moving below the threshold and wakes when the hand touches it. Relations with more weight pull their cards closer.',
-  findingDagCycles:
-    'The relations of the graph have cycles, and a layered layout needs a graph without cycles: dagre breaks them silently —its acyclic.js file turns the relations around— and the d3-dag clone breaks them in plain sight. The two of them reverse the same number of relations, and only one of them says so.',
-  findingDagQuality:
-    'The clone uses the fast setting of d3-dag on purpose: the default setting solves a linear program per layer, and on a graph of four hundred relations it took ninety seconds.'
 };
 
 export const en: Dictionary<typeof es> = {

@@ -17,15 +17,13 @@
  */
 
 /** The shapes a relation can be drawn with. */
-export type EdgeStyle = 'straight' | 'bezier' | 'unbundled' | 'arc' | 'haystack';
+export type EdgeStyle = 'straight' | 'bezier' | 'unbundled';
 
 /** Every shape, in the order the control shows them. */
 export const EDGE_STYLES: readonly EdgeStyle[] = [
   'straight',
   'bezier',
-  'unbundled',
-  'arc',
-  'haystack'
+  'unbundled'
 ];
 
 /** How one shape is drawn. */
@@ -38,7 +36,7 @@ export interface EdgeStylePreset {
    * `straight` is a single line; `bezier` and `unbundled-bezier` are the
    * curves; `haystack` is the exaggerated one.
    */
-  readonly curveStyle: 'straight' | 'bezier' | 'unbundled-bezier' | 'haystack';
+  readonly curveStyle: 'straight' | 'bezier' | 'unbundled-bezier';
   /**
    * How far the control point of the curve is from the line between the
    * two nodes. Zero for the shapes that have no control point.
@@ -55,9 +53,7 @@ export interface EdgeStylePreset {
 export const EDGE_STYLE_PRESETS: Readonly<Record<EdgeStyle, EdgeStylePreset>> = {
   straight: { id: 'straight', curveStyle: 'straight', controlPointDistance: 0 },
   bezier: { id: 'bezier', curveStyle: 'bezier', controlPointDistance: 40 },
-  unbundled: { id: 'unbundled', curveStyle: 'unbundled-bezier', controlPointDistance: 40 },
-  arc: { id: 'arc', curveStyle: 'bezier', controlPointDistance: 140 },
-  haystack: { id: 'haystack', curveStyle: 'haystack', controlPointDistance: 0 }
+  unbundled: { id: 'unbundled', curveStyle: 'unbundled-bezier', controlPointDistance: 40 }
 };
 
 /**

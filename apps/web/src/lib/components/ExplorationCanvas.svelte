@@ -5,7 +5,6 @@
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import type { ExplorationInstance, LayoutReport, RenderedBox, RenderedRelation } from '$lib/graph/explore/instance';
   import type { GraphLayout } from '$lib/graph/explore/layout';
-  import type { DagLayoutRunner } from '$lib/graph/explore/dag-layout';
   import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
   import { edgeColor, formatAttributeValue } from '$lib/graph/elements';
   import { shortPseudonym } from '$lib/graph/relation-card';
@@ -29,8 +28,8 @@
      * The accessible name of the picture.
      *
      * The default is the name of the window of exploration. The comparison
-     * of the engines draws three pictures at once, and each one needs a
-     * name of its own.
+     * of the engines mounts one picture at a time, and the picture carries
+     * the name of its painter.
      */
     label?: string;
     /**
@@ -38,17 +37,17 @@
      *
      * The default is `d3`: the **living spring** of the app — a simulation
      * of `d3-force` with a rectangular collision force, arranged in slices
-     * across the frames, breathing at rest and waking on contact. The
-     * deterministic `dagre` and the clone of `d3-dag` are there for the
-     * comparison of the engines.
+     * across the frames, breathing at rest and waking on contact. `dagre`
+     * remains as the deterministic arrangement: it computes the picture
+     * once and stops.
      */
     layout?: GraphLayout;
     /**
      * The smallest zoom the picture is fitted to.
      *
      * It is the **floor of the fit**, and it is asked for by the callers
-     * that need it: the comparison of the engines draws three pictures at
-     * once and asks for a smaller one.
+     * that need it: the comparison of the engines asks for a smaller one,
+     * so that the whole picture fits in the playground.
      *
      * The app asks for **nothing**: the fit of the picture is the fit, and
      * the reader decides afterwards whether to come closer to read the
@@ -116,15 +115,17 @@
      */
     onlayout?: (report: LayoutReport) => void;
     /**
-     * The **clone of `dagre`** — the layered arrangement of `d3-dag`.
+     * Whether the cards breathe at rest.
      *
-     * It is **handed over** and not imported: the library is a dependency
-     * of the development surface that compares the engines, and a canvas
-     * that imported it would carry it into the production bundle. The
-     * canvas of the app is arranged with `dagre` or with the spring, and
-     * neither of them needs the clone.
+     * The default is `true`: the picture is alive. A picture that is not
+     * allowed to breathe keeps its places, and the spring only moves when
+     * the reader touches it.
      */
-    dagLayout?: DagLayoutRunner;
+    idleSway?: boolean;
+    /**
+     * Increment to re-run the layout on the current picture.
+     */
+    rearrangeTick?: number;
     /**
      * Called when the picture could not be arranged.
      *
@@ -141,6 +142,8 @@
     expandedEdgeIds = new Set<string>(),
     edgeStyle = 'bezier',
     layout = 'd3',
+    idleSway = true,
+    rearrangeTick = 0,
     readableZoom = undefined,
     zoom = null,
     onzoomchange,
@@ -156,7 +159,6 @@
     onselectedge,
     ontoggleedge,
     onlayout,
-    dagLayout = undefined,
     onerror = undefined
   }: Props = $props();
 
@@ -278,7 +280,6 @@
   let layoutHandler: ((report: LayoutReport) => void) | undefined;
   let zoomHandler: ((zoom: number, source: ZoomSource) => void) | undefined;
   let errorHandler: ((message: string) => void) | undefined;
-  let dagLayoutRunner: DagLayoutRunner | undefined;
 
   $effect(() => {
     selectHandler = onselect;
@@ -289,7 +290,40 @@
     layoutHandler = onlayout;
     zoomHandler = onzoomchange;
     errorHandler = onerror;
-    dagLayoutRunner = dagLayout;
+  });
+
+  $effect(() => {
+    instance?.setIdleSway(idleSway);
+  });
+
+  $effect(() => {
+    if (rearrangeTick <= 0) {
+      return;
+    }
+
+    // Shake the picture several times in a row: each rearrange re-seeds
+    // the spring and lets the uncrossing work again, until the crossings
+    // drop or the shakes run out.
+    let cancelled = false;
+    let step = 0;
+    const total = 8;
+
+    const run = (): void => {
+      if (cancelled || step >= total) {
+        return;
+      }
+
+      instance?.rearrange();
+      step += 1;
+
+      setTimeout(run, 60);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   });
 
   /**
@@ -327,10 +361,7 @@
         // The zoom of the reader is read **once**: it belongs to the
         // reader, and the picture must not impose it again.
         zoom: untrack(() => zoom),
-        // The **clone** is read once too: the comparison of the engines
-        // hands it over when it mounts the engine, and the canvas of the
-        // app never gets one.
-        dagLayout: untrack(() => dagLayoutRunner),
+        idleSway: untrack(() => idleSway),
         onselect: (nodeId) => selectHandler?.(nodeId),
         onnavigate: (nodeId) => navigateHandler?.(nodeId),
         onselectedge: (edgeId) => selectEdgeHandler?.(edgeId),
@@ -366,10 +397,9 @@
           // badge that disappears as the pointer travels to it is a badge
           // nobody can ever click.
         },
-        ondrag: (nodeId, position) => {
-          // The node keeps the place it was put; the next layout keeps it
-          // there too.
-          pinned.set(nodeId, { x: position.x, y: position.y });
+        ondrag: () => {
+          // A dropped card is released: it is not pinned for the rest of
+          // the view, so the spring keeps moving it.
           created?.refreshEdgeStyles();
         },
         onlayout: (report) => {

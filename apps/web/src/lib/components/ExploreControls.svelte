@@ -64,8 +64,6 @@
     straight: 'explore.edgeStraight',
     bezier: 'explore.edgeBezier',
     unbundled: 'explore.edgeUnbundled',
-    arc: 'explore.edgeArc',
-    haystack: 'explore.edgeHaystack'
   };
 
   /** The depths the API accepts. */
