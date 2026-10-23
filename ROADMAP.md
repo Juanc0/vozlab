@@ -823,6 +823,15 @@ Decided, and not to be re-opened without evidence:
       end the "Desenredar"). Result: `pnpm turbo run build type-check test`
       green (9/9, 528 tests web).
 
+- [x] 3.57 The toolbar spans the full width of the workspace and its row
+      distributes (title left, controls spread, "Desenredar" right); the
+      expand badge of a node now sits at the card's top-right interior
+      corner; nodes expand on **double click** (or the badge, or `E`) and
+      relations are **selectable** — click or double click selects a
+      relation, it is highlighted and the inspector reads it.
+      Result: `pnpm turbo run build type-check test` green (9/9, 528
+      tests web).
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

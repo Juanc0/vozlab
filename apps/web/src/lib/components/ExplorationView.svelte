@@ -292,6 +292,7 @@
       edges={picture.edges}
       expandedIds={shown}
       selectedNodeId={selectedNodeId}
+      selectedEdgeId={selectedEdgeId}
       presentedNodeId={presentedNodeId}
       edgeStyle={edgeStyle}
       {rearrangeTick}
@@ -299,6 +300,11 @@
       {zoomrequest}
       label={t('explore.canvasLabel')}
       onselect={onselect}
+      onselectedge={(edgeId) => {
+        if (edgeId !== null) {
+          onselectedge?.(edgeId);
+        }
+      }}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}
     />

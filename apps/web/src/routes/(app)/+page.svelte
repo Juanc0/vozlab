@@ -431,11 +431,7 @@
    * The toolbar gives way to the inspector: a panel that runs under
    * another one is a panel the reader cannot read.
    */
-  const toolbarWidth = $derived(
-    inspectorWide.matches && inspectorOpen
-      ? 'max-w-[calc(100%-27rem)]'
-      : 'max-w-[calc(100%-2rem)]'
-  );
+  const toolbarWidth = $derived('w-full');
 
   /**
    * The room the inspector takes on the right of the list.

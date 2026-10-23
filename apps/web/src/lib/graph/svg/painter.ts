@@ -181,6 +181,8 @@ export interface SvgPainterOptions {
   readonly locale?: string;
   /** Called when a card is selected, or with `null` for the background. */
   readonly onselect?: (nodeId: string | null) => void;
+  /** Called when a relation is selected, or with `null` for the background. */
+  readonly onselectedge?: (edgeId: string | null) => void;
   /** Called when the reader walks to a node. */
   readonly onnavigate?: (nodeId: string) => void;
   /** Called when a card is expanded or collapsed. */
@@ -215,6 +217,8 @@ export interface SvgPainter {
   setElements(elements: SvgPainterElements): void;
   /** Highlights the selected node. */
   setSelected(nodeId: string | null): void;
+  /** Reflects the selection of a relation. A paint, not a rebuild. */
+  setSelectedEdge(edgeId: string | null): void;
   /** Marks the node the view presents. */
   setPresented(nodeId: string | null): void;
   /** Draws the relations with another shape. */
@@ -383,6 +387,8 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
 
   /** The selected node. */
   let selectedNodeId: string | null = null;
+  /** The relation the inspector reads, if one is selected. */
+  let selectedEdgeId: string | null = null;
   let hoveredNodeId: string | null = null;
 
   /** The node the view presents. */
@@ -924,7 +930,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     // it moves with it and it is part of the same `<g>`.
     const badge = element('g', {
       class: 'vozlab-svg-badge',
-      transform: `translate(${-halfWidth + BADGE_GAP + BADGE_RADIUS} ${
+      transform: `translate(${halfWidth - BADGE_GAP - BADGE_RADIUS} ${
         -halfHeight + BADGE_GAP + BADGE_RADIUS
       })`,
       'aria-hidden': 'true'
@@ -958,6 +964,12 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       options.ontoggle?.(node.id);
     });
 
+    // A double click on the badge has already toggled twice; the dblclick
+    // of the card must not toggle a third time.
+    badge.addEventListener('dblclick', (event) => {
+      event.stopPropagation();
+    });
+
     group.addEventListener('click', (event) => {
       if (Date.now() < suppressClickUntil) {
         return;
@@ -965,6 +977,16 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
 
       event.stopPropagation();
       options.onselect?.(node.id);
+    });
+
+    group.addEventListener('dblclick', (event) => {
+      if (Date.now() < suppressClickUntil) {
+        return;
+      }
+
+      event.stopPropagation();
+      event.preventDefault();
+      options.ontoggle?.(node.id);
     });
 
     group.addEventListener('keydown', (event) => {
@@ -1089,6 +1111,24 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
 
     labelGroup.append(plate, text);
     group.append(line, arrow, labelGroup);
+
+    // A relation answers the pointer the way a card does: one click (or a
+    // double click — there is no expanded card to grow into) selects it,
+    // and the inspector reads it whole. The plate widens the target: a
+    // line one pixel and a half wide is a target nobody can hit.
+    const selectThis = (event: Event): void => {
+      if (Date.now() < suppressClickUntil) {
+        return;
+      }
+
+      event.stopPropagation();
+      event.preventDefault();
+      options.onselectedge?.(edge.id);
+      options.onselect?.(null);
+    };
+
+    group.addEventListener('click', selectThis);
+    group.addEventListener('dblclick', selectThis);
 
     return {
       id: edge.id,
@@ -1467,6 +1507,16 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     select(view.group).datum(view).call(dragBehavior);
   }
 
+  /** Updates the highlight of the selected relation, next to the cards'. */
+  function paintEdgeSelection(): void {
+    for (const view of edges.values()) {
+      const selected = view.id === selectedEdgeId;
+
+      view.line.setAttribute('stroke-width', selected ? '3.5' : '1.5');
+      view.group.setAttribute('data-selected', selected ? 'true' : 'false');
+    }
+  }
+
   /** Updates the selection ring of the cards. */
   function paintSelection(): void {
     for (const card of cards.values()) {
@@ -1548,7 +1598,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
 
     paintSelection();
     paintPresented();
-
+    paintEdgeSelection();
 
   }
 
@@ -1566,6 +1616,11 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
         spring?.unpin(selectedNodeId);
       }
 
+      // One thing is selected: choosing a card lets the highlight of the
+      // relation go.
+      selectedEdgeId = null;
+      paintEdgeSelection();
+
       selectedNodeId = nodeId;
       paintSelection();
 
@@ -1582,6 +1637,14 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     setPresented(nodeId: string | null): void {
       presentedNodeId = nodeId;
       paintPresented();
+    },
+    setSelectedEdge(edgeId: string | null): void {
+      // One thing is selected: choosing a relation lets the ring of a
+      // card go, and the other way round.
+      selectedNodeId = null;
+      paintSelection();
+      selectedEdgeId = edgeId;
+      paintEdgeSelection();
     },
     setEdgeStyle(style: EdgeStyle): void {
       edgeStyle = style;

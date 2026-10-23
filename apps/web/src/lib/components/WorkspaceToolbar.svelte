@@ -133,7 +133,7 @@
   label={t('graph.toolbarLabel')}
   panelClass="w-full {panelClass}"
 >
-  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-3">
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
@@ -163,7 +163,7 @@
     of the focus, the depth, the shape of the arrows, the far nodes — and a
     phone has no room for them: there the row is a horizontal scroller.
   -->
-  <div class="px-3 pb-3">
+  <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-3 pb-3">
     {@render controls?.()}
   </div>
 

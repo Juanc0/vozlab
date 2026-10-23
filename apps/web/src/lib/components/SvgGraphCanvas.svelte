@@ -30,6 +30,8 @@
     expandedIds: ReadonlySet<string>;
     /** The id of the selected node. */
     selectedNodeId: string | null;
+    /** The id of the selected relation. */
+    selectedEdgeId?: string | null;
     /** The id of the node the view presents. */
     presentedNodeId: string | null;
     /** The shape the relations are drawn with. */
@@ -38,6 +40,8 @@
     label: string;
     /** Called when the user selects a node. */
     onselect?: (nodeId: string | null) => void;
+    /** Called when the user selects a relation. */
+    onselectedge?: (edgeId: string | null) => void;
     /** Called when the reader walks to a node. */
     onnavigate?: (nodeId: string) => void;
     /** Called when the user expands or collapses a node. */
@@ -61,10 +65,12 @@
     edges,
     expandedIds,
     selectedNodeId,
+    selectedEdgeId = null,
     presentedNodeId,
     edgeStyle,
     label,
     onselect,
+    onselectedge,
     onnavigate,
     ontoggle,
     onlayout,
@@ -88,6 +94,7 @@
    * be re-created —and the camera reset— because of it.
    */
   let selectHandler: ((nodeId: string | null) => void) | undefined;
+  let selectEdgeHandler: ((edgeId: string | null) => void) | undefined;
   let navigateHandler: ((nodeId: string) => void) | undefined;
   let toggleHandler: ((nodeId: string) => void) | undefined;
   let layoutHandler: ((report: SvgPainterReport) => void) | undefined;
@@ -126,6 +133,7 @@
 
   $effect(() => {
     selectHandler = onselect;
+    selectEdgeHandler = onselectedge;
     navigateHandler = onnavigate;
     toggleHandler = ontoggle;
     layoutHandler = onlayout;
@@ -190,6 +198,7 @@
         label,
         locale: locale.locale,
         onselect: (nodeId) => selectHandler?.(nodeId),
+        onselectedge: (edgeId) => selectEdgeHandler?.(edgeId),
         onnavigate: (nodeId) => navigateHandler?.(nodeId),
         ontoggle: (nodeId) => toggleHandler?.(nodeId),
         onlayout: (report) => layoutHandler?.(report),
@@ -238,6 +247,10 @@
 
   $effect(() => {
     painter?.setSelected(selectedNodeId);
+  });
+
+  $effect(() => {
+    painter?.setSelectedEdge(selectedEdgeId);
   });
 
   $effect(() => {
