@@ -1249,7 +1249,7 @@
         <input
           id="node-search"
           type="search"
-          class="field mt-0.5 w-56"
+          class="field mt-0.5 w-52"
           placeholder="Título…"
           bind:value={searchQuery}
           onkeydown={(event) => {
@@ -1459,14 +1459,29 @@
   {#if !inspectorOpen}
     <button
       type="button"
-      class="pointer-events-auto absolute right-4 top-4 z-10 btn btn-secondary"
+      class="pointer-events-auto absolute right-4 z-10 grid size-11 place-items-center rounded-control border border-border bg-surface text-muted shadow-float hover:bg-raised hover:text-text"
+      style="top: {toolbarHeight + 16}px"
       aria-expanded={inspectorOpen}
       aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
+      title={t('inspector.expand')}
       onclick={() => {
         inspectorOpen = true;
       }}
     >
-      {t('inspector.expand')}
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M6 3.5 10.5 8 6 12.5" />
+      </svg>
+      <span class="sr-only">{t('inspector.expand')}</span>
     </button>
   {/if}
 

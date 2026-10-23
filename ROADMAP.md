@@ -842,6 +842,17 @@ Decided, and not to be re-opened without evidence:
       Result: `pnpm turbo run build type-check test` green (9/9, 528 tests
       web).
 
+- [x] 3.59 The chrome folds into the navigation column: the bar of the
+      shell is gone (mark, name, scope and language selector move into
+      it — folded, the column keeps only icons and the language opens
+      its own menu); a document without navigation loses no control (the
+      drawer button floats over the content); the toolbar distributes
+      into **three blocks** (title left, controls centred, "Nuevo nodo"
+      right) and a folded inspector is replaced by its icon button
+      (chevron, no text), placed below the toolbar.
+      Result: `pnpm turbo run build type-check test` green (9/9, 529
+      tests web).
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

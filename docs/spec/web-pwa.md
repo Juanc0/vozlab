@@ -281,8 +281,10 @@ the other way round.
 
 - Below `md` the navigation is a **drawer** that opens from the left over
   the content, with a backdrop, a focus trap, <kbd>Escape</kbd> and the
-  focus returned to the opener. The button lives in the header and
-  announces its state.
+  focus returned to the opener. There is **no bar of the shell**: the
+  product's mark and name live in the navigation column, and the button
+  that opens the drawer floats in the corner of the content, announcing
+  its state.
 - Below `xl` the inspector is a **sheet** that slides in from the right.
   It must not be the last thing in the page: a column that stacks below
   everything is a column nobody finds.

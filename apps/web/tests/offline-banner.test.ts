@@ -32,13 +32,13 @@ describe('the offline banner', () => {
   });
 
   it('stays hidden while the browser is online', () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     expect(screen.queryByText(/Estás sin conexión/i)).not.toBeInTheDocument();
   });
 
   it('appears when the browser goes offline', async () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     goOffline();
 
@@ -48,7 +48,7 @@ describe('the offline banner', () => {
   });
 
   it('disappears when the browser comes back', async () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     goOffline();
     await waitFor(() => {
@@ -63,7 +63,7 @@ describe('the offline banner', () => {
   });
 
   it('says what is blocked and that nothing is queued', async () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     goOffline();
 
@@ -75,7 +75,7 @@ describe('the offline banner', () => {
   });
 
   it('is a polite live region: the change is announced, the focus is not stolen', async () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     goOffline();
 

@@ -134,36 +134,36 @@
   panelClass="w-full {panelClass}"
 >
   <!--
-    One row, centred as a set: the title to the left, and **to its right**
-    every control and action of the view. A toolbar whose parts fly to the
-    corners is a toolbar nobody scans; controls that stay together are
-    scanned in one pass.
+    Three blocks on one row: the **title** owns the left, the controls of
+    the view own the centre, and the one **action** the accent paints owns
+    the right. A grid of thirds keeps the middle centred for real — two
+    floats and an auto margin only approximate it.
   -->
-  <div class="flex flex-wrap items-start justify-center gap-x-6 gap-y-2 px-3 py-3">
+  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 px-3 py-3">
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
       the workspace opens.
     -->
-    <h1 class="text-kpi self-center">{t('graph.heading')}</h1>
+    <h1 class="self-center justify-self-start text-kpi">{t('graph.heading')}</h1>
 
-    <div class="flex flex-wrap items-end justify-center gap-x-6 gap-y-2">
+    <div class="flex min-w-0 flex-wrap items-end justify-center gap-x-4 gap-y-2">
       {@render controls?.()}
+    </div>
 
-      <!--
-        The one filled button of the interface: it creates a node, and it
-        is the only action of the screen that is painted with the accent.
-      -->
-      <div class="pb-0.5">
-        <button
-          type="button"
-          class="btn btn-primary"
-          disabled={newNodeDisabled}
-          onclick={onnewnode}
-        >
-          {t('graph.newNode')}
-        </button>
-      </div>
+    <!--
+      The one filled button of the interface: it creates a node, and it
+      is the only action of the screen that is painted with the accent.
+    -->
+    <div class="self-center justify-self-end">
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={newNodeDisabled}
+        onclick={onnewnode}
+      >
+        {t('graph.newNode')}
+      </button>
     </div>
   </div>
 

@@ -207,7 +207,7 @@
         aria-label={t('app.workspaceAndSections')}
         class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
           ? 'h-full'
-          : 'sticky top-16 h-[calc(100dvh-4rem)]'} {navPadding}"
+          : 'sticky top-0 h-dvh'} {navPadding}"
       >
         <AppSidebar collapsible collapsed={panels.navCollapsed} />
       </aside>

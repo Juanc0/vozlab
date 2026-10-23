@@ -197,7 +197,7 @@ describe('the responsive layout of the graph page', () => {
 describe('the menu of the header', () => {
   it('announces its state and points at the drawer it opens', async () => {
     render(AppShell, {
-      props: { title: 'VozLab', navigation: true },
+      props: { navigation: true },
       context: localeContext()
     });
 
@@ -212,7 +212,7 @@ describe('the menu of the header', () => {
   });
 
   it('is not there where there is no navigation to open', () => {
-    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
+    render(AppShell, { props: {}, context: localeContext() });
 
     expect(screen.queryByRole('button', { name: 'Abrir el menú de navegación' })).toBeNull();
   });

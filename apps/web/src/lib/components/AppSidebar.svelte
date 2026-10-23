@@ -19,9 +19,9 @@
    * - the **session** becomes a control that opens a menu with the identity
    *   and the sign-out inside it: the identity stays readable, and it is
    *   still announced by the control itself;
-   * - the **language selector** is not here: it lives in the bar of the
-   *   shell, because it changes the whole application — the screens that
-   *   have no navigation included. Folding the navigation never touches it.
+   * - the **language selector** sits at the bottom with the session: it
+   *   changes the whole application, and its rail version opens the same
+   *   selector inside its own menu.
    */
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -34,6 +34,7 @@
     getSessionState,
     getWorkspaceState
   } from '$lib/state/context';
+  import LocaleSelector from './LocaleSelector.svelte';
   import RailMenu from './RailMenu.svelte';
   import WorkspaceSelector from './WorkspaceSelector.svelte';
 
@@ -41,6 +42,10 @@
   const NAVIGATION_ID = 'vozlab-navigation';
 
   interface Props {
+    /**
+     * The name of the product — the reader is inside it.
+     */
+    title?: string;
     /**
      * `true` when the column may be folded into its rail.
      *
@@ -58,7 +63,7 @@
     collapsed?: boolean;
   }
 
-  let { collapsible = false, collapsed = false }: Props = $props();
+  let { title = 'VozLab', collapsible = false, collapsed = false }: Props = $props();
 
   const api = getApiClient();
   const session = getSessionState();
@@ -103,6 +108,9 @@
 
   /** The menu that is open — the workspace or the session. */
   let menu = $state<'workspace' | 'session' | null>(null);
+
+  /** Whether the rail is showing the menu of the language. */
+  let localeMenuOpen = $state(false);
 
   /** The control that opened the menu — the focus goes back to it. */
   let menuAnchor = $state<HTMLElement | null>(null);
@@ -224,6 +232,36 @@
 
 <div class="flex h-full flex-col gap-6">
   <!--
+    The identity of the product: its mark and its name.
+  -->
+  <div class="flex items-center gap-2 {collapsed ? 'justify-center' : ''}">
+    <span aria-hidden="true" class="shrink-0 text-accent">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+      >
+        <path d="M6.5 6.5 17.5 6.5" />
+        <path d="M6.5 6.5 12 17.5" />
+        <path d="M17.5 6.5 12 17.5" />
+        <circle cx="6.5" cy="6.5" r="2.4" fill="currentColor" stroke="none" />
+        <circle cx="17.5" cy="6.5" r="2.4" />
+        <circle cx="12" cy="17.5" r="2.4" />
+      </svg>
+    </span>
+
+    {#if collapsed}
+      <span class="sr-only">{title}</span>
+    {:else}
+      <span class="text-section font-semibold leading-none text-text">{title}</span>
+    {/if}
+  </div>
+
+  <!--
     The toggle of the rail. It is a **quiet** control — the accent is scarce
     and a fold is not an action of the screen — and it announces the state it
     leaves the navigation in.
@@ -294,11 +332,40 @@
 
   {#if collapsed}
     <!--
-      The rail: the workspace and the session are two controls that open
-      their own menu. Nothing is hidden — the menu holds the very same
-      controls the column holds.
+      The rail: the workspace, the language and the session are three
+      controls that open their own menu. Nothing is hidden — the menu
+      holds the very same controls the column holds.
     -->
     <div class="mt-auto flex flex-col items-center gap-2 border-t border-rule pt-4">
+      <button
+        type="button"
+        class="grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
+        title={t('locale.label')}
+        aria-haspopup="dialog"
+        aria-expanded={localeMenuOpen}
+        onclick={(event) => {
+          menuAnchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+          localeMenuOpen = !localeMenuOpen;
+        }}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="8" cy="8" r="5.5" />
+          <path d="M2.5 8h11" />
+          <path d="M8 2.5c2.5 3 2.5 8 0 11-2.5-3-2.5-8 0-11z" />
+        </svg>
+        <span class="sr-only">{t('locale.label')}</span>
+      </button>
+
       <button
         type="button"
         class="grid size-11 place-items-center rounded-control text-body font-semibold text-muted hover:bg-raised hover:text-text"
@@ -341,11 +408,29 @@
   {:else}
     <WorkspaceSelector />
 
-    <div class="mt-auto border-t border-rule pt-4">
+    <div class="mt-auto space-y-3 border-t border-rule pt-4">
       {@render sessionBlock()}
+
+      <div>
+        <p class="mb-1 text-small text-muted">
+          {t('locale.label')}
+        </p>
+        <LocaleSelector />
+      </div>
     </div>
   {/if}
 </div>
+
+<RailMenu
+  open={localeMenuOpen}
+  label={t('locale.label')}
+  anchor={menuAnchor}
+  onclose={() => {
+    localeMenuOpen = false;
+  }}
+>
+  <LocaleSelector />
+</RailMenu>
 
 <RailMenu
   open={menu === 'workspace'}

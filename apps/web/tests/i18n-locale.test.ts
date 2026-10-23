@@ -9,7 +9,13 @@ import {
 import { handle } from '../src/hooks.server';
 import { load } from '../src/routes/+layout.server';
 import LocaleHarness from './harness/LocaleHarness.svelte';
-import { localeContext } from './harness/locale';
+import { contextWithLocale, localeContext } from './harness/locale';
+import { governanceHarness } from './harness/governance';
+import {
+  API_CLIENT_CONTEXT_KEY,
+  SESSION_CONTEXT_KEY,
+  WORKSPACE_CONTEXT_KEY
+} from '$lib/state/context';
 
 vi.mock('$app/environment', () => ({
   browser: true,
@@ -17,6 +23,15 @@ vi.mock('$app/environment', () => ({
   dev: true,
   version: 'test'
 }));
+
+// The column of the navigation reads the route to mark the current one.
+const { pageState } = vi.hoisted(() => ({
+  pageState: { url: new URL('http://localhost:5173/') }
+}));
+vi.mock('$app/state', () => ({ page: pageState }));
+
+const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto }));
 
 // The environment of the runtime is read by the layout load; the test
 // does not care about it.
@@ -73,8 +88,20 @@ describe('the language of the interface', () => {
 });
 
 describe('the selector of the language', () => {
+  function renderHarness(): void {
+    const { client, session, workspace } = governanceHarness();
+
+    render(LocaleHarness, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+  }
+
   it('is a labelled control with the options in their own language', () => {
-    render(LocaleHarness, { context: localeContext() });
+    renderHarness();
 
     const select = screen.getByLabelText('Idioma') as HTMLSelectElement;
 
@@ -86,7 +113,7 @@ describe('the selector of the language', () => {
   });
 
   it('switches the visible text of the page', async () => {
-    render(LocaleHarness, { context: localeContext() });
+    renderHarness();
 
     // The shell speaks Spanish by default.
     expect(screen.getByRole('link', { name: 'Saltar al contenido' })).toBeInTheDocument();
@@ -109,7 +136,7 @@ describe('the selector of the language', () => {
   });
 
   it('changes the `lang` attribute of the document', async () => {
-    render(LocaleHarness, { context: localeContext() });
+    renderHarness();
 
     const select = screen.getByLabelText('Idioma') as HTMLSelectElement;
     await fireEvent.change(select, { target: { value: 'en' } });
@@ -119,7 +146,7 @@ describe('the selector of the language', () => {
   });
 
   it('keeps the choice in the cookie, and the server reads it back', async () => {
-    render(LocaleHarness, { context: localeContext() });
+    renderHarness();
 
     const select = screen.getByLabelText('Idioma') as HTMLSelectElement;
     await fireEvent.change(select, { target: { value: 'en' } });
