@@ -1443,8 +1443,8 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       const node = event.subject;
       const world = toWorld(camera, { x: event.x, y: event.y });
       const place = {
-        x: world.x + dragOffset.x,
-        y: world.y + dragOffset.y
+        x: world.x - dragOffset.x,
+        y: world.y - dragOffset.y
       };
 
       if (Math.hypot(event.dx, event.dy) >= DRAG_THRESHOLD) {
@@ -1471,7 +1471,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     .on('end', (event: D3DragEvent<SVGGElement, CardView, CardView>) => {
       const node = event.subject;
       const world = toWorld(camera, { x: event.x, y: event.y });
-      const place = { x: world.x + dragOffset.x, y: world.y + dragOffset.y };
+      const place = { x: world.x - dragOffset.x, y: world.y - dragOffset.y };
 
       // The card is released: the spring takes it back and it moves with
       // the rest of the picture. It is not pinned for the rest of the view.
