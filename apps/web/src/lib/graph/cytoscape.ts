@@ -183,8 +183,7 @@ export function createGraphInstance(options: GraphInstanceOptions): GraphInstanc
     style: GRAPH_STYLESHEET,
     layout: { ...DAGRE_LAYOUT },
     minZoom: MIN_ZOOM,
-    maxZoom: MAX_ZOOM,
-    autoungrabify: true
+    maxZoom: MAX_ZOOM
   });
 
   /**

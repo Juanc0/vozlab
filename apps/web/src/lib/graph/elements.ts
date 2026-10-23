@@ -151,6 +151,8 @@ export interface GraphTextElement {
   };
   /** The classes of the element — the stylesheet keys on them. */
   classes: string[];
+  /** Whether the element can be grabbed by the pointer. Text nodes are not grabbed. */
+  grabbable?: boolean;
 }
 
 /** The element of a relation, ready for `cy.add()`. */
@@ -417,7 +419,8 @@ export function toNodeElements(
         dx: 0,
         dy: card.metaY
       },
-      classes: [META_CLASS]
+      classes: [META_CLASS],
+      grabbable: false
     });
   }
 
@@ -434,7 +437,8 @@ export function toNodeElements(
         dx: 0,
         dy: card.bodyY
       },
-      classes: [BODY_CLASS]
+      classes: [BODY_CLASS],
+      grabbable: false
     });
   }
 
@@ -554,7 +558,8 @@ export function toRelationCardElements(
         dx: 0,
         dy: card.metaY
       },
-      classes: [META_CLASS]
+      classes: [META_CLASS],
+      grabbable: false
     });
   }
 
@@ -570,7 +575,8 @@ export function toRelationCardElements(
         dx: 0,
         dy: card.bodyY
       },
-      classes: [BODY_CLASS]
+      classes: [BODY_CLASS],
+      grabbable: false
     });
   }
 
