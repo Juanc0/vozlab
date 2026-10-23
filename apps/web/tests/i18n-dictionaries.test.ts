@@ -26,10 +26,8 @@ const IDENTICAL: readonly string[] = [
   'common.emptyValue',
   'locale.es',
   'locale.en',
-  'engines.panelDagreName',
   'engines.panelD3Name',
   'engines.panelSvgName',
-  'engines.panelDagName',
   'engines.kpiMs'
 ];
 

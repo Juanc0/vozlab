@@ -9,16 +9,15 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  ARC_DISTANCE,
   BEZIER_DISTANCE,
   EDGE_DASH,
   clipToCard,
   edgeGeometry,
   readableAngle
-} from '$lib/dev/engines/svg/edge-path';
+} from '$lib/graph/svg/edge-path';
 import type { EdgeStyle } from '$lib/graph/explore/edge-style';
 
-const STYLES: readonly EdgeStyle[] = ['straight', 'bezier', 'unbundled', 'arc', 'haystack'];
+const STYLES: readonly EdgeStyle[] = ['straight', 'bezier', 'unbundled'];
 
 const SOURCE = { x: 0, y: 0, width: 140, height: 60 };
 const TARGET = { x: 400, y: 120, width: 140, height: 60 };
@@ -46,25 +45,18 @@ describe('the clip of a relation at the card', () => {
   });
 });
 
-describe('the five shapes of a relation', () => {
-  it('are five different paths', () => {
+describe('the three shapes of a relation', () => {
+  it('are three different paths', () => {
     const paths = STYLES.map((style) => edgeGeometry(style, SOURCE, TARGET).path);
 
     expect(paths.every((path) => path.startsWith('M '))).toBe(true);
-    expect(new Set(paths).size).toBe(5);
+    expect(new Set(paths).size).toBe(3);
   });
 
   it('uses the command of every shape', () => {
     expect(edgeGeometry('straight', SOURCE, TARGET).path).toContain(' L ');
     expect(edgeGeometry('bezier', SOURCE, TARGET).path).toContain(' Q ');
     expect(edgeGeometry('unbundled', SOURCE, TARGET).path).toContain(' C ');
-    expect(edgeGeometry('arc', SOURCE, TARGET).path).toContain(' Q ');
-    expect(edgeGeometry('haystack', SOURCE, TARGET).path).toContain(' L ');
-  });
-
-  it('draws the wide arc with a control point farther from the line than the smooth one', () => {
-    // Both are quadratic curves; the distance is the one of the module.
-    expect(ARC_DISTANCE).toBeGreaterThan(BEZIER_DISTANCE);
   });
 
   it('puts the arrow at the end of the line, at the border of the target card', () => {
@@ -87,17 +79,6 @@ describe('the five shapes of a relation', () => {
     }
   });
 
-  it('starts the haystack inside the source card, under it, and the straight line at its border', () => {
-    const haystack = edgeGeometry('haystack', SOURCE, TARGET);
-    const straight = edgeGeometry('straight', SOURCE, TARGET);
-
-    const inside = (point: { x: number; y: number }): boolean =>
-      Math.abs(point.x - SOURCE.x) < SOURCE.width / 2 &&
-      Math.abs(point.y - SOURCE.y) < SOURCE.height / 2;
-
-    expect(inside(haystack.start)).toBe(true);
-    expect(inside(straight.start)).toBe(false);
-  });
 });
 
 describe('the label of a relation', () => {

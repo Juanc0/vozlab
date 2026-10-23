@@ -15,7 +15,7 @@ import {
   toScreen,
   toWorld,
   zoomAt
-} from '$lib/dev/engines/svg/camera';
+} from '$lib/graph/svg/camera';
 
 const VIEWPORT = { width: 800, height: 600 };
 

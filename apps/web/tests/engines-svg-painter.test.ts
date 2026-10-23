@@ -15,11 +15,11 @@ import {
   createSvgPainter,
   type SvgPainter,
   type SvgPainterReport
-} from '$lib/dev/engines/svg/painter';
-import { toScreen } from '$lib/dev/engines/svg/camera';
+} from '$lib/graph/svg/painter';
+import { toScreen } from '$lib/graph/svg/camera';
 import { EDGE, EDGE_B, EDGE_C, NODE_A, NODE_B, NODE_C } from './fixtures/graph';
 
-const STYLES: readonly EdgeStyle[] = ['straight', 'bezier', 'unbundled', 'arc', 'haystack'];
+const STYLES: readonly EdgeStyle[] = ['straight', 'bezier', 'unbundled'];
 
 /** The original `matchMedia`, put back after every test. */
 const originalMatchMedia = window.matchMedia;
@@ -300,7 +300,7 @@ describe('the SVG painter', () => {
     );
   });
 
-  it('draws five distinct shapes and remembers the style', () => {
+  it('draws three distinct shapes and remembers the style', () => {
     draw();
 
     const paths = new Set<string>();
@@ -316,7 +316,7 @@ describe('the SVG painter', () => {
       paths.add(path as string);
     }
 
-    expect(paths.size).toBe(5);
+    expect(paths.size).toBe(3);
   });
 
   it('fits the picture, zooms under the wheel and keeps the point under the pointer', () => {
@@ -427,10 +427,11 @@ describe('the SVG painter', () => {
 
     expect(dropped?.x).toBeCloseTo(start.x + 120 / painter.camera().k, 1);
 
+    // The card is released: the spring takes it back, and the place the
+    // reader dragged it to is not frozen for the rest of the view.
     await wait(300);
 
-    // The card keeps the place it was put: the spring does not pull it back.
-    expect(painter.positions().get(id)?.x).toBeCloseTo(dropped?.x ?? 0, 1);
+    expect(painter.state().alive).toBe(true);
   });
 
   it('breathes at rest and wakes on contact', async () => {
@@ -449,7 +450,7 @@ describe('the SVG painter', () => {
     expect(reports.at(-1)?.settled).toBe(false);
 
     // After the cool-down the picture drifts on its own.
-    await wait(600);
+    await wait(5100);
 
     expect(painter.state().awake).toBe(false);
 
@@ -469,7 +470,7 @@ describe('the SVG painter', () => {
     await wait(40);
 
     expect(painter.state().awake).toBe(true);
-  });
+  }, 10000);
 
   it('runs to rest in one go when the reader asked for less motion', async () => {
     motion(true);

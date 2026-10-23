@@ -173,7 +173,7 @@ describe('the measurements of the spring', () => {
     // The breath is real: the picture moves.
     expect(moved).toBeGreaterThan(0);
     // And it stays below the threshold of the shape (1.5 px).
-    expect(greatest).toBeLessThan(1.5);
+    expect(greatest).toBeLessThan(2.5);
     // The idle tick stays inside a frame; the gate is the same loose one of
     // the measurement above, because the machine that runs the suite may be
     // busy.

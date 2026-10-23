@@ -161,7 +161,7 @@ describe('the living spring of the exploration view', () => {
     // The bounded watch reports after the picture finds its shape; the
     // readout keeps following the spring after that. The wait also covers
     // the cool-down, so the last report says the spring is at rest.
-    await wait(1800);
+    await wait(5200);
 
     const report = reports.at(-1);
 
@@ -169,5 +169,5 @@ describe('the living spring of the exploration view', () => {
     expect(report?.settled).toBe(false);
     expect(report?.threshold).toBeGreaterThan(0);
     expect(report?.awake).toBe(false);
-  });
+  }, 10000);
 });

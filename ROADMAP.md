@@ -644,6 +644,34 @@ Decided, and not to be re-opened without evidence:
       Cytoscape canvas, and both moving again on return; at rest both tick
       at 20/s.
 
+- [x] 3.36 The static engines left the comparison of the engines: the two
+      layered arrangements — Cytoscape + dagre and Cytoscape + d3-dag —
+      were removed from the playground, with their tab, their copy, their
+      files and the `d3-dag` dependency, because a picture that computes
+      its places once and stops has nothing to say next to a spring that
+      breathes. The comparison now shows the two painters of the living
+      spring: the canvas of Cytoscape and the hand-written SVG. The report
+      of the reversed relations and the pure module that detected the
+      cycles went with them — they only served the layered arrangements.
+      Result: `ENGINES` = `d3`, `svg`; `pnpm test` = **613 tests web**
+      (75 files); E2E 3/3; `pnpm turbo run build type-check test` green.
+
+- [x] 3.37 The spring learned four things: a dragged card is **released**
+      on drop instead of staying pinned, so it keeps moving; the edges try
+      to **uncross** — when two of them cross, their endpoints are pushed
+      apart, and the picture searches for the arrangement that hurts the
+      least, like a gradient descent over the crossings; a **centroid** —
+      an invisible control node connected to every visible one — pulls the
+      distant nodes back, so the whole graph stays together and on screen
+      instead of stretching into a single line (the charge still repels at
+      short distance); and the **neighbours** of a common node spread
+      around it, equidistant, forming a loose circle. The new forces run
+      while the picture is being arranged (alpha ≥ 0.01) and go quiet at
+      rest, so the idle breath stays below the shape threshold. The arrow
+      of a relation grew from 1.5 to **2 px**, so a relation is always
+      seen. Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3;
+      `pnpm turbo run build type-check test` green.
+
       Measuring the freeze surfaced two more defects of the living picture.
       The **charge had no reach**: a card that hangs from a single relation
       was pushed out of the picture forever, so the arrangement grew a few
@@ -657,6 +685,135 @@ Decided, and not to be re-opened without evidence:
       stays there: **0 of 25 badges outside over 10 s** in the E2E, and the
       three E2E journeys that the moving picture had broken (the walk by
       click, the fit, the walk that pans) pass again.
+
+- [x] 3.38 The picture now opens wide before it organises itself: the seed
+      circle grew (spacing 170 → 260) and the links **anneal** — they start
+      three times as long and shorten as the alpha decays, so the nodes
+      begin far apart and the spring pulls them together gradually, with
+      room for the uncrossing on the way. Result: `pnpm test` = **613
+      tests web** (75 files); E2E 3/3; `pnpm turbo run build type-check
+      test` green.
+
+- [x] 3.39 The tremor of the Cytoscape engine was tamed with **A + B + E**:
+      the idle sway dropped from 5 to **2 px**, the idle pace from 20 to
+      **12 Hz**, and a **breathing toggle** was added to the comparison
+      (on by default; turning it off keeps the picture quiet, and the
+      spring only moves when the reader touches it). The toggle calls
+      `setIdleSway` on the spring of the engine that is on screen. Result:
+      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
+      run build type-check test` green.
+
+- [x] 3.40 The idle sway dropped again (5 → 2 → **1 px**) and the
+      breathing toggle no longer stops the sway on its own: it stays on
+      while the picture is shown. The SVG painter stopped stuttering while
+      dragging: the dragged card no longer fights the spring's
+      `applyPlaces` (it is skipped for the dragged card), and the edges
+      are repainted on `requestAnimationFrame` instead of every mouse
+      move. Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3;
+      `pnpm turbo run build type-check test` green.
+
+- [x] 3.41 Idle no longer stalls: `IDLE_ALPHA_TARGET` went from 0.005 to
+      **0.015**, so the picture keeps moving when the pointer rests. Hover
+      or selection **pins that one card** (it stops) while the rest keep
+      moving; unhover/deselect releases it. Implemented in both engines
+      (Cytoscape and SVG) with a refcount so a card that is both hovered
+      and selected is not released early. Result: `pnpm test` = **613
+      tests web** (75 files); E2E 3/3; `pnpm turbo run build type-check
+      test` green.
+
+- [x] 3.42 The idle energy went up again (`IDLE_ALPHA_TARGET` 0.03 →
+      **0.08**) and the cool-down stretched to **5 s**, so the picture no
+      longer freezes when the pointer rests. Hover/selection now pins the
+      node in **both** engines (the Cytoscape bug that left it pinned
+      forever is fixed via a reason-tracked refcount). Result: `pnpm test`
+      = **613 tests web** (75 files); E2E 3/3; `pnpm turbo run build
+      type-check test` green.
+
+- [x] 3.43 The comparison of the engines dropped the **tabs** in favour of
+      a **dropdown** (a `<select>`), whose choice is persisted in
+      `sessionStorage` so a reload of the tab keeps it. The **wake** on
+      mouse movement was removed: the spring breathes on its own at the
+      idle pace and only the tab visibility (and unmount) change its
+      rhythm. The engines keep their names in both languages. Result:
+      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
+      run build type-check test` green.
+
+- [x] 3.44 The comparison now counts the **edges that cross**
+      ("Aristas cruzadas" / "Crossed edges") and ships a **"Repetir
+      disposición"** button that re-runs the layout on the current picture
+      until the crossings drop to zero (or the picture settles). The
+      counter is computed from the rendered segments of both engines. Result:
+      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
+      run build type-check test` green.
+
+- [x] 3.45 The **"Repetir disposición"** button now **shakes** the graph:
+      it re-runs the layout eight times in a row (60 ms apart), re-seeding
+      the spring each time, so the uncrossing has several chances to settle
+      the picture. The counter of crossed edges shows the result. Result:
+      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
+      run build type-check test` green.
+
+- [x] 3.46 The **"Sacudir el grafo"** button no longer shakes on a timer:
+      each shake **waits for the layout to settle** before the next, so the
+      nodes stop moving in one direction and the next shake starts fresh.
+      The living spring is re-synced to the final positions and keeps
+      breathing from there. Result: `pnpm test` = **613 tests web** (75
+      files); E2E 3/3; `pnpm turbo run build type-check test` green.
+
+- [x] 3.47 The **"Sacudir el grafo"** button no longer blocks the UI:
+      each shake runs on a `setTimeout` so the picture repaints between
+      shakes, and a shake only starts after the previous one has settled.
+      Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm
+      turbo run build type-check test` green.
+
+- [x] 3.48 Reverted: the shake on first load was removed (it was not
+      effective). The shake stays available only via the button, now named
+      **"Desenredar"**. Result: `pnpm test` = **613 tests web** (75
+      files); E2E 3/3; `pnpm turbo run build type-check test` green.
+
+- [x] 3.49 The graph page is now **one mode only**: the exploration view
+      (the living spring). The subgraph mode, the bounded-subgraph canvas,
+      the list of nodes/edges and the root picker were removed. A **search
+      box** at the top navigates to a node by title. The SVG painter is
+      the only engine (in `lib/graph/svg`); the `/engines` route and its
+      views are gone. Result: `pnpm test` = **552 tests web** (64 files);
+      `pnpm turbo run build type-check test` green.
+
+- [x] 3.50 The main graph page now has a **"Desenredar"** button next to
+      the node search box: it re-runs the layout on the current picture
+      until the crossings drop to zero. Result: `pnpm test` = **552 tests
+      web** (64 files); `pnpm turbo run build type-check test` green.
+
+- [x] 3.51 The **"Desenredar"** button moved from the floating overlay
+      into the **toolbar** of the workspace, next to a node search box, so
+      it no longer covers the sidebar. Result: `pnpm test` = **552 tests
+      web** (64 files); `pnpm turbo run build type-check test` green.
+
+- [x] 3.52 The main graph page now uses the **SVG painter** as its only
+      engine: `ExplorationView` renders `SvgGraphCanvas` instead of the
+      Cytoscape canvas. The Cytoscape-specific tests were removed (the
+      painter is already covered by `engines-svg-painter`). Result: `pnpm
+      test` = **531 tests web** (62 files); `pnpm turbo run build
+      type-check test` green.
+
+- [x] 3.53 The **"Desenredar"** button now actually works on the main
+      page: `rearrangeTick` is forwarded from the page through
+      `ExplorationView` to `SvgGraphCanvas`, so the shake runs. Result:
+      `pnpm test` = **531 tests web** (62 files); `pnpm turbo run build
+      type-check test` green.
+
+- [x] 3.54 Removed the **arc** and **haystack** edge shapes from
+      `EdgeStyle`, `EDGE_STYLES`, the presets and the SVG path builder; the
+      control now offers only straight, bezier and unbundled. Result: `pnpm
+      test` = **528 tests web** (62 files); `pnpm turbo run build
+      type-check test` green.
+
+- [x] 3.55 The zoom of the main graph page now drives the **SVG
+      painter's camera**: `zoomIn`, `zoomOut` and `fitView` were added to
+      the painter (via d3-zoom's `scaleBy`) and wired through
+      `SvgGraphCanvas` and `ExplorationView`. Result: `pnpm test` = **528
+      tests web** (62 files); `pnpm turbo run build type-check test`
+      green.
 
 ## Phase 4 — Platform, QA and operations
 

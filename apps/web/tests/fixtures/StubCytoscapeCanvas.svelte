@@ -18,13 +18,6 @@
     selectedNodeId?: string | null;
     presentedNodeId?: string | null;
     edgeStyle?: string;
-    /**
-     * The **clone** the comparison hands over.
-     *
-     * The stub says whether it got one: the clone is the dependency of the
-     * development surface, and the picture of the app never has one.
-     */
-    dagLayout?: unknown;
     onselect?: (nodeId: string | null) => void;
     ontoggle?: (nodeId: string) => void;
     onlayout?: (report: {
@@ -33,24 +26,24 @@
       overlaps: number;
       ticks: number;
       frameMs: number;
-      reversedRelations: string[];
+      alive: boolean;
+      awake: boolean;
+      shapeReached: boolean;
+      threshold: number;
     }) => void;
   }
 
   let {
-    layout = 'dagre',
+    layout = 'd3',
     label = 'El lienzo',
     nodes = [],
     edges = [],
-    dagLayout = undefined,
     onlayout
   }: Props = $props();
 
-  /** The time each arrangement takes — the number says which engine it is. */
+  /** The time the arrangement takes — the number says which engine it is. */
   const TIMES: Record<string, number> = {
-    dagre: 11,
-    d3: 22,
-    dag: 33
+    d3: 22
   };
 
   // The window arrives after the first paint: the report follows the data,
@@ -63,11 +56,14 @@
     untrack(() => {
       onlayout?.({
         ms: TIMES[layout] ?? 99,
-        settled: true,
+        settled: false,
         overlaps: 1,
         ticks: 5,
         frameMs: 2,
-        reversedRelations: []
+        alive: true,
+        awake: false,
+        shapeReached: true,
+        threshold: 1.5
       });
     });
   });
@@ -76,7 +72,6 @@
 <div
   data-testid="cytoscape-canvas"
   data-layout={layout}
-  data-dag-layout={typeof dagLayout === 'function' ? 'clone' : 'none'}
   role="img"
   aria-label={label}
 ></div>

@@ -360,7 +360,7 @@ describe('the spring of the exploration view', () => {
     expect(moved).toBeLessThan(1.5);
   });
 
-  it('moves the idle spring at twenty hertz, and only after the wake cools', () => {
+  it('moves the idle spring at twelve hertz, and only after the wake cools', () => {
     const { nodes, edges } = fixture(24);
     const layout = createForceLayout(nodes, edges);
     const frames = manualScheduler();
@@ -394,8 +394,8 @@ describe('the spring of the exploration view', () => {
     // The next frame is an idle one, at the pace of the idle spring.
     const interval = frames.lastDelay() ?? 0;
 
-    expect(interval).toBeGreaterThan(1000 / 30);
-    expect(interval).toBeLessThan(1000 / 15);
+    expect(interval).toBeGreaterThan(1000 / 15);
+    expect(interval).toBeLessThan(1000 / 8);
     expect(interval).toBeCloseTo(IDLE_INTERVAL_MS, 5);
 
     // Let the idle spring lose the speed of the wake, and then look at one

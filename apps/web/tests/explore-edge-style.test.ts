@@ -11,8 +11,6 @@ describe('the shape of the relations', () => {
       'straight',
       'bezier',
       'unbundled',
-      'arc',
-      'haystack'
     ]);
   });
 
@@ -26,14 +24,6 @@ describe('the shape of the relations', () => {
   it('draws the curves with the control point they ask for', () => {
     expect(edgeStyleProperties('bezier')['curve-style']).toBe('bezier');
     expect(edgeStyleProperties('unbundled')['curve-style']).toBe('unbundled-bezier');
-    expect(edgeStyleProperties('arc')['curve-style']).toBe('bezier');
-    expect(edgeStyleProperties('haystack')['curve-style']).toBe('haystack');
-  });
-
-  it('draws the arc as a wide curve', () => {
-    expect(edgeStyleProperties('arc')['control-point-distances']).toBeGreaterThan(
-      edgeStyleProperties('bezier')['control-point-distances'] as number
-    );
   });
 
   it('has a preset for every shape', () => {
