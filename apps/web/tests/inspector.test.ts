@@ -166,6 +166,41 @@ describe('the inspector', () => {
     expect(screen.getByText(/Un nodo no se edita directamente/)).toBeInTheDocument();
   });
 
+  it('offers the vote of a node and casts it to the interactions', async () => {
+    const casts: Record<string, unknown>[] = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        casts.push(JSON.parse(String(init.body)));
+      }
+
+      return json({});
+    });
+
+    renderInspector({}, {}, fetchMock);
+
+    // The buttons name the node they vote on.
+    expect(
+      screen.getByRole('button', { name: `Votar a favor de ${NODE_A.title}` })
+    ).toBeEnabled();
+
+    // The score the detail shows is the one the vote moves.
+    expect(screen.getByText('12', { selector: 'dd' })).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: `Votar a favor de ${NODE_A.title}` }));
+
+    // The vote went to the node, not to another kind of target.
+    expect(casts).toEqual([
+      { targetId: NODE_A.id, targetType: 'NODE', interactionType: 'UPVOTE' }
+    ]);
+
+    // The score moved before any answer was read back: optimistic, and
+    // the ledger keeps both displays (the detail and the buttons) in step.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('La puntuación ahora es 13');
+    });
+    expect(screen.getByText('13', { selector: 'dd' })).toBeInTheDocument();
+  });
+
   it('filters the proposals of the target and says that the history is partial', async () => {
     const fetchMock = vi.fn(async () => json({ proposals: [PROPOSAL, OTHER_PROPOSAL], nextCursor: 'cursor-2' }));
 

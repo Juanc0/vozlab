@@ -853,6 +853,25 @@ Decided, and not to be re-opened without evidence:
       Result: `pnpm turbo run build type-check test` green (9/9, 529
       tests web).
 
+- [x] 3.60 The floating toolbar breathes: it keeps the **same air toward
+      the top and the right** as the gap the shell's grid puts between it
+      and the navigation column (28px on the three sides that face a
+      border — the pinned `w-full` had to go so the air could shrink it);
+      its inner frame follows the same air (title, controls, "Nuevo
+      nodo"); the "Nuevo nodo" button is centred in the row and keeps the
+      distance; the title stops being shrunk and shows the serif of the
+      design system (32px); the toolbar reports its **bottom edge** (not
+      its height) so the list, the inspector and the reopen icon hang
+      from the edge wherever the panel sits. And the inspector votes on
+      **nodes** too: the selected node gets the same vote buttons as a
+      relation (optimistic, `POST /api/v1/interactions` with
+      `targetType: NODE`, the score read back through
+      `GET /api/v1/nodes/:id`, and the ledger keeps the detail and the
+      buttons in step). Verified in a real browser: air 28/28/28 and a
+      vote of a seeded node (2 → 3).
+      Result: `pnpm turbo run build type-check test` green (9/9, 530
+      tests web).
+
 ## Phase 4 — Platform, QA and operations
 
 - [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's

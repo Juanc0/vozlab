@@ -634,7 +634,7 @@ refused with an explicit message.
 | Proposals | List/filter by status; open a proposal to see the delta and discussion. |
 | Corrections | Propose a correction of a node or a relation: the delta shows the current and the proposed value, and only the fields that really change are sent. |
 | Discussions | Threaded posts, replies, close-thread action for the creator. |
-| Voting | Upvote/downvote on proposals, posts and relationships. The relations of the subgraph carry their score, so the canvas votes on a relation without a second read. |
+| Voting | Upvote/downvote on nodes, proposals, posts and relationships. The relations of the subgraph carry their score, so the canvas votes on a relation without a second read. |
 
 Voting is **optimistic**: update the local score immediately, send
 `POST /api/v1/interactions`, and roll back on error with a visible message. The

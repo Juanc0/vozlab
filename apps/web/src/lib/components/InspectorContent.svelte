@@ -3,12 +3,13 @@
    * The "Contenido" tab of the inspector: **what the selected thing is**.
    *
    * A node shows its title, its description, its class, its status, its
-   * author pseudonym, its community score and its dates. A relation shows
-   * its key, its two ends and its score.
+   * author pseudonym, its community score and its dates — and its score
+   * can be voted. A relation shows its key, its two ends and its score.
    *
-   * The vote buttons live here: the score of a relation is the score the
-   * community gives it, and the vote is optimistic (it moves before the
-   * request leaves the app and rolls back when the API refuses it).
+   * The vote buttons live here: the score of a node and of a relation is
+   * the score the community gives it, and the vote is optimistic (it moves
+   * before the request leaves the app and rolls back when the API refuses
+   * it).
    */
   import type { EdgeDto, NodeDto } from '$lib/api/types';
   import type { VoteLedger } from '$lib/governance/vote.svelte';
@@ -34,11 +35,27 @@
      * move the counter again.
      */
     reconcileEdge?: (edgeId: string) => Promise<number | null>;
+    /**
+     * Re-reads the score of a node after the API counted the vote.
+     *
+     * The vote of a node is the same optimistic move as the vote of a
+     * relation: it moves before the request leaves the app, and the
+     * server's number replaces it once it is known.
+     */
+    reconcileNode?: (nodeId: string) => Promise<number | null>;
     /** Called when the user wants to relate the selected node to another one. */
     onrelate?: (node: NodeDto) => void;
   }
 
-  let { node = null, edge = null, nodes = [], ledger, reconcileEdge, onrelate }: Props = $props();
+  let {
+    node = null,
+    edge = null,
+    nodes = [],
+    ledger,
+    reconcileEdge,
+    reconcileNode,
+    onrelate
+  }: Props = $props();
 
   const locale = getLocaleState();
   const t = locale.t;
@@ -70,7 +87,7 @@
       <dd>{locale.status('node', node.status)}</dd>
 
       <dt class="text-muted">{t('inspector.score')}</dt>
-      <dd>{formatNumber(locale.locale, node.communityScore)}</dd>
+      <dd>{formatNumber(locale.locale, ledger.score(node.id, node.communityScore))}</dd>
 
       <dt class="text-muted">{t('inspector.author')}</dt>
       <dd class="font-mono text-small break-all">{node.authorHash}</dd>
@@ -80,6 +97,27 @@
         <time datetime={node.createdAt}>{formatDate(locale.locale, node.createdAt)}</time>
       </dd>
     </dl>
+
+    <!--
+      The vote of the node: the same optimistic move as the vote of a
+      relation. The score the reader sees is the one the ledger holds —
+      the server's number, plus or minus the votes in flight.
+    -->
+    <section aria-labelledby="inspector-node-vote-heading">
+      <h3 id="inspector-node-vote-heading">
+        {t('vote.score')}
+      </h3>
+      <div class="mt-1">
+        <VoteButtons
+          {ledger}
+          targetId={node.id}
+          targetType="NODE"
+          score={node.communityScore}
+          label={node.title}
+          reconcile={reconcileNode ? () => reconcileNode(node.id) : undefined}
+        />
+      </div>
+    </section>
 
     {#if onrelate}
       <button

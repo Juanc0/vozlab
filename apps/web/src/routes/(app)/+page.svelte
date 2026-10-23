@@ -209,16 +209,17 @@
   let rootPickerOpen = $state(!panels.rootCollapsed);
 
   /**
-   * The height of the floating toolbar.
+   * The **bottom edge** of the floating toolbar.
    *
    * The list is the other half of the workspace and it must not run under
-   * the toolbar: the panel is measured, and the list starts below it.
+   * the toolbar: the panel reports where it ends, and the list starts
+   * below it. The inspector floats under the edge too.
    */
-  let toolbarHeight = $state(0);
+  let toolbarBottom = $state(0);
 
-  /** The toolbar changed its height. */
-  function setToolbarHeight(height: number): void {
-    toolbarHeight = height;
+  /** The bottom edge of the toolbar changed. */
+  function setToolbarBottom(bottom: number): void {
+    toolbarBottom = bottom;
   }
 
   /** The session-local state of the votes on the relations. */
@@ -309,6 +310,16 @@
 
   /** The id of the description of the list. */
   const LIST_DESCRIPTION_ID = 'vozlab-list-description';
+
+  /**
+   * The room the inspector takes on the right of the list.
+   *
+   * The inspector floats over the picture; the list is beside it. The
+   * 27rem carry the panel (24rem) past the air it keeps from the edge.
+   */
+  const listRightPadding = $derived(
+    inspectorWide.matches && inspectorOpen ? '27rem' : '1rem'
+  );
 
   onMount(() => {
     inspectorWide.attach();
@@ -423,23 +434,6 @@
   /** The relations the list view shows: the ones of the view on screen. */
   const listEdges = $derived(
     viewMode === 'explore' ? (pictureEdges ?? exploreEdges) : graphEdges
-  );
-
-  /**
-   * The width of the floating toolbar.
-   *
-   * The toolbar gives way to the inspector: a panel that runs under
-   * another one is a panel the reader cannot read.
-   */
-  const toolbarWidth = $derived('w-full');
-
-  /**
-   * The room the inspector takes on the right of the list.
-   *
-   * The inspector floats over the picture; the list is beside it.
-   */
-  const listRightPadding = $derived(
-    inspectorWide.matches && inspectorOpen ? '26rem' : '1rem'
   );
 
   /**
@@ -860,6 +854,28 @@
   }
 
   /**
+   * Re-reads the score of a node after the API counted a vote.
+   *
+   * The API has no read for the interactions, so the client cannot know
+   * whether a vote was counted — the same type is idempotent and does not
+   * move the counter again. The node is read back **alone**
+   * (`GET /api/v1/nodes/:id`): one node is far cheaper to read again than
+   * the window or the subgraph the vote clicked inside, and the ledger
+   * adopts the server's number — the server stays the authority.
+   */
+  async function reconcileNodeScore(nodeId: string): Promise<number | null> {
+    try {
+      const node = await getNode(api, nodeId);
+      ledger.sync(nodeId, node.communityScore);
+      return node.communityScore;
+    } catch {
+      // The score stays as it was shown; the vote itself already
+      // reported its own outcome.
+      return null;
+    }
+  }
+
+  /**
    * Re-reads the score of a relation after the API counted a vote.
    *
    * The API has no read for the interactions, so the client cannot know
@@ -1203,7 +1219,7 @@
   {#if listOpen}
     <div
       class="absolute inset-0 overflow-y-auto bg-ground pl-4"
-      style="padding-top: {toolbarHeight + 32}px; padding-right: {listRightPadding}; padding-bottom: calc(var(--notice-h, 0px) + 1rem)"
+      style="padding-top: {toolbarBottom + 16}px; padding-right: {listRightPadding}; padding-bottom: calc(var(--notice-h, 0px) + 1rem)"
     >
       <GraphListView
         summaryKey={viewMode === 'explore' ? 'explore.listSummary' : 'graph.listSummary'}
@@ -1234,8 +1250,7 @@
     newNodeDisabled={ontology === null}
     onnewnode={openNodeDialog}
     listDescriptionId={LIST_DESCRIPTION_ID}
-    panelClass={toolbarWidth}
-    onheight={setToolbarHeight}
+    onbottom={setToolbarBottom}
   >
     {#snippet controls()}
       <!--
@@ -1414,7 +1429,7 @@
         id={INSPECTOR_PANEL_ID}
         placement="top-right"
         panelClass="w-[min(24rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-2rem)] overflow-y-auto p-3"
-        style="top: {toolbarHeight + 16}px"
+        style="top: {toolbarBottom + 16}px"
       >
         <Inspector
           {selection}
@@ -1428,6 +1443,7 @@
           onsuggest={openCorrection}
           onrelate={openEdgeDialog}
           reconcileEdge={reconcileEdgeScore}
+          reconcileNode={reconcileNodeScore}
         />
       </FloatingPanel>
     {/if}
@@ -1452,6 +1468,7 @@
         onsuggest={openCorrection}
         onrelate={openEdgeDialog}
         reconcileEdge={reconcileEdgeScore}
+        reconcileNode={reconcileNodeScore}
       />
     </Sheet>
   {/if}
@@ -1459,8 +1476,8 @@
   {#if !inspectorOpen}
     <button
       type="button"
-      class="pointer-events-auto absolute right-4 z-10 grid size-11 place-items-center rounded-control border border-border bg-surface text-muted shadow-float hover:bg-raised hover:text-text"
-      style="top: {toolbarHeight + 16}px"
+      class="pointer-events-auto absolute right-7 z-10 grid size-11 place-items-center rounded-control border border-border bg-surface text-muted shadow-float hover:bg-raised hover:text-text"
+      style="top: {toolbarBottom + 16}px"
       aria-expanded={inspectorOpen}
       aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
       title={t('inspector.expand')}

@@ -79,6 +79,13 @@
      * move the counter again.
      */
     reconcileEdge?: (edgeId: string) => Promise<number | null>;
+    /**
+     * Re-reads the score of a node after the API counted the vote.
+     *
+     * The same authority as for a relation: the server's number replaces
+     * the optimistic one once it is known.
+     */
+    reconcileNode?: (nodeId: string) => Promise<number | null>;
   }
 
   let {
@@ -92,7 +99,8 @@
     onsuggest,
     onrelate,
     onsaved,
-    reconcileEdge
+    reconcileEdge,
+    reconcileNode
   }: Props = $props();
 
   const api = getApiClient();
@@ -336,6 +344,7 @@
             {nodes}
             {ledger}
             reconcileEdge={reconcileRelationScore}
+            reconcileNode={reconcileNode}
             {onrelate}
           />
         {/if}

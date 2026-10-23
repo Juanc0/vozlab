@@ -67,9 +67,14 @@
     // The panel of the bottom leaves room for the toast of the notices of
     // the shell: it is in the same corner of the window.
     'top-left': 'left-4 top-4',
-    'top-right': 'right-4 top-4',
-    'bottom-left': 'left-4 bottom-[calc(var(--notice-h,0px)+1rem)]',
-    'top': 'left-0 right-0 top-0'
+    'top-right': 'right-7 top-4',
+    'bottom-left': 'left-4 bottom-[calc(var(--notice-h,0px)+1rem)] lg:left-0',
+    // The toolbar is the frame of the top of the picture. In a narrow
+    // screen it floats with the same air as the other panels; above `lg`
+    // its left side is the gap the shell's grid already puts between the
+    // navigation and the content, so the top and the right get the very
+    // same air: one gap of `gap-7` on the three sides that face a border.
+    'top': 'left-4 right-4 top-4 lg:left-0 lg:right-7 lg:top-7'
   };
 </script>
 

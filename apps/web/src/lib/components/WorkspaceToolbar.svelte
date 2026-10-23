@@ -41,12 +41,14 @@
     /** The extra classes of the panel — its width. */
     panelClass?: string;
     /**
-     * Called when the panel changes its height.
+     * Called when the panel's **bottom edge** moves.
      *
      * The list is the other half of the workspace and it must not run
-     * under the toolbar: the page insets it with the height of the panel.
+     * under the panel: the page starts it right below the panel, wherever
+     * the panel itself sits. The edge (offset plus height) is told, not
+     * the height alone, so the air above the panel is accounted for once.
      */
-    onheight?: (height: number) => void;
+    onbottom?: (bottom: number) => void;
     /** The controls of the view on screen. */
     controls?: Snippet;
     /** The failures and the notices of the view on screen. */
@@ -67,7 +69,7 @@
     onnewnode,
     listDescriptionId,
     panelClass = '',
-    onheight,
+    onbottom,
     controls,
     status,
     readout
@@ -88,18 +90,19 @@
   let panel: HTMLElement | undefined = $state();
 
   /** The callback is read through a holder: the parent may pass a new one. */
-  let heightHandler: ((height: number) => void) | undefined;
+  let bottomHandler: ((bottom: number) => void) | undefined;
 
   $effect(() => {
-    heightHandler = onheight;
+    bottomHandler = onbottom;
   });
 
   /**
-   * The height of the panel is told to the page.
+   * The panel's bottom edge is told to the page.
    *
    * The panel grows with the controls of the view on screen, and the list
    * has to start below it: a list that runs under a floating panel is a
-   * list the reader cannot click.
+   * list the reader cannot click. The edge carries its own offset, so the
+   * page does not have to know the air the panel keeps.
    */
   $effect(() => {
     const element = panel;
@@ -109,7 +112,7 @@
     }
 
     const report = (): void => {
-      heightHandler?.(element.offsetHeight);
+      bottomHandler?.(element.offsetTop + element.offsetHeight);
     };
 
     report();
@@ -131,7 +134,7 @@
   bind:element={panel}
   placement="top"
   label={t('graph.toolbarLabel')}
-  panelClass="w-full {panelClass}"
+  panelClass={panelClass}
 >
   <!--
     Three blocks on one row: the **title** owns the left, the controls of
@@ -139,13 +142,14 @@
     the right. A grid of thirds keeps the middle centred for real — two
     floats and an auto margin only approximate it.
   -->
-  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 px-3 py-3">
+  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 px-7 py-3">
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
-      the workspace opens.
+      the workspace opens. It keeps the `h1` of the design system — the
+      serif of 32px — the toolbar does not shrink it.
     -->
-    <h1 class="self-center justify-self-start text-kpi">{t('graph.heading')}</h1>
+    <h1 class="self-center justify-self-start">{t('graph.heading')}</h1>
 
     <div class="flex min-w-0 flex-wrap items-end justify-center gap-x-4 gap-y-2">
       {@render controls?.()}
@@ -171,7 +175,7 @@
     The failures and the notices of the view on screen. They are said out
     loud here, over the picture: a failure never leaves a blank canvas.
   -->
-  <div class="px-3 pb-3 empty:pb-0">
+  <div class="px-7 pb-3 empty:pb-0">
     {@render status?.()}
   </div>
 
@@ -179,7 +183,7 @@
     The readouts of the view on screen: what the picture is and what it is
     not.
   -->
-  <div class="px-3 pb-3">
+  <div class="px-7 pb-3">
     {@render readout?.()}
   </div>
 
