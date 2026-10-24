@@ -344,7 +344,7 @@ Con M2a/M2b, la correlación deja de ser un accidente y pasa a ser una función 
 - **El admin de una institución no ve las otras:** el índice global no es un directorio visible. Como máximo, la persona ve su propia lista de instituciones.
 - **Acceso restringido y auditado:** pocas cuentas de servicio y de seguridad pueden leer el router; cada lectura sensible queda registrada.
 - **Finalidad y retención:** el índice existe para login, vinculación, invitaciones y auditoría; no para analítica, publicidad ni perfilamiento.
-- **Evaluación de privacidad:** M2b exige revisión jurídica antes de producción.
+- **Evaluación de privacidad:** M2b aprobado para el piloto; la revisión jurídica se difiere por decisión del usuario.
 
 El **HMAC por institución** sigue siendo útil para no guardar el `subject` en claro en la base de la institución, pero **no impide la correlación** si esa base guarda el `global_identity_id`. Si lo usas, sustituye el `subject` y busca por HMAC; no guardes el valor en claro y el HMAC a la vez. No lo vendas como "no correlación": es defensa en profundidad. La no correlación total solo existe en M1. Al elegir M2a/M2b, la pregunta correcta es: **¿quién puede correlacionar, para qué y con qué control?**
 
@@ -756,7 +756,7 @@ Políticas de grupo (GPO), clientes Windows reales, MFA de Microsoft, ADFS, Entr
 | Alta de miembros | No hay ruta: solo código de evento o edición de base de datos | `knowledge-transfer/08`, sección 2 (F-02) | Diseño de invitaciones y alta directa en 6.5; bloquea el piloto |
 | Bajas de personas | Una baja en el proveedor **no cierra** la sesión hasta que caduque el refresh (30 días) | ADR-0018, `JWT_REFRESH_EXPIRES_IN` | **Riesgo alto** |
 | Agentes (workers) | La restricción por tipo solo existe en la ruta de embeddings | `routes.ts`, 315 | El Extractor podría llamar a rutas de aristas y propuestas |
-| Índice global e invitaciones | No existen | Router (`tenants`, `tenant_connections`) y `auth.users` | El diseño está en 6.4 a 6.6; no codificar sin ADR y, para M2b, sin revisión jurídica |
+| Índice global e invitaciones | No existen | Router (`tenants`, `tenant_connections`) y `auth.users` | El diseño está en 6.4 a 6.6; no codificar sin ADR. M2b aprobado para el piloto (revisión jurídica diferida) |
 | Sesión en el navegador | Access token en memoria; refresh en cookie `HttpOnly` | ADR-0018 | Correcto |
 
 Nota de corrección: en una respuesta anterior se dijo que un correo no verificado siempre se rechaza. Es **falso** cuando el claim falta. Solo se rechaza el valor `false` explícito.
@@ -922,7 +922,7 @@ Los umbrales se fijan antes de medir (D-18 del registro de `knowledge-transfer/1
 |---|---|---|---|---|
 | D1 | Sistema de acceso de la universidad | Entra, Google, SAML y RENATA, AD con ADFS, otro | Averígualo con TI (sección 7). No bloquea el laboratorio | Respuestas a las seis preguntas |
 | D2 | Broker | Construir en la API; microservicio propio; Keycloak; Zitadel; SaaS | **Keycloak fuera de la API**; un módulo OIDC dentro de la API solo si no hay SAML ni LDAP | Aceptar la operación del servicio, o elegir SaaS con visto bueno de jurídico |
-| D3 | Índice global | M1; M2a (solo identidades); M2b (identidades + pertenencia); M3 | **M2a** como base; **M2b** solo si el producto necesita listar o cambiar de institución, y con revisión jurídica | Confirmar el alcance. Si es M2b, aprobar la evaluación de privacidad |
+| D3 | Índice global | M1; M2a (solo identidades); M2b (identidades + pertenencia); M3 | **M2a + M2b** (aprobado para el piloto; revisión jurídica diferida) | Alcance confirmado: M2a siempre y M2b con pertenencia |
 | D4 | Externos sin correo institucional | Cuenta Google o Microsoft; código por correo; invitación | Cuenta propia vía broker, con **invitación por correo verificado** | Confirmar que los externos tendrán cuenta propia |
 | D5 | Vinculación de cuentas | Automática por correo; explícita | **Explícita y por emisor** | Ninguna: es requisito de seguridad |
 | D6 | Deduplicación del Extractor | A a G (sección 12.5) | **Capas B, C, D, E1 y E2**, con conjunto de oro | Aprobar el enfoque y aportar 30 a 50 registros de ejemplo |

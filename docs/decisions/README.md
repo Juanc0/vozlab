@@ -39,6 +39,8 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0024](ADR-0024-no-batch-node-endpoint.md) | Node ingestion stays one node per request | Accepted | No `POST /nodes/batch`: the rate limiter counts requests, so a bulk route would bypass the write budget; `BatchCreateNodeSchema` stays a contract. |
 | [0025](ADR-0025-source-resolution-route.md) | Source resolution is an agent-only, tenant-scoped API route | Accepted | `GET /api/v1/ingestion/resolve-source` maps a `sourceId` to its workspace; agent-only, tenant-scoped, no `X-Workspace-ID`. |
 | [0026](ADR-0026-merge-contract.md) | A merge is a proposal kind, applied by the API | Accepted | `CreateProposalSchema` becomes a union on `kind` (`EDIT` \| `MERGE`); a merge proposal names the duplicate as its target and the survivor as `mergeIntoNodeId`, and the API applies the merge atomically with the approval. |
+| [0027](ADR-0027-ranked-traversal-and-age-trigger.md) | The graph's read path: the ranked bounded CTE, the indexes, and the trigger that would reopen Apache AGE | Accepted | Extends ADR-0004: ranked bounded CTE with measurable trigger for reopening AGE. |
+| [0028](ADR-0028-multi-institution-identity-global-index-and-broker.md) | Multi-institution identity, global index and external broker | Accepted | Keycloak as external broker (OIDC + SAML 2.0 + LDAP); router stores `(issuer, subject)` global index (M2a + M2b); invitations and direct add; append-only audit; SAML 2.0 only. |
 
 ## How to add an ADR
 
