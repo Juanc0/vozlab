@@ -1,0 +1,59 @@
+# VozLab identity lab — Authentik (OIDC + SAML + LDAP outpost in one tool)
+# Usage: docker compose -f docker/identity-lab/authentik/compose.yml up -d
+# Interface: http://127.0.0.1:9000
+
+services:
+  postgresql:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik
+    volumes:
+      - authentik-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+
+  server:
+    image: ghcr.io/goauthentik/server:2024.12
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_SECRET_KEY: change-me-to-a-long-random-secret
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9443:9443"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    image: ghcr.io/goauthentik/server:2024.12
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_SECRET_KEY: change-me-to-a-long-random-secret
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  authentik-db:

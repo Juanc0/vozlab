@@ -1,6 +1,6 @@
 # A7 — Invitaciones y alta directa
 
-> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada
+> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 Hay que decidir cómo se liga una invitación y quién puede invitar.

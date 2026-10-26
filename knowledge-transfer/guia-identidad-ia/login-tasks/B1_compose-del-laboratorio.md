@@ -1,6 +1,6 @@
 # B1 — Compose del laboratorio
 
-> **Batch:** B · **Tamaño:** M · **Depende de:** A6
+> **Batch:** B · **Tamaño:** M · **Depende de:** A6 · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 Necesitamos un laboratorio local para probar login, tokens, roles y aislamiento entre instituciones.

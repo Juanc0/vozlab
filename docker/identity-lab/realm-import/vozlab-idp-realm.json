@@ -1,0 +1,44 @@
+{
+  "realm": "vozlab-idp",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "clients": [
+    {
+      "clientId": "vozlab-sp",
+      "name": "VozLab SP client",
+      "enabled": true,
+      "protocol": "saml",
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [],
+      "attributes": {
+        "saml.client.signature": "false",
+        "saml.authnstatement": "true",
+        "saml.server.signature": "true",
+        "saml.server.signature.keyinfo.ext": "false",
+        "saml.assertion.signature": "false",
+        "saml.force.post.binding": "true",
+        "saml_single_logout_service_url_post": "http://localhost:8080/realms/vozlab/broker/saml/endpoint",
+        "saml_name_id_format": "username"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "idpuser",
+      "enabled": true,
+      "email": "idpuser@example.org",
+      "emailVerified": true,
+      "firstName": "IdP",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "idppass",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

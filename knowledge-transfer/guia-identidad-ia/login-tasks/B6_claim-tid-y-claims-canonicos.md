@@ -1,6 +1,6 @@
 # B6 — Claim `tid` y claims canónicos en el laboratorio
 
-> **Batch:** B · **Tamaño:** S · **Depende de:** B4
+> **Batch:** B · **Tamaño:** S · **Depende de:** B4 · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 VozLab necesita el claim `tid` en el token para saber a qué institución pertenece el usuario.

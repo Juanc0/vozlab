@@ -1,6 +1,6 @@
 # A3 — Índice global: alcance y privacidad
 
-> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada
+> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 Ya existe un índice por tenant para autorizar roles por workspace. Se propone un índice global en el router con `(proveedor, id-único-usuario)`, sin correo.

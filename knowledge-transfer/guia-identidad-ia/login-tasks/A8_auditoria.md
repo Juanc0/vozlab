@@ -1,6 +1,6 @@
 # A8 — Auditoría
 
-> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada
+> **Tipo:** decisión · **Tamaño:** S · **Depende de:** nada · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 Hay que decidir retención, quién lee los eventos y si se exige cadena de hashes.

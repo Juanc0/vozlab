@@ -1,6 +1,6 @@
 # B4 — Realm de Keycloak y cliente de VozLab
 
-> **Batch:** B · **Tamaño:** S · **Depende de:** B1
+> **Batch:** B · **Tamaño:** S · **Depende de:** B1 · **Estado:** `[x]` (resuelto)
 
 ## 1. Contexto
 Keycloak necesita un realm y un cliente para VozLab.

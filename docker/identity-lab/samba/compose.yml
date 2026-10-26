@@ -1,0 +1,27 @@
+# VozLab identity lab — Samba AD DC (simulates a real AD)
+# Usage: docker compose -f docker/identity-lab/samba/compose.yml up -d
+# LDAP: 127.0.0.1:389  (inside the container network: samba:389)
+# DNS:  127.0.0.1:53
+
+services:
+  samba:
+    image: instantlinux/samba-dc:latest
+    environment:
+      SAMBA_DOMAIN: VOZLAB
+      SAMBA_REALM: VOZLAB.LOCAL
+      SAMBA_ADMIN_PASSWORD: Admin123!
+      SAMBA_DNS_FORWARDER: 8.8.8.8
+    ports:
+      - "127.0.0.1:389:389"
+      - "127.0.0.1:53:53/udp"
+      - "127.0.0.1:53:53/tcp"
+    volumes:
+      - samba-data:/var/lib/samba
+    healthcheck:
+      test: ["CMD", "samba-tool", "domain", "level", "show"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  samba-data:
