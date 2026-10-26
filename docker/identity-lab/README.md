@@ -102,6 +102,19 @@ El realm import ya incluye el mapper `tid=sabana` (hardcoded, id/access/userinfo
 
 No guardar secretos en el repositorio.
 
+## Zitadel (reemplaza a Keycloak, recomendado)
+
+```bash
+export ZITADEL_MASTERKEY="MasterkeyNeedsToHave32Characters"
+docker compose -f docker/identity-lab/zitadel/compose.yml up -d
+```
+
+- Console: http://127.0.0.1:8081/ui/console (admin: zitadel-admin@zitadel.localhost / Password1!)
+- OIDC endpoints: http://localhost:8081/oauth/v2/authorize, /oauth/v2/token, /oauth/v2/keys
+- Más ligero que Keycloak (~128MB RAM vs ~1-2GB). Multi-tenant nativo.
+- No tiene LDAP nativo (usar Authentik si se necesita LDAP).
+- Ver [zitadel/README.md](zitadel/README.md) para configuración detallada.
+
 ## Authentik (B8, opcional)
 
 ```bash
