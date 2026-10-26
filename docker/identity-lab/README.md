@@ -23,6 +23,36 @@ docker compose -f docker/identity-lab/lldap/compose.yml up -d
 - Crear 5 usuarios y 3 grupos desde la interfaz web.
 - Verificar con `ldapsearch -x -H ldap://127.0.0.1:3890 -D "cn=admin,ou=people,dc=example,dc=org" -w adminpass -b "dc=example,dc=org"`.
 
+## OpenLDAP (alternativa a LLDAP)
+
+```bash
+docker compose -f docker/identity-lab/openldap/compose.yml up -d
+```
+
+- LDAP: 127.0.0.1:389
+- phpLDAPadmin: http://127.0.0.1:8090
+- Bind DN: `cn=admin,dc=example,dc=org`
+- Password: `adminpass`
+- 5 usuarios y 3 grupos se crean automáticamente (ver `openldap/ldif/01-test-users.ldif`).
+
+**Prueba de bind:**
+```bash
+ldapsearch -x -H ldap://127.0.0.1:389 \
+  -D "cn=admin,dc=example,dc=org" -w adminpass \
+  -b "dc=example,dc=org" "(objectClass=inetOrgPerson)" uid cn mail
+```
+
+**Federar en Keycloak:** en la UI de Keycloak, User federation → LDAP:
+- Connection URL: `ldap://host.docker.internal:389`
+- Users DN: `ou=people,dc=example,dc=org`
+- Bind DN: `cn=admin,dc=example,dc=org`
+- Bind credential: `adminpass`
+- Username LDAP attribute: `uid`
+- RDN LDAP attribute: `uid`
+- UUID LDAP attribute: `entryUUID`
+- User object classes: `inetOrgPerson, posixAccount`
+- Edit mode: READ_ONLY
+
 ## Samba AD DC (B3, opcional)
 
 ```bash

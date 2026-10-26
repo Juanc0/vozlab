@@ -1,0 +1,114 @@
+# Test users and groups for VozLab identity lab
+# Loaded automatically on first start by osixia/openldap
+
+# Organizational unit for people
+dn: ou=people,dc=example,dc=org
+objectClass: organizationalUnit
+ou: people
+
+# Organizational unit for groups
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+# Group: students
+dn: cn=students,ou=groups,dc=example,dc=org
+objectClass: posixGroup
+cn: students
+gidNumber: 20001
+memberUid: alice
+memberUid: bob
+memberUid: carol
+
+# Group: faculty
+dn: cn=faculty,ou=groups,dc=example,dc=org
+objectClass: posixGroup
+cn: faculty
+gidNumber: 20002
+memberUid: dave
+memberUid: eve
+
+# Group: admins
+dn: cn=admins,ou=groups,dc=example,dc=org
+objectClass: posixGroup
+cn: admins
+gidNumber: 20003
+memberUid: alice
+
+# User: alice
+dn: uid=alice,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: alice
+cn: Alice Test
+sn: Test
+givenName: Alice
+mail: alice@example.org
+userPassword: alicepass
+uidNumber: 10001
+gidNumber: 20001
+homeDirectory: /home/alice
+
+# User: bob
+dn: uid=bob,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: bob
+cn: Bob Test
+sn: Test
+givenName: Bob
+mail: bob@example.org
+userPassword: bobpass
+uidNumber: 10002
+gidNumber: 20001
+homeDirectory: /home/bob
+
+# User: carol
+dn: uid=carol,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: carol
+cn: Carol Test
+sn: Test
+givenName: Carol
+mail: carol@example.org
+userPassword: carolpass
+uidNumber: 10003
+gidNumber: 20001
+homeDirectory: /home/carol
+
+# User: dave
+dn: uid=dave,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: dave
+cn: Dave Test
+sn: Test
+givenName: Dave
+mail: dave@example.org
+userPassword: davepass
+uidNumber: 10004
+gidNumber: 20002
+homeDirectory: /home/dave
+
+# User: eve
+dn: uid=eve,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: eve
+cn: Eve Test
+sn: Test
+givenName: Eve
+mail: eve@example.org
+userPassword: evepass
+uidNumber: 10005
+gidNumber: 20002
+homeDirectory: /home/eve
+```
+
+[Tool result]: Created file successfully: docker/identity-lab/openldap/ldif/01-test-users.ldif

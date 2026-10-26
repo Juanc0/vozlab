@@ -1,0 +1,39 @@
+# VozLab identity lab — OpenLDAP + phpLDAPadmin (alternative to LLDAP)
+# Usage: docker compose -f docker/identity-lab/openldap/compose.yml up -d
+# LDAP:        127.0.0.1:389
+# phpLDAPadmin: http://127.0.0.1:8090
+# Bind DN:     cn=admin,dc=example,dc=org
+# Password:    adminpass
+
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    environment:
+      LDAP_ORGANISATION: "VozLab Lab"
+      LDAP_DOMAIN: "example.org"
+      LDAP_ADMIN_PASSWORD: "adminpass"
+      LDAP_CONFIG_PASSWORD: "configpass"
+      LDAP_TLS: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+    ports:
+      - "127.0.0.1:389:389"
+      - "127.0.0.1:636:636"
+    volumes:
+      - openldap-data:/var/lib/ldap
+      - openldap-config:/etc/ldap/slapd.d
+      - ./ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    command: --copy-service
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "127.0.0.1:8090:80"
+    depends_on:
+      - openldap
+
+volumes:
+  openldap-data:
+  openldap-config:
