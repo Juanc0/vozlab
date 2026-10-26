@@ -16,7 +16,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+    networks:
+      - identity-lab-net
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.1
     command: ["start-dev", "--import-realm"]
@@ -43,11 +44,18 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+    networks:
+      - identity-lab-net
 
   redis:
     image: redis:7-alpine
     ports:
       - "127.0.0.1:6379:6379"
-
+    networks:
+      - identity-lab-net
 volumes:
   keycloak-db-data:
+
+networks:
+  identity-lab-net:
+    external: true
