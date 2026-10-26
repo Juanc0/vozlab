@@ -1,7 +1,3 @@
-# VozLab identity lab — LLDAP (LDAP only)
-# Usage: docker compose -f docker/identity-lab/lldap/compose.yml up -d
-# Interface: http://127.0.0.1:17170
-
 services:
   lldap:
     image: lldap/lldap:latest
@@ -10,13 +6,20 @@ services:
       LLDAP_HTTP_PORT: 17170
       LLDAP_LDAP_BASE_DN: dc=example,dc=org
       LLDAP_LDAP_USER_PASS: adminpass
-      LLDAP_LDAP_USER_DN: cn=admin,ou=people,dc=example,dc=org
+      LLDAP_LDAP_USER_DN: uid=admin,ou=people,dc=example,dc=org
       LLDAP_HTTP_URL: http://127.0.0.1:17170
+      LLDAP_JWT_SECRET: "change-me-to-a-random-string-of-at-least-32-chars!!"
     ports:
       - "127.0.0.1:17170:17170"
       - "127.0.0.1:3890:3890"
     volumes:
       - lldap-data:/data
+    networks:
+      - identity-lab-net
 
 volumes:
   lldap-data:
+
+networks:
+  identity-lab-net:
+    external: true
