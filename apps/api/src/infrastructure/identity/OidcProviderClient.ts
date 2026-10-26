@@ -36,6 +36,8 @@ interface IdTokenClaims {
   tid?: string;
   /** Google Workspace hosted domain. */
   hd?: string;
+  /** Zitadel: user's organization ID (used as tenant key). */
+  'urn:zitadel:iam:user:resourceowner:id'?: string;
 }
 
 interface TokenEndpointResponse {
@@ -121,7 +123,10 @@ export class OidcProviderClient implements IIdentityProvider {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
-    const tenantKey = claims.tid ?? claims.hd;
+    const tenantKey =
+      claims.tid ??
+      claims.hd ??
+      claims['urn:zitadel:iam:user:resourceowner:id'];
     if (!tenantKey || typeof tenantKey !== 'string') {
       throw new DomainError(
         'ERR_OIDC_EXCHANGE_FAILED',

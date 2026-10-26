@@ -156,7 +156,7 @@ Esta es la preocupación principal del usuario: **licencias extendidas para prot
 ### 3.3 Comparación de licencias — el punto crítico
 
 | Aspecto | Authentik (MIT + EE) | Zitadel (Apache 2.0 + BSL) |
-|---|---|---|---|
+|---|---|---|
 | **Core** | MIT (totalmente libre) | Apache 2.0 (totalmente libre) |
 | **Enterprise features** | EE (pago, por MAU) | BSL (pago, con restricción de uso) |
 | **Puedo usar el core en producción gratis?** | ✅ Sí | ✅ Sí |
