@@ -121,6 +121,19 @@ they disagree with the code, **the code wins** — fix the doc.
   backfill of existing nodes. The embedding pipeline (FR-18) and the Relator
   (FR-19) are implemented but the workers are not deployed. Real auth endpoints
   exist (FR-01/02/03).
+- **Redis port conflict (fixed 2026-10-26):** `docker/identity-lab/compose.yml`
+  used to publish its own `redis` on `127.0.0.1:6379`, colliding with
+  `vozlab-redis` from the main compose. Keycloak does not need redis, so the
+  service was removed. The API (`REDIS_HOST`) must always point at the main
+  compose's redis on 6379; never run two redis instances on that port. If
+  OIDC login surfaces `ERR_INVALID_OIDC_STATE`, check
+  `docker ps | grep redis` and `ss -tlnp | grep 6379` first.
+- **Dev servers are host processes, not containers:** the main compose does
+  *not* start the API or the web. Always run
+  `pnpm --filter @vozlab/api dev` and `pnpm --filter @vozlab/web dev` on the
+  host; the API's `WEB_ORIGIN` expects the web on `:5173`. A missing web dev
+  server makes the post-login redirect (`302` → `WEB_ORIGIN`) fail with
+  `ERR_CONNECTION_REFUSED`.
 - Installed pins: drizzle-orm 0.45, drizzle-kit 0.31, PostgreSQL 18. Trust
   `package.json` and `docker/`. Some archived docs describe older versions.
 - `docker-compose.yml` mounts `packages/database/scripts/` as initdb scripts;

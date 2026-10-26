@@ -47,12 +47,14 @@ services:
     networks:
       - identity-lab-net
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "127.0.0.1:6379:6379"
-    networks:
-      - identity-lab-net
+  # NOTE: this lab intentionally has NO redis. The VozLab API uses the main
+  # compose's `vozlab-redis` on 127.0.0.1:6379 (REDIS_HOST). Running a second
+  # redis here on the same port caused a silent conflict: the API connected to
+  # whichever instance won the port, and OIDC state saved by one process could
+  # be read by another (or lost), surfacing as ERR_INVALID_OIDC_STATE.
+  # See docs/decisions for the isolation rationale; identity-lab only needs
+  # Keycloak + its own Postgres.
+
 volumes:
   keycloak-db-data:
 
