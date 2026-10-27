@@ -5,10 +5,9 @@
  * Run manually: `pnpm --filter @vozlab/web test:e2e --grep oidc`
  *
  * The broker must have a project 'vozlab', an app 'vozlab-api' and a user
- * 'testuser2' / 'Testpass1!' (email verified). Run scripts/setup-zitadel.sh
+ * 'testuser3' / 'Testpass1!' (email verified). Run scripts/setup-zitadel.sh
  * to configure Zitadel automatically.
  */
-
 import { expect, test } from './support/fixtures';
 
 test.describe('institutional login via OIDC', () => {
@@ -24,10 +23,16 @@ test.describe('institutional login via OIDC', () => {
     await page.waitForURL(/localhost:8081/, { timeout: 10_000 });
 
     // Enter credentials.
-    await page.getByLabel(/login name|nombre de usuario/i).fill('testuser2');
+    await page.getByLabel(/login name|nombre de usuario/i).fill('testuser3');
     await page.getByRole('button', { name: /next|siguiente/i }).click();
     await page.getByLabel(/password|contraseña/i).fill('Testpass1!');
     await page.getByRole('button', { name: /next|siguiente/i }).click();
+
+    // Handle 2FA setup screen if it appears.
+    const skipButton = page.getByRole('button', { name: /skip/i });
+    if (await skipButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await skipButton.click();
+    }
 
     // Should redirect back to the PWA.
     await page.waitForURL(/localhost:5173/, { timeout: 15_000 });

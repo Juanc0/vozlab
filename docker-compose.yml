@@ -45,6 +45,68 @@ services:
     networks:
       - vozlab-net
 
+  # --- Identity broker (profile: idp) ------------------------------------
+  # Zitadel replaces Keycloak as the identity broker. Lighter (Go, ~128MB RAM)
+  # and multi-tenant native. Only started with --profile idp.
+  #
+  #   docker compose --profile idp up -d zitadel zitadel-db
+  #
+  # Console: http://localhost:8081/ui/console
+  # Admin: zitadel-admin@zitadel.localhost / Password1!
+  zitadel-db:
+    image: postgres:17-alpine
+    container_name: vozlab-zitadel-db
+    profiles: ["idp"]
+    environment:
+      POSTGRES_DB: zitadel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - zitadel_db_data:/var/lib/postgresql/data
+    networks:
+      - vozlab-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d zitadel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v4.16.0
+    container_name: vozlab-zitadel
+    profiles: ["idp"]
+    user: "0"
+    command: start-from-init --masterkey "${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}"
+    environment:
+      ZITADEL_PORT: 8080
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_EXTERNALPORT: 8081
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_DATABASE_POSTGRES_DSN: postgresql://postgres:postgres@zitadel-db:5432/zitadel?sslmode=disable
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Automatically Initialized IAM_LOGIN_CLIENT
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
+      ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - zitadel_bootstrap:/zitadel/bootstrap:rw
+    networks:
+      - vozlab-net
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 12
+      start_period: 20s
+
   # --- Python workers (profile: workers) --------------------------------
   # The API still runs on the host (`pnpm --filter @vozlab/api dev`), so the
   # workers reach it through `host.docker.internal`. The API image lands in
@@ -141,6 +203,8 @@ volumes:
   postgres_data:
   redis_data:
   ollama_data:
+  zitadel_db_data:
+  zitadel_bootstrap:
 
 networks:
   vozlab-net:
