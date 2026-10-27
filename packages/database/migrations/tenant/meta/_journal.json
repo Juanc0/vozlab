@@ -57,6 +57,13 @@
       "when": 1792586220200,
       "tag": "0007_noisy_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793061634790,
+      "tag": "0008_melted_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }

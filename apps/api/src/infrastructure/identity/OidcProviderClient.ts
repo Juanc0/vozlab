@@ -174,11 +174,14 @@ export class OidcProviderClient implements IIdentityProvider {
     }
 
     return {
+      issuer: this.config.issuer,
+      subject: claims.sub,
       providerUserId: claims.sub,
       email,
       emailVerified,
       fullName,
       tenantKey,
+      providerKind: 'OIDC_INSTITUTIONAL',
     };
   }
 

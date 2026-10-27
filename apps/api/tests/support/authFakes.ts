@@ -58,11 +58,14 @@ export const AUTH_USER: AuthUser = {
 };
 
 export const OIDC_IDENTITY: OidcIdentity = {
+  issuer: 'https://idp.test',
+  subject: 'idp-sub-1',
   providerUserId: 'idp-sub-1',
   email: 'ada@example.edu',
   emailVerified: true,
   fullName: 'Ada Lovelace',
   tenantKey: TENANT_KEY,
+  providerKind: 'OIDC_INSTITUTIONAL',
 };
 
 export const OIDC_STATE: OidcStateData = {
