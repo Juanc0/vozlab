@@ -27,6 +27,10 @@ jobs:
       # Type-checks src (build), tests + scripts (type-check), and runs the suite.
       - run: pnpm turbo run build type-check test
 
+      # Coverage (thresholds enforced by vitest config).
+      - run: pnpm --filter @vozlab/api test -- --coverage
+      - run: pnpm --filter @vozlab/web test -- --coverage
+
       # Lint (warnings allowed; errors fail).
       - run: pnpm lint
 

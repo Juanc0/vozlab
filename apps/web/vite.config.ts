@@ -196,7 +196,18 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       include: ['tests/**/*.test.ts'],
-      setupFiles: ['./tests/setup.ts']
+      setupFiles: ['./tests/setup.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov'],
+        reportsDirectory: './coverage',
+        thresholds: {
+          lines: 50,
+          functions: 50,
+          branches: 40,
+          statements: 50,
+        },
+      },
     }
   };
 });

@@ -31,6 +31,7 @@
     "@types/d3-force": "^3.0.10",
     "@types/d3-selection": "^3.0.12",
     "@types/d3-zoom": "^3.0.9",
+    "@vitest/coverage-v8": "^5.0.5",
     "d3-drag": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",

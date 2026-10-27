@@ -20,5 +20,16 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     exclude: ['tests/integration/**'],
     setupFiles: ['tests/setup/env.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 30,
+        functions: 50,
+        branches: 70,
+        statements: 30,
+      },
+    },
   },
 });
