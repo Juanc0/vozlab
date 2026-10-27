@@ -883,7 +883,9 @@ Decided, and not to be re-opened without evidence:
 - [x] 4.3 E2E suite in CI (Playwright) — separate `e2e.yml` workflow with
       service containers.
 - [x] 4.4 Load tests (k6) smoke script in `scripts/load/k6-smoke.js`.
-- [ ] 4.5 Observability (Prometheus/OTel) — requires new dependencies; deferred.
+- [~] 4.5 Observability: Prometheus metrics endpoint in API + self-hosted
+      Prometheus/Grafana in compose (--profile observability). OpenTelemetry
+      tracing deferred (requires OTLP exporter decision).
 - [~] 4.6 Image builds for API + web + workers in CI; deployment pipeline and
       migrations-as-deploy-step deferred until a target environment is chosen.
 - [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
