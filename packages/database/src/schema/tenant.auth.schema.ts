@@ -46,6 +46,35 @@ export const users = authSchema.table(
   ]
 );
 
+/**
+ * External identity mapping (ADR-0028, C3).
+ *
+ * Stores the (issuer, subject) pair for each OIDC account so that multiple
+ * providers can be linked to the same VozLab user. The `users.provider_user_id`
+ * column is kept for backward compatibility but new code should use this table.
+ */
+export const externalIdentities = authSchema.table(
+  'external_identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    issuer: varchar('issuer', { length: 512 }).notNull(),
+    subject: varchar('subject', { length: 255 }).notNull(),
+    providerKind: varchar('provider_kind', { length: 50 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'ANONYMOUS_EVENT'
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('uniq_external_identities_issuer_subject').on(
+      table.issuer,
+      table.subject
+    ),
+    index('idx_external_identities_user_id').on(table.userId),
+  ]
+);
+
 export const workspaceMemberships = authSchema.table(
   'workspace_memberships',
   {

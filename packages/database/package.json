@@ -28,6 +28,7 @@
     "db:mint-token": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/mint-dev-token.ts",
     "db:event-code": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/event-code.ts",
     "db:grant-mcp-reader": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/grant-mcp-reader.ts",
+    "db:backfill:external-identities": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/backfill-external-identities.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
   },
   "dependencies": {
