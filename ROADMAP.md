@@ -878,8 +878,8 @@ Decided, and not to be re-opened without evidence:
 
 - [x] 4.1 Integration tests in CI with ephemeral PostgreSQL + Redis (service
       containers; migrations + seed as a step). Testcontainers deferred.
-- [ ] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`) —
-      requires `@vitest/coverage-v8` dependency; deferred.
+- [x] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`) with
+      v8 provider and per-package thresholds (api 30/50/70/30, web 50/50/40/50).
 - [x] 4.3 E2E suite in CI (Playwright) — separate `e2e.yml` workflow with
       service containers.
 - [x] 4.4 Load tests (k6) smoke script in `scripts/load/k6-smoke.js`.
