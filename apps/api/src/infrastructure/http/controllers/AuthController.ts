@@ -64,9 +64,14 @@ export class AuthController {
     const parsed = LoginQuerySchema.safeParse(req.query);
     const redirectPath = parsed.success ? (parsed.data.redirect ?? '/') : '/';
     const institution = parsed.success ? parsed.data.institution : undefined;
+    const kcIdpHint = parsed.success ? parsed.data.kc_idp_hint : undefined;
 
     try {
-      const result = await this.startLogin.execute({ redirectPath, institution });
+      const result = await this.startLogin.execute({
+        redirectPath,
+        institution,
+        kcIdpHint,
+      });
       return reply.redirect(result.authorizationUrl);
     } catch (error) {
       log.error(

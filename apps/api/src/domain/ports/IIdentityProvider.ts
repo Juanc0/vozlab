@@ -42,6 +42,8 @@ export interface AuthorizationUrlInput {
   nonce: string;
   /** PKCE S256 challenge (base64url of SHA-256(verifier)). */
   codeChallenge: string;
+  /** Optional IdP hint for the broker (kc_idp_hint). */
+  kcIdpHint?: string;
 }
 
 export interface CodeExchangeInput {

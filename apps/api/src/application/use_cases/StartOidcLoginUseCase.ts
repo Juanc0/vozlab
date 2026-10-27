@@ -11,6 +11,8 @@ export interface StartOidcLoginInput {
   redirectPath: string;
   /** Optional institution slug requested at login time. */
   institution?: string;
+  /** Optional IdP hint for the broker (kc_idp_hint). */
+  kcIdpHint?: string;
 }
 
 export interface StartOidcLoginResult {
@@ -63,6 +65,7 @@ export class StartOidcLoginUseCase {
         state,
         nonce,
         codeChallenge,
+        kcIdpHint: input.kcIdpHint,
       }),
     };
   }

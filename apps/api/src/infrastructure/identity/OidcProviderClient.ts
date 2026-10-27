@@ -105,6 +105,9 @@ export class OidcProviderClient implements IIdentityProvider {
     url.searchParams.set('nonce', input.nonce);
     url.searchParams.set('code_challenge', input.codeChallenge);
     url.searchParams.set('code_challenge_method', 'S256');
+    if (input.kcIdpHint) {
+      url.searchParams.set('kc_idp_hint', input.kcIdpHint);
+    }
     return url.toString();
   }
 
