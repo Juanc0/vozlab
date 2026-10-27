@@ -43,6 +43,13 @@
       "when": 1793064780161,
       "tag": "0005_parallel_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793068504228,
+      "tag": "0006_goofy_stryfe",
+      "breakpoints": true
     }
   ]
 }

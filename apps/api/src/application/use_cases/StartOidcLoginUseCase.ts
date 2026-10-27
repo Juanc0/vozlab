@@ -27,6 +27,10 @@ export interface StartOidcLoginResult {
  * State, nonce and the PKCE verifier are generated with CSPRNG and stored
  * server-side (Redis, single-use, 10 min). Only the state value and the S256
  * challenge travel through the browser.
+ *
+ * The institution slug is stored in state (not the oidc_tenant_id) so that
+ * the callback can resolve the correct tenant by slug. This avoids mapping
+ * all Zitadel users to a single tenant via the org ID claim.
  */
 export class StartOidcLoginUseCase {
   constructor(
@@ -47,13 +51,20 @@ export class StartOidcLoginUseCase {
       ? input.redirectPath
       : '/';
 
-    // Resolve the optional institution to its oidc_tenant_id.
+    // Resolve the optional institution slug. Store the slug (not oidc_tenant_id)
+    // so the callback can resolve the tenant by slug, allowing different
+    // tenants for different providers (local, google, entra, etc.).
     let institution: string | undefined;
     if (input.institution && this.routerDb) {
       const tenant = await this.routerDb.findTenantBySlug(input.institution);
       if (tenant) {
-        institution = tenant.oidcTenantId;
+        institution = input.institution;
       }
+    }
+
+    // Default to 'local' tenant for Zitadel native users (no institution specified).
+    if (!institution) {
+      institution = 'local';
     }
 
     await this.stateStore.save(

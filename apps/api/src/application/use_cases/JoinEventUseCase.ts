@@ -104,7 +104,7 @@ export class JoinEventUseCase {
 
     const access = this.tokenIssuer.issue({
       userId: user.id,
-      tenantKey: tenant.oidcTenantId,
+      tenantKey: tenant.id,
       authorHash: user.authorHash,
     });
 

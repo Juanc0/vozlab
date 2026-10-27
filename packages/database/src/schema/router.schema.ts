@@ -18,7 +18,7 @@ import {
 export const tenants = pgTable('tenants', {
   id: uuid('id').primaryKey().defaultRandom(),
   slug: varchar('slug', { length: 100 }).notNull().unique(),
-  oidcTenantId: varchar('oidc_tenant_id', { length: 255 }).notNull().unique(),
+  oidcTenantId: varchar('oidc_tenant_id', { length: 255 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
   provisioned: boolean('provisioned').default(true).notNull(),
