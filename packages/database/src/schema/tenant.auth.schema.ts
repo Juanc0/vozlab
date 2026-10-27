@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Auth schema: identity and workspaces.
@@ -36,9 +37,14 @@ export const users = authSchema.table(
     anonymousAlias: varchar('anonymous_alias', { length: 100 }),
     systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT'
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
+    globalIdentityId: uuid('global_identity_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    // Partial unique index: only one local user per global identity.
+    uniqueIndex('uniq_users_global_identity')
+      .on(table.globalIdentityId)
+      .where(sql`global_identity_id IS NOT NULL`),
     // One account per IdP subject; prevents duplicate JIT rows under
     // concurrent callbacks. NULL provider_user_id is allowed for event users.
     uniqueIndex('uniq_users_provider_provider_user').on(

@@ -143,3 +143,32 @@ export const globalIdentities = pgTable(
 
 export type GlobalIdentity = typeof globalIdentities.$inferSelect;
 export type NewGlobalIdentity = typeof globalIdentities.$inferInsert;
+
+/**
+ * Global identity ↔ tenant link (D7, M2b).
+ *
+ * Links a global identity to a tenant user. No FK between DBs (router
+ * and tenant are separate physical databases).
+ */
+export const globalIdentityTenants = pgTable(
+  'global_identity_tenants',
+  {
+    globalIdentityId: uuid('global_identity_id')
+      .notNull()
+      .references(() => globalIdentities.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    tenantUserId: uuid('tenant_user_id').notNull(),
+    status: varchar('status', { length: 20 }).default('ACTIVE').notNull(), // 'ACTIVE' | 'SUSPENDED' | 'LEFT'
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('uniq_global_identity_tenant').on(table.globalIdentityId, table.tenantId),
+    uniqueIndex('uniq_tenant_user').on(table.tenantId, table.tenantUserId),
+  ]
+);
+
+export type GlobalIdentityTenant = typeof globalIdentityTenants.$inferSelect;
+export type NewGlobalIdentityTenant = typeof globalIdentityTenants.$inferInsert;
