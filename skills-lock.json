@@ -313,6 +313,18 @@
       "sourceType": "autoskills-registry",
       "computedHash": "d0c470a07b90936ca77fea9fbe25ab657a5bc1f386eb45b18bb70899df7e6baf"
     },
+    "zitadel": {
+      "source": "zitadel/nextgen",
+      "sourceType": "github",
+      "skillPath": "skills/zitadel/SKILL.md",
+      "computedHash": "46ffb6557de5543686dff0f642e813d84b6242af74d2128b665125a182743fac"
+    },
+    "zitadel-identity": {
+      "source": "dimdasci/vps-setup",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/zitadel-identity/SKILL.md",
+      "computedHash": "50d2141b62d6fa9a6c5b83acfc53be9d5c0d8dfede311e88dcd8ba12f111df55"
+    },
     "zod": {
       "source": "pproenca/dot-skills",
       "sourceType": "autoskills-registry",
