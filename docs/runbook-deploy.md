@@ -127,6 +127,70 @@ terraform apply -var="aws_endpoint=http://localhost:4566" -auto-approve
 
 To destroy: `terraform destroy -var="aws_endpoint=http://localhost:4566" -auto-approve`
 
+## 8. Floci + Terraform (simulación AWS local)
+
+### ¿Qué es Floci?
+
+Floci es un emulador open-source de AWS que corre en Docker en `localhost:4566`.
+No necesita cuenta AWS. Emula: S3, SQS, DynamoDB, Secrets Manager, SSM,
+IAM, STS, Lambda, etc.
+
+### ¿Para qué sirve en nuestro caso?
+
+1. **Practicar IaC** — escribir Terraform que apunte a Floci, validar localmente,
+   y luego aplicar a AWS real cambiando un solo parámetro.
+2. **Simular la infraestructura AWS** sin costo ni cuenta.
+3. **Probar integraciones** (ej. leer secrets desde Secrets Manager) sin salir
+   de tu máquina.
+
+### ¿Qué NO emula Floci?
+
+- PostgreSQL / RDS (AGE no está en RDS de todas formas)
+- Redis / ElastiCache (usamos Redis directamente)
+- ECS/Fargate, EC2, ALB, Route 53 (contenedores y redes)
+- Ollama (proceso local)
+
+Es decir: Floci emula los **servicios stateless** (S3, SQS, Secrets, SSM), pero
+el compute (API, web, workers) y las bases de datos siguen corriendo en Docker
+Compose. Floci **no reemplaza** el stack de producción.
+
+### Cómo usar Floci
+
+```bash
+# 1. Levantar Floci
+docker compose -f docker-compose.prod.yml --profile aws-emulation up -d
+
+# 2. Sembrar recursos (secrets, S3, SQS, SSM)
+./scripts/floci-seed.sh
+
+# 3. Probar con AWS CLI
+export AWS_ENDPOINT_URL=http://localhost:4566
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
+export AWS_DEFAULT_REGION=us-east-1
+aws --endpoint-url http://localhost:4566 secretsmanager list-secrets
+aws --endpoint-url http://localhost:4566 s3 ls
+
+# 4. Probar con Terraform
+cd infra/terraform
+terraform init
+terraform plan -var="aws_endpoint=http://localhost:4566"
+terraform apply -var="aws_endpoint=http://localhost:4566" -auto-approve
+
+# 5. Para aplicar a AWS real (cuando tengas cuenta):
+terraform apply -var="aws_endpoint="  # vacío = AWS real
+```
+
+### Flujo de secrets (Floci → .env → API)
+
+```
+Floci (Secrets Manager) → extraer valores → .env → API lee env vars
+```
+
+En producción real (AWS), ECS inyecta los secrets de Secrets Manager como
+variables de entorno en el contenedor. El API no cambia: siempre lee env vars.
+Floci te permite practicar este flujo localmente.
+
 ## 9. Notes
 
 - Cloudflare Tunnel is **free** on every plan (1,000 tunnels per account).

@@ -163,8 +163,23 @@ volumes:
   redis_data:
   ollama_data:
 
+  floci:
+    image: floci/floci:latest
+    container_name: vozlab-floci
+    profiles: ['aws-emulation']
+    ports:
+      - "4566:4566"
+    volumes:
+      - floci_data:/app/data
+    networks:
+      - vozlab-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  floci_data:
+
 networks:
   vozlab-net:
     driver: bridge
-EOF
-echo created
