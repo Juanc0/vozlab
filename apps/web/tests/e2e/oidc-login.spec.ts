@@ -11,13 +11,13 @@
 import { expect, test } from './support/fixtures';
 
 test.describe('institutional login via OIDC', () => {
-  test('logs in through Zitadel and restores the session', async ({ page }) => {
+  test('logs in through Zitadel with local provider and restores the session', async ({ page }) => {
     // Start at the login page.
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
 
-    // Click the institutional login button (redirects to Zitadel).
-    await page.getByRole('button', { name: /continuar|continue/i }).click();
+    // Click the local provider button (redirects to Zitadel).
+    await page.getByRole('button', { name: /cuenta local|local account/i }).click();
 
     // Should land on Zitadel's login page.
     await page.waitForURL(/localhost:8081/, { timeout: 10_000 });

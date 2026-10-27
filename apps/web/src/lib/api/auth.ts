@@ -28,9 +28,25 @@ export const DEFAULT_REDIRECT_PATH = '/';
  * protocol-relative path would let the identity provider bounce the user to
  * another site, so an unsafe value falls back to {@link DEFAULT_REDIRECT_PATH}.
  */
-export function loginUrl(client: ApiClient, redirectPath: string = DEFAULT_REDIRECT_PATH): string {
-  const safePath = isSafeRedirectPath(redirectPath) ? redirectPath : DEFAULT_REDIRECT_PATH;
-  return client.url(`/auth/login?redirect=${encodeURIComponent(safePath)}`);
+export interface LoginUrlOptions {
+  redirectPath?: string;
+  institution?: string;
+  kcIdpHint?: string;
+}
+
+export function loginUrl(
+  client: ApiClient,
+  optionsOrPath: LoginUrlOptions | string = {}
+): string {
+  const options: LoginUrlOptions =
+    typeof optionsOrPath === 'string' ? { redirectPath: optionsOrPath } : optionsOrPath;
+  const safePath = isSafeRedirectPath(options.redirectPath ?? DEFAULT_REDIRECT_PATH)
+    ? (options.redirectPath ?? DEFAULT_REDIRECT_PATH)
+    : DEFAULT_REDIRECT_PATH;
+  const params = new URLSearchParams({ redirect: safePath });
+  if (options.institution) params.set('institution', options.institution);
+  if (options.kcIdpHint) params.set('kc_idp_hint', options.kcIdpHint);
+  return client.url(`/auth/login?${params.toString()}`);
 }
 
 /**

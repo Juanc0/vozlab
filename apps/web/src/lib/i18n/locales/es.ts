@@ -197,6 +197,9 @@ export const es = {
     continue: 'Continuar con tu institución',
     continueHelp:
       'El navegador lleva al proveedor de identidad y vuelve aquí cuando ha terminado.',
+    providerLocal: 'Cuenta local (Zitadel)',
+    providerGoogle: 'Continuar con Google',
+    providerMicrosoft: 'Continuar con Microsoft Entra',
     joiningHeading: '¿Vas a participar en un evento?',
     joiningText:
       'Un código de evento es una credencial de un solo uso para un único espacio de trabajo. No necesita cuenta ni proveedor de identidad.',

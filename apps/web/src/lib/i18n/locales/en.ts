@@ -179,6 +179,9 @@ export const en: Dictionary<typeof es> = {
     continue: 'Continue with your institution',
     continueHelp:
       'The browser is sent to the identity provider and returns here when it is done.',
+    providerLocal: 'Local account (Zitadel)',
+    providerGoogle: 'Continue with Google',
+    providerMicrosoft: 'Continue with Microsoft Entra',
     joiningHeading: 'Joining an event?',
     joiningText:
       'An event code is a one-off credential for a single workspace. It needs no account and no identity provider.',
