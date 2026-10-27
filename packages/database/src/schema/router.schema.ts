@@ -172,3 +172,31 @@ export const globalIdentityTenants = pgTable(
 
 export type GlobalIdentityTenant = typeof globalIdentityTenants.$inferSelect;
 export type NewGlobalIdentityTenant = typeof globalIdentityTenants.$inferInsert;
+
+/**
+ * Global identity audit events (D11, append-only, router DB).
+ *
+ * No PII: only IDs, roles and states.
+ */
+export const globalIdentityEvents = pgTable(
+  'global_identity_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    globalIdentityId: uuid('global_identity_id').notNull(),
+    tenantId: uuid('tenant_id'),
+    actorType: varchar('actor_type', { length: 30 }).notNull(),
+    actorId: varchar('actor_id', { length: 255 }),
+    action: varchar('action', { length: 50 }).notNull(),
+    metadata: text('metadata'), // JSON string
+    requestId: varchar('request_id', { length: 64 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_global_identity_events_identity').on(table.globalIdentityId),
+    index('idx_global_identity_events_tenant').on(table.tenantId),
+    index('idx_global_identity_events_created').on(table.createdAt),
+  ]
+);
+
+export type GlobalIdentityEvent = typeof globalIdentityEvents.$inferSelect;
+export type NewGlobalIdentityEvent = typeof globalIdentityEvents.$inferInsert;

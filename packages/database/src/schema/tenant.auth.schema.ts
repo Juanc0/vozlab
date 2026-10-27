@@ -5,6 +5,7 @@ import {
   boolean,
   timestamp,
   integer,
+  text,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -51,6 +52,36 @@ export const users = authSchema.table(
       table.provider,
       table.providerUserId
     ),
+  ]
+);
+
+/**
+ * Membership audit events (D11, append-only).
+ *
+ * Only INSERT is allowed (no UPDATE, no DELETE). Enforced at DB level
+ * via revoke of UPDATE/DELETE grants in production. For dev, the app
+ * only ever inserts.
+ */
+export const membershipEvents = authSchema.table(
+  'membership_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id').notNull(),
+    userId: uuid('user_id'), // nullable (INVITED has no user yet)
+    invitationId: uuid('invitation_id'),
+    actorType: varchar('actor_type', { length: 30 }).notNull(), // 'USER' | 'ADMIN' | 'SYSTEM'
+    actorId: varchar('actor_id', { length: 255 }),
+    action: varchar('action', { length: 50 }).notNull(), // 'INVITED' | 'ACCEPTED' | 'SUSPENDED' | 'REMOVED' | 'ROLE_CHANGED'
+    beforeRole: varchar('before_role', { length: 30 }),
+    afterRole: varchar('after_role', { length: 30 }),
+    reason: text('reason'),
+    requestId: varchar('request_id', { length: 64 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_membership_events_workspace').on(table.workspaceId),
+    index('idx_membership_events_user').on(table.userId),
+    index('idx_membership_events_created').on(table.createdAt),
   ]
 );
 
