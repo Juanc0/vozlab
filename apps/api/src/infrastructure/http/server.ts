@@ -218,8 +218,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const castVoteUseCase = new CastVoteUseCase(interactionRepo, uow, eventPublisher);
   const startOidcLoginUseCase = new StartOidcLoginUseCase(
     identityProvider,
-    oidcStateStore,
-    routerDb
+    oidcStateStore
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
   const inviteToWorkspaceUseCase = new InviteToWorkspaceUseCase(invitationRepo);

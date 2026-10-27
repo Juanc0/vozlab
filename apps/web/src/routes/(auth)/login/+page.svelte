@@ -27,18 +27,14 @@
     loginRedirectPath(page.url.pathname, page.url.searchParams.get('next'))
   );
 
-  /** Selected institution slug. */
-  let selectedInstitution = $state('local');
-
   /** Selected provider hint. */
-  let selectedProvider = $state('local');
+  let selectedProvider = $state<string | undefined>(undefined);
 
   /** The API URL that starts the OIDC login. */
   const url = $derived(
     loginUrl(api, {
       redirectPath: target,
-      institution: selectedInstitution,
-      kcIdpHint: selectedProvider !== 'local' ? selectedProvider : undefined,
+      kcIdpHint: selectedProvider,
     })
   );
 
@@ -125,7 +121,7 @@
       <button
         type="button"
         class="btn btn-primary w-full justify-start gap-3"
-        onclick={() => { selectedInstitution = 'local'; selectedProvider = 'local'; startLogin(); }}
+        onclick={() => { selectedProvider = undefined; startLogin(); }}
       >
         <span class="text-lg">🔐</span>
         <span>{t('login.providerLocal')}</span>
@@ -134,7 +130,7 @@
       <button
         type="button"
         class="btn btn-secondary w-full justify-start gap-3"
-        onclick={() => { selectedInstitution = 'sabana'; selectedProvider = 'google'; startLogin(); }}
+        onclick={() => { selectedProvider = 'google'; startLogin(); }}
       >
         <span class="text-lg">G</span>
         <span>{t('login.providerGoogle')}</span>
@@ -143,7 +139,7 @@
       <button
         type="button"
         class="btn btn-secondary w-full justify-start gap-3"
-        onclick={() => { selectedInstitution = 'sabana'; selectedProvider = 'microsoft'; startLogin(); }}
+        onclick={() => { selectedProvider = 'microsoft'; startLogin(); }}
       >
         <span class="text-lg">M</span>
         <span>{t('login.providerMicrosoft')}</span>

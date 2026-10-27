@@ -126,9 +126,11 @@ export class OidcProviderClient implements IIdentityProvider {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
+    // Priority: hd (Google Workspace hosted domain) first, then tid
+    // (Entra ID tenant/directory), then Zitadel org ID (native users).
     const tenantKey =
-      claims.tid ??
       claims.hd ??
+      claims.tid ??
       claims['urn:zitadel:iam:user:resourceowner:id'];
     if (!tenantKey || typeof tenantKey !== 'string') {
       throw new DomainError(

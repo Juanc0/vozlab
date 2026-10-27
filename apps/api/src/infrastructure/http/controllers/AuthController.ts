@@ -63,14 +63,12 @@ export class AuthController {
   async login(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const parsed = LoginQuerySchema.safeParse(req.query);
     const redirectPath = parsed.success ? (parsed.data.redirect ?? '/') : '/';
-    const institution = parsed.success ? parsed.data.institution : undefined;
     const kcIdpHint = parsed.success ? parsed.data.kc_idp_hint : undefined;
     const invitationToken = parsed.success ? parsed.data.invitation : undefined;
 
     try {
       const result = await this.startLogin.execute({
         redirectPath,
-        institution,
         kcIdpHint,
         invitationToken,
       });

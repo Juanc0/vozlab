@@ -68,16 +68,14 @@ export class CompleteOidcLoginUseCase {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
-    // Resolve the tenant by slug (stored in state during login start).
-    // This allows different tenants for different providers (local, google,
-    // entra, etc.) instead of mapping everything to a single tenant via
-    // the Zitadel org ID claim.
-    const institutionSlug = state.institution ?? 'local';
-    const tenant = await this.routerDb.findTenantBySlug(institutionSlug);
+    // Resolve the tenant from the token claims (hd for Google Workspace,
+    // tid for Entra ID, org ID for Zitadel native). The user does not
+    // choose the institution — it is determined by the identity provider.
+    const tenant = await this.routerDb.findTenantByOidcId(identity.tenantKey);
     if (!tenant) {
       throw new DomainError(
         'ERR_TENANT_NOT_PROVISIONED',
-        `no tenant for slug ${institutionSlug}`
+        `no tenant for claim ${identity.tenantKey}`
       );
     }
 

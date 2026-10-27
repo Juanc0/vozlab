@@ -28,7 +28,7 @@ export async function tenantGuard(
 
   let tenant: { id: string; slug: string } | null;
   try {
-    tenant = await deps.routerDb.findTenantById(oidcTenantId);
+    tenant = await deps.routerDb.findTenantByOidcId(oidcTenantId);
   } catch (error) {
     const err = buildError(
       error instanceof InfrastructureError

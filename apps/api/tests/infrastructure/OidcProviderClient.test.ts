@@ -288,7 +288,7 @@ describe('OidcProviderClient', () => {
     ).rejects.toMatchObject({ code: 'ERR_OIDC_EXCHANGE_FAILED' });
   });
 
-  it('prefers tid over hd when both are present', async () => {
+  it('prefers hd over tid when both are present', async () => {
     const token = await signIdToken({
       tid: 'entra-tenant',
       hd: 'example.edu',
@@ -303,7 +303,7 @@ describe('OidcProviderClient', () => {
       nonce: 'nonce-1',
     });
 
-    expect(identity.tenantKey).toBe('entra-tenant');
+    expect(identity.tenantKey).toBe('example.edu');
   });
 
   it('accepts the Zitadel org ID claim as tenant key', async () => {

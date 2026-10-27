@@ -99,7 +99,7 @@ describe('JoinEventUseCase', () => {
     expect(tokens.issued).toEqual([
       {
         userId: '44444444-4444-4444-8444-444444444444',
-        tenantKey: TENANT_ID,
+        tenantKey: TENANT_KEY,
         authorHash: input.authorHash,
       },
     ]);
