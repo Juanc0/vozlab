@@ -63,6 +63,10 @@ function build(existing: EditProposal | null, role: WorkspaceRole | null) {
       return role;
     },
     async add() {},
+    async changeRole() {},
+    async suspend() {},
+    async reactivate() {},
+    async remove() {},
   };
   const { uow, ran } = makeUnitOfWork();
   const { publisher, events } = makeEventPublisher();

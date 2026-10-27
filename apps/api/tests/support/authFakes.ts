@@ -390,6 +390,10 @@ export function makeMembershipRepository(): {
     async add(userId, workspaceId, role, tid, tx) {
       added.push({ userId, workspaceId, role, tid, tx });
     },
+    async changeRole() {},
+    async suspend() {},
+    async reactivate() {},
+    async remove() {},
   };
 
   return { membershipRepo, added };

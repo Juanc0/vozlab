@@ -300,6 +300,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     routerDb,
     membershipRepo,
+    invitationRepo,
     inviteToWorkspaceUseCase,
     tokenBlacklist,
     rateLimiter,

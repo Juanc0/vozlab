@@ -30,4 +30,17 @@ export interface IMembershipRepository {
     tid: string,
     tx?: DbTransaction
   ): Promise<void>;
+  /** Change the role of an existing membership. */
+  changeRole(
+    userId: string,
+    workspaceId: string,
+    newRole: WorkspaceRole,
+    tid: string
+  ): Promise<void>;
+  /** Suspend a membership (status → SUSPENDED). */
+  suspend(userId: string, workspaceId: string, tid: string): Promise<void>;
+  /** Reactivate a suspended membership (status → ACTIVE). */
+  reactivate(userId: string, workspaceId: string, tid: string): Promise<void>;
+  /** Remove a membership (status → REMOVED). */
+  remove(userId: string, workspaceId: string, tid: string): Promise<void>;
 }

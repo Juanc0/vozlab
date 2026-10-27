@@ -40,6 +40,7 @@ import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.j
 import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
 import { requireAgentType, requireSystemAgent } from './middlewares/agentGuard.js';
@@ -106,6 +107,7 @@ export interface RouteDependencies {
   joinEventUseCase: JoinEventUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
+  invitationRepo?: IInvitationRepository;
   inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
   tokenBlacklist: RedisTokenBlacklist;
   rateLimiter: RateLimitingMiddleware;
@@ -219,7 +221,11 @@ export async function registerRoutes(
     joinEventUseCase
   );
   const ingestionController = new IngestionController(resolveSourceUseCase);
-  const membershipController = new MembershipController(deps.inviteToWorkspaceUseCase);
+  const membershipController = new MembershipController(
+    deps.inviteToWorkspaceUseCase,
+    deps.membershipRepo,
+    deps.invitationRepo ?? (deps.membershipRepo as any)
+  );
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
@@ -281,6 +287,36 @@ export async function registerRoutes(
     '/api/v1/workspaces/:workspaceId/members/invite',
     { preHandler: guard },
     (req, reply) => membershipController.invite(req, reply)
+  );
+
+  app.patch(
+    '/api/v1/workspaces/:workspaceId/members/:userId/role',
+    { preHandler: guard },
+    (req, reply) => membershipController.changeRole(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/members/:userId/suspend',
+    { preHandler: guard },
+    (req, reply) => membershipController.suspend(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/members/:userId/reactivate',
+    { preHandler: guard },
+    (req, reply) => membershipController.reactivate(req, reply)
+  );
+
+  app.delete(
+    '/api/v1/workspaces/:workspaceId/members/:userId',
+    { preHandler: guard },
+    (req, reply) => membershipController.expel(req, reply)
+  );
+
+  app.delete(
+    '/api/v1/invitations/:invitationId',
+    { preHandler: guard },
+    (req, reply) => membershipController.revokeInvitation(req, reply)
   );
 
   // --- Nodes (Gobernanza) ---

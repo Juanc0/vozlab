@@ -58,12 +58,70 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
     workspaceId: string,
     role: WorkspaceRole,
     tid: string,
-    tx?: DbTransaction
+    tx?: DbTransaction,
+    status: string = 'ACTIVE'
   ): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .insert(workspaceMemberships)
-      .values({ userId, workspaceId, role })
+      .values({ userId, workspaceId, role, status })
       .onConflictDoNothing();
+  }
+
+  async changeRole(
+    userId: string,
+    workspaceId: string,
+    newRole: WorkspaceRole,
+    tid: string
+  ): Promise<void> {
+    const db = await this.client(tid);
+    await db
+      .update(workspaceMemberships)
+      .set({ role: newRole })
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId)
+        )
+      );
+  }
+
+  async suspend(userId: string, workspaceId: string, tid: string): Promise<void> {
+    const db = await this.client(tid);
+    await db
+      .update(workspaceMemberships)
+      .set({ status: 'SUSPENDED' })
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId)
+        )
+      );
+  }
+
+  async reactivate(userId: string, workspaceId: string, tid: string): Promise<void> {
+    const db = await this.client(tid);
+    await db
+      .update(workspaceMemberships)
+      .set({ status: 'ACTIVE' })
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId)
+        )
+      );
+  }
+
+  async remove(userId: string, workspaceId: string, tid: string): Promise<void> {
+    const db = await this.client(tid);
+    await db
+      .update(workspaceMemberships)
+      .set({ status: 'REMOVED' })
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId)
+        )
+      );
   }
 }

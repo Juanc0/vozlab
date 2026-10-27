@@ -80,6 +80,10 @@ const membershipRepo: IMembershipRepository = {
     return 'ADMIN';
   },
   async add() {},
+  async changeRole() {},
+  async suspend() {},
+  async reactivate() {},
+  async remove() {},
 };
 
 /** The controller under test, wired to an in-memory metamodel. */
