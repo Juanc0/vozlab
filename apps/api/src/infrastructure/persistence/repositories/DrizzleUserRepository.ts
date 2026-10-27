@@ -1,5 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm';
-import { users, workspaceMemberships, workspaces } from '@vozlab/database';
+import { users, workspaceMemberships, workspaces, externalIdentities } from '@vozlab/database';
 import { WorkspaceRole } from '@vozlab/shared-types';
 import {
   AuthProvider,
@@ -7,6 +7,7 @@ import {
   IUserRepository,
   NewAnonymousUser,
   NewOidcUser,
+  NewExternalIdentityInput,
   UserWorkspace,
 } from '../../../domain/ports/IUserRepository.js';
 import { DomainError } from '../../../domain/errors/DomainError.js';
@@ -176,6 +177,110 @@ export class DrizzleUserRepository implements IUserRepository {
         throw new DomainError('ERR_ACCOUNT_LINK_CONFLICT');
       }
       log.error({ err: error }, 'failed to upsert OIDC user');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async findOrCreateByExternalIdentity(
+    input: NewExternalIdentityInput,
+    tid: string
+  ): Promise<AuthUser> {
+    const db = await this.poolManager.getDb(tid);
+
+    try {
+      return await db.transaction(async (tx) => {
+        // 1. Look up by (issuer, subject) in external_identities.
+        const [existingExt] = await tx
+          .select()
+          .from(externalIdentities)
+          .where(
+            and(
+              eq(externalIdentities.issuer, input.issuer),
+              eq(externalIdentities.subject, input.subject)
+            )
+          )
+          .limit(1);
+
+        if (existingExt) {
+          // Update profile and last login.
+          const [updated] = await tx
+            .update(users)
+            .set({
+              email: input.email ?? undefined,
+              fullName: input.fullName ?? undefined,
+            })
+            .where(eq(users.id, existingExt.userId))
+            .returning();
+          await tx
+            .update(externalIdentities)
+            .set({ lastLoginAt: new Date() })
+            .where(eq(externalIdentities.id, existingExt.id));
+          const [user] = updated
+            ? [updated]
+            : await tx
+                .select()
+                .from(users)
+                .where(eq(users.id, existingExt.userId))
+                .limit(1);
+          return toAuthUser(user!);
+        }
+
+        // 2. If email belongs to another account, conflict (no reassignment).
+        if (input.email && input.emailVerified === true) {
+          const [byEmail] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.email, input.email))
+            .limit(1);
+
+          if (byEmail) {
+            throw new DomainError(
+              'ERR_ACCOUNT_LINK_CONFLICT',
+              'email belongs to a different identity'
+            );
+          }
+        }
+
+        // 3. Create new user + external_identity row.
+        const [created] = await tx
+          .insert(users)
+          .values({
+            provider: 'OIDC_INSTITUTIONAL',
+            providerUserId: input.subject,
+            email: input.email,
+            fullName: input.fullName,
+            authorHash: input.authorHash,
+            systemRole: 'USER',
+          })
+          .returning();
+
+        if (!created) {
+          throw new DomainError(
+            'ERR_ACCOUNT_LINK_CONFLICT',
+            'concurrent account creation conflict'
+          );
+        }
+
+        await tx.insert(externalIdentities).values({
+          userId: created.id,
+          issuer: input.issuer,
+          subject: input.subject,
+          providerKind: 'OIDC_INSTITUTIONAL',
+        });
+
+        return toAuthUser(created);
+      });
+    } catch (error) {
+      if (
+        error instanceof DomainError ||
+        error instanceof InfrastructureError
+      ) {
+        throw error;
+      }
+      if (isUniqueViolation(error)) {
+        throw new DomainError('ERR_ACCOUNT_LINK_CONFLICT');
+      }
+      log.error({ err: error }, 'failed to upsert external identity');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

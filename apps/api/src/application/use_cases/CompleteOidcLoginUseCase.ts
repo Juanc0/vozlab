@@ -77,13 +77,14 @@ export class CompleteOidcLoginUseCase {
       );
     }
 
-    const user = await this.userRepo.findOrCreateOidcUser(
+    const user = await this.userRepo.findOrCreateByExternalIdentity(
       {
-        providerUserId: identity.providerUserId,
+        issuer: identity.issuer,
+        subject: identity.subject,
         email: identity.email,
+        emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
-        emailVerified: identity.emailVerified,
       },
       tenant.id
     );

@@ -180,6 +180,10 @@ export function makeUserRepository(
       oidcUpserts.push({ input, tid });
       return user ?? AUTH_USER;
     },
+    async findOrCreateByExternalIdentity(input, tid) {
+      oidcUpserts.push({ input: input as any, tid });
+      return user ?? AUTH_USER;
+    },
     async createAnonymousUser(input, tid, tx) {
       anonymousCreates.push({ input, tid, tx });
       return {

@@ -62,7 +62,8 @@ describe('CompleteOidcLoginUseCase', () => {
     const [{ input, tid }] = users.oidcUpserts;
     expect(tid).toBe(TENANT_ID);
     expect(input).toMatchObject({
-      providerUserId: 'idp-sub-1',
+      issuer: 'https://idp.test',
+      subject: 'idp-sub-1',
       email: 'ada@example.edu',
       fullName: 'Ada Lovelace',
     });
