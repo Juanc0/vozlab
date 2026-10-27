@@ -11,7 +11,7 @@ to make it safe and reliable for a live audience. The second has changed in 2026
   the first download of models.
 - **Make the laptop safe before the talk.** Today the compose file publishes database, cache and model ports on every
   network interface (`09` S-05). On conference Wi-Fi that is a real exposure, and it costs one line to fix.
-- **Show the real sign-in flow, not the shortcut.** Add a local Keycloak realm to Compose, so the presenter signs in
+- **Show the real sign-in flow, not the shortcut.** Add a local Zitadel realm to Compose, so the presenter signs in
   through an identity provider, offline. The development token route is labelled as development-only, which is correct
   for the product but weak as a demonstration of trust.
 - **Do not use an AWS emulator to run the product.** It is not needed. It is only useful to test infrastructure code,
@@ -93,7 +93,7 @@ builds more trust than a claim that breaks.
 | --- | --- | --- | --- |
 | 1 | The problem | The Spanish demo graph, three clusters | "This is a seeded demonstration. The seed is labelled as such." |
 | 2 | Joining | An event code (the raw code is shown once by the CLI) | "No tenant is visible in the code. Codes expire and can be revoked." |
-| 3 | Signing in | Keycloak sign-in (after section 6) | "This is a real sign-in flow; the identity provider is local for the talk." |
+| 3 | Signing in | Zitadel sign-in (after section 6) | "This is a real sign-in flow; the identity provider is local for the talk." |
 | 4 | Exploring | Zoom, walk by clicking, the inspector | "The layout is a physics simulation; it is deterministic for a given input." |
 | 5 | Creating | A new node | **Limit:** the node is `PENDING` and stays so. "Acceptance of a new item is not yet in the product; it is the next milestone." (F-01) |
 | 6 | Proposing | A correction proposal, then approval as maintainer | Works. Show the diff. |
@@ -110,20 +110,20 @@ builds more trust than a claim that breaks.
 - Do not claim performance numbers you have not measured for the audience's scale. The verified synthetic figures are
   in ADR-0027 and should be quoted as synthetic.
 
-## 6. Adding a local Keycloak realm (recommended)
+## 6. Adding a local Zitadel realm (recommended)
 
-The environment file already points at a Keycloak realm layout (`http://localhost:8080/realms/vozlab`), and the API
-verifies the ID token against that issuer. A Keycloak service in Compose, with a realm imported on start, gives the
+The environment file already points at a Zitadel realm layout (`http://localhost:8081`), and the API
+verifies the ID token against that issuer. A Zitadel service in Compose, with a realm imported on start, gives the
 presenter the real flow: authorisation code with PKCE, redirect, refresh rotation and logout. It does not change the
 product code. It does require:
 
-1. A Keycloak service in `docker-compose.yml` (pin the image tag), with a realm JSON that defines the client
+1. A Zitadel service in `docker-compose.yml` (pin the image tag), with a realm JSON that defines the client
    `vozlab-api` with the redirect URI from `.env.example`, two or three demo users and the `tid` claim mapped to the
    tenant key `sabana`.
 2. The identity provider issuer and JWKS values pointing at the local realm (already in `.env.example`).
 3. A short test in the integration suite that signs in through the local realm.
 
-Keycloak is open source (verify the licence and version you pin). The work is about one to two days [juicio]. It also
+Zitadel is open source (verify the licence and version you pin). The work is about one to two days [juicio]. It also
 serves as the local stand-in for an institutional IdP in development, which is valuable beyond the demo (`08` §6).
 
 ## 7. Presenter's checklist (the morning of)
@@ -134,7 +134,7 @@ serves as the local stand-in for an institutional IdP in development, which is v
 - [ ] `docker compose up -d`; `db:migrate`; `db:seed:dev` (the seed is idempotent); API health returns `ready`.
 - [ ] Models pulled and loaded (`ollama list`); the embedding of a test node completes.
 - [ ] Web built; the built server serves on the expected port; the browser cache cleared once.
-- [ ] Sign-in works (Keycloak or dev sign-in); the presenter can approve a seeded proposal.
+- [ ] Sign-in works (Zitadel or dev sign-in); the presenter can approve a seeded proposal.
 - [ ] Network disabled and the demo runs; then re-enabled for the questions.
 - [ ] Recorded fallback for scenes 8 and 9 on the desktop; screenshots of scenes 4 and 6.
 - [ ] Mobile layout checked at 375 px if the audience may ask (the layout is mobile-first).
@@ -145,7 +145,7 @@ serves as the local stand-in for an institutional IdP in development, which is v
 | Item | Cost | Check before relying on it |
 | --- | --- | --- |
 | Docker | Docker Desktop has licensing terms that depend on the size and type of organisation. Alternatives such as Podman or Colima are free to use. [juicio] | Confirm your institution's status or use Podman or Colima. |
-| PostgreSQL, Redis (or Valkey), pgvector, Keycloak | Open source | Pin versions. |
+| PostgreSQL, Redis (or Valkey), pgvector, Zitadel | Open source | Pin versions. |
 | Ollama | Free runtime | Check each model's licence before the talk: some open models carry usage restrictions. |
 | Models | Open weights | Llama-family and Gemma-family licences differ from Apache 2.0 (`06` §4). |
 | Emulators | Varies (section 4) | Read the current terms. |
@@ -158,7 +158,7 @@ The rule is that **a local behaviour that production cannot have is a defect**, 
 - The environment variable names (the same set, loaded from a file locally and from Secrets Manager in production).
 - The Redis-compatible engine: Valkey locally and in ElastiCache (`11` §4.4).
 - The database extensions: pgvector locally and in RDS; AGE removed from both (`05` §13).
-- The identity contract: the same issuer and claim mapping, with Keycloak standing in for the institutional provider.
+- The identity contract: the same issuer and claim mapping, with Zitadel standing in for the institutional provider.
 - The model contract: the same HTTP interface for Ollama, and the same embedding dimension and model identifier.
 - The transport: HTTPS in production; on the laptop, document the difference and test cookies in staging.
 
@@ -169,6 +169,6 @@ The gaps that will remain (no load balancer, no CDN, no WAF locally) are accepta
 1. Bind ports to loopback and change the secrets (today, about an hour).
 2. Remove AGE from the local image (one to two hours plus a rebuild).
 3. Add Valkey and a password to Redis in Compose (one hour).
-4. Add Keycloak with a realm (one to two days).
+4. Add Zitadel with a realm (one to two days).
 5. Build an end-to-end smoke script that runs scenes 2, 3, 5 and 6 against the local stack and fails loudly (half a day).
 6. Record the fallbacks and write the script (half a day).
