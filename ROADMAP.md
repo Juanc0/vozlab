@@ -138,8 +138,10 @@ Milestones:
       `PENDING` edges; a `MERGE` verdict is submitted as a merge proposal and
       the API applies the merge when the proposal is approved
       (ADR-0023, ADR-0026).
-- [ ] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
+- [~] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
       the API ([spec](docs/spec/consolidator.md)); add the opportunity endpoint.
+      **Deferred for MVP** (2026-10-26): not needed to ship; moved to
+      "Tracked, not scheduled" until a concrete use case appears.
 - [x] 2.7 Worker Dockerfiles + compose profiles + worker tests; update
       `runbook-ops.md`. Result: a Dockerfile per worker (uv, non-root,
       `--frozen`), a `workers` compose profile, the Python suite and the image
@@ -889,6 +891,7 @@ Decided, and not to be re-opened without evidence:
 
 ## Tracked, not scheduled
 
+- Consolidator handler (FR-20): scheduled cluster synthesis (deferred for MVP, 2026-10-26).
 - Apache AGE mirroring adapter ([ADR-0004](docs/decisions/ADR-0004-bounded-sql-cte-age-deferred.md)).
 - Redis-buffered CQRS vote scoring ([ADR-0005](docs/decisions/ADR-0005-synchronous-vote-scoring.md)).
 - SSE notifications ([ADR-0015](docs/decisions/ADR-0015-sse-deferred.md)).
