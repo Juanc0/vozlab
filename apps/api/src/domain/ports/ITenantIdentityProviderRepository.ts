@@ -23,7 +23,7 @@ export interface ITenantIdentityProviderRepository {
   findByIssuer(issuer: string): Promise<TenantIdentityProvider | null>;
 
   /** Create a new provider for a tenant. */
-  create(input: {
+  createProvider(input: {
     tenantId: string;
     providerKind: TenantIdentityProvider['providerKind'];
     issuer: string;

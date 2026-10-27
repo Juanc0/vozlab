@@ -3,6 +3,7 @@ import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalIdentityRepository, GlobalIdentity } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { globalIdentities } from '@vozlab/database';
 import {
   ConsumeEventCodeResult,
@@ -11,7 +12,7 @@ import {
 } from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections, tenantIdentityProviders } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -21,7 +22,7 @@ import { eventCodes, tenants, tenantConnections } from '@vozlab/database';
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalIdentityRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalIdentityRepository, ITenantIdentityProviderRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -327,5 +328,103 @@ export class RouterDatabaseClient
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  // --- ITenantIdentityProviderRepository ---
+
+  async listByTenant(tenantId: string): Promise<TenantIdentityProvider[]> {
+    try {
+      const rows = await this.db
+        .select()
+        .from(tenantIdentityProviders)
+        .where(eq(tenantIdentityProviders.tenantId, tenantId));
+
+      return rows.map((row) => ({
+        id: row.id,
+        tenantId: row.tenantId,
+        providerKind: row.providerKind as TenantIdentityProvider['providerKind'],
+        issuer: row.issuer,
+        clientId: row.clientId,
+        metadataUrl: row.metadataUrl,
+        enabled: row.enabled,
+        createdAt: row.createdAt,
+      }));
+    } catch (err) {
+      log.error({ err, tenantId }, 'failed to list tenant identity providers');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async findByIssuer(issuer: string): Promise<TenantIdentityProvider | null> {
+    try {
+      const [row] = await this.db
+        .select()
+        .from(tenantIdentityProviders)
+        .where(eq(tenantIdentityProviders.issuer, issuer))
+        .limit(1);
+
+      if (!row) return null;
+      return {
+        id: row.id,
+        tenantId: row.tenantId,
+        providerKind: row.providerKind as TenantIdentityProvider['providerKind'],
+        issuer: row.issuer,
+        clientId: row.clientId,
+        metadataUrl: row.metadataUrl,
+        enabled: row.enabled,
+        createdAt: row.createdAt,
+      };
+    } catch (err) {
+      log.error({ err, issuer }, 'failed to find tenant identity provider by issuer');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async createProvider(input: {
+    tenantId: string;
+    providerKind: TenantIdentityProvider['providerKind'];
+    issuer: string;
+    clientId?: string | null;
+    metadataUrl?: string | null;
+  }): Promise<TenantIdentityProvider> {
+    try {
+      const [row] = await this.db
+        .insert(tenantIdentityProviders)
+        .values({
+          tenantId: input.tenantId,
+          providerKind: input.providerKind,
+          issuer: input.issuer,
+          clientId: input.clientId ?? null,
+          metadataUrl: input.metadataUrl ?? null,
+          enabled: true,
+        })
+        .returning();
+
+      return {
+        id: row.id,
+        tenantId: row.tenantId,
+        providerKind: row.providerKind as TenantIdentityProvider['providerKind'],
+        issuer: row.issuer,
+        clientId: row.clientId,
+        metadataUrl: row.metadataUrl,
+        enabled: row.enabled,
+        createdAt: row.createdAt,
+      };
+    } catch (err) {
+      log.error({ err, input }, 'failed to create tenant identity provider');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async setEnabled(id: string, enabled: boolean): Promise<void> {
+    try {
+      await this.db
+        .update(tenantIdentityProviders)
+        .set({ enabled })
+        .where(eq(tenantIdentityProviders.id, id));
+    } catch (err) {
+      log.error({ err, id }, 'failed to set tenant identity provider enabled');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
   }
 }

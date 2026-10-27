@@ -40,6 +40,7 @@ import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.j
 import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
@@ -61,6 +62,7 @@ import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
 import { MembershipController } from './controllers/MembershipController.js';
+import { TenantIdentityProviderController } from './controllers/TenantIdentityProviderController.js';
 import { IngestionController } from './controllers/IngestionController.js';
 
 /**
@@ -106,6 +108,7 @@ export interface RouteDependencies {
   getMeUseCase: GetMeUseCase;
   joinEventUseCase: JoinEventUseCase;
   routerDb: IRouterDatabase;
+  tenantIdentityProviderRepo?: ITenantIdentityProviderRepository;
   membershipRepo: IMembershipRepository;
   invitationRepo?: IInvitationRepository;
   inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
@@ -227,6 +230,10 @@ export async function registerRoutes(
     deps.invitationRepo ?? (deps.membershipRepo as any)
   );
 
+  const tipController = deps.tenantIdentityProviderRepo
+    ? new TenantIdentityProviderController(deps.tenantIdentityProviderRepo)
+    : null;
+
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
   app.get('/health/live', (req, reply) => healthController.live(req, reply));
@@ -318,6 +325,26 @@ export async function registerRoutes(
     { preHandler: guard },
     (req, reply) => membershipController.revokeInvitation(req, reply)
   );
+
+  if (tipController) {
+    app.get(
+      '/api/v1/identity-providers',
+      { preHandler: guard },
+      (req, reply) => tipController.list(req, reply)
+    );
+
+    app.post(
+      '/api/v1/identity-providers',
+      { preHandler: guard },
+      (req, reply) => tipController.create(req, reply)
+    );
+
+    app.patch(
+      '/api/v1/identity-providers/:id',
+      { preHandler: guard },
+      (req, reply) => tipController.setEnabled(req, reply)
+    );
+  }
 
   // --- Nodes (Gobernanza) ---
   app.post('/api/v1/nodes', { preHandler: guard }, (req, reply) =>
