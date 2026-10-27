@@ -12,6 +12,8 @@ import {
   TENANT_ID,
   makeGlobalIdentityRepository,
   makeIdentityProvider,
+  makeInvitationRepository,
+  makeMembershipRepository,
   makeRefreshTokenRepository,
   makeRouterDb,
   makeStateStore,
@@ -36,12 +38,16 @@ function setup(
   const globalIdentity = makeGlobalIdentityRepository();
   const users = makeUserRepository();
   const refresh = makeRefreshTokenRepository();
+  const invitation = makeInvitationRepository();
+  const membership = makeMembershipRepository();
   const useCase = new CompleteOidcLoginUseCase(
     states.stateStore,
     identity.identityProvider,
     router.routerDb,
     globalIdentity.repo,
     users.userRepo,
+    invitation.repo,
+    membership.membershipRepo,
     refresh.refreshRepo,
     REFRESH_TTL_MS
   );

@@ -18,6 +18,7 @@ import type {
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
 import type { IGlobalIdentityRepository } from '../../src/domain/ports/IGlobalIdentityRepository.js';
+import type { IInvitationRepository } from '../../src/domain/ports/IInvitationRepository.js';
 import type {
   CreateRefreshTokenInput,
   IRefreshTokenRepository,
@@ -327,6 +328,44 @@ export function makeEventCodeRepository(
   };
 
   return { eventCodeRepo, consumedHashes, created };
+}
+
+export function makeInvitationRepository(): {
+  repo: IInvitationRepository;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  const repo: IInvitationRepository = {
+    async findByTokenHash(tokenHash, tid) {
+      calls.push(`findByTokenHash:${tokenHash}`);
+      return null;
+    },
+    async accept(id, tid) {
+      calls.push(`accept:${id}`);
+    },
+    async revoke(id, tid) {
+      calls.push(`revoke:${id}`);
+    },
+    async create(input, tid) {
+      calls.push(`create:${input.workspaceId}`);
+      return {
+        id: 'inv-1',
+        workspaceId: input.workspaceId,
+        email: input.email ?? null,
+        emailHash: input.emailHash ?? null,
+        role: input.role,
+        tokenHash: input.tokenHash,
+        expiresAt: input.expiresAt,
+        maxUses: input.maxUses ?? null,
+        usedCount: 0,
+        status: 'PENDING',
+        revokedAt: null,
+        createdBy: input.createdBy ?? null,
+        createdAt: new Date(),
+      };
+    },
+  };
+  return { repo, calls };
 }
 
 export function makeMembershipRepository(): {

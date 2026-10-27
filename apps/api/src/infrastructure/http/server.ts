@@ -13,6 +13,7 @@ import { DrizzleEdgeRepository } from '../persistence/repositories/DrizzleEdgeRe
 import { DrizzleOntologyRepository } from '../persistence/repositories/DrizzleOntologyRepository.js';
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
+import { DrizzleInvitationRepository } from '../persistence/repositories/DrizzleInvitationRepository.js';
 import { DrizzleDiscussionRepository } from '../persistence/repositories/DrizzleDiscussionRepository.js';
 import { DrizzleInteractionRepository } from '../persistence/repositories/DrizzleInteractionRepository.js';
 import { DrizzleUserRepository } from '../persistence/repositories/DrizzleUserRepository.js';
@@ -219,12 +220,15 @@ export async function buildServer(): Promise<FastifyInstance> {
     oidcStateStore,
     routerDb
   );
+  const invitationRepo = new DrizzleInvitationRepository(poolManager);
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
     routerDb,
     routerDb,
     userRepo,
+    invitationRepo,
+    membershipRepo,
     refreshTokenRepo,
     refreshTtlMs
   );

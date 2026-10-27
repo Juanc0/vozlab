@@ -19,23 +19,26 @@ export interface Invitation {
 
 export interface IInvitationRepository {
   /** Find an invitation by its token hash. */
-  findByTokenHash(tokenHash: string): Promise<Invitation | null>;
+  findByTokenHash(tokenHash: string, tid: string): Promise<Invitation | null>;
 
   /** Mark an invitation as accepted and increment used_count. */
-  accept(id: string): Promise<void>;
+  accept(id: string, tid: string): Promise<void>;
 
   /** Revoke an invitation. */
-  revoke(id: string): Promise<void>;
+  revoke(id: string, tid: string): Promise<void>;
 
   /** Create a new invitation. */
-  create(input: {
-    workspaceId: string;
-    email?: string | null;
-    emailHash?: string | null;
-    role: string;
-    tokenHash: string;
-    expiresAt: Date;
-    maxUses?: number | null;
-    createdBy?: string | null;
-  }): Promise<Invitation>;
+  create(
+    input: {
+      workspaceId: string;
+      email?: string | null;
+      emailHash?: string | null;
+      role: string;
+      tokenHash: string;
+      expiresAt: Date;
+      maxUses?: number | null;
+      createdBy?: string | null;
+    },
+    tid: string
+  ): Promise<Invitation>;
 }

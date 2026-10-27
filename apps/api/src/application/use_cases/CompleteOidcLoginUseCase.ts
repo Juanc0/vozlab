@@ -8,6 +8,8 @@ import { IIdentityProvider } from '../../domain/ports/IIdentityProvider.js';
 import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
+import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import {
   generateAuthorHash,
@@ -42,6 +44,8 @@ export class CompleteOidcLoginUseCase {
     private readonly routerDb: IRouterDatabase,
     private readonly globalIdentityRepo: IGlobalIdentityRepository,
     private readonly userRepo: IUserRepository,
+    private readonly invitationRepo: IInvitationRepository,
+    private readonly membershipRepo: IMembershipRepository,
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly refreshTtlMs: number
   ) {}
@@ -97,6 +101,45 @@ export class CompleteOidcLoginUseCase {
       },
       tenant.id
     );
+
+    // D9: redeem invitation if token present in state.
+    if (state.invitationToken) {
+      const { createHash } = await import('node:crypto');
+      const tokenHash = createHash('sha256')
+        .update(state.invitationToken)
+        .digest('hex');
+
+      const invitation = await this.invitationRepo.findByTokenHash(
+        tokenHash,
+        tenant.id
+      );
+
+      if (invitation && invitation.status === 'PENDING' && invitation.expiresAt > new Date()) {
+        // Validate email if invitation has email.
+        let canRedeem = true;
+        if (invitation.email && identity.emailVerified !== true) {
+          canRedeem = false;
+        }
+        if (canRedeem && invitation.email && identity.email) {
+          // Simple email comparison (normalized).
+          if (invitation.email.toLowerCase() !== identity.email.toLowerCase()) {
+            canRedeem = false;
+          }
+        }
+
+        if (canRedeem) {
+          // Create membership.
+          await this.membershipRepo.add(
+            user.id,
+            invitation.workspaceId,
+            invitation.role as any,
+            tenant.id
+          );
+          // Mark invitation as accepted.
+          await this.invitationRepo.accept(invitation.id, tenant.id);
+        }
+      }
+    }
 
     const refreshToken = generateRefreshToken(tenant.id);
     const refreshExpiresAt = new Date(Date.now() + this.refreshTtlMs);
