@@ -71,6 +71,10 @@ they disagree with the code, **the code wins** — fix the doc.
   `db:grant-mcp-reader` (dev-only read-only role for the Postgres MCP).
 - `docker compose up -d --build` — Postgres 18 (`vozlab/postgres:18-age-pgvector`),
   Redis 7, Ollama. Init SQL runs only on a fresh volume.
+- `docker compose --profile idp up -d` — adds Zitadel (identity broker, replaces
+  Keycloak) on `:8081`. Setup: `./scripts/setup-zitadel.sh`.
+- `docker compose -f docker/identity-lab/compose.yml up -d` — Keycloak (legacy,
+  still available for SAML/LDAP testing).
 
 ## Hard-to-miss conventions
 - **NodeNext**: every relative import in `.ts` ends in `.js` (`./server.js`),
