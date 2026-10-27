@@ -65,12 +65,14 @@ export class AuthController {
     const redirectPath = parsed.success ? (parsed.data.redirect ?? '/') : '/';
     const institution = parsed.success ? parsed.data.institution : undefined;
     const kcIdpHint = parsed.success ? parsed.data.kc_idp_hint : undefined;
+    const invitationToken = parsed.success ? parsed.data.invitation : undefined;
 
     try {
       const result = await this.startLogin.execute({
         redirectPath,
         institution,
         kcIdpHint,
+        invitationToken,
       });
       return reply.redirect(result.authorizationUrl);
     } catch (error) {

@@ -45,6 +45,7 @@ export const LoginQuerySchema = z.object({
     .optional(),
   institution: z.string().max(100).optional(),
   kc_idp_hint: z.string().max(100).optional(),
+  invitation: z.string().max(500).optional(),
 });
 export type LoginQuery = z.infer<typeof LoginQuerySchema>;
 

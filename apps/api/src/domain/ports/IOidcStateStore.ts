@@ -12,6 +12,8 @@ export interface OidcStateData {
   redirectPath: string;
   /** Optional institution slug requested at login time. */
   institution?: string;
+  /** Optional invitation token (raw, single-use). */
+  invitationToken?: string;
 }
 
 export interface IOidcStateStore {

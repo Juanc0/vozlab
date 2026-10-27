@@ -13,6 +13,8 @@ export interface StartOidcLoginInput {
   institution?: string;
   /** Optional IdP hint for the broker (kc_idp_hint). */
   kcIdpHint?: string;
+  /** Optional invitation token (raw, single-use). */
+  invitationToken?: string;
 }
 
 export interface StartOidcLoginResult {
@@ -56,7 +58,7 @@ export class StartOidcLoginUseCase {
 
     await this.stateStore.save(
       state,
-      { nonce, codeVerifier, redirectPath, institution },
+      { nonce, codeVerifier, redirectPath, institution, invitationToken: input.invitationToken },
       STATE_TTL_SECONDS
     );
 
