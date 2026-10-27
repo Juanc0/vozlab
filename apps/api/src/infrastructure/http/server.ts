@@ -59,6 +59,7 @@ import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
 import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
@@ -221,6 +222,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     routerDb
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
+  const inviteToWorkspaceUseCase = new InviteToWorkspaceUseCase(invitationRepo);
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -298,6 +300,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     routerDb,
     membershipRepo,
+    inviteToWorkspaceUseCase,
     tokenBlacklist,
     rateLimiter,
   });

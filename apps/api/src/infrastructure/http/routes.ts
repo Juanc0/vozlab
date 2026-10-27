@@ -37,6 +37,7 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
@@ -58,6 +59,7 @@ import { HealthController } from './controllers/HealthController.js';
 import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
+import { MembershipController } from './controllers/MembershipController.js';
 import { IngestionController } from './controllers/IngestionController.js';
 
 /**
@@ -104,6 +106,7 @@ export interface RouteDependencies {
   joinEventUseCase: JoinEventUseCase;
   routerDb: IRouterDatabase;
   membershipRepo: IMembershipRepository;
+  inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
   tokenBlacklist: RedisTokenBlacklist;
   rateLimiter: RateLimitingMiddleware;
 }
@@ -216,6 +219,7 @@ export async function registerRoutes(
     joinEventUseCase
   );
   const ingestionController = new IngestionController(resolveSourceUseCase);
+  const membershipController = new MembershipController(deps.inviteToWorkspaceUseCase);
 
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
@@ -270,6 +274,13 @@ export async function registerRoutes(
     '/api/v1/auth/me',
     { preHandler: [auth, tenant] },
     (req, reply) => authController.me(req, reply)
+  );
+
+  // --- Membership management (D10, ADMIN only) ---
+  app.post(
+    '/api/v1/workspaces/:workspaceId/members/invite',
+    { preHandler: guard },
+    (req, reply) => membershipController.invite(req, reply)
   );
 
   // --- Nodes (Gobernanza) ---

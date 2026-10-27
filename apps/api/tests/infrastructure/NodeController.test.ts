@@ -25,6 +25,7 @@ import { GetOntologyUseCase } from '../../src/application/use_cases/GetOntologyU
 import { GetProposalUseCase } from '../../src/application/use_cases/GetProposalUseCase.js';
 import { GetSubgraphUseCase } from '../../src/application/use_cases/GetSubgraphUseCase.js';
 import { JoinEventUseCase } from '../../src/application/use_cases/JoinEventUseCase.js';
+import { InviteToWorkspaceUseCase } from '../../src/application/use_cases/InviteToWorkspaceUseCase.js';
 import { ListEdgesUseCase } from '../../src/application/use_cases/ListEdgesUseCase.js';
 import { ListNodesUseCase } from '../../src/application/use_cases/ListNodesUseCase.js';
 import { ListPostsUseCase } from '../../src/application/use_cases/ListPostsUseCase.js';
@@ -272,6 +273,7 @@ function makeRouteDependencies(
     joinEventUseCase: unused(JoinEventUseCase.prototype),
     routerDb,
     membershipRepo,
+    inviteToWorkspaceUseCase: unused(InviteToWorkspaceUseCase.prototype),
     // The blacklist is never connected: the guard treats every token as
     // valid, so no Redis is needed for a routing test.
     tokenBlacklist: blacklist as unknown as RedisTokenBlacklist,
