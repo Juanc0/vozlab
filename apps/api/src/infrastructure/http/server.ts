@@ -223,6 +223,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     oidcStateStore,
     identityProvider,
     routerDb,
+    routerDb,
     userRepo,
     refreshTokenRepo,
     refreshTtlMs

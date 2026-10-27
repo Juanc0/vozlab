@@ -2,6 +2,8 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
+import { IGlobalIdentityRepository, GlobalIdentity } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { globalIdentities } from '@vozlab/database';
 import {
   ConsumeEventCodeResult,
   CreateEventCodeInput,
@@ -19,7 +21,7 @@ import { eventCodes, tenants, tenantConnections } from '@vozlab/database';
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalIdentityRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -103,6 +105,106 @@ export class RouterDatabaseClient
       return row ?? null;
     } catch (err) {
       log.error({ err, tenantId }, 'failed to find tenant by id');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * Find or create a global identity by (issuer, subject).
+   */
+  async findOrCreate(issuer: string, subject: string): Promise<GlobalIdentity> {
+    try {
+      const [existing] = await this.db
+        .select()
+        .from(globalIdentities)
+        .where(
+          and(
+            eq(globalIdentities.issuer, issuer),
+            eq(globalIdentities.subject, subject)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        // Update last_seen_at.
+        await this.db
+          .update(globalIdentities)
+          .set({ lastSeenAt: new Date() })
+          .where(eq(globalIdentities.id, existing.id));
+        return {
+          id: existing.id,
+          issuer: existing.issuer,
+          subject: existing.subject,
+          createdAt: existing.createdAt,
+          lastSeenAt: new Date(),
+        };
+      }
+
+      const [created] = await this.db
+        .insert(globalIdentities)
+        .values({ issuer, subject })
+        .onConflictDoNothing()
+        .returning();
+
+      if (created) {
+        return {
+          id: created.id,
+          issuer: created.issuer,
+          subject: created.subject,
+          createdAt: created.createdAt,
+          lastSeenAt: created.lastSeenAt,
+        };
+      }
+
+      // Race condition: re-read.
+      const [raced] = await this.db
+        .select()
+        .from(globalIdentities)
+        .where(
+          and(
+            eq(globalIdentities.issuer, issuer),
+            eq(globalIdentities.subject, subject)
+          )
+        )
+        .limit(1);
+
+      if (!raced) {
+        throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+      }
+      return {
+        id: raced.id,
+        issuer: raced.issuer,
+        subject: raced.subject,
+        createdAt: raced.createdAt,
+        lastSeenAt: raced.lastSeenAt,
+      };
+    } catch (err) {
+      log.error({ err, issuer, subject }, 'failed to find or create global identity');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * Find a global identity by its ID.
+   */
+  async findById(id: string): Promise<GlobalIdentity | null> {
+    try {
+      const [row] = await this.db
+        .select()
+        .from(globalIdentities)
+        .where(eq(globalIdentities.id, id))
+        .limit(1);
+
+      if (!row) return null;
+      return {
+        id: row.id,
+        issuer: row.issuer,
+        subject: row.subject,
+        createdAt: row.createdAt,
+        lastSeenAt: row.lastSeenAt,
+      };
+    } catch (err) {
+      log.error({ err, id }, 'failed to find global identity by id');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

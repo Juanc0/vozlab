@@ -10,6 +10,7 @@ import {
   OIDC_STATE,
   TENANT,
   TENANT_ID,
+  makeGlobalIdentityRepository,
   makeIdentityProvider,
   makeRefreshTokenRepository,
   makeRouterDb,
@@ -32,12 +33,14 @@ function setup(
   const router = makeRouterDb({
     tenant: overrides.tenant === undefined ? TENANT : overrides.tenant,
   });
+  const globalIdentity = makeGlobalIdentityRepository();
   const users = makeUserRepository();
   const refresh = makeRefreshTokenRepository();
   const useCase = new CompleteOidcLoginUseCase(
     states.stateStore,
     identity.identityProvider,
     router.routerDb,
+    globalIdentity.repo,
     users.userRepo,
     refresh.refreshRepo,
     REFRESH_TTL_MS

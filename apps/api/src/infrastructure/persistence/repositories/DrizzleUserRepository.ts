@@ -252,6 +252,7 @@ export class DrizzleUserRepository implements IUserRepository {
             fullName: input.fullName,
             authorHash: input.authorHash,
             systemRole: 'USER',
+            globalIdentityId: input.globalIdentityId ?? null,
           })
           .returning();
 

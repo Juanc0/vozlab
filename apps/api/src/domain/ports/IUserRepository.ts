@@ -40,6 +40,8 @@ export interface NewExternalIdentityInput {
   emailVerified: boolean | null;
   fullName: string | null;
   authorHash: string;
+  /** Global identity ID from the router DB (D8). */
+  globalIdentityId?: string | null;
 }
 
 export interface NewAnonymousUser {

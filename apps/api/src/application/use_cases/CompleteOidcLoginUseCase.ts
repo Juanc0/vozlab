@@ -7,6 +7,7 @@ import {
 import { IIdentityProvider } from '../../domain/ports/IIdentityProvider.js';
 import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
+import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import {
   generateAuthorHash,
@@ -39,6 +40,7 @@ export class CompleteOidcLoginUseCase {
     private readonly stateStore: IOidcStateStore,
     private readonly identityProvider: IIdentityProvider,
     private readonly routerDb: IRouterDatabase,
+    private readonly globalIdentityRepo: IGlobalIdentityRepository,
     private readonly userRepo: IUserRepository,
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly refreshTtlMs: number
@@ -77,6 +79,12 @@ export class CompleteOidcLoginUseCase {
       );
     }
 
+    // D8: resolve or create global identity.
+    const globalIdentity = await this.globalIdentityRepo.findOrCreate(
+      identity.issuer,
+      identity.subject
+    );
+
     const user = await this.userRepo.findOrCreateByExternalIdentity(
       {
         issuer: identity.issuer,
@@ -85,6 +93,7 @@ export class CompleteOidcLoginUseCase {
         emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
+        globalIdentityId: globalIdentity.id,
       },
       tenant.id
     );

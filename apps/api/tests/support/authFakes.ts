@@ -17,6 +17,7 @@ import type {
   UserWorkspace,
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
+import type { IGlobalIdentityRepository } from '../../src/domain/ports/IGlobalIdentityRepository.js';
 import type {
   CreateRefreshTokenInput,
   IRefreshTokenRepository,
@@ -74,6 +75,36 @@ export const OIDC_STATE: OidcStateData = {
   codeVerifier: 'verifier-1',
   redirectPath: '/proposals',
 };
+
+export function makeGlobalIdentityRepository(): {
+  repo: IGlobalIdentityRepository;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  const repo: IGlobalIdentityRepository = {
+    async findOrCreate(issuer, subject) {
+      calls.push(`findOrCreate:${issuer}:${subject}`);
+      return {
+        id: 'global-id-1',
+        issuer,
+        subject,
+        createdAt: new Date(),
+        lastSeenAt: new Date(),
+      };
+    },
+    async findById(id) {
+      calls.push(`findById:${id}`);
+      return {
+        id,
+        issuer: 'https://idp.test',
+        subject: 'idp-sub-1',
+        createdAt: new Date(),
+        lastSeenAt: new Date(),
+      };
+    },
+  };
+  return { repo, calls };
+}
 
 export function makeRouterDb(
   options: { tenant?: typeof TENANT | null; byId?: typeof TENANT | null } = {}
