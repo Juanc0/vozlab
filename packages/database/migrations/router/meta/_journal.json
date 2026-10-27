@@ -15,6 +15,13 @@
       "when": 1792393184361,
       "tag": "0001_blushing_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793064510971,
+      "tag": "0002_huge_rhino",
+      "breakpoints": true
     }
   ]
 }
