@@ -23,6 +23,14 @@ function makeUseCase(source: DataSourceRecord | null) {
       calls.push({ sourceKey, tid: tenantId });
       return source;
     },
+    async listByWorkspace() {
+      return [];
+    },
+    async create(input, tid) {
+      return source ?? ({} as DataSourceRecord);
+    },
+    async update() {},
+    async deactivate() {},
   };
   return { useCase: new ResolveSourceUseCase(repo), calls };
 }
