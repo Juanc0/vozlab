@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -118,3 +119,27 @@ export const tenantIdentityProviders = pgTable(
 
 export type TenantIdentityProvider = typeof tenantIdentityProviders.$inferSelect;
 export type NewTenantIdentityProvider = typeof tenantIdentityProviders.$inferInsert;
+
+/**
+ * Global identity index (D6, M2a).
+ *
+ * Maps (issuer, subject) → global_identity_id in the router DB.
+ * Contains NO PII (no email, name, role). Only the IdP subject hash.
+ * One row per unique (issuer, subject) pair across all institutions.
+ */
+export const globalIdentities = pgTable(
+  'global_identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    issuer: varchar('issuer', { length: 512 }).notNull(),
+    subject: varchar('subject', { length: 255 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('uniq_global_identities_issuer_subject').on(table.issuer, table.subject),
+  ]
+);
+
+export type GlobalIdentity = typeof globalIdentities.$inferSelect;
+export type NewGlobalIdentity = typeof globalIdentities.$inferInsert;
