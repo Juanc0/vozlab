@@ -895,6 +895,13 @@ Decided, and not to be re-opened without evidence:
 - GraphQL facade ([ADR-0016](docs/decisions/ADR-0016-graphql-rejected.md)).
 - `iss`-based tenant resolution (currently `tid`/`hd` only).
 - Multi-region / HA topology (not designed).
+- HMAC of the IdP subject in the tenant DB (C8, optional): evaluated and
+  deferred. Storing `HMAC(subject, key)` instead of plaintext `sub` in
+  `auth.external_identities` was considered but rejected for now: the `sub`
+  is not a secret, the protection value is marginal, and key management per
+  tenant adds operational complexity. Implement only if an institution
+  explicitly requires it; the schema already supports adding a `subject_hmac`
+  column without breaking existing rows. See the C8 task file for details.
 
 ## How to take a task
 
