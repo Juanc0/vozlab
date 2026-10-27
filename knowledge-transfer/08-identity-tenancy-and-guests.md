@@ -113,7 +113,7 @@ assessment, not a sprint.
 | --- | --- | --- |
 | **Microsoft Entra ID** | Institutions on Microsoft 365; B2B guest model is mature [web] | Tenant-specific issuers (F-17). Guest objects are created per resource tenant [web]. |
 | **Google Workspace** | Institutions on Google; one issuer; `hd` makes tenant resolution simple | Personal accounts have no `hd` and are rejected (intended). |
-| **Keycloak (self-hosted)** | Local development and demonstrations with a real login flow; full control; can broker other providers. Open source (verify licence and current multi-tenant features). | You operate it. The `.env.example` already points at a Keycloak realm layout (`/realms/vozlab`), but **no Keycloak service runs in Compose** (`docs/README.md`). |
+| **Zitadel (self-hosted)** | Production broker (OIDC + SAML 2.0). Go-based, ~128 MB RAM. Runs under `docker compose --profile idp` on `:8081`. Setup via `scripts/setup-zitadel.sh`. | Replaces Keycloak for production (ADR-0030). Keycloak is retained in `docker/identity-lab/` for SAML/LDAP testing only. |
 | **Amazon Cognito** | Managed user pools with federation to Entra and Google; regional | Cost and pricing model (verify); a second user model to reconcile with the API's accounts. |
 | **Okta, Auth0 (commercial)** | Enterprises with existing contracts | Cost; lock-in; not required here. |
 

@@ -1,9 +1,10 @@
 # ADR-0029: Explicit provider selection at the OIDC broker and the "General" tenant
 
-- Status: Proposed
+- Status: Accepted (amended by ADR-0030 and ADR-0031)
 - Date: 2026-10-26
 - Amends: ADR-0018 (OIDC login, JIT accounts and hybrid sessions), ADR-0028
   (multi-institution identity, global index and broker)
+- Amended by: ADR-0030 (Zitadel replaces Keycloak), ADR-0031 (tenant from token claims)
 - Related: ADR-0008 (cross-workspace 404), ADR-0013 (random opaque pseudonym)
 
 ## Context

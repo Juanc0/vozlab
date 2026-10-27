@@ -1,8 +1,9 @@
 # ADR-0028: Multi-institution identity, global index and external broker
 
-- Status: Accepted
+- Status: Accepted (broker choice amended by ADR-0030)
 - Date: 2026-10-24
 - Supersedes: the deferred cross-institution identity entry (D-23 in `knowledge-transfer/15-decision-register-and-roadmap.md`), subject to the conditions in §Consequences.
+- Amended by: ADR-0030 (Zitadel replaces Keycloak)
 
 ## Context
 

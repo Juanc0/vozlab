@@ -7,6 +7,17 @@ el ejecutor solo necesita leer los archivos que nombra cada tarea.
 > Alcance: **solo login, identidad, invitaciones, índice global y auditoría**.
 > Fuera de alcance: Extractor/Relator/Consolidador (bloque E y F2 de `02-...`).
 
+## Status as of 2026-10-26
+
+- **A1–A8**: decisions recorded (ADR-0028, ADR-0029).
+- **B1–B9**: lab migrated from Keycloak to Zitadel (ADR-0030); Keycloak retained in `docker/identity-lab/`.
+- **C1–C7**: implemented (contract tests, `emailVerified` null, `external_identities`, search by identity, claim-based tenant resolution, `ExternalIdentity` type, `sessions_valid_after`). **C8 deferred** (tracked, not scheduled).
+- **D1**: `tenant_identity_providers` table + repository + management endpoints implemented.
+- **D2**: login route uses `kc_idp_hint` only; tenant resolved from token claims (ADR-0031).
+- **D6–D8**: global identity tables + resolution implemented.
+- **D9–D12, D14**: scaffolding implemented; full integration pending.
+- **F1**: ADR-0028 (amended by ADR-0030). ADR-0029, ADR-0030, ADR-0031 added.
+
 ## Orden sugerido
 
 1. **A1–A8** en paralelo (decisiones, no código).

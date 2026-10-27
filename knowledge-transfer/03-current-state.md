@@ -20,7 +20,7 @@ the commands; the commands are listed in `16`.
 | Docker: Postgres | `docker/postgres` | Dockerfile | `apache/age:release_PG18_1.8.0` plus pgvector. | Works locally; not portable to managed PostgreSQL (F-10). |
 | Compose | `docker-compose.yml` | YAML | Postgres, Redis 7, Ollama, three workers behind a profile. | Local only; ports exposed on all interfaces (F-07). |
 | CI | `.github/workflows/ci.yml` | YAML | Three jobs: TypeScript (install, build, type-check, test), Python (uv sync, pytest, ruff), worker image builds. | Thin by decision (ADR-0017). No lint, no E2E, no integration database. |
-| Documentation | `docs/`, `README.md`, `ROADMAP.md`, `AGENTS.md`, `CLAUDE.md` | ~15.5k lines of Markdown including the archive | 27 ADRs, requirements, domain model, auth, API reference, runbooks, specs, design system, graph research. 67 files archived. | Strong content; numbers drift (section 4). |
+| Documentation | `docs/`, `README.md`, `ROADMAP.md`, `AGENTS.md`, `CLAUDE.md` | ~15.5k lines of Markdown including the archive | 31 ADRs (0001–0031), requirements, domain model, auth, API reference, runbooks, specs, design system, graph research. | Strong content; numbers drift (section 4). |
 | Agent tooling | `.opencode/`, `.agents/skills/`, `.claude/`, `opencode.json` | Markdown, JSON | Six subagents, two commands, 56 skill folders, MCP servers. | Rich. One credential is committed (F-06). |
 
 ## 2. The API surface
@@ -45,7 +45,7 @@ auth and embedding routes. [repo] `apps/api/src/infrastructure/http/`
 | Check | Command | Result |
 | --- | --- | --- |
 | Full build and type-check | `pnpm turbo run build type-check` | **7 of 7 tasks successful.** |
-| API tests | `pnpm --filter @vozlab/api test` | **35 files, 195 tests passed.** |
+| API tests | `pnpm --filter @vozlab/api test` | **35 files, 200 tests passed.** |
 | Web tests | `pnpm --filter @vozlab/web test` | **60 files, 515 tests passed.** |
 | Python tests | `uv run pytest` | **105 passed.** |
 | Python lint | `uv run ruff check` on the four Python packages | **All checks passed.** |

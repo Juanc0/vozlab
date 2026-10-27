@@ -40,7 +40,10 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0025](ADR-0025-source-resolution-route.md) | Source resolution is an agent-only, tenant-scoped API route | Accepted | `GET /api/v1/ingestion/resolve-source` maps a `sourceId` to its workspace; agent-only, tenant-scoped, no `X-Workspace-ID`. |
 | [0026](ADR-0026-merge-contract.md) | A merge is a proposal kind, applied by the API | Accepted | `CreateProposalSchema` becomes a union on `kind` (`EDIT` \| `MERGE`); a merge proposal names the duplicate as its target and the survivor as `mergeIntoNodeId`, and the API applies the merge atomically with the approval. |
 | [0027](ADR-0027-ranked-traversal-and-age-trigger.md) | The graph's read path: the ranked bounded CTE, the indexes, and the trigger that would reopen Apache AGE | Accepted | Extends ADR-0004: ranked bounded CTE with measurable trigger for reopening AGE. |
-| [0028](ADR-0028-multi-institution-identity-global-index-and-broker.md) | Multi-institution identity, global index and external broker | Accepted | Keycloak as external broker (OIDC + SAML 2.0 + LDAP); router stores `(issuer, subject)` global index (M2a + M2b); invitations and direct add; append-only audit; SAML 2.0 only. |
+| [0028](ADR-0028-multi-institution-identity-global-index-and-broker.md) | Multi-institution identity, global index and external broker | Accepted (broker amended by 0030) | External broker + router global index (M2a+M2b); invitations, direct add, append-only audit; SAML 2.0 only. |
+| [0029](ADR-0029-explicit-provider-selection-and-general-tenant.md) | Explicit provider selection and the "General" tenant | Accepted (amended by 0030, 0031) | Explicit validated IdP selection via `kc_idp_hint`; consumer accounts land in a pre-provisioned General tenant. |
+| [0030](ADR-0030-zitadel-replaces-keycloak.md) | Zitadel replaces Keycloak as the identity broker | Accepted | Go-based broker (~128 MB) replaces Keycloak in production; Keycloak stays in the lab. |
+| [0031](ADR-0031-tenant-resolved-from-token-claims.md) | Tenant resolved from token claims, not user input | Accepted | Login carries only `kc_idp_hint`; tenant resolved from `hd`/`tid`/org ID in `CompleteOidcLoginUseCase`. |
 
 ## How to add an ADR
 
