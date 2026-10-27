@@ -24,6 +24,7 @@ import {
   DEV_IDENTITIES,
   DEV_IDENTITY_NAMES,
   OIDC_TENANT_ID,
+  TENANT_ID,
   WORKSPACE_ID,
   type DevIdentityName,
 } from './dev-identities.js';
@@ -107,7 +108,7 @@ async function main(): Promise<void> {
 
   const claims: Record<string, unknown> = {
     sub: identity.sub,
-    tid: OIDC_TENANT_ID,
+    tid: TENANT_ID,
     jti: randomUUID(),
     authorHash: identity.authorHash,
   };
@@ -124,7 +125,7 @@ async function main(): Promise<void> {
 
   console.log(`\n🔐 Dev JWT — identity "${name}" (expires in ${TOKEN_TTL})\n`);
   console.log(`  sub         ${identity.sub}`);
-  console.log(`  tid         ${OIDC_TENANT_ID}`);
+  console.log(`  tid         ${TENANT_ID}`);
   console.log(`  authorHash  ${identity.authorHash}${typeLine}`);
   console.log(`\n${token}\n`);
   console.log('Send it as:');
