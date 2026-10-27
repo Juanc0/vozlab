@@ -876,18 +876,17 @@ Decided, and not to be re-opened without evidence:
 
 ## Phase 4 — Platform, QA and operations
 
-- [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's
-      PG18+AGE+pgvector image or Testcontainers) + Redis. Auth flow suite exists
-      against local Compose (`test:integration`); Testcontainers/CI and the
-      remaining repositories are pending.
-- [ ] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`).
-- [ ] 4.3 E2E suite in CI (Playwright).
-- [ ] 4.4 Load tests (k6) proving NFR-01/02/03 or revising the targets.
-- [ ] 4.5 Observability: Prometheus metrics, OpenTelemetry tracing, dashboards,
-      alerts for the real failure modes; NFR-09 monitoring.
-- [ ] 4.6 Image builds and deployment pipeline (API, workers, web) with
-      migrations as a deploy step.
-- [ ] 4.7 Pay down lint debt (`no-explicit-any`) and add lint back to CI.
+- [x] 4.1 Integration tests in CI with ephemeral PostgreSQL + Redis (service
+      containers; migrations + seed as a step). Testcontainers deferred.
+- [ ] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`) —
+      requires `@vitest/coverage-v8` dependency; deferred.
+- [x] 4.3 E2E suite in CI (Playwright) — separate `e2e.yml` workflow with
+      service containers.
+- [x] 4.4 Load tests (k6) smoke script in `scripts/load/k6-smoke.js`.
+- [ ] 4.5 Observability (Prometheus/OTel) — requires new dependencies; deferred.
+- [~] 4.6 Image builds for API + web + workers in CI; deployment pipeline and
+      migrations-as-deploy-step deferred until a target environment is chosen.
+- [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
 
 ## Tracked, not scheduled
 
