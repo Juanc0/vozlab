@@ -34,6 +34,24 @@ export type { AgentType, SystemRole, WorkspaceRole };
 /** Fixed router/tenant identifiers — deterministic so seeds can re-run safely. */
 export const TENANT_ID = '11111111-1111-4111-8111-111111111111';
 export const TENANT_CONNECTION_ID = '22222222-2222-4222-8222-222222222222';
+
+/** Google Workspace (institutional) tenant. */
+export const GOOGLE_TENANT_ID = '44444444-4444-4444-8444-444444444444';
+export const GOOGLE_TENANT_SLUG = 'google-institucional';
+/** Placeholder: replace with real Google Workspace hosted domain. */
+export const GOOGLE_OIDC_TENANT_ID = 'sabana.edu.co';
+
+/** Microsoft Entra (institutional) tenant. */
+export const ENTRA_TENANT_ID = '55555555-5555-4555-8555-555555555555';
+export const ENTRA_TENANT_SLUG = 'entra-institucional';
+/** Placeholder: replace with real Entra tenant/directory ID. */
+export const ENTRA_OIDC_TENANT_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+/** Google personal (consumer) tenant. */
+export const GOOGLE_PERSONAL_TENANT_ID = '66666666-6666-4666-8666-666666666666';
+export const GOOGLE_PERSONAL_TENANT_SLUG = 'google-personal';
+/** Personal Google accounts have no hd claim; this sentinel maps them. */
+export const GOOGLE_PERSONAL_OIDC_TENANT_ID = '__google_personal__';
 export const TENANT_SLUG = 'sabana';
 /** Must match the JWT `tid` claim. */
 export const OIDC_TENANT_ID = 'sabana';

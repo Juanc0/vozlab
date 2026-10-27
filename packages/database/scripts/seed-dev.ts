@@ -89,6 +89,15 @@ import {
   TENANT_CONNECTION_ID,
   TENANT_ID,
   TENANT_SLUG,
+  GOOGLE_TENANT_ID,
+  GOOGLE_TENANT_SLUG,
+  GOOGLE_OIDC_TENANT_ID,
+  ENTRA_TENANT_ID,
+  ENTRA_TENANT_SLUG,
+  ENTRA_OIDC_TENANT_ID,
+  GOOGLE_PERSONAL_TENANT_ID,
+  GOOGLE_PERSONAL_TENANT_SLUG,
+  GOOGLE_PERSONAL_OIDC_TENANT_ID,
   WORKSPACE_ID,
   WORKSPACE_SLUG,
 } from './dev-identities.js';
@@ -171,17 +180,28 @@ async function seed(): Promise<void> {
 
   try {
     // --- Router DB: tenant registry + physical connection ------------------
-    await routerDb
-      .insert(tenants)
-      .values({
-        id: TENANT_ID,
-        slug: TENANT_SLUG,
-        oidcTenantId: OIDC_TENANT_ID,
-        name: 'Universidad Sabana (dev)',
-        description: 'Local development tenant',
-      })
-      .onConflictDoNothing();
+    // Multiple tenants share the same dev DB for simplicity.
+    const devTenants = [
+      { id: TENANT_ID, slug: TENANT_SLUG, oidcTenantId: OIDC_TENANT_ID, name: 'Universidad Sabana (dev)' },
+      { id: GOOGLE_TENANT_ID, slug: GOOGLE_TENANT_SLUG, oidcTenantId: GOOGLE_OIDC_TENANT_ID, name: 'Google Institucional (dev)' },
+      { id: ENTRA_TENANT_ID, slug: ENTRA_TENANT_SLUG, oidcTenantId: ENTRA_OIDC_TENANT_ID, name: 'Entra Institucional (dev)' },
+      { id: GOOGLE_PERSONAL_TENANT_ID, slug: GOOGLE_PERSONAL_TENANT_SLUG, oidcTenantId: GOOGLE_PERSONAL_OIDC_TENANT_ID, name: 'Google Personal (dev)' },
+    ];
 
+    for (const t of devTenants) {
+      await routerDb
+        .insert(tenants)
+        .values({
+          id: t.id,
+          slug: t.slug,
+          oidcTenantId: t.oidcTenantId,
+          name: t.name,
+          description: 'Local development tenant',
+        })
+        .onConflictDoNothing();
+    }
+
+    // Physical connection for the primary tenant (others share for dev).
     await routerDb
       .insert(tenantConnections)
       .values({
@@ -194,6 +214,27 @@ async function seed(): Promise<void> {
         password: tenantConfig.password,
       })
       .onConflictDoNothing();
+
+    // Share the same connection for the other dev tenants.
+    const extraConnections = [
+      { id: '77777777-7777-4777-8777-777777777777', tenantId: GOOGLE_TENANT_ID },
+      { id: '88888888-8888-4888-8888-888888888888', tenantId: ENTRA_TENANT_ID },
+      { id: '99999999-9999-4999-8999-999999999999', tenantId: GOOGLE_PERSONAL_TENANT_ID },
+    ];
+    for (const c of extraConnections) {
+      await routerDb
+        .insert(tenantConnections)
+        .values({
+          id: c.id,
+          tenantId: c.tenantId,
+          host: tenantConfig.host,
+          port: tenantConfig.port,
+          database: tenantConfig.database,
+          user: tenantConfig.user,
+          password: tenantConfig.password,
+        })
+        .onConflictDoNothing();
+    }
 
     // --- Tenant DB: workspace, users, memberships -------------------------
     await tenantDb
