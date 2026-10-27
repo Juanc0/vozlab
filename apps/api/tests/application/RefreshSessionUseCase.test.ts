@@ -78,7 +78,7 @@ describe('RefreshSessionUseCase', () => {
     expect(tokens.issued).toEqual([
       {
         userId: AUTH_USER.id,
-        tenantKey: TENANT_KEY,
+        tenantKey: TENANT_ID,
         authorHash: AUTHOR_HASH,
       },
     ]);

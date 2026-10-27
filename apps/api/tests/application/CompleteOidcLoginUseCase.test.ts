@@ -65,7 +65,7 @@ describe('CompleteOidcLoginUseCase', () => {
     expect(identity.exchangeCalls).toEqual([
       { code: 'auth-code', codeVerifier: 'verifier-1', nonce: 'nonce-1' },
     ]);
-    expect(router.calls).toContain('findTenantByOidcId:tenant-oidc');
+    expect(router.calls).toContain('findTenantBySlug:local');
 
     expect(users.oidcUpserts).toHaveLength(1);
     const [{ input, tid }] = users.oidcUpserts;
