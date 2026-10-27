@@ -4,6 +4,7 @@ import {
   varchar,
   boolean,
   timestamp,
+  integer,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -87,6 +88,7 @@ export const workspaceMemberships = authSchema.table(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     role: varchar('role', { length: 30 }).default('MEMBER').notNull(), // 'ADMIN' | 'MODERATOR' | 'MEMBER'
+    status: varchar('status', { length: 20 }).default('ACTIVE').notNull(), // 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'REMOVED'
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -96,6 +98,38 @@ export const workspaceMemberships = authSchema.table(
       table.workspaceId,
       table.userId
     ),
+  ]
+);
+
+/**
+ * Invitations (D3).
+ *
+ * An admin creates an invitation with a random single-use token. Only the
+ * SHA-256 hash is stored; the raw token is returned once. Re-sending
+ * generates a new token and rotates the hash.
+ */
+export const invitations = authSchema.table(
+  'invitations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    email: varchar('email', { length: 255 }),
+    emailHash: varchar('email_hash', { length: 64 }),
+    role: varchar('role', { length: 30 }).default('MEMBER').notNull(),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    maxUses: integer('max_uses'),
+    usedCount: integer('used_count').default(0).notNull(),
+    status: varchar('status', { length: 20 }).default('PENDING').notNull(), // 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdBy: varchar('created_by', { length: 64 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_invitations_workspace').on(table.workspaceId),
+    index('idx_invitations_status').on(table.status),
   ]
 );
 
