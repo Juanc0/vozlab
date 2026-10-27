@@ -24,8 +24,8 @@ describe('normalizeApiBaseUrl', () => {
     expect(normalizeApiBaseUrl('  http://localhost:3000/api/v1  ')).toBe('http://localhost:3000/api/v1');
   });
 
-  it('rejects values that are not absolute http(s) URLs', () => {
-    expect(normalizeApiBaseUrl('/api/v1')).toBe(DEFAULT_API_BASE_URL);
+  it('accepts relative paths and rejects non-http(s) schemes', () => {
+    expect(normalizeApiBaseUrl('/api/v1')).toBe('/api/v1');
     expect(normalizeApiBaseUrl('api/v1')).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl('ftp://api.vozlab.example')).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl('javascript:alert(1)')).toBe(DEFAULT_API_BASE_URL);

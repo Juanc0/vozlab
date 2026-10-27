@@ -23,6 +23,12 @@ export function normalizeApiBaseUrl(value: string | null | undefined): string {
     return DEFAULT_API_BASE_URL;
   }
 
+  // Allow relative paths (e.g. '/api/v1') so the API resolves against
+  // the current origin — useful behind a reverse proxy / tunnel.
+  if (trimmed.startsWith('/')) {
+    return trimmed.replace(/\/+$/, '');
+  }
+
   let parsed: URL;
   try {
     parsed = new URL(trimmed);

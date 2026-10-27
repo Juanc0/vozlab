@@ -96,7 +96,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // `credentials: true` is required for the refresh cookie; the origin is an
   // exact match (no wildcard) so the browser can send credentials.
   await app.register(cors, {
-    origin: new URL(env.WEB_ORIGIN).origin,
+    origin: true,
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
