@@ -143,6 +143,12 @@ be checked, not argued.
 
 ### 2.3 Later — pilot to growth: deployment and scale
 
+New decisions recorded (2026-10-27, ADR-0033 to ADR-0037): demo topology is a
+single host + tunnel (no cloud for MVP); keep Redis Streams with trimming +
+outbox; ingestion is a registry-backed gateway with PII masked before enqueue;
+workers are always-on containers (Lambda only for stateless glue); Ollama stays
+colocated with workers, dedicated GPU node in production.
+
 | ID | Item | Closes | Effort | Acceptance criterion |
 | --- | --- | --- | --- | --- |
 | L-01 | Infrastructure as code (CDK in TypeScript) for dev, staging and production accounts | D-38, `11` §4.6 | L | A clean environment is created from the code alone |

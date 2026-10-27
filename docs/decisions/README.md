@@ -45,6 +45,11 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0030](ADR-0030-zitadel-replaces-keycloak.md) | Zitadel replaces Keycloak as the identity broker | Accepted | Go-based broker (~128 MB) replaces Keycloak in production; Keycloak stays in the lab. |
 | [0031](ADR-0031-tenant-resolved-from-token-claims.md) | Tenant resolved from token claims, not user input | Accepted | Login carries only `kc_idp_hint`; tenant resolved from `hd`/`tid`/org ID in `CompleteOidcLoginUseCase`. |
 | [0032](ADR-0032-self-hosted-observability.md) | Self-hosted observability (Prometheus, Tempo, Grafana) | Accepted | prom-client + OTel in API, prometheus_client in workers, Tempo + Grafana under `--profile observability`. |
+| [0033](ADR-0033-demo-topology-single-host.md) | Demo topology is a single host with a tunnel; no cloud for the MVP | Accepted | Single host + Cloudflare Tunnel; no cloud provider; AGE constraint forces self-hosted Postgres. |
+| [0034](ADR-0034-keep-redis-streams.md) | Keep Redis Streams; add trimming and an outbox instead of migrating to SQS | Accepted | Redis Streams remain the transport; `MAXLEN ~` + outbox (Phase 5) replace managed queues. |
+| [0035](ADR-0035-ingestion-gateway.md) | Ingestion is a registry-backed gateway with PII masked before enqueue | Accepted | Management API for `meta.data_sources`, producer masks PII, generic adapter first. |
+| [0036](ADR-0036-workers-always-on-containers.md) | Workers are always-on containers; Lambda only for stateless glue | Accepted | Embedder/relator/extractor as containers; Lambda reserved for webhook/backfill. |
+| [0037](ADR-0037-ollama-colocated.md) | Ollama stays colocated with the workers; dedicated GPU node in production | Accepted | Demo: same host; production: private GPU instance; never public or Lambda. |
 
 ## How to add an ADR
 
