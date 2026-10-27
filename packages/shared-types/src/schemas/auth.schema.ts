@@ -43,6 +43,7 @@ export const LoginQuerySchema = z.object({
       message: 'redirect must be an absolute path on the same origin',
     })
     .optional(),
+  institution: z.string().max(100).optional(),
 });
 export type LoginQuery = z.infer<typeof LoginQuerySchema>;
 

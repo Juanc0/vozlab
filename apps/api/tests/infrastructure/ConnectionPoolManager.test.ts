@@ -24,6 +24,9 @@ describe('ConnectionPoolManager', () => {
       async findTenantById() {
         return null;
       },
+      async findTenantBySlug() {
+        return null;
+      },
       async getTenantDatabaseConfig(tenantId: string): Promise<TenantConnectionConfig | null> {
         queryCount++;
         return {
@@ -62,6 +65,9 @@ describe('ConnectionPoolManager', () => {
       async findTenantById() {
         return null;
       },
+      async findTenantBySlug() {
+        return null;
+      },
       async getTenantDatabaseConfig(): Promise<TenantConnectionConfig | null> {
         return null;
       },
@@ -83,6 +89,9 @@ describe('ConnectionPoolManager', () => {
         return null;
       },
       async findTenantById() {
+        return null;
+      },
+      async findTenantBySlug() {
         return null;
       },
       async getTenantDatabaseConfig(): Promise<TenantConnectionConfig | null> {

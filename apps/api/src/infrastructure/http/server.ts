@@ -216,7 +216,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const castVoteUseCase = new CastVoteUseCase(interactionRepo, uow, eventPublisher);
   const startOidcLoginUseCase = new StartOidcLoginUseCase(
     identityProvider,
-    oidcStateStore
+    oidcStateStore,
+    routerDb
   );
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,

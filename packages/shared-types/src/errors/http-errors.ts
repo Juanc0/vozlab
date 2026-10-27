@@ -62,6 +62,10 @@ export const ERROR_CODES = {
     status: 403,
     message: 'Tenant is not provisioned in the system',
   },
+  ERR_TENANT_MISMATCH: {
+    status: 400,
+    message: 'The identity provider tenant does not match the requested institution',
+  },
   ERR_EVENT_EXPIRED: {
     status: 400,
     message: 'Event code has expired or is invalid',

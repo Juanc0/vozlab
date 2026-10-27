@@ -62,6 +62,13 @@ export class CompleteOidcLoginUseCase {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
+    // If the login was started with a fixed institution, the IdP's tenant
+    // claim must match. A mismatch means the user authenticated against a
+    // different institution than requested.
+    if (state.institution && identity.tenantKey !== state.institution) {
+      throw new DomainError('ERR_TENANT_MISMATCH');
+    }
+
     const tenant = await this.routerDb.findTenantByOidcId(identity.tenantKey);
     if (!tenant) {
       throw new DomainError(

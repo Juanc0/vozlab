@@ -10,6 +10,8 @@ export interface OidcStateData {
   codeVerifier: string;
   /** Absolute path on the PWA origin to return to after login. */
   redirectPath: string;
+  /** Optional institution slug requested at login time. */
+  institution?: string;
 }
 
 export interface IOidcStateStore {

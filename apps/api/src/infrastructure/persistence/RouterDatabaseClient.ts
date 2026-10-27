@@ -60,6 +60,30 @@ export class RouterDatabaseClient
   }
 
   /**
+   * Resolve a tenant by its slug.
+   */
+  async findTenantBySlug(
+    slug: string
+  ): Promise<{ id: string; slug: string; oidcTenantId: string } | null> {
+    try {
+      const [row] = await this.db
+        .select({
+          id: tenants.id,
+          slug: tenants.slug,
+          oidcTenantId: tenants.oidcTenantId,
+        })
+        .from(tenants)
+        .where(eq(tenants.slug, slug))
+        .limit(1);
+
+      return row ?? null;
+    } catch (err) {
+      log.error({ err, slug }, 'failed to find tenant by slug');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
    * Resolve a tenant by its internal UUID (event-join path).
    */
   async findTenantById(

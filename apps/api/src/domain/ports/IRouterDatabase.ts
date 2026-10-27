@@ -19,6 +19,14 @@ export interface IRouterDatabase {
   findTenantByOidcId(oidcTenantId: string): Promise<{ id: string; slug: string } | null>;
 
   /**
+   * Resolve a tenant by its slug.
+   * Returns the internal id, slug and oidc_tenant_id, or null if not provisioned.
+   */
+  findTenantBySlug(
+    slug: string
+  ): Promise<{ id: string; slug: string; oidcTenantId: string } | null>;
+
+  /**
    * Resolve a tenant by its internal UUID.
    *
    * Used by the event-join flow, where the global code registry yields the

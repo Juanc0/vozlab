@@ -90,6 +90,10 @@ export function makeRouterDb(
       calls.push(`findTenantById:${tenantId}`);
       return byId;
     },
+    async findTenantBySlug(slug) {
+      calls.push(`findTenantBySlug:${slug}`);
+      return byId;
+    },
     async getTenantDatabaseConfig() {
       return null;
     },

@@ -2,12 +2,15 @@ import { createHash, randomBytes } from 'node:crypto';
 import { isSafeRedirectPath } from '@vozlab/shared-types';
 import { IIdentityProvider } from '../../domain/ports/IIdentityProvider.js';
 import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
+import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 
 const STATE_TTL_SECONDS = 10 * 60;
 
 export interface StartOidcLoginInput {
   /** Absolute path on the PWA origin; validated by the controller. */
   redirectPath: string;
+  /** Optional institution slug requested at login time. */
+  institution?: string;
 }
 
 export interface StartOidcLoginResult {
@@ -24,7 +27,8 @@ export interface StartOidcLoginResult {
 export class StartOidcLoginUseCase {
   constructor(
     private readonly identityProvider: IIdentityProvider,
-    private readonly stateStore: IOidcStateStore
+    private readonly stateStore: IOidcStateStore,
+    private readonly routerDb?: IRouterDatabase
   ) {}
 
   async execute(input: StartOidcLoginInput): Promise<StartOidcLoginResult> {
@@ -39,9 +43,18 @@ export class StartOidcLoginUseCase {
       ? input.redirectPath
       : '/';
 
+    // Resolve the optional institution to its oidc_tenant_id.
+    let institution: string | undefined;
+    if (input.institution && this.routerDb) {
+      const tenant = await this.routerDb.findTenantBySlug(input.institution);
+      if (tenant) {
+        institution = tenant.oidcTenantId;
+      }
+    }
+
     await this.stateStore.save(
       state,
-      { nonce, codeVerifier, redirectPath },
+      { nonce, codeVerifier, redirectPath, institution },
       STATE_TTL_SECONDS
     );
 

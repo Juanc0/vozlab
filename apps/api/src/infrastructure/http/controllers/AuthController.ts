@@ -63,9 +63,10 @@ export class AuthController {
   async login(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const parsed = LoginQuerySchema.safeParse(req.query);
     const redirectPath = parsed.success ? (parsed.data.redirect ?? '/') : '/';
+    const institution = parsed.success ? parsed.data.institution : undefined;
 
     try {
-      const result = await this.startLogin.execute({ redirectPath });
+      const result = await this.startLogin.execute({ redirectPath, institution });
       return reply.redirect(result.authorizationUrl);
     } catch (error) {
       log.error(
