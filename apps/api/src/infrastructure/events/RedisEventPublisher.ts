@@ -23,6 +23,7 @@ export class RedisEventPublisher implements IEventPublisher {
       socket: {
         host: env.REDIS_HOST,
         port: env.REDIS_PORT,
+        tls: env.REDIS_TLS ? true : undefined,
       },
       password: env.REDIS_PASSWORD || undefined,
     });

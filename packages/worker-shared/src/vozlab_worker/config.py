@@ -67,6 +67,7 @@ class WorkerSettings(BaseSettings):
 
     # --- Redis / streams ----------------------------------------------
     redis_url: str = "redis://localhost:6379/0"
+    redis_tls: bool = False
     stream_name: str = "stream:node_created"
     consumer_group: str = "worker"
     consumer_name: str | None = None

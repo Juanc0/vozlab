@@ -28,7 +28,7 @@ const EnvSchema = z
     REDIS_HOST: z.string().min(1, 'REDIS_HOST is required'),
     REDIS_PORT: z.coerce.number().min(1).max(65535).default(6379),
     REDIS_PASSWORD: z.string().optional().default(''),
-
+    REDIS_TLS: z.coerce.boolean().optional().default(false),
     // --- Identity / JWT ---
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 chars'),
     JWT_EXPIRES_IN: z

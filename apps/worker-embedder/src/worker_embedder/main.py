@@ -83,7 +83,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     metrics_server.start()
     logger.info("metrics server started", extra={"port": settings.metrics_port})
 
-    redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+    redis_client = redis.Redis.from_url(
+        settings.redis_url, decode_responses=True, ssl=settings.redis_tls
+    )
     api = ApiClient(
         settings.api_base_url,
         token_provider,

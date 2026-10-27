@@ -2,6 +2,7 @@ import { DomainError } from '../../domain/errors/DomainError.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import { randomUUID } from 'node:crypto';
+import { maskPayload } from '../../shared/pii/mask.js';
 
 export type IngestSourceInput = {
   sourceKey: string;
@@ -41,7 +42,7 @@ export class IngestSourceUseCase {
       tid: input.tid,
       workspaceId: source.workspaceId,
       sourceKey: input.sourceKey,
-      payload: input.payload,
+      payload: maskPayload(input.payload),
       correlationId,
     });
 
