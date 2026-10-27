@@ -199,12 +199,39 @@ services:
     networks:
       - vozlab-net
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vozlab-prometheus
+    profiles: ['observability']
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - vozlab-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vozlab-grafana
+    profiles: ['observability']
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - vozlab-net
+
 volumes:
   postgres_data:
   redis_data:
   ollama_data:
   zitadel_db_data:
   zitadel_bootstrap:
+  prometheus_data:
+  grafana_data:
 
 networks:
   vozlab-net:
