@@ -27,6 +27,53 @@ jobs:
       # Type-checks src (build), tests + scripts (type-check), and runs the suite.
       - run: pnpm turbo run build type-check test
 
+  integration:
+    name: API integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Provision router + tenant databases and seed.
+      - name: Provision databases
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vozlab_router;" || true
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vozlab_tenant_dev;" || true
+          PGPASSWORD=postgres psql -h localhost -U postgres -d vozlab_router -c "CREATE EXTENSION IF NOT EXISTS vector;" || true
+          PGPASSWORD=postgres psql -h localhost -U postgres -d vozlab_tenant_dev -c "CREATE EXTENSION IF NOT EXISTS vector;" || true
+          pnpm --filter @vozlab/database db:migrate:router
+          pnpm --filter @vozlab/database db:migrate:tenant
+          pnpm --filter @vozlab/database db:seed:dev
+
+      - name: Run integration suite
+        run: pnpm --filter @vozlab/api test:integration
+
   python:
     name: Python worker runtime
     runs-on: ubuntu-latest
