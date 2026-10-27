@@ -44,7 +44,8 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
       .where(
         and(
           eq(workspaceMemberships.workspaceId, workspaceId),
-          eq(workspaceMemberships.userId, userId)
+          eq(workspaceMemberships.userId, userId),
+          eq(workspaceMemberships.status, 'ACTIVE')
         )
       )
       .limit(1);
