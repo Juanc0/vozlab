@@ -215,6 +215,111 @@ describe('OidcProviderClient', () => {
     ).rejects.toMatchObject({ code: 'ERR_OIDC_EXCHANGE_FAILED' });
   });
 
+  it('rejects a token signed with an unknown key', async () => {
+    const otherPair = await generateKeyPair('RS256');
+    const token = await new SignJWT({ nonce: 'nonce-1', tid: 'tenant-1' })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuer(CONFIG.issuer)
+      .setAudience(CONFIG.clientId)
+      .setSubject('idp-sub-1')
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .sign(otherPair.privateKey);
+
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    await expect(
+      makeClient(fetchImpl).exchangeCode({
+        code: 'auth-code',
+        codeVerifier: 'verifier-1',
+        nonce: 'nonce-1',
+      })
+    ).rejects.toMatchObject({ code: 'ERR_OIDC_EXCHANGE_FAILED' });
+  });
+
+  it('rejects a token with a wrong issuer', async () => {
+    const token = await new SignJWT({ nonce: 'nonce-1', tid: 'tenant-1' })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuer('https://evil-idp.test')
+      .setAudience(CONFIG.clientId)
+      .setSubject('idp-sub-1')
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .sign(privateKey);
+
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    await expect(
+      makeClient(fetchImpl).exchangeCode({
+        code: 'auth-code',
+        codeVerifier: 'verifier-1',
+        nonce: 'nonce-1',
+      })
+    ).rejects.toMatchObject({ code: 'ERR_OIDC_EXCHANGE_FAILED' });
+  });
+
+  it('rejects a token with alg: none', async () => {
+    // Build an unsigned token manually (alg: none)
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({
+        iss: CONFIG.issuer,
+        aud: CONFIG.clientId,
+        sub: 'idp-sub-1',
+        nonce: 'nonce-1',
+        tid: 'tenant-1',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 300,
+      })
+    ).toString('base64url');
+    const token = `${header}.${payload}.`;
+
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    await expect(
+      makeClient(fetchImpl).exchangeCode({
+        code: 'auth-code',
+        codeVerifier: 'verifier-1',
+        nonce: 'nonce-1',
+      })
+    ).rejects.toMatchObject({ code: 'ERR_OIDC_EXCHANGE_FAILED' });
+  });
+
+  it('prefers tid over hd when both are present', async () => {
+    const token = await signIdToken({
+      tid: 'entra-tenant',
+      hd: 'example.edu',
+      email: 'ada@example.edu',
+      email_verified: true,
+    });
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    const identity = await makeClient(fetchImpl).exchangeCode({
+      code: 'auth-code',
+      codeVerifier: 'verifier-1',
+      nonce: 'nonce-1',
+    });
+
+    expect(identity.tenantKey).toBe('entra-tenant');
+  });
+
+  it('accepts the Zitadel org ID claim as tenant key', async () => {
+    const token = await signIdToken({
+      'urn:zitadel:iam:user:resourceowner:id': 'zitadel-org-123',
+      email: 'ada@example.edu',
+      email_verified: true,
+    });
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    const identity = await makeClient(fetchImpl).exchangeCode({
+      code: 'auth-code',
+      codeVerifier: 'verifier-1',
+      nonce: 'nonce-1',
+    });
+
+    expect(identity.tenantKey).toBe('zitadel-org-123');
+  });
+
   it('maps a token-endpoint rejection to ERR_OIDC_EXCHANGE_FAILED', async () => {
     const { fetchImpl } = fetchWith(
       { error: 'invalid_grant', error_description: 'code expired' },
