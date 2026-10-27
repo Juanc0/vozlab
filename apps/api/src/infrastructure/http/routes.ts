@@ -42,6 +42,8 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
+import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import { IngestSourceUseCase } from '../../application/use_cases/IngestSourceUseCase.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
@@ -112,6 +114,7 @@ export interface RouteDependencies {
   routerDb: IRouterDatabase;
   tenantIdentityProviderRepo?: ITenantIdentityProviderRepository;
   dataSourceRepo?: IDataSourceRepository;
+  ingestSourceUseCase?: IngestSourceUseCase;
   membershipRepo: IMembershipRepository;
   invitationRepo?: IInvitationRepository;
   inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
@@ -226,7 +229,10 @@ export async function registerRoutes(
     getMeUseCase,
     joinEventUseCase
   );
-  const ingestionController = new IngestionController(resolveSourceUseCase);
+  const ingestionController = new IngestionController(
+    resolveSourceUseCase,
+    deps.ingestSourceUseCase
+  );
   const membershipController = new MembershipController(
     deps.inviteToWorkspaceUseCase,
     deps.membershipRepo,
@@ -376,6 +382,14 @@ export async function registerRoutes(
       '/api/v1/data-sources/:id',
       { preHandler: guard },
       (req, reply) => dataSourceController.deactivate(req, reply)
+    );
+  }
+
+  if (ingestionController) {
+    app.post(
+      '/api/v1/ingestion/ingest',
+      { preHandler: guard },
+      (req, reply) => ingestionController.ingest(req, reply)
     );
   }
 

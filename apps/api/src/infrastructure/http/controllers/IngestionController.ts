@@ -1,26 +1,21 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ResolveSourceQuerySchema } from '@vozlab/shared-types';
 import { ResolveSourceUseCase } from '../../../application/use_cases/ResolveSourceUseCase.js';
+import { IngestSourceUseCase } from '../../../application/use_cases/IngestSourceUseCase.js';
 import { log } from '../../../shared/logger/index.js';
 import { mapDomainError, sendError } from './errorResponse.js';
+import { getRequestContext } from './requestContext.js';
 
 /**
- * IngestionController: HTTP adapter for the ingestion plumbing.
- *
- * Today it exposes the source resolution route of ADR-0025 — the route that
- * turns an external `sourceId` into the workspace that owns it, so the
- * Extractor never chooses a workspace (ADR-0009).
+ * IngestionController: HTTP adapter for the ingestion plumbing (ADR-0009,
+ * ADR-0025, ADR-0035).
  */
 export class IngestionController {
-  constructor(private readonly resolveSourceUseCase: ResolveSourceUseCase) {}
+  constructor(
+    private readonly resolveSourceUseCase: ResolveSourceUseCase,
+    private readonly ingestSourceUseCase?: IngestSourceUseCase
+  ) {}
 
-  /**
-   * GET /api/v1/ingestion/resolve-source?sourceId=…
-   *
-   * 200 with the workspace and the per-source behavior; 404 for an unknown
-   * or inactive source. The route is agent-only and tenant-scoped — it does
-   * not take an `X-Workspace-ID` header, because the workspace is the answer.
-   */
   async resolveSource(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const parsed = ResolveSourceQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -48,6 +43,29 @@ export class IngestionController {
         { err: error instanceof Error ? error.message : error, reqId: req.reqId },
         'resolveSource failed'
       );
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  async ingest(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    if (!this.ingestSourceUseCase) return sendError(reply, 'ERR_INTERNAL_SERVER_ERROR');
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const body = req.body as { sourceKey?: string; payload?: unknown };
+    if (!body.sourceKey || body.payload === undefined) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED');
+    }
+
+    try {
+      const result = await this.ingestSourceUseCase.execute({
+        sourceKey: body.sourceKey,
+        payload: body.payload,
+        tid: ctx.tid,
+      });
+      return reply.status(202).send(result);
+    } catch (error) {
       return sendError(reply, mapDomainError(error));
     }
   }

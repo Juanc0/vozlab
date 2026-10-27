@@ -29,6 +29,7 @@ import { CreateNodeUseCase } from '../../application/use_cases/CreateNodeUseCase
 import { GetNodeUseCase } from '../../application/use_cases/GetNodeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../application/use_cases/GetNodeNeighborsUseCase.js';
 import { ResolveSourceUseCase } from '../../application/use_cases/ResolveSourceUseCase.js';
+import { IngestSourceUseCase } from '../../application/use_cases/IngestSourceUseCase.js';
 import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCase.js';
 import { GetNodeWindowUseCase } from '../../application/use_cases/GetNodeWindowUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
@@ -146,6 +147,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const getNodeUseCase = new GetNodeUseCase(nodeRepo, displayNames);
   const getNodeNeighborsUseCase = new GetNodeNeighborsUseCase(nodeRepo, displayNames);
   const resolveSourceUseCase = new ResolveSourceUseCase(dataSourceRepo);
+  const ingestSourceUseCase = new IngestSourceUseCase(dataSourceRepo, eventPublisher);
   const listNodesUseCase = new ListNodesUseCase(nodeRepo, displayNames);
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo, displayNames);
   const getNodeWindowUseCase = new GetNodeWindowUseCase(nodeRepo, displayNames);
@@ -308,6 +310,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     routerDb,
     tenantIdentityProviderRepo: routerDb,
     dataSourceRepo: dataSourceRepo,
+    ingestSourceUseCase: ingestSourceUseCase,
     membershipRepo,
     invitationRepo,
     inviteToWorkspaceUseCase,
