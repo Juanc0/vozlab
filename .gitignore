@@ -17,6 +17,9 @@ dev-dist/
 .env.*
 !.env.example
 
+# Zitadel bootstrap PATs (written by the first Zitadel init)
+.zitadel-bootstrap/
+
 # Python
 .venv/
 __pycache__/

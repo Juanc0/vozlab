@@ -22,6 +22,13 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Automatically Initialized IAM_LOGIN_CLIENT
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+      # Lab-only IAM_OWNER machine user so scripts/setup-zitadel.sh can run
+      # without the console. The PAT is stored in the bootstrap volume; the
+      # script reads it with `docker cp` because this stack uses a named volume.
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: "${ZITADEL_BOOTSTRAP_USERNAME:-vozlab-bootstrap}"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "${ZITADEL_BOOTSTRAP_NAME:-VozLab Bootstrap}"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/admin.pat
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
       ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
     ports:

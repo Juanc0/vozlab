@@ -53,6 +53,22 @@ services:
   #
   # Console: http://localhost:8081/ui/console
   # Admin: zitadel-admin@zitadel.localhost / Password1!
+  #
+  # Bootstrap credentials (v4.16+):
+  #   The first init creates a machine user (`vozlab-bootstrap`) with the
+  #   IAM_OWNER role and writes its PAT to `.zitadel-bootstrap/admin.pat`.
+  #   `scripts/setup-zitadel.sh` uses that PAT to provision the project, the
+  #   OIDC app and the test user without a browser. The PAT exists only on the
+  #   first init of an empty Zitadel database; keep the bind mount so the host
+  #   can read it.
+  #
+  # Public demo behind zrok:
+  #   ZITADEL_EXTERNALDOMAIN=vozlabauth.share.zrok.io \
+  #   ZITADEL_EXTERNALPORT=443 ZITADEL_EXTERNALSECURE=true \
+  #   docker compose --profile idp up -d zitadel zitadel-db
+  #
+  #   The external domain can be changed without re-initialising the database:
+  #   Zitadel rebuilds the OIDC issuer from these values on restart.
   zitadel-db:
     image: postgres:17-alpine
     container_name: vozlab-zitadel-db
@@ -79,9 +95,9 @@ services:
     command: start-from-init --masterkey "${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}"
     environment:
       ZITADEL_PORT: 8080
-      ZITADEL_EXTERNALDOMAIN: localhost
-      ZITADEL_EXTERNALPORT: 8081
-      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALDOMAIN: "${ZITADEL_EXTERNALDOMAIN:-localhost}"
+      ZITADEL_EXTERNALPORT: "${ZITADEL_EXTERNALPORT:-8081}"
+      ZITADEL_EXTERNALSECURE: "${ZITADEL_EXTERNALSECURE:-false}"
       ZITADEL_TLS_ENABLED: "false"
       ZITADEL_DATABASE_POSTGRES_DSN: postgresql://postgres:postgres@zitadel-db:5432/zitadel?sslmode=disable
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
@@ -89,12 +105,17 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Automatically Initialized IAM_LOGIN_CLIENT
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+      # Admin machine user for unattended provisioning (IAM_OWNER).
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: "${ZITADEL_BOOTSTRAP_USERNAME:-vozlab-bootstrap}"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "${ZITADEL_BOOTSTRAP_NAME:-VozLab Bootstrap}"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/admin.pat
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
       ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
     ports:
       - "127.0.0.1:8081:8080"
     volumes:
-      - zitadel_bootstrap:/zitadel/bootstrap:rw
+      - "${ZITADEL_BOOTSTRAP_DIR:-./.zitadel-bootstrap}:/zitadel/bootstrap:rw"
     networks:
       - vozlab-net
     depends_on:
@@ -246,7 +267,6 @@ volumes:
   redis_data:
   ollama_data:
   zitadel_db_data:
-  zitadel_bootstrap:
   prometheus_data:
   grafana_data:
   tempo_data:

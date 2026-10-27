@@ -56,5 +56,3 @@ server.listen(PORT, () => {
   console.log('');
   console.log('Start tunnel: cloudflared tunnel --url http://localhost:' + PORT);
 });
-EOF
-echo created
