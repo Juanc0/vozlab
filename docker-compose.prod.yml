@@ -1,0 +1,170 @@
+# Production compose (VozLab)
+#
+# Uses published images instead of building locally. Run:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Migrations run as a one-shot container before the API starts:
+#   docker compose -f docker-compose.prod.yml run --rm migrate
+#
+# Requires a .env file with production secrets (see .env.production.example).
+
+services:
+  migrate:
+    image: vozlab/api:latest
+    container_name: vozlab-migrate
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    command: ["sh", "-c", "pnpm --filter @vozlab/database db:migrate:router && pnpm --filter @vozlab/database db:migrate:tenant"]
+    networks:
+      - vozlab-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: vozlab/postgres:18-age-pgvector
+    container_name: vozlab-postgres
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./packages/database/scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vozlab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: vozlab-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  api:
+    image: vozlab/api:latest
+    container_name: vozlab-api
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  web:
+    image: vozlab/web:latest
+    container_name: vozlab-web
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "5173"
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vozlab-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  worker-embedder:
+    image: vozlab/worker-embedder:latest
+    container_name: vozlab-worker-embedder
+    env_file: .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  worker-relacionador:
+    image: vozlab/worker-relacionador:latest
+    container_name: vozlab-worker-relacionador
+    env_file: .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+  worker-extractor:
+    image: vozlab/worker-extractor:latest
+    container_name: vozlab-worker-extractor
+    env_file: .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - vozlab-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+networks:
+  vozlab-net:
+    driver: bridge
+EOF
+echo created

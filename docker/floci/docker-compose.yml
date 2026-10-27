@@ -1,0 +1,21 @@
+# Local AWS emulation with Floci (optional, for IaC testing).
+# Run: docker compose -f docker/floci/docker-compose.yml up -d
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: vozlab-floci
+    ports:
+      - "4566:4566"
+    volumes:
+      - floci_data:/app/data
+    networks:
+      - vozlab-net
+
+volumes:
+  floci_data:
+
+networks:
+  vozlab-net:
+    driver: bridge
+EOF
+echo created

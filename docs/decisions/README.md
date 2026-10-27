@@ -51,6 +51,7 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0036](ADR-0036-workers-always-on-containers.md) | Workers are always-on containers; Lambda only for stateless glue | Accepted | Embedder/relator/extractor as containers; Lambda reserved for webhook/backfill. |
 | [0037](ADR-0037-ollama-colocated.md) | Ollama stays colocated with the workers; dedicated GPU node in production | Accepted | Demo: same host; production: private GPU instance; never public or Lambda. |
 | [0038](ADR-0038-ingestion-gateway-deferred.md) | Ingestion stays in the API for the MVP; extraction to a dedicated gateway is deferred | Accepted (deferred extraction) | Hexagonal use case is extraction-ready; triggers defined for future split. |
+| [0039](ADR-0039-deploy-strategy-mvp.md) | Deploy strategy for the MVP — single host, published images, Cloudflare Tunnel | Accepted | Local images + compose.prod + tunnel; Floci/Terraform for IaC testing. |
 
 ## How to add an ADR
 

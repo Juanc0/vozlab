@@ -887,8 +887,9 @@ Decided, and not to be re-opened without evidence:
       (prometheus_client), self-hosted Prometheus/Grafana/Tempo in compose
       (--profile observability), OpenTelemetry tracing in API, Grafana
       provisioning + dashboards.
-- [~] 4.6 Image builds for API + web + workers in CI; deployment pipeline and
-      migrations-as-deploy-step deferred until a target environment is chosen.
+- [x] 4.6 Deploy pipeline for MVP: docker-compose.prod.yml, .env.production.example,
+      migration one-shot container, Cloudflare Tunnel runbook, Floci + Terraform
+      IaC skeleton, GitHub Actions deploy workflow (manual). ADR-0039.
 - [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
 
 ## Tracked, not scheduled
