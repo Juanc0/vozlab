@@ -6,7 +6,7 @@ import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 export interface MockOidcIdentity {
   sub: string;
   email: string | null;
-  emailVerified: boolean;
+  emailVerified: boolean | null;
   name: string | null;
   /** Entra-style tenant claim; defaults to the seeded dev tenant. */
   tenantKey: string;

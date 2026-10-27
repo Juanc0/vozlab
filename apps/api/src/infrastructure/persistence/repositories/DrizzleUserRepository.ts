@@ -105,7 +105,7 @@ export class DrizzleUserRepository implements IUserRepository {
           return toAuthUser(updated ?? byProvider);
         }
 
-        if (input.email) {
+        if (input.email && input.emailVerified === true) {
           const [byEmail] = await tx
             .select()
             .from(users)

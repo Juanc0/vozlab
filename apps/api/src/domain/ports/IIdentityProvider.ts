@@ -9,7 +9,8 @@ export interface OidcIdentity {
   /** Stable IdP subject (`sub`); stored as `auth.users.provider_user_id`. */
   providerUserId: string;
   email: string | null;
-  emailVerified: boolean;
+  /** `true` = verified, `false` = explicitly unverified, `null` = not asserted. */
+  emailVerified: boolean | null;
   fullName: string | null;
   /**
    * Tenant discriminator from the validated ID token:

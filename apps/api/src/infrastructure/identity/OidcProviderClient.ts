@@ -140,9 +140,14 @@ export class OidcProviderClient implements IIdentityProvider {
 
     let email = claims.email ?? null;
     let fullName = claims.name ?? null;
-    // Explicit `email_verified: false` was rejected above; absent is accepted
-    // because Entra ID does not always emit the claim.
-    let emailVerified = true;
+    // Distinguish "verified", "not verified" and "not asserted".
+    // Absent claim → null (provider did not assert either way).
+    let emailVerified: boolean | null =
+      claims.email_verified === true
+        ? true
+        : claims.email_verified === false
+          ? false
+          : null;
 
     // Some providers omit profile claims from the ID token; userinfo is a
     // convenience, not an authority. A failure here never blocks login.
@@ -157,7 +162,9 @@ export class OidcProviderClient implements IIdentityProvider {
         } else {
           email = email ?? profile.email ?? null;
           fullName = fullName ?? profile.name ?? null;
-          if (profile.email_verified === false) emailVerified = false;
+          if (emailVerified === null && profile.email_verified !== undefined) {
+            emailVerified = profile.email_verified === true;
+          }
         }
       }
     }

@@ -58,7 +58,7 @@ export class CompleteOidcLoginUseCase {
       nonce: state.nonce,
     });
 
-    if (!identity.emailVerified) {
+    if (identity.emailVerified === false) {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
@@ -76,6 +76,7 @@ export class CompleteOidcLoginUseCase {
         email: identity.email,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
+        emailVerified: identity.emailVerified,
       },
       tenant.id
     );
