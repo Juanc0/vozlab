@@ -1,3 +1,4 @@
+import type { WorkspaceRole } from '@vozlab/shared-types';
 import { randomBytes } from 'node:crypto';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
@@ -60,7 +61,7 @@ export class DirectIdentityAddUseCase {
     await this.membershipRepo.add(
       user.id,
       input.workspaceId,
-      input.role as any,
+      input.role as WorkspaceRole,
       input.tid
     );
 

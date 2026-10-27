@@ -5,6 +5,7 @@ import {
   IUserRepository,
 } from '../../domain/ports/IUserRepository.js';
 import { IIdentityProvider } from '../../domain/ports/IIdentityProvider.js';
+import type { WorkspaceRole } from '@vozlab/shared-types';
 import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
@@ -128,7 +129,7 @@ export class CompleteOidcLoginUseCase {
           await this.membershipRepo.add(
             user.id,
             invitation.workspaceId,
-            invitation.role as any,
+            invitation.role as WorkspaceRole,
             tenant.id
           );
           // Mark invitation as accepted.

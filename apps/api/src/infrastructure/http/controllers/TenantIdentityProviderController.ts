@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ITenantIdentityProviderRepository } from '../../../domain/ports/ITenantIdentityProviderRepository.js';
+import type { TenantIdentityProvider } from '../../../domain/ports/ITenantIdentityProviderRepository.js';
 import { sendError, mapDomainError } from './errorResponse.js';
 import { getRequestContext } from './requestContext.js';
 
@@ -36,7 +37,7 @@ export class TenantIdentityProviderController {
     try {
       const provider = await this.repo.createProvider({
         tenantId: ctx.tid,
-        providerKind: body.providerKind as any,
+        providerKind: body.providerKind as TenantIdentityProvider['providerKind'],
         issuer: body.issuer,
         clientId: body.clientId ?? null,
         metadataUrl: body.metadataUrl ?? null,

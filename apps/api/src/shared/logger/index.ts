@@ -79,9 +79,9 @@ export function getReqId(): string {
  */
 export const log = new Proxy(logger, {
   get(target, prop: string | symbol) {
-    const value = (target as any)[prop];
+    const value = (target as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === 'function') {
-      return (...args: any[]) => {
+      return (...args: unknown[]) => {
         const reqId = als.getStore();
         if (
           reqId &&

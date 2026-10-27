@@ -19,7 +19,7 @@ export class Node {
     public readonly typeKey: string,
     public title: string,
     public description: string | null,
-    public attributes: Record<string, any>,
+    public attributes: Record<string, unknown>,
     public readonly authorHash: AuthorHash,
     public status: NodeStatus,
     public communityScore: number = 0,
@@ -106,7 +106,7 @@ export class Node {
   /**
    * Apply a delta of attribute changes (used by edit proposals).
    */
-  updateAttributes(delta: Record<string, any>): void {
+  updateAttributes(delta: Record<string, unknown>): void {
     this.attributes = { ...this.attributes, ...delta };
     this.updatedAt = new Date();
   }

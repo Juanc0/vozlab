@@ -3,6 +3,7 @@ import { InviteToWorkspaceUseCase } from '../../../application/use_cases/InviteT
 import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
 import { IInvitationRepository } from '../../../domain/ports/IInvitationRepository.js';
 import { sendError, mapDomainError } from './errorResponse.js';
+import type { WorkspaceRole } from '@vozlab/shared-types';
 import { getRequestContext } from './requestContext.js';
 
 export class MembershipController {
@@ -51,7 +52,7 @@ export class MembershipController {
       await this.membershipRepo.changeRole(
         body.userId,
         workspaceId,
-        body.role as any,
+        body.role as WorkspaceRole,
         ctx.tid
       );
       return reply.status(204).send();

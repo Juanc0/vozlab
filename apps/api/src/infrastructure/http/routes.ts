@@ -227,7 +227,7 @@ export async function registerRoutes(
   const membershipController = new MembershipController(
     deps.inviteToWorkspaceUseCase,
     deps.membershipRepo,
-    deps.invitationRepo ?? (deps.membershipRepo as any)
+    deps.invitationRepo ?? (deps.membershipRepo as unknown as IInvitationRepository)
   );
 
   const tipController = deps.tenantIdentityProviderRepo

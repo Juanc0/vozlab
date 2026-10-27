@@ -76,7 +76,7 @@ describe('CompleteOidcLoginUseCase', () => {
       email: 'ada@example.edu',
       fullName: 'Ada Lovelace',
     });
-    expect(input.authorHash).toMatch(/^[a-f0-9]{64}$/);
+    expect((input as { authorHash?: string }).authorHash).toMatch(/^[a-f0-9]{64}$/);
 
     expect(refresh.creates).toHaveLength(1);
     const [{ input: created, tid: createdTid }] = refresh.creates;

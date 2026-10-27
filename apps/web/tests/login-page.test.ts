@@ -45,7 +45,7 @@ function renderLogin(): void {
 }
 
 async function startLogin(): Promise<string> {
-  await fireEvent.click(screen.getByRole('button', { name: /continuar con tu institución/i }));
+  await fireEvent.click(screen.getByRole('button', { name: /cuenta local/i }));
   return navigateTo.mock.calls[0]?.[0] as string;
 }
 

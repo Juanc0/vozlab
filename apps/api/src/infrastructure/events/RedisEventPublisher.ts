@@ -49,7 +49,7 @@ export class RedisEventPublisher implements IEventPublisher {
    * Append an event to its stream. Never throws: the write has already been
    * committed, so publication is best-effort with error logging.
    */
-  async publish(event: string, payload: Record<string, any>): Promise<void> {
+  async publish(event: string, payload: Record<string, unknown>): Promise<void> {
     const streamKey = streamKeyFor(event);
 
     if (!this.connected) {
@@ -77,7 +77,7 @@ function streamKeyFor(event: string): string {
  * Redis Streams require flat string field/value pairs, so nested values are
  * JSON-encoded and nullish values become empty strings.
  */
-function toStreamFields(payload: Record<string, any>): Record<string, string> {
+function toStreamFields(payload: Record<string, unknown>): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const [key, value] of Object.entries(payload)) {
     if (value === undefined || value === null) {

@@ -193,12 +193,12 @@ export function makeUserRepository(
   } = {}
 ): {
   userRepo: IUserRepository;
-  oidcUpserts: Array<{ input: NewOidcUser; tid: string }>;
+  oidcUpserts: Array<{ input: unknown; tid: string }>;
   anonymousCreates: Array<{ input: NewAnonymousUser; tid: string; tx?: DbTransaction }>;
 } {
   const user = options.user === undefined ? AUTH_USER : options.user;
   const workspaces = options.workspaces ?? [];
-  const oidcUpserts: Array<{ input: NewOidcUser; tid: string }> = [];
+  const oidcUpserts: Array<{ input: unknown; tid: string }> = [];
   const anonymousCreates: Array<{
     input: NewAnonymousUser;
     tid: string;
@@ -214,7 +214,7 @@ export function makeUserRepository(
       return user ?? AUTH_USER;
     },
     async findOrCreateByExternalIdentity(input, tid) {
-      oidcUpserts.push({ input: input as any, tid });
+      oidcUpserts.push({ input, tid });
       return user ?? AUTH_USER;
     },
     async createAnonymousUser(input, tid, tx) {

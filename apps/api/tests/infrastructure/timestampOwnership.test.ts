@@ -2,6 +2,7 @@ import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
 import { Node } from '../../src/domain/entities/Node.js';
 import { DrizzleNodeRepository } from '../../src/infrastructure/persistence/repositories/DrizzleNodeRepository.js';
+import { ConnectionPoolManager } from '../../src/infrastructure/persistence/ConnectionPoolManager.js';
 
 const authorHash = testHash('author-1');
 
@@ -11,11 +12,11 @@ const authorHash = testHash('author-1');
  * the adapter half of the timestamp-ownership rule (TASK-38) without pulling
  * in a real database.
  */
-function makeFakeDb(row?: Record<string, any>) {
-  const calls: { setValues?: Record<string, any> } = {};
+function makeFakeDb(row?: Record<string, unknown>) {
+  const calls: { setValues?: Record<string, unknown> } = {};
   const db = {
     update: () => ({
-      set: (values: Record<string, any>) => {
+      set: (values: Record<string, unknown>) => {
         calls.setValues = values;
         return { where: async () => undefined };
       },
@@ -31,10 +32,10 @@ function makeFakeDb(row?: Record<string, any>) {
   return { db, calls };
 }
 
-function makeRepo(row?: Record<string, any>) {
+function makeRepo(row?: Record<string, unknown>) {
   const { db, calls } = makeFakeDb(row);
   const poolManager = { getDb: async () => db };
-  return { repo: new DrizzleNodeRepository(poolManager as any), calls };
+  return { repo: new DrizzleNodeRepository(poolManager as unknown as ConnectionPoolManager), calls };
 }
 
 function makeNode(): Node {
@@ -77,6 +78,6 @@ describe('timestamp ownership (adapter persists the domain timestamp)', () => {
     expect(calls.setValues?.attributes).toEqual({ a: 1, b: 2 });
     // A later timestamp than the persisted row: produced by the entity, not
     // by an adapter-side `new Date()`.
-    expect(calls.setValues?.updatedAt.getTime()).toBeGreaterThan(oldUpdatedAt.getTime());
+    expect((calls.setValues?.updatedAt as Date).getTime()).toBeGreaterThan(oldUpdatedAt.getTime());
   });
 });

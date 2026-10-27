@@ -170,7 +170,7 @@ export interface INodeRepository {
   ): Promise<boolean>;
   applyDelta(
     targetId: string,
-    proposedChanges: Record<string, any>,
+    proposedChanges: Record<string, unknown>,
     workspaceId: string,
     tid: string,
     tx?: DbTransaction

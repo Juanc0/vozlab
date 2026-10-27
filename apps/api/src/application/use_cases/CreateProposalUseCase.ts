@@ -12,7 +12,7 @@ import { assertNever } from '../../shared/assertNever.js';
 export interface CreateProposalInput {
   targetId: string;
   targetType: TargetType;
-  proposedChanges: Record<string, any>;
+  proposedChanges: Record<string, unknown>;
   justification?: string;
   workspaceId: string;
   tid: string;

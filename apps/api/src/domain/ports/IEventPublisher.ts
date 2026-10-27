@@ -3,5 +3,5 @@
  * Concrete implementation: RedisEventPublisher (HITO-1.5).
  */
 export interface IEventPublisher {
-  publish(event: string, payload: Record<string, any>): Promise<void>;
+  publish(event: string, payload: Record<string, unknown>): Promise<void>;
 }

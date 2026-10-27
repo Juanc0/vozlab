@@ -553,7 +553,7 @@ export class DrizzleNodeRepository implements INodeRepository {
 
   async applyDelta(
     targetId: string,
-    proposedChanges: Record<string, any>,
+    proposedChanges: Record<string, unknown>,
     workspaceId: string,
     tid: string,
     tx?: DbTransaction
@@ -581,9 +581,9 @@ export class DrizzleNodeRepository implements INodeRepository {
     // through the domain method, and persist the entity's own `updatedAt`.
     // The write stays a single UPDATE statement.
     const node = toDomain(existing);
-    node.title = proposedChanges.title ?? node.title;
-    node.description = proposedChanges.description ?? node.description;
-    node.updateAttributes((proposedChanges.attributes as Record<string, any>) ?? {});
+    node.title = (proposedChanges.title as string) ?? node.title;
+    node.description = (proposedChanges.description as string) ?? node.description;
+    node.updateAttributes((proposedChanges.attributes as Record<string, unknown>) ?? {});
 
     await db
       .update(nodes)
@@ -666,7 +666,7 @@ function toDomain(row: typeof nodes.$inferSelect): Node {
     row.typeKey,
     row.title,
     row.description ?? null,
-    (row.attributes as Record<string, any>) ?? {},
+    (row.attributes as Record<string, unknown>) ?? {},
     AuthorHash.fromString(row.authorHash),
     row.status as NodeStatus,
     row.communityScore,

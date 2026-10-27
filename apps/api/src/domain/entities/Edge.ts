@@ -19,7 +19,7 @@ export class Edge {
     public readonly sourceNodeId: string,
     public readonly targetNodeId: string,
     public relationKey: string,
-    public attributes: Record<string, any>,
+    public attributes: Record<string, unknown>,
     public readonly authorHash: AuthorHash,
     public status: EdgeStatus = 'PENDING',
     public communityScore: number = 0,
@@ -44,7 +44,7 @@ export class Edge {
     this.status = newStatus;
   }
 
-  updateAttributes(delta: Record<string, any>): void {
+  updateAttributes(delta: Record<string, unknown>): void {
     this.attributes = { ...this.attributes, ...delta };
   }
 }

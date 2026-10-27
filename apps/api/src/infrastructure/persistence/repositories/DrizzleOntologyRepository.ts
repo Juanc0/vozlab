@@ -229,7 +229,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     }
 
     // Whitelist accepted keys; never spread unknown jsonb keys into the update.
-    const patch: Record<string, any> = {};
+    const patch: Record<string, unknown> = {};
     if (proposedChanges.displayNames !== undefined) {
       patch.displayNames = proposedChanges.displayNames;
     }

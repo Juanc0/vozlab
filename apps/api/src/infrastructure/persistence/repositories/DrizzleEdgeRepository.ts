@@ -153,11 +153,11 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
       throw new DomainError('ERR_EDGE_NOT_FOUND');
     }
 
-    const existingAttributes = (existing.attributes as Record<string, any>) ?? {};
-    const attributesDelta = (proposedChanges.attributes as Record<string, any>) ?? {};
+    const existingAttributes = (existing.attributes as Record<string, unknown>) ?? {};
+    const attributesDelta = (proposedChanges.attributes as Record<string, unknown>) ?? {};
 
     // Whitelist accepted keys; never spread unknown jsonb keys into the update.
-    const patch: Record<string, any> = {
+    const patch: Record<string, unknown> = {
       attributes: { ...existingAttributes, ...attributesDelta },
     };
     if (typeof proposedChanges.relationKey === 'string') {
@@ -256,7 +256,7 @@ function toDomain(row: typeof edges.$inferSelect): Edge {
     row.sourceNodeId,
     row.targetNodeId,
     row.relationKey,
-    (row.attributes as Record<string, any>) ?? {},
+    (row.attributes as Record<string, unknown>) ?? {},
     AuthorHash.fromString(row.authorHash),
     row.status as EdgeStatus,
     row.communityScore,
