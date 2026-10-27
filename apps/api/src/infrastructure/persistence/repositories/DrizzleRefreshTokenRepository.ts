@@ -76,6 +76,7 @@ export class DrizzleRefreshTokenRepository
           .returning({
             userId: refreshTokens.userId,
             familyId: refreshTokens.familyId,
+            createdAt: refreshTokens.createdAt,
           });
 
         if (!rotated) {
@@ -134,6 +135,7 @@ export class DrizzleRefreshTokenRepository
           status: 'OK',
           userId: rotated.userId,
           familyId: rotated.familyId,
+          createdAt: rotated.createdAt,
         } as const;
       });
     } catch (error) {

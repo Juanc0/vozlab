@@ -55,6 +55,7 @@ export const AUTH_USER: AuthUser = {
   authorHash: AUTHOR_HASH,
   anonymousAlias: null,
   systemRole: 'USER',
+  sessionsValidAfter: null,
 };
 
 export const OIDC_IDENTITY: OidcIdentity = {
@@ -210,6 +211,7 @@ export function makeRefreshTokenRepository(
     status: 'OK',
     userId: USER_ID,
     familyId: 'family-1',
+    createdAt: new Date(),
   }
 ): {
   refreshRepo: IRefreshTokenRepository;

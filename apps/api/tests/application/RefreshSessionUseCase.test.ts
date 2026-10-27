@@ -34,7 +34,7 @@ function setup(
     user: options.user === undefined ? AUTH_USER : options.user,
   });
   const refresh = makeRefreshTokenRepository(
-    options.rotation ?? { status: 'OK', userId: AUTH_USER.id, familyId: 'family-1' }
+    options.rotation ?? { status: 'OK', userId: AUTH_USER.id, familyId: 'family-1', createdAt: new Date() }
   );
   const tokens = makeTokenIssuer();
   const useCase = new RefreshSessionUseCase(

@@ -16,7 +16,7 @@ export interface RotateRefreshTokenInput {
 }
 
 export type RotateRefreshTokenResult =
-  | { status: 'OK'; userId: string; familyId: string }
+  | { status: 'OK'; userId: string; familyId: string; createdAt: Date }
   /**
    * A token that was already rotated was presented again. The repository
    * revokes the entire family inside the same transaction; the caller only

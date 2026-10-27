@@ -13,6 +13,7 @@ export interface AuthUser {
   authorHash: string;
   anonymousAlias: string | null;
   systemRole: string;
+  sessionsValidAfter: Date | null;
 }
 
 export interface NewOidcUser {

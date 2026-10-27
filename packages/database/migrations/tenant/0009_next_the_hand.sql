@@ -1,0 +1,1 @@
+ALTER TABLE "auth"."users" ADD COLUMN "sessions_valid_after" timestamp with time zone;

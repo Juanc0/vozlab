@@ -70,6 +70,15 @@ export class RefreshSessionUseCase {
       throw new DomainError('ERR_REFRESH_TOKEN_INVALID');
     }
 
+    // C7: if the user's sessions were revoked after this token was issued,
+    // reject the refresh.
+    if (
+      user.sessionsValidAfter &&
+      rotation.createdAt < user.sessionsValidAfter
+    ) {
+      throw new DomainError('ERR_REFRESH_TOKEN_INVALID');
+    }
+
     const access = this.tokenIssuer.issue({
       userId: user.id,
       tenantKey: tenant.oidcTenantId,

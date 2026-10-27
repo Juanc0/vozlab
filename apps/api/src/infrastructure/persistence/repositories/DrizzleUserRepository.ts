@@ -33,6 +33,7 @@ function toAuthUser(row: UserRow): AuthUser {
     authorHash: row.authorHash,
     anonymousAlias: row.anonymousAlias,
     systemRole: row.systemRole,
+    sessionsValidAfter: row.sessionsValidAfter,
   };
 }
 
