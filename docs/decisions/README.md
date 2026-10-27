@@ -44,6 +44,7 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0029](ADR-0029-explicit-provider-selection-and-general-tenant.md) | Explicit provider selection and the "General" tenant | Accepted (amended by 0030, 0031) | Explicit validated IdP selection via `kc_idp_hint`; consumer accounts land in a pre-provisioned General tenant. |
 | [0030](ADR-0030-zitadel-replaces-keycloak.md) | Zitadel replaces Keycloak as the identity broker | Accepted | Go-based broker (~128 MB) replaces Keycloak in production; Keycloak stays in the lab. |
 | [0031](ADR-0031-tenant-resolved-from-token-claims.md) | Tenant resolved from token claims, not user input | Accepted | Login carries only `kc_idp_hint`; tenant resolved from `hd`/`tid`/org ID in `CompleteOidcLoginUseCase`. |
+| [0032](ADR-0032-self-hosted-observability.md) | Self-hosted observability (Prometheus, Tempo, Grafana) | Accepted | prom-client + OTel in API, prometheus_client in workers, Tempo + Grafana under `--profile observability`. |
 
 ## How to add an ADR
 

@@ -73,6 +73,8 @@ they disagree with the code, **the code wins** — fix the doc.
   Redis 7, Ollama. Init SQL runs only on a fresh volume.
 - `docker compose --profile idp up -d` — adds Zitadel (identity broker, replaces
   Keycloak) on `:8081`. Setup: `./scripts/setup-zitadel.sh`.
+- `docker compose --profile observability up -d` — adds Prometheus (:9090),
+  Grafana (:3001) and Tempo (:3200/:4317/:4318). API exposes `/metrics`.
 - `docker compose -f docker/identity-lab/compose.yml up -d` — Keycloak (legacy,
   still available for SAML/LDAP testing).
 
