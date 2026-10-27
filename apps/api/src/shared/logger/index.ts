@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import pino, { Logger } from 'pino';
 import { env } from '../config/env.js';
+import { trace } from '@opentelemetry/api';
 
 /**
  * AsyncLocalStorage context that propagates the current request ID
@@ -31,6 +32,12 @@ const logger: Logger = pino({
       }
     : undefined,
   base: undefined,
+  mixin() {
+    const span = trace.getActiveSpan();
+    if (!span) return {};
+    const ctx = span.spanContext();
+    return { trace_id: ctx.traceId, span_id: ctx.spanId };
+  },
   redact: {
     paths: [
       'req.headers.authorization',

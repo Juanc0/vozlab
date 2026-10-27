@@ -95,11 +95,35 @@
       "sourceType": "autoskills-registry",
       "computedHash": "1f04458713fbef345c0f8f410a36bed98b0e90fe136045a0548fad610902ca96"
     },
+    "excalidraw": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "skillPath": "cli-tool/components/skills/creative-design/excalidraw/SKILL.md",
+      "computedHash": "5bbd88e287582f106beb1db21c64e48ba70e4a9bedf7690b80fa6c418f3add71"
+    },
+    "excalidraw-diagram": {
+      "source": "coleam00/excalidraw-diagram-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "fc91249969c7c1adc1f810ddfe10f18e206b78609467bb4955248e9138932e8a"
+    },
+    "excalidraw-diagram-generator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/excalidraw-diagram-generator/SKILL.md",
+      "computedHash": "d26f6110fda8be59a3ba2e627f26b9d11834cd6a82b8cba05a9d80e97ea457d3"
+    },
     "fastify-best-practices": {
       "source": "mcollina/skills",
       "sourceType": "github",
       "skillPath": "skills/fastify/SKILL.md",
       "computedHash": "d1d90340de01fe4b13aadcc868e69a15f98bf03d1dd881bacbb4762b93e93733"
+    },
+    "floci": {
+      "source": "danieldxd/myapp-skills",
+      "sourceType": "github",
+      "skillPath": "skills/floci/SKILL.md",
+      "computedHash": "457a54bac28f66022f1ff8c905e200ee0faa19ed8f2e227eaee226ef8eb1a587"
     },
     "frontend-design": {
       "source": "anthropics/skills",

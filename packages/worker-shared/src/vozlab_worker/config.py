@@ -62,6 +62,9 @@ class WorkerSettings(BaseSettings):
     api_timeout_seconds: float = Field(default=10.0, gt=0)
     workspace_id: UUID | None = None
 
+    # --- Observability -------------------------------------------------
+    metrics_port: int = Field(default=9100, ge=0)
+
     # --- Redis / streams ----------------------------------------------
     redis_url: str = "redis://localhost:6379/0"
     stream_name: str = "stream:node_created"

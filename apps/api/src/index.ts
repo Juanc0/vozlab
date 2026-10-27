@@ -1,3 +1,4 @@
+import './infrastructure/observability/tracing.js';
 import type { FastifyInstance } from 'fastify';
 import { startServer } from './infrastructure/http/server.js';
 import { log } from './shared/logger/index.js';

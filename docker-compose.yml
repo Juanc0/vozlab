@@ -221,6 +221,23 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+    networks:
+      - vozlab-net
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: vozlab-tempo
+    profiles: ['observability']
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./docker/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
     networks:
       - vozlab-net
 
@@ -232,6 +249,7 @@ volumes:
   zitadel_bootstrap:
   prometheus_data:
   grafana_data:
+  tempo_data:
 
 networks:
   vozlab-net:

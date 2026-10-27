@@ -25,6 +25,7 @@ from pydantic import ValidationError
 
 from vozlab_worker.api import ApiClient
 from vozlab_worker.logging import configure_logging, get_logger
+from vozlab_worker.metrics import MetricsServer
 from vozlab_worker.streams import RedisStreamConsumer
 from vozlab_worker.tokens import build_token_provider
 
@@ -78,6 +79,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.check:
         return 0
 
+    metrics_server = MetricsServer(settings.metrics_port)
+    metrics_server.start()
+    logger.info("metrics server started", extra={"port": settings.metrics_port})
+
     redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
     api = ApiClient(
         settings.api_base_url,
@@ -130,6 +135,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         api.close()
         extractor.close()
         redis_client.close()
+        metrics_server.stop()
 
 
 if __name__ == "__main__":

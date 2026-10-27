@@ -9,6 +9,14 @@ from .logging import (
     get_logger,
     set_correlation_id,
 )
+from .metrics import (
+    MetricsServer,
+    llm_duration,
+    messages_failed,
+    messages_processed,
+    processing_duration,
+    queue_lag,
+)
 from .retry import RetryPolicy, retry_call
 from .streams import PermanentError, RedisStreamConsumer, StreamHandler, StreamMessage
 from .tokens import (
@@ -28,7 +36,13 @@ __all__ = [
     "ApiError",
     "DevTokenProvider",
     "FileTokenProvider",
+    "MetricsServer",
     "PermanentError",
+    "llm_duration",
+    "messages_failed",
+    "messages_processed",
+    "processing_duration",
+    "queue_lag",
     "RedisStreamConsumer",
     "RetryPolicy",
     "StaticTokenProvider",

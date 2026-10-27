@@ -1,0 +1,47 @@
+{
+  "uid": "vozlab-api-overview",
+  "title": "VozLab API Overview",
+  "tags": ["vozlab"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Request Rate (req/s)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(vozlab_http_requests_total[1m]))", "legendFormat": "req/s" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Error Rate (%)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "100 * sum(rate(vozlab_http_requests_total{status_code=~\"5..\"}[1m])) / sum(rate(vozlab_http_requests_total[1m]))", "legendFormat": "errors %" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Request Duration p95 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(vozlab_http_request_duration_seconds_bucket[5m])) by (le, route))", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Requests by Status Code",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "sum(rate(vozlab_http_requests_total[1m])) by (status_code)", "legendFormat": "{{status_code}}" }
+      ]
+    }
+  ]
+}

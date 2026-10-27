@@ -9,6 +9,7 @@ dependencies = [
   "pydantic>=2.8,<3",
   "pydantic-settings>=2.4,<3",
   "redis>=5.0,<7",
+  "prometheus-client>=0.20,<1",
 ]
 
 [build-system]

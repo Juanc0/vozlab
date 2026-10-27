@@ -6,6 +6,7 @@ import { env } from '../../shared/config/env.js';
 import { durationToMs } from '../../shared/time/duration.js';
 import { logger } from '../../shared/logger/index.js';
 import { registerRoutes } from './routes.js';
+import { registerMetricsRoute, recordRequestMetrics } from './metrics.js';
 import { correlationGuard, sendCorrelationHeader } from './middlewares/CorrelationGuard.js';
 import { DrizzleNodeRepository } from '../persistence/repositories/DrizzleNodeRepository.js';
 import { DrizzleDataSourceRepository } from '../persistence/repositories/DrizzleDataSourceRepository.js';
@@ -82,6 +83,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   // --- Hooks ---
   app.addHook('onRequest', correlationGuard);
   app.addHook('onSend', sendCorrelationHeader);
+
+  // --- Observability: Prometheus metrics ---
+  app.addHook('onResponse', async (req, reply) => {
+    const route = req.routeOptions?.url ?? req.url;
+    recordRequestMetrics(req.method, route, reply.statusCode, reply.elapsedTime / 1000);
+  });
+  registerMetricsRoute(app);
 
   // --- HTTP plugins ---
   // `credentials: true` is required for the refresh cookie; the origin is an
