@@ -307,6 +307,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     routerDb,
     tenantIdentityProviderRepo: routerDb,
+    dataSourceRepo: dataSourceRepo,
     membershipRepo,
     invitationRepo,
     inviteToWorkspaceUseCase,

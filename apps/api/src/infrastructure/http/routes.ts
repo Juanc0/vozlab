@@ -41,6 +41,7 @@ import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWo
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
+import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
@@ -63,6 +64,7 @@ import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
 import { MembershipController } from './controllers/MembershipController.js';
 import { TenantIdentityProviderController } from './controllers/TenantIdentityProviderController.js';
+import { DataSourceController } from './controllers/DataSourceController.js';
 import { IngestionController } from './controllers/IngestionController.js';
 
 /**
@@ -109,6 +111,7 @@ export interface RouteDependencies {
   joinEventUseCase: JoinEventUseCase;
   routerDb: IRouterDatabase;
   tenantIdentityProviderRepo?: ITenantIdentityProviderRepository;
+  dataSourceRepo?: IDataSourceRepository;
   membershipRepo: IMembershipRepository;
   invitationRepo?: IInvitationRepository;
   inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
@@ -234,6 +237,10 @@ export async function registerRoutes(
     ? new TenantIdentityProviderController(deps.tenantIdentityProviderRepo)
     : null;
 
+  const dataSourceController = deps.dataSourceRepo
+    ? new DataSourceController(deps.dataSourceRepo)
+    : null;
+
   // --- Public: Health probes ---
   app.get('/health', (req, reply) => healthController.live(req, reply));
   app.get('/health/live', (req, reply) => healthController.live(req, reply));
@@ -343,6 +350,32 @@ export async function registerRoutes(
       '/api/v1/identity-providers/:id',
       { preHandler: guard },
       (req, reply) => tipController.setEnabled(req, reply)
+    );
+  }
+
+  if (dataSourceController) {
+    app.get(
+      '/api/v1/data-sources',
+      { preHandler: guard },
+      (req, reply) => dataSourceController.list(req, reply)
+    );
+
+    app.post(
+      '/api/v1/data-sources',
+      { preHandler: guard },
+      (req, reply) => dataSourceController.create(req, reply)
+    );
+
+    app.patch(
+      '/api/v1/data-sources/:id',
+      { preHandler: guard },
+      (req, reply) => dataSourceController.update(req, reply)
+    );
+
+    app.delete(
+      '/api/v1/data-sources/:id',
+      { preHandler: guard },
+      (req, reply) => dataSourceController.deactivate(req, reply)
     );
   }
 

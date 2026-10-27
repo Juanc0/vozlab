@@ -52,4 +52,86 @@ export class DrizzleDataSourceRepository implements IDataSourceRepository {
       displayName: row.displayName,
     };
   }
+
+  async listByWorkspace(workspaceId: string, tid: string): Promise<DataSourceRecord[]> {
+    const db = await this.poolManager.getDb(tid);
+    const rows = await db
+      .select({
+        id: dataSources.id,
+        workspaceId: dataSources.workspaceId,
+        sourceKey: dataSources.sourceKey,
+        connectorType: dataSources.connectorType,
+        behaviorProfile: dataSources.behaviorProfile,
+        displayName: dataSources.displayName,
+      })
+      .from(dataSources)
+      .where(eq(dataSources.workspaceId, workspaceId));
+
+    return rows.map((row) => ({
+      id: row.id,
+      workspaceId: row.workspaceId,
+      sourceKey: row.sourceKey,
+      connectorType: row.connectorType as ConnectorType,
+      behaviorProfile: row.behaviorProfile as BehaviorProfile,
+      displayName: row.displayName,
+    }));
+  }
+
+  async create(
+    input: {
+      workspaceId: string;
+      sourceKey: string;
+      connectorType: ConnectorType;
+      behaviorProfile: BehaviorProfile;
+      displayName: string;
+    },
+    tid: string
+  ): Promise<DataSourceRecord> {
+    const db = await this.poolManager.getDb(tid);
+    const [row] = await db
+      .insert(dataSources)
+      .values({
+        workspaceId: input.workspaceId,
+        sourceKey: input.sourceKey,
+        connectorType: input.connectorType,
+        behaviorProfile: input.behaviorProfile,
+        displayName: input.displayName,
+        status: 'ACTIVE',
+      })
+      .returning();
+
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      sourceKey: row.sourceKey,
+      connectorType: row.connectorType as ConnectorType,
+      behaviorProfile: row.behaviorProfile as BehaviorProfile,
+      displayName: row.displayName,
+    };
+  }
+
+  async update(
+    id: string,
+    input: Partial<{
+      displayName: string;
+      connectorType: ConnectorType;
+      behaviorProfile: BehaviorProfile;
+      status: string;
+    }>,
+    tid: string
+  ): Promise<void> {
+    const db = await this.poolManager.getDb(tid);
+    await db
+      .update(dataSources)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(dataSources.id, id));
+  }
+
+  async deactivate(id: string, tid: string): Promise<void> {
+    const db = await this.poolManager.getDb(tid);
+    await db
+      .update(dataSources)
+      .set({ status: 'INACTIVE', updatedAt: new Date() })
+      .where(eq(dataSources.id, id));
+  }
 }

@@ -29,4 +29,34 @@ export interface IDataSourceRepository {
    * Returns `null` when no active source matches.
    */
   findActiveByKey(sourceKey: string, tid: string): Promise<DataSourceRecord | null>;
+
+  /** List all sources for a workspace (any status). */
+  listByWorkspace(workspaceId: string, tid: string): Promise<DataSourceRecord[]>;
+
+  /** Create a new source in the registry. */
+  create(
+    input: {
+      workspaceId: string;
+      sourceKey: string;
+      connectorType: ConnectorType;
+      behaviorProfile: BehaviorProfile;
+      displayName: string;
+    },
+    tid: string
+  ): Promise<DataSourceRecord>;
+
+  /** Update mutable fields of a source. */
+  update(
+    id: string,
+    input: Partial<{
+      displayName: string;
+      connectorType: ConnectorType;
+      behaviorProfile: BehaviorProfile;
+      status: string;
+    }>,
+    tid: string
+  ): Promise<void>;
+
+  /** Soft-deactivate a source (status -> INACTIVE). */
+  deactivate(id: string, tid: string): Promise<void>;
 }
