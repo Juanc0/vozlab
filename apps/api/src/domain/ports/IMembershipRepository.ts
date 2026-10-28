@@ -35,12 +35,28 @@ export interface IMembershipRepository {
     userId: string,
     workspaceId: string,
     newRole: WorkspaceRole,
-    tid: string
+    tid: string,
+    tx?: DbTransaction
   ): Promise<void>;
   /** Suspend a membership (status → SUSPENDED). */
-  suspend(userId: string, workspaceId: string, tid: string): Promise<void>;
+  suspend(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
   /** Reactivate a suspended membership (status → ACTIVE). */
-  reactivate(userId: string, workspaceId: string, tid: string): Promise<void>;
+  reactivate(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
   /** Remove a membership (status → REMOVED). */
-  remove(userId: string, workspaceId: string, tid: string): Promise<void>;
+  remove(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
 }

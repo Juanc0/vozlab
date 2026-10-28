@@ -1,3 +1,5 @@
+import type { DbTransaction } from './Transaction.js';
+
 /**
  * Port: invitations in the tenant DB (D3, D9).
  */
@@ -21,8 +23,12 @@ export interface IInvitationRepository {
   /** Find an invitation by its token hash. */
   findByTokenHash(tokenHash: string, tid: string): Promise<Invitation | null>;
 
-  /** Mark an invitation as accepted and increment used_count. */
-  accept(id: string, tid: string): Promise<void>;
+  /**
+   * Atomically mark a PENDING invitation as accepted and increment
+   * `used_count`. Returns `false` when the invitation was no longer PENDING
+   * (another login redeemed it first), so the caller never grants twice.
+   */
+  accept(id: string, tid: string, tx?: DbTransaction): Promise<boolean>;
 
   /** Revoke an invitation. */
   revoke(id: string, tid: string): Promise<void>;
@@ -39,6 +45,7 @@ export interface IInvitationRepository {
       maxUses?: number | null;
       createdBy?: string | null;
     },
-    tid: string
+    tid: string,
+    tx?: DbTransaction
   ): Promise<Invitation>;
 }
