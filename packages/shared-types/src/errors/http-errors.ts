@@ -58,6 +58,54 @@ export const ERROR_CODES = {
     status: 403,
     message: 'User is not authorized to perform this action',
   },
+  ERR_WORKSPACE_NOT_FOUND: {
+    status: 404,
+    message: 'Workspace not found',
+  },
+  ERR_WORKSPACE_SLUG_TAKEN: {
+    status: 409,
+    message: 'A workspace with this slug already exists in the tenant',
+  },
+  ERR_USER_NOT_FOUND: {
+    status: 404,
+    message: 'User not found in this tenant',
+  },
+  ERR_MEMBER_NOT_FOUND: {
+    status: 404,
+    message: 'Workspace membership not found',
+  },
+  ERR_ALREADY_MEMBER: {
+    status: 409,
+    message: 'User is already an active member of this workspace',
+  },
+  ERR_LAST_WORKSPACE_ADMIN: {
+    status: 409,
+    message: 'A workspace must keep at least one active ADMIN',
+  },
+  ERR_CANNOT_MODIFY_SELF: {
+    status: 409,
+    message: 'An administrator cannot suspend or remove their own membership',
+  },
+  ERR_JOIN_REQUEST_NOT_FOUND: {
+    status: 404,
+    message: 'Workspace join request not found',
+  },
+  ERR_JOIN_REQUEST_NOT_PENDING: {
+    status: 409,
+    message: 'Workspace join request is no longer pending',
+  },
+  ERR_INVITATION_NOT_FOUND: {
+    status: 404,
+    message: 'Invitation not found',
+  },
+  ERR_INVITATION_INVALID: {
+    status: 400,
+    message: 'The invitation is invalid, expired or has already been used',
+  },
+  ERR_INVITATION_NOT_PENDING: {
+    status: 409,
+    message: 'Invitation is no longer pending',
+  },
   ERR_TENANT_NOT_PROVISIONED: {
     status: 403,
     message: 'Tenant is not provisioned in the system',

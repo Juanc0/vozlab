@@ -12,4 +12,5 @@ export * from './schemas/interaction.schema.js';
 export * from './schemas/roles.schema.js';
 export * from './schemas/ingestion.schema.js';
 export * from './schemas/auth.schema.js';
+export * from './schemas/workspace-admin.schema.js';
 export * from './errors/http-errors.js';
