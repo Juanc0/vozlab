@@ -274,3 +274,47 @@ volumes:
 networks:
   vozlab-net:
     driver: bridge
+  # --- Application (profile: app) -----------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: vozlab-api
+    profiles: ["app"]
+    environment:
+      ROUTER_DB_HOST: postgres
+      ROUTER_DB_PORT: 5432
+      ROUTER_DB_NAME: vozlab_router
+      ROUTER_DB_USER: postgres
+      ROUTER_DB_PASSWORD: postgres
+      TENANT_DB_HOST: postgres
+      TENANT_DB_PORT: 5432
+      TENANT_DB_NAME: vozlab_tenant_dev
+      TENANT_DB_USER: postgres
+      TENANT_DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: dev-secret-change-me-please-32chars-minimum
+      WEB_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vozlab-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: vozlab-web
+    profiles: ["app"]
+    environment:
+      API_BASE_URL: http://api:3000
+    ports:
+      - "5173:3000"
+    depends_on:
+      - api
+    networks:
+      - vozlab-net
