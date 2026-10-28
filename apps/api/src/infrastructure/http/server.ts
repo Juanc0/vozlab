@@ -574,12 +574,16 @@ export async function buildServer(): Promise<FastifyInstance> {
  */
 export async function startServer(): Promise<FastifyInstance> {
   const app = await buildServer();
-  app.addHook('onSend', async (_req, reply) => {
+  // Synchronous onSend (callback form): see sendCorrelationHeader — an async
+  // hook here leaves the reply chain pending when the handler resolves, and
+  // Fastify 4.29 then double-sends (ERR_HTTP_HEADERS_SENT, process dies).
+  app.addHook('onSend', (_req, reply, _payload, done) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('Referrer-Policy', 'no-referrer');
     reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     reply.header('Content-Security-Policy', "default-src 'self'");
+    done();
   });
   await app.listen({ port: env.PORT, host: env.HOST });
   logger.info(`VozLab API server running on http://${env.HOST}:${env.PORT}`);

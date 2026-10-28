@@ -22,13 +22,22 @@ export async function correlationGuard(
 
 /**
  * Hook to echo the correlation ID back to the client.
+ *
+ * MUST stay synchronous (callback form): an `async` onSend hook resolves
+ * the chain in a later microtask, so `reply.sent` is still false when the
+ * handler's promise settles. Fastify 4.29's `wrapThenable` then re-sends
+ * the already-sent reply (double `onSendEnd` → `ERR_HTTP_HEADERS_SENT`
+ * crashes the process). See the auth error responses (`sendError`).
  */
-export async function sendCorrelationHeader(
+export function sendCorrelationHeader(
   req: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+  reply: FastifyReply,
+  _payload: unknown,
+  done: () => void
+): void {
   const reqId = req.reqId ?? req.id;
   reply.header('X-Request-ID', reqId);
+  done();
 }
 
 /**
