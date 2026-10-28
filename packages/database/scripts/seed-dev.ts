@@ -68,6 +68,7 @@ import {
   tenants,
   tenantConnections,
   workspaces,
+  workspaceJoinCodes,
   users,
   workspaceMemberships,
   ontologyClasses,
@@ -248,6 +249,22 @@ async function seed(): Promise<void> {
         // Routing hint only: it identifies the workspace to a user who was
         // told the code; it never grants access (US-00).
         joinCode: '7532D05897A9D6C5',
+      })
+      .onConflictDoNothing();
+
+    // Dev EVENT workspace for guest/event-join testing.
+    const EVENT_WORKSPACE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    await tenantDb
+      .insert(workspaces)
+      .values({
+        id: EVENT_WORKSPACE_ID,
+        slug: 'evento-demo',
+        name: 'Evento Demo',
+        description: 'Dev event workspace',
+        isPublic: false,
+        kind: 'EVENT',
+        autoApproveJoinCode: true,
+        joinCode: 'EVENTDEMO1234',
       })
       .onConflictDoNothing();
 
