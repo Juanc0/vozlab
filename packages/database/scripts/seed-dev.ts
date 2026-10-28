@@ -63,6 +63,7 @@
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { createHash } from 'node:crypto';
 import {
   createRouterDrizzle,
   tenants,
@@ -265,6 +266,19 @@ async function seed(): Promise<void> {
         kind: 'EVENT',
         autoApproveJoinCode: true,
         joinCode: 'EVENTDEMO1234',
+      })
+      .onConflictDoNothing();
+
+    // Ephemeral join code for the EVENT workspace (dev only).
+    const EVENT_CODE = 'EVENTDEMO1234';
+    await tenantDb
+      .insert(workspaceJoinCodes)
+      .values({
+        workspaceId: EVENT_WORKSPACE_ID,
+        codeHash: createHash('sha256').update(EVENT_CODE).digest('hex'),
+        label: 'Dev event code',
+        autoApprove: true,
+        createdBy: null,
       })
       .onConflictDoNothing();
 
