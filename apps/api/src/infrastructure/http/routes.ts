@@ -33,6 +33,7 @@ import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { SelectTenantUseCase } from '../../application/use_cases/SelectTenantUseCase.js';
 import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
@@ -132,6 +133,7 @@ export interface RouteDependencies {
   castVoteUseCase: CastVoteUseCase;
   startOidcLoginUseCase: StartOidcLoginUseCase;
   completeOidcLoginUseCase: CompleteOidcLoginUseCase;
+  selectTenantUseCase?: SelectTenantUseCase;
   refreshSessionUseCase: RefreshSessionUseCase;
   logoutUseCase: LogoutUseCase;
   getMeUseCase: GetMeUseCase;
@@ -269,6 +271,7 @@ export async function registerRoutes(
   const authController = new AuthController(
     startOidcLoginUseCase,
     completeOidcLoginUseCase,
+    deps.selectTenantUseCase!,
     refreshSessionUseCase,
     logoutUseCase,
     getMeUseCase,
@@ -346,6 +349,12 @@ export async function registerRoutes(
     '/api/v1/auth/event-join',
     { preHandler: [publicAuthLimit] },
     (req, reply) => authController.eventJoin(req, reply)
+  );
+
+  app.post(
+    '/api/v1/auth/select-tenant',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.selectTenant(req, reply)
   );
 
   // --- Protected chain ---

@@ -66,6 +66,7 @@ import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { SelectTenantUseCase } from '../../application/use_cases/SelectTenantUseCase.js';
 import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
@@ -273,6 +274,13 @@ export async function buildServer(): Promise<FastifyInstance> {
     refreshTokenRepo,
     refreshTtlMs
   );
+  const selectTenantUseCase = new SelectTenantUseCase(
+    routerDb,
+    routerDb,
+    userRepo,
+    uow,
+    refreshTokenRepo
+  );
   const refreshSessionUseCase = new RefreshSessionUseCase(
     routerDb,
     userRepo,
@@ -453,6 +461,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     castVoteUseCase,
     startOidcLoginUseCase,
     completeOidcLoginUseCase,
+    selectTenantUseCase,
     refreshSessionUseCase,
     logoutUseCase,
     getMeUseCase,

@@ -11,6 +11,7 @@ import { log } from '../../../shared/logger/index.js';
 import { AuthUser } from '../../../domain/ports/IUserRepository.js';
 import { StartOidcLoginUseCase } from '../../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../../application/use_cases/CompleteOidcLoginUseCase.js';
+import { SelectTenantUseCase } from '../../../application/use_cases/SelectTenantUseCase.js';
 import { RefreshSessionUseCase } from '../../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../../application/use_cases/GetMeUseCase.js';
@@ -53,6 +54,7 @@ export class AuthController {
   constructor(
     private readonly startLogin: StartOidcLoginUseCase,
     private readonly completeLogin: CompleteOidcLoginUseCase,
+    private readonly selectTenantUseCase: SelectTenantUseCase,
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logout: LogoutUseCase,
     private readonly getMe: GetMeUseCase,
@@ -124,6 +126,25 @@ export class AuthController {
         'OIDC callback failed'
       );
       return this.redirectError(reply, mapDomainError(error));
+    }
+  }
+
+  /** POST /api/v1/auth/select-tenant */
+  async selectTenant(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const body = req.body as { globalUserId?: string; tenantId?: string };
+    if (!body?.globalUserId || !body?.tenantId) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED');
+    }
+    try {
+      const result = await this.selectTenantUseCase.execute({
+        globalIdentityId: body.globalUserId,
+        tenantId: body.tenantId,
+        refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
+      });
+      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+      return reply.send({ accessToken: result.user ? 'ok' : 'ok' });
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
     }
   }
 
