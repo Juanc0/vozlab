@@ -242,6 +242,29 @@ export const refreshTokens = authSchema.table(
   ]
 );
 
+export const workspaceJoinCodes = authSchema.table(
+  'workspace_join_codes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    codeHash: varchar('code_hash', { length: 64 }).notNull().unique(),
+    label: varchar('label', { length: 255 }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    maxUses: integer('max_uses'),
+    usedCount: integer('used_count').default(0).notNull(),
+    autoApprove: boolean('auto_approve').default(false).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_workspace_join_codes_workspace').on(table.workspaceId)]
+);
+
+export type WorkspaceJoinCode = typeof workspaceJoinCodes.$inferSelect;
+export type NewWorkspaceJoinCode = typeof workspaceJoinCodes.$inferInsert;
+
 export type Workspace = typeof workspaces.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type WorkspaceMembership = typeof workspaceMemberships.$inferSelect;
