@@ -46,4 +46,6 @@ export interface IRefreshTokenRepository {
   revokeFamilyByHash(tokenHash: string, tid: string): Promise<void>;
   /** Reuse detection: revoke every live token in a family. */
   revokeFamily(familyId: string, tid: string): Promise<void>;
+  /** v5: revoke all live refresh tokens for a user (e.g. on suspension). */
+  revokeAllForUser(userId: string, tid: string): Promise<void>;
 }

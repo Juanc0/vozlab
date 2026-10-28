@@ -189,4 +189,22 @@ export class DrizzleRefreshTokenRepository
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
+
+  async revokeAllForUser(userId: string, tid: string): Promise<void> {
+    try {
+      const db = await this.poolManager.getDb(tid);
+      await db
+        .update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(refreshTokens.userId, userId),
+            isNull(refreshTokens.revokedAt)
+          )
+        );
+    } catch (error) {
+      log.error({ err: error, userId }, 'failed to revoke refresh tokens for user');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
 }

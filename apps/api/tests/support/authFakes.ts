@@ -290,6 +290,7 @@ export function makeRefreshTokenRepository(
     async revokeFamily(familyId) {
       revokedFamilies.push(familyId);
     },
+    async revokeAllForUser() {},
   };
 
   return { refreshRepo, creates, rotations, revokedHashes, revokedFamilies };

@@ -4,6 +4,7 @@ import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository.js';
+import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
 
 export interface SuspendMemberInput {
@@ -27,7 +28,8 @@ export class SuspendMemberUseCase {
     private readonly membershipRepo: IMembershipRepository,
     private readonly workspaceRepo: IWorkspaceRepository,
     private readonly userRepo: IUserRepository,
-    private readonly uow: IUnitOfWork
+    private readonly uow: IUnitOfWork,
+    private readonly refreshRepo?: IRefreshTokenRepository
   ) {}
 
   async execute(input: SuspendMemberInput): Promise<void> {
@@ -80,6 +82,9 @@ export class SuspendMemberUseCase {
         input.tid,
         tx
       );
+      if (this.refreshRepo) {
+        await this.refreshRepo.revokeAllForUser(input.targetUserId, input.tid);
+      }
       await this.membershipAdminRepo.recordEvent(
         {
           workspaceId: input.workspaceId,
