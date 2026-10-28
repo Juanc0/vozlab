@@ -13,12 +13,13 @@ Contexto: VozLab multi-tenant (router DB + una DB por tenant), Fastify API + Sve
 - **Decisiones nuevas propuestas**:
   - Códigos de workspace efímeros y revocables (nueva tabla) — aprobado por el usuario.
   - `workspaces.kind` (EVENT/PUBLIC/PRIVATE) — aprobado.
-  - Rol `GUEST` acotado — aprobado, pero aclarar qué es "propuesta sensible".
+  - Rol `GUEST` acotado (sí puede crear propuestas PENDING) — aprobado.
   - Alta directa por admin debe dejar de usar email; usar identidad global o handle único por tenant.
-  - Un usuario puede tener múltiples membresías y múltiples roles por workspace; las verificaciones deben considerar todos los roles.
-  - Códigos de acceso separados: tenant vs workspace, con auto-aprobación configurable por tipo de usuario y tipo de workspace.
+  - Un usuario puede tener múltiples membresías y múltiples roles por workspace (unión, sin personificación).
+  - Códigos de acceso separados: tenant vs workspace, con auto-aprobación configurable.
   - Evento: QR con ambos códigos (tenant + workspace) en un solo paso.
-  - Invitación: URL/QR compartible, con rol asignado de una vez; seguro por token + email verificado por IdP.
+  - Invitación: URL/QR compartible, rol asignado al redimir; token opaco + email verificado por IdP; membresía creada server-side.
+  - **Cross-tenant**: invitaciones globales (router DB) para colaboradores externos/cross-IdP; selector de tenant post-login; social logins en Zitadel.
 
 ---
 
@@ -275,6 +276,13 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 - US-P: Suspender invalida sesión.
 - US-Q: Múltiples roles por workspace, verificación por unión.
 
+### Cross-tenant y colaboradores externos
+- US-R: Como admin, invitar a un colaborador externo (gmail) a un workspace.
+- US-S: Como colaborador externo, usar cuenta Google personal para redimir invitación.
+- US-T: Como usuario con múltiples tenants, seleccionar a cuál entrar tras login.
+- US-U: Como admin, invitar a alguien de otra universidad (otro IdP).
+- US-V: Como sistema, resolver tenant desde la invitación cuando el IdP no lo provee.
+
 ---
 
 ## 12. Opciones y mejores prácticas
@@ -314,13 +322,15 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 4. `workspaces.kind` (EVENT/PUBLIC/PRIVATE) + `users.is_anonymous`.
 5. Rol GUEST acotado.
 6. Auto-aprobación configurable por workspace.
+7. **Invitaciones globales** (token en router DB) para cross-IdP/externos.
 
 **P1 (operación):**
-7. Invalidar refresh family al suspender.
-8. Auditoría de acciones admin.
-9. Rate limit dedicado por actor.
-10. Selector de tenant si varios.
-11. Limpieza de invitaciones expiradas y guests inactivos.
+8. Invalidar refresh family al suspender.
+9. Auditoría de acciones admin.
+10. Rate limit dedicado por actor.
+11. Selector de tenant post-login (usuarios multi-tenant).
+12. Habilitar social logins en Zitadel.
+13. Limpieza de invitaciones expiradas y guests inactivos.
 
 **P2 (producto):**
 12. QR con ambos códigos para eventos.
@@ -330,6 +340,106 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 ---
 
-## 15. Conclusión del comité
+## 16. Cross-tenant access y colaboradores externos
 
-El modelo actual es **coherente en su núcleo** pero necesita: (a) cambiar alta directa de email a identidad global/handle, (b) permitir múltiples roles por workspace con verificación por unión (sin personificación), (c) códigos de workspace efímeros con auto-aprobación configurable, (d) tipificación de workspaces y rol GUEST acotado, (e) QR de evento con ambos códigos. La invitación como URL/QR es segura por diseño: el token es opaco/single-use/TTL y la redención requiere email verificado por el IdP; la membresía se crea server-side en transacción (tenant implícito + workspace + rol), y el token no contiene datos sensibles. Los guests SÍ pueden crear propuestas (quedan PENDING) porque es el foco de las funcionalidades a mostrar. No implementar contraseñas propias, magic links ni envío de email por ahora. Consolidar flujos redundantes.
+### 16.1 Preocupaciones del usuario
+- La invitación actual solo cubre miembros del mismo IdP/tenant que el admin.
+- Deja fuera a colaboradores que no están en el IdP o que quieren usar otro correo (de otra universidad o personal).
+- El tenant se define implícitamente para algunos flujos; el usuario quiere saber cuándo/cómo/dónde debe indicarse explícitamente.
+- Proponer la misma estrategia que los códigos (independientes por nivel) pero para usuarios: permitir cross-multi-tenant access y colaboradores externos (gmail/outlook/social).
+
+### 16.2 Análisis
+
+**Estado actual del modelo de identidad:**
+- `global_identities` (router DB) ya es el ancla cross-tenant: clave única `(issuer, subject)`.
+- `global_identity_tenants` ya permite que una identidad global pertenezca a **múltiples tenants**.
+- Pero el tenant se resuelve por claims del IdP (hd/tid/org). Si el IdP es genérico (Google personal, social), no hay claim de tenant → no se puede resolver el tenant. Bloqueo para colaboradores externos.
+
+**Problema de la invitación cross-tenant:**
+- La invitación vive en la DB del tenant (porque el admin que la crea pertenece a ese tenant).
+- Para encontrar la invitación, hay que saber en qué tenant DB buscar → chicken-and-egg si el tenant se resuelve por el IdP.
+- Por eso hoy solo funciona cuando el invitado usa el mismo IdP/tenant que el admin.
+
+### 16.3 Opciones
+
+**Opción A — Invitación global (router DB):**
+- Crear un registro mínimo de invitación en router DB: `(token_hash, tenant_id, workspace_id, role, email, expires_at, ...)`.
+- El token resuelve el tenant antes de OIDC. Tras OIDC, se redime en el tenant DB.
+- Permite invitar a cualquier persona con cualquier IdP (el tenant viene de la invitación, no del IdP).
+- Cross-tenant: un usuario puede tener invitaciones a múltiples tenants; cada una se redime en su tenant.
+
+**Opción B — Selector de tenant post-login:**
+- El usuario se autentica con cualquier IdP. Si tiene múltiples tenants vinculados, se le muestra un selector.
+- Si tiene uno, se selecciona automáticamente.
+- Para colaboradores externos sin tenant vinculado, se requiere una invitación (Opción A) o un tenant por defecto.
+
+**Opción C — Tenant por defecto / personal:**
+- Crear un "tenant personal" para usuarios externos sin afiliación institucional.
+- No recomendado: complica el modelo y el aislamiento.
+
+**Opción D — Invitación que especifica tenant en el state:**
+- Similar a A pero el tenant se pasa en el state OIDC, no en router DB.
+- Menos robusto: si el state se pierde, no se puede recuperar el tenant.
+
+### 16.4 Cuándo indicar el tenant explícitamente
+
+| Flujo | Tenant implícito | Tenant explícito |
+|-------|-----------------|------------------|
+| Event join | Sí (del código de evento) | No |
+| Invitación (mismo IdP) | Sí (del IdP) | No |
+| Invitación (cross-IdP/externo) | No | Sí (de la invitación en router DB) |
+| Join request por código | Sí (del código de workspace, que vive en tenant DB → requiere sesión) | No (ya tiene sesión) |
+| Descubrimiento público | Sí (de la sesión) | No |
+| Admin (tenant admin) | Sí (de la sesión) | Selector si múltiples tenants |
+| Usuario con múltiples tenants | No | Selector post-login |
+
+**Regla**: el tenant es implícito cuando hay una credencial que lo identifica (código, invitación, sesión única). Es explícito cuando el usuario tiene múltiples tenants o cuando la invitación es cross-IdP.
+
+### 16.5 Colaboradores externos (gmail/outlook/social)
+
+- **IdP genérico**: Zitadel puede brokerizar Google (personal), Microsoft (personal), Facebook, etc. El `issuer` será el del proveedor social.
+- **Identidad global**: se crea con `(issuer=social-provider, subject=social-id)`. Funciona igual que con IdP institucional.
+- **Tenant**: para colaboradores externos, el tenant debe venir de la invitación (Opción A) o de un selector.
+- **Recomendación**: habilitar social logins en Zitadel para colaboradores externos, y usar invitaciones globales (Opción A) para que el admin pueda invitar a cualquier email.
+- **Seguridad**: social logins tienen menor nivel de verificación de email (algunos proveedores no verifican). La invitación debe requerir `emailVerified=true` (como hoy). Si el proveedor social no lo provee, la invitación es inredimible → correcto por seguridad.
+
+### 16.6 Cross-multi-tenant access
+
+- Un usuario puede pertenecer a N tenants (global_identity_tenants).
+- Para acceder a un workspace de otro tenant, necesita: (a) membresía en ese tenant (global_identity_tenants), (b) membresía en el workspace (workspace_memberships en la DB de ese tenant).
+- La invitación cross-tenant (Opción A) puede crear ambas: vincular la identidad global al tenant + crear membresía al workspace.
+- **No** se permite acceso cross-tenant sin invitación o membresía explícita.
+
+### 16.7 Recomendación
+
+1. **Implementar invitaciones globales (Opción A)**: mover la creación de invitación a un use case que primero crea un registro en router DB (token → tenant+workspace+role+email), y luego redime en el tenant DB. Esto permite invitar a cualquier email con cualquier IdP.
+2. **Selector de tenant post-login** para usuarios con múltiples tenants.
+3. **Habilitar social logins** en Zitadel (Google personal, Microsoft personal) para colaboradores externos.
+4. **Mantener la verificación de email** (`emailVerified=true`) como requisito para redimir invitaciones.
+5. **No crear tenants personales** — mantener el modelo de invitación.
+
+### 16.8 Historias de usuario adicionales
+
+- US-R: Como admin, quiero invitar a un colaborador externo (gmail) a un workspace, aunque no esté en mi IdP.
+- US-S: Como colaborador externo, quiero usar mi cuenta de Google personal para redimir una invitación.
+- US-T: Como usuario con múltiples tenants, quiero seleccionar a cuál entrar tras el login.
+- US-U: Como admin, quiero invitar a alguien de otra universidad (otro IdP) a un workspace.
+- US-V: Como sistema, quiero resolver el tenant desde la invitación cuando el IdP no lo provee.
+
+---
+
+## 17. Conclusión del comité (v4)
+
+El modelo actual es **coherente en su núcleo** pero tiene un **límite importante**: las invitaciones solo funcionan dentro del mismo IdP/tenant. Para colaboradores externos y cross-tenant access, se necesita:
+
+1. **Invitaciones globales** (token en router DB que resuelve tenant+workspace+role) → permite invitar a cualquier email con cualquier IdP.
+2. **Selector de tenant post-login** para usuarios multi-tenant.
+3. **Social logins** habilitados en Zitadel para colaboradores externos.
+4. **Tenant explícito** cuando la credencial no lo identifica (invitación cross-IdP, usuario multi-tenant).
+
+Mantener: OIDC como identidad, invitación como URL/QR, código de workspace como dirección, roles por unión, GUEST acotado, tipificación de workspaces. No implementar contraseñas propias ni tenants personales. Consolidar flujos redundantes.
+
+Además de los P0 anteriores, añadir:
+- **P0 nuevo**: Invitaciones globales (router DB) para cross-IdP/externos.
+- **P1 nuevo**: Selector de tenant post-login.
+- **P1 nuevo**: Habilitar social logins en Zitadel.
