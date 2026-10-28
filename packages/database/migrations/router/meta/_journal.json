@@ -57,6 +57,13 @@
       "when": 1793209141552,
       "tag": "0007_glamorous_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793209453816,
+      "tag": "0008_sturdy_ultragirl",
+      "breakpoints": true
     }
   ]
 }

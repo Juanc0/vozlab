@@ -205,5 +205,31 @@ export const globalIdentityEvents = pgTable(
   ]
 );
 
+export const globalInvitations = pgTable(
+  'global_invitations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').notNull(),
+    role: varchar('role', { length: 30 }).default('MEMBER').notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    status: varchar('status', { length: 20 }).default('PENDING').notNull(),
+    maxUses: integer('max_uses'),
+    usedCount: integer('used_count').default(0).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_global_invitations_tenant').on(table.tenantId),
+    index('idx_global_invitations_email').on(table.email),
+  ]
+);
+
+export type GlobalInvitation = typeof globalInvitations.$inferSelect;
+export type NewGlobalInvitation = typeof globalInvitations.$inferInsert;
+
 export type GlobalIdentityEvent = typeof globalIdentityEvents.$inferSelect;
 export type NewGlobalIdentityEvent = typeof globalIdentityEvents.$inferInsert;
