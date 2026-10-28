@@ -53,6 +53,28 @@ export class RequestWorkspaceAccessUseCase {
             (codeRecord.maxUses === null || codeRecord.usedCount < codeRecord.maxUses);
           if (valid) {
             workspace = await this.workspaceRepo.findById(codeRecord.workspaceId, input.tid);
+            // Auto-approve: create ACTIVE membership directly.
+            if (workspace && codeRecord.autoApprove) {
+              const role = await this.membershipRepo.getRole(input.userId, workspace.id, input.tid);
+              if (role !== null) {
+                throw new DomainError('ERR_ALREADY_MEMBER');
+              }
+              await this.membershipRepo.add(input.userId, workspace.id, 'MEMBER', input.tid);
+              if (this.codeRepo) {
+                await this.codeRepo.incrementUse(codeRecord.id, input.tid);
+              }
+              const pending = await this.joinRequestRepo.findPending(workspace.id, input.userId, input.tid);
+              // Return a synthetic approved request.
+              return {
+                id: pending?.id ?? codeRecord.id,
+                workspaceId: workspace.id,
+                userId: input.userId,
+                message: input.message ?? null,
+                status: 'APPROVED',
+                createdAt: new Date(),
+                workspaceName: workspace.name,
+              } as JoinRequestWithWorkspace;
+            }
           }
         }
       } else {
