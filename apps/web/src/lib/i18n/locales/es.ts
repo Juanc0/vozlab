@@ -844,6 +844,7 @@ export const es = {
     invitations: 'Invitaciones',
     joinCode: 'Código de acceso',
     rotateJoinCode: 'Rotar código',
+    addRole: 'Añadir rol…',
     createJoinCode: 'Crear código efímero',
     joinCodes: 'Códigos efímeros',
     globalInvitation: 'Invitación global (cross-IdP)',

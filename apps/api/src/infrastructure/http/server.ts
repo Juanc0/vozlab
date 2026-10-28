@@ -84,6 +84,8 @@ import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUs
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
+import { AssignMemberRoleUseCase } from '../../application/use_cases/AssignMemberRoleUseCase.js';
+import { RemoveMemberRoleUseCase } from '../../application/use_cases/RemoveMemberRoleUseCase.js';
 import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
@@ -368,6 +370,19 @@ export async function buildServer(): Promise<FastifyInstance> {
     userRepo,
     uow
   );
+  const assignMemberRoleUseCase = new AssignMemberRoleUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const removeMemberRoleUseCase = new RemoveMemberRoleUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    workspaceRepo,
+    userRepo,
+    uow
+  );
   const suspendMemberUseCase = new SuspendMemberUseCase(
     membershipAdminRepo,
     membershipRepo,
@@ -494,6 +509,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     listMembersUseCase,
     addWorkspaceMemberUseCase,
     changeMemberRoleUseCase,
+    assignMemberRoleUseCase,
+    removeMemberRoleUseCase,
     suspendMemberUseCase,
     reactivateMemberUseCase,
     removeMemberUseCase,

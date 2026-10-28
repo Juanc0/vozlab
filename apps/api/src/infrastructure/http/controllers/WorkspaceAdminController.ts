@@ -10,6 +10,8 @@ import { RotateJoinCodeUseCase } from '../../../application/use_cases/RotateJoin
 import { ListMembersUseCase } from '../../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../../application/use_cases/ChangeMemberRoleUseCase.js';
+import { AssignMemberRoleUseCase } from '../../../application/use_cases/AssignMemberRoleUseCase.js';
+import { RemoveMemberRoleUseCase } from '../../../application/use_cases/RemoveMemberRoleUseCase.js';
 import { SuspendMemberUseCase } from '../../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../../application/use_cases/RemoveMemberUseCase.js';
@@ -34,6 +36,8 @@ export class WorkspaceAdminController {
     private readonly listMembers: ListMembersUseCase,
     private readonly addMember: AddWorkspaceMemberUseCase,
     private readonly changeRole: ChangeMemberRoleUseCase,
+    private readonly assignRole: AssignMemberRoleUseCase | null,
+    private readonly removeRoleUseCase: RemoveMemberRoleUseCase | null,
     private readonly suspendMember: SuspendMemberUseCase,
     private readonly reactivateMember: ReactivateMemberUseCase,
     private readonly removeMember: RemoveMemberUseCase
@@ -166,6 +170,59 @@ export class WorkspaceAdminController {
   }
 
   /** PATCH /api/v1/workspaces/:workspaceId/members/:userId */
+  async assignRoleHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+    if (!this.assignRole) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    const params = req.params as { workspaceId?: string; userId?: string };
+    const workspaceId = targetWorkspaceId(req, ctx.workspaceId);
+    const userId = params.userId;
+    if (!userId) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    const body = (req.body ?? {}) as { role?: string };
+    if (!body.role) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    try {
+      await this.assignRole.execute({
+        actorUserId: ctx.userId,
+        tid: ctx.tid,
+        workspaceId,
+        targetUserId: userId,
+        role: body.role as any,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  async removeRoleHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+    if (!this.removeRoleUseCase) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    const params = req.params as { workspaceId?: string; userId?: string; role?: string };
+    const workspaceId = targetWorkspaceId(req, ctx.workspaceId);
+    const userId = params.userId;
+    const role = params.role;
+    if (!userId || !role) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    try {
+      await this.removeRoleUseCase.execute({
+        actorUserId: ctx.userId,
+        tid: ctx.tid,
+        workspaceId,
+        targetUserId: userId,
+        role: role as any,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
   async changeRoleHandler(
     req: FastifyRequest,
     reply: FastifyReply

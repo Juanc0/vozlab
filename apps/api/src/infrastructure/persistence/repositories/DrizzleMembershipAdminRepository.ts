@@ -111,9 +111,32 @@ export class DrizzleMembershipAdminRepository
         status: 'ACTIVE',
       })
       .onConflictDoUpdate({
-        target: [workspaceMemberships.workspaceId, workspaceMemberships.userId],
-        set: { role: input.role, status: 'ACTIVE' },
+        target: [
+          workspaceMemberships.workspaceId,
+          workspaceMemberships.userId,
+          workspaceMemberships.role,
+        ],
+        set: { status: 'ACTIVE' },
       });
+  }
+
+  async removeRole(
+    userId: string,
+    workspaceId: string,
+    role: WorkspaceRole,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db
+      .delete(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+          eq(workspaceMemberships.role, role)
+        )
+      );
   }
 
   async countActiveAdmins(

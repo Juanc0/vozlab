@@ -229,12 +229,27 @@
             acc[m.userId].roles.push(m.role);
             return acc;
           }, {} as Record<string, { userId: string; email: string | null; roles: string[]; status: string }>)) as g (g.userId)}
-            <li class="flex items-center justify-between gap-2">
-              <span>{g.email ?? g.userId} — {g.roles.join(', ')} ({g.status})</span>
-              <span class="flex gap-1">
-                <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.suspendMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.suspend')}</button>
-                <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.removeMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.remove')}</button>
-              </span>
+            <li class="flex flex-col gap-1 border-b border-rule py-1">
+              <div class="flex items-center justify-between gap-2">
+                <span>{g.email ?? g.userId} ({g.status})</span>
+                <span class="flex gap-1">
+                  <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.suspendMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.suspend')}</button>
+                  <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.removeMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.remove')}</button>
+                </span>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                {#each g.roles as r (r)}
+                  <span class="text-small px-2 py-0.5 rounded bg-surface-2">{r}
+                    <button class="ml-1 text-small" onclick={() => selectedId && admin.removeMemberRole(api, selectedId, g.userId, r).then(loadMembers)}>×</button>
+                  </span>
+                {/each}
+                <select class="field text-small" onchange={async (e) => { const v = (e.target as HTMLSelectElement).value; if (v && selectedId) { await admin.assignMemberRole(api, selectedId, g.userId, v); await loadMembers(); } }}>
+                  <option value="">{t('admin.addRole') ?? 'Add role…'}</option>
+                  <option value="MEMBER">MEMBER</option>
+                  <option value="MODERATOR">MODERATOR</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
             </li>
           {/each}
         </ul>

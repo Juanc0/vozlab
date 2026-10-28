@@ -66,6 +66,15 @@ export interface IMembershipAdminRepository {
     tx?: DbTransaction
   ): Promise<void>;
 
+  /** Remove a single role row for a user in a workspace (multi-role). */
+  removeRole(
+    userId: string,
+    workspaceId: string,
+    role: WorkspaceRole,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
+
   /** Active ADMIN memberships of a workspace, inside the caller's transaction. */
   countActiveAdmins(
     workspaceId: string,

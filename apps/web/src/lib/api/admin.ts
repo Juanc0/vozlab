@@ -166,6 +166,33 @@ export async function changeMemberRole(
   });
 }
 
+export async function assignMemberRole(
+  client: ApiClient,
+  workspaceId: string,
+  userId: string,
+  role: string
+): Promise<void> {
+  await client.request({
+    method: 'POST',
+    path: `/workspaces/${workspaceId}/members/${userId}/roles`,
+    workspace: true,
+    body: { role }
+  });
+}
+
+export async function removeMemberRole(
+  client: ApiClient,
+  workspaceId: string,
+  userId: string,
+  role: string
+): Promise<void> {
+  await client.request({
+    method: 'DELETE',
+    path: `/workspaces/${workspaceId}/members/${userId}/roles/${role}`,
+    workspace: true
+  });
+}
+
 export async function suspendMember(
   client: ApiClient,
   workspaceId: string,

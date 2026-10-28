@@ -178,6 +178,13 @@ export function makeMembershipAdminRepository(
         tx,
       });
     },
+    async removeRole(userId, workspaceId, role, _tid, tx) {
+      const key = `${workspaceId}:${userId}`;
+      const current = members.get(key);
+      if (current && current.role === role) {
+        members.delete(key);
+      }
+    },
     async countActiveAdmins(workspaceId) {
       return [...members.values()].filter(
         (m) =>

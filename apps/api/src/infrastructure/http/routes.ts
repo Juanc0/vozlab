@@ -50,6 +50,8 @@ import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUs
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
+import { AssignMemberRoleUseCase } from '../../application/use_cases/AssignMemberRoleUseCase.js';
+import { RemoveMemberRoleUseCase } from '../../application/use_cases/RemoveMemberRoleUseCase.js';
 import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
@@ -157,6 +159,8 @@ export interface RouteDependencies {
   listMembersUseCase: ListMembersUseCase;
   addWorkspaceMemberUseCase: AddWorkspaceMemberUseCase;
   changeMemberRoleUseCase: ChangeMemberRoleUseCase;
+  assignMemberRoleUseCase?: AssignMemberRoleUseCase;
+  removeMemberRoleUseCase?: RemoveMemberRoleUseCase;
   suspendMemberUseCase: SuspendMemberUseCase;
   reactivateMemberUseCase: ReactivateMemberUseCase;
   removeMemberUseCase: RemoveMemberUseCase;
@@ -312,6 +316,8 @@ export async function registerRoutes(
     deps.listMembersUseCase,
     deps.addWorkspaceMemberUseCase,
     deps.changeMemberRoleUseCase,
+    deps.assignMemberRoleUseCase ?? null,
+    deps.removeMemberRoleUseCase ?? null,
     deps.suspendMemberUseCase,
     deps.reactivateMemberUseCase,
     deps.removeMemberUseCase
@@ -503,6 +509,18 @@ export async function registerRoutes(
     '/api/v1/workspaces/:workspaceId/members/:userId',
     { preHandler: workspaceAdmin },
     (req, reply) => workspaceAdminController.changeRoleHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/members/:userId/roles',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.assignRoleHandler(req, reply)
+  );
+
+  app.delete(
+    '/api/v1/workspaces/:workspaceId/members/:userId/roles/:role',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.removeRoleHandler(req, reply)
   );
 
   app.post(

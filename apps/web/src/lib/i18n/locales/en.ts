@@ -779,6 +779,7 @@ export const en: Dictionary<typeof es> = {
     invitations: 'Invitations',
     joinCode: 'Join code',
     rotateJoinCode: 'Rotate code',
+    addRole: 'Add role…',
     createJoinCode: 'Create ephemeral code',
     joinCodes: 'Ephemeral join codes',
     globalInvitation: 'Global invitation (cross-IdP)',
