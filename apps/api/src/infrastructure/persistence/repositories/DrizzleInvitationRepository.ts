@@ -43,15 +43,17 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     return row ? toInvitation(row) : null;
   }
 
-  async accept(id: string, tid: string): Promise<void> {
-    const db = await this.client(tid);
-    await db
+  async accept(id: string, tid: string, tx?: DbTransaction): Promise<boolean> {
+    const db = await this.client(tid, tx);
+    const rows = await db
       .update(invitations)
       .set({
         status: 'ACCEPTED',
         usedCount: sql`${invitations.usedCount} + 1`,
       })
-      .where(eq(invitations.id, id));
+      .where(and(eq(invitations.id, id), eq(invitations.status, 'PENDING')))
+      .returning({ id: invitations.id });
+    return rows.length > 0;
   }
 
   async revoke(id: string, tid: string): Promise<void> {
@@ -73,9 +75,10 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
       maxUses?: number | null;
       createdBy?: string | null;
     },
-    tid: string
+    tid: string,
+    tx?: DbTransaction
   ): Promise<Invitation> {
-    const db = await this.client(tid);
+    const db = await this.client(tid, tx);
     const [row] = await db
       .insert(invitations)
       .values({

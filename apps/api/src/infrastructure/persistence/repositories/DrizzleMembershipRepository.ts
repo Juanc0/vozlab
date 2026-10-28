@@ -58,13 +58,12 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
     workspaceId: string,
     role: WorkspaceRole,
     tid: string,
-    tx?: DbTransaction,
-    status: string = 'ACTIVE'
+    tx?: DbTransaction
   ): Promise<void> {
     const db = await this.client(tid, tx);
     await db
       .insert(workspaceMemberships)
-      .values({ userId, workspaceId, role, status })
+      .values({ userId, workspaceId, role, status: 'ACTIVE' })
       .onConflictDoNothing();
   }
 
@@ -72,9 +71,10 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
     userId: string,
     workspaceId: string,
     newRole: WorkspaceRole,
-    tid: string
+    tid: string,
+    tx?: DbTransaction
   ): Promise<void> {
-    const db = await this.client(tid);
+    const db = await this.client(tid, tx);
     await db
       .update(workspaceMemberships)
       .set({ role: newRole })
@@ -86,8 +86,13 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
       );
   }
 
-  async suspend(userId: string, workspaceId: string, tid: string): Promise<void> {
-    const db = await this.client(tid);
+  async suspend(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
     await db
       .update(workspaceMemberships)
       .set({ status: 'SUSPENDED' })
@@ -99,8 +104,13 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
       );
   }
 
-  async reactivate(userId: string, workspaceId: string, tid: string): Promise<void> {
-    const db = await this.client(tid);
+  async reactivate(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
     await db
       .update(workspaceMemberships)
       .set({ status: 'ACTIVE' })
@@ -112,8 +122,13 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
       );
   }
 
-  async remove(userId: string, workspaceId: string, tid: string): Promise<void> {
-    const db = await this.client(tid);
+  async remove(
+    userId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
     await db
       .update(workspaceMemberships)
       .set({ status: 'REMOVED' })
