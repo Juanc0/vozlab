@@ -63,17 +63,17 @@ Dos iniciadores del mismo resultado (crear membresía). Consolidar en UI como "M
 - Un usuario puede tener **múltiples membresías** a **múltiples workspaces** (tabla `workspace_memberships` es N:M por user/workspace).
 - Pero solo **un rol por (workspace, user)** (una fila por par).
 
-### 3.2 Propuesta: múltiples roles por workspace
+### 3.2 Propuesta: múltiples roles por workspace (esquema, sin personificación)
 Cambiar el modelo para que un usuario pueda tener **varios roles simultáneos** en el mismo workspace:
-- Esquema: `workspace_memberships` con PK `(workspace_id, user_id, role)` — permite varias filas por par, una por rol.
-- O alternativa: columna `roles text[]` en la fila única.
+- Esquema: `workspace_memberships` con PK `(workspace_id, user_id, role)` — permite varias filas por par, una por rol. **No** usar una columna con lista de roles (evita parsing y queries frágiles).
+- Los admins asignan y retiran roles individualmente (alta/baja de filas).
 
 **Implicaciones**:
-- Las verificaciones de seguridad deben comprobar **todos los roles** del usuario en ese workspace, no solo uno. Un usuario con roles `MEMBER` + `MODERATOR` tiene los permisos de ambos.
-- La UI puede mostrar "tus roles: MEMBER, MODERATOR" y permitir un selector "personificar como…" (opcional, para UX), pero el backend evalúa la unión de todos los roles.
+- Las verificaciones de seguridad deben comprobar **todos los roles** del usuario en ese workspace (unión), no solo uno. Un usuario con roles `MEMBER` + `MODERATOR` tiene los permisos de ambos.
+- La UI **no** tendrá selector de personificación: solo muestra los roles que el usuario tiene ("tus roles: MEMBER, MODERATOR"). El backend evalúa la unión de todos los roles activos.
 - Evita el problema de "quedar casado con un solo rol".
 
-**Recomendación**: modelo de unión (todos los roles activos cuentan). El selector de personificación es solo cosmético.
+**Recomendación**: modelo de unión (todos los roles activos cuentan). Sin personificación.
 
 ---
 
@@ -114,13 +114,59 @@ Nueva tabla `workspace_join_codes` (aprobada por el usuario):
 
 ## 5. Invitación: URL/QR y seguridad
 
-### 5.1 Propuesta
-La invitación genera una URL (y opcionalmente un QR) que el admin comparte por el canal que quiera. Al escanear/clickear:
-1. Si no hay sesión, redirige a OIDC login con `?invitation=<token>`.
-2. Tras OIDC, se redime la invitación (email verificado + coincide).
-3. Se crea la membresía con el rol asignado.
+### 5.1 Cómo se asigna la membresía (tenant + workspace + rol)
 
-**¿Es riesgoso que un usuario malicioso use la URL?**
+Pregunta: ¿cómo se asigna la membresía al tenant y al workspace si OIDC se encarga de la identificación?
+
+Respuesta: el endpoint `CompleteOidcLoginUseCase` lo hace **automáticamente** en una transacción, tras verificar el token:
+
+1. El usuario hace clic en la URL de invitación → si no hay sesión, el navegador va a `/auth/login?invitation=<token>` (la API).
+2. La API (StartOidcLoginUseCase) guarda el token en el **state store server-side** (Redis/memoria, asociado a un `state` opaco) y redirige al IdP con ese `state`. El IdP no ve el token.
+3. El usuario se autentica en el IdP (universidad X). El IdP devuelve un código al callback de la API.
+4. La API (CompleteOidcLoginUseCase) intercambia el código por un ID token, extrae `email` + `emailVerified`.
+5. **Redención de la invitación** (en transacción):
+   - Busca la invitación por hash del token en tenant DB.
+   - Verifica: PENDING, no expirada, no usada, email coincide y verificado.
+   - Crea la membresía en `workspace_memberships` con el `workspaceId` y `role` guardados en la invitación.
+   - Marca la invitación como ACCEPTED (single-use).
+6. La membresía al **tenant** ya existe implícitamente: el usuario se crea en `auth.users` del tenant si no existía (o se reutiliza por global identity). No hay una tabla de "membresía a tenant" separada — pertenecer al tenant = tener fila en `auth.users` de ese tenant.
+
+**Los 3 datos (tenant, workspace, rol) NO están en el token de invitación** — están en la fila de la invitación en la DB del tenant. El token solo es una clave opaca para encontrar esa fila. Esto es más seguro: el token no revela a qué workspace/rol corresponde.
+
+**¿Puede crear ambas membresías si lo invité al tenant de la universidad Y?**
+- El tenant se resuelve por los claims del IdP (hd/tid/org). Si el usuario se autentica con el IdP de la universidad Y, el tenant Y se resuelve automáticamente. La invitación vive en la DB del tenant Y (porque el admin que la creó pertenece a Y). Por lo tanto, todo cuadra: el usuario entra a Y, la invitación se busca en la DB de Y, y se crea la membresía al workspace de Y con el rol asignado.
+- Si el usuario usa un IdP distinto (universidad X), el tenant resuelto será X, y la invitación de Y no se encontrará (tenant mismatch) → error `ERR_INVITATION_INVALID`. Correcto por seguridad.
+
+### 5.2 Seguridad del token: quién puede verlo
+
+**El token de invitación** (`/login?invitation=<token>`):
+- Es un string opaco (random, 32+ bytes). Solo su SHA-256 se almacena.
+- Viaja en la URL → queda en historial del navegador, logs del servidor y referrers. Mitigación: single-use + TTL 72h + email-bound.
+- **Quién puede verlo en tránsito**: cualquiera con acceso a la red entre el navegador y el servidor, si no hay HTTPS. Por eso **HTTPS es obligatorio** en producción. Con HTTPS, solo el navegador y el servidor lo ven.
+- El token NO está firmado ni cifrado por sí mismo — su seguridad reside en ser opaco y de un solo uso.
+
+**El state OIDC** (donde se guarda el token durante el redirect al IdP):
+- Fastify/OIDC state store lo guarda server-side (Redis o memoria), asociado a un `state` param opaco en la URL del IdP.
+- El IdP **no** ve el token de invitación; solo ve el `state` opaco.
+- Al volver del IdP, la API recupera el state (incluyendo el invitation token) por el `state` param.
+
+**El ID token del IdP** (JWT):
+- Lo emite el IdP, firmado con su clave privada (RS256). La API lo verifica con la clave pública del IdP (JWKS).
+- Contiene: `sub` (subject único del usuario en ese IdP), `email`, `email_verified`, `name`, `hd`/`tid`/org (tenant).
+- **Quién puede verlo**: solo la API (lo recibe del IdP en el back-channel token exchange). El navegador nunca lo ve. El usuario no puede leerlo directamente.
+- **Quién puede falsificarlo**: nadie sin la clave privada del IdP. La firma lo protege.
+- **En tránsito**: HTTPS entre API e IdP.
+
+**El access token de VozLab** (JWT propio):
+- Lo emite la API, firmado con `JWT_SECRET` (HS256) o clave privada.
+- Contiene: `userId`, `tenantKey`, `authorHash`. **No** contiene email, workspace ni roles (se leen de DB).
+- Vive en memoria del navegador (no en cookie). TTL corto.
+- **Quién puede verlo**: el navegador lo tiene en memoria; con XSS un atacante lo roba. Mitigación: CSP estricta, no persistir en localStorage.
+
+**El refresh token**:
+- Opaco, hasheado en DB. Vive en cookie HttpOnly, Secure, SameSite. El JS del navegador no puede leerlo.
+
+### 5.3 ¿Es riesgoso que un usuario malicioso use la URL?
 - El token es opaco (SHA-256 hash en reposo), single-use, TTL 72h.
 - La redención requiere que el email del IdP coincida exactamente con el email invitado y esté verificado.
 - Un atacante que obtenga la URL no puede redimirla a menos que controle el email invitado (y el IdP lo verifique).
@@ -141,12 +187,11 @@ La invitación genera una URL (y opcionalmente un QR) que el admin comparte por 
 
 ### 6.2 Qué NO puede hacer un GUEST
 - Solicitar acceso a otros workspaces (ni públicos ni por código).
-- Crear propuestas de corrección o fusión ("propuestas sensibles" = propuestas que modifican el grafo o la gobernanza).
 - Crear workspaces.
 - Administrar nada.
 - Ser invitado a workspaces no-EVENT con rol superior sin pasar por OIDC primero.
 
-**"Propuestas sensibles"** = propuestas de edición/fusión de nodos y relaciones (CorrectionProposal, MergeProposal). Un GUEST puede verlas pero no crearlas ni votarlas (o votar con peso 0). Esto evita que asistentes anónimos alteren el grafo.
+**Propuestas**: un GUEST **sí puede crear** propuestas de corrección/fusión (CorrectionProposal, MergeProposal). Todas quedan en PENDING y son el foco principal de las funcionalidades a mostrar/pronar. La aprobación sigue requiriendo un admin/moderador. El GUEST también puede votar (con peso estándar) en las propuestas de su workspace EVENT. Lo que NO puede es auto-aplicar ni aprobar.
 
 ### 6.3 Promoción de GUEST a MEMBER
 Un admin puede "promover" a un guest cambiándole el rol a MEMBER (requiere que el usuario haya verificado identidad vía OIDC). Si el guest nunca hizo OIDC, la promoción requiere que primero complete OIDC.
@@ -198,6 +243,8 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 6. Limpieza de invitaciones expiradas y guests inactivos.
 7. CSRF en `/auth/refresh` (SameSite cookie).
 8. Unicidad de handle por tenant.
+9. **Membresía al tenant es implícita** (fila en `auth.users` del tenant), no hay tabla separada. La invitación crea la membresía al workspace, no al tenant.
+10. **El token de invitación no contiene datos sensibles** (tenant/workspace/rol); solo es clave para buscar la fila en DB. El ID token del IdP se verifica por firma (RS256 + JWKS) en el back-channel.
 
 ---
 
@@ -262,7 +309,7 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 **P0 (seguridad/coherencia):**
 1. Alta directa por admin: dejar de usar email, usar handle/identidad global.
-2. Múltiples roles por workspace (esquema + verificación por unión).
+2. Múltiples roles por workspace (esquema + verificación por unión, sin personificación en UI).
 3. Códigos de workspace efímeros y revocables (nueva tabla).
 4. `workspaces.kind` (EVENT/PUBLIC/PRIVATE) + `users.is_anonymous`.
 5. Rol GUEST acotado.
@@ -285,4 +332,4 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 ## 15. Conclusión del comité
 
-El modelo actual es **coherente en su núcleo** pero necesita: (a) cambiar alta directa de email a identidad global/handle, (b) permitir múltiples roles por workspace con verificación por unión, (c) códigos de workspace efímeros con auto-aprobación configurable, (d) tipificación de workspaces y rol GUEST acotado, (e) QR de evento con ambos códigos. La invitación como URL/QR es segura por diseño (token + email verificado por IdP). No implementar contraseñas propias, magic links ni envío de email por ahora. Consolidar flujos redundantes.
+El modelo actual es **coherente en su núcleo** pero necesita: (a) cambiar alta directa de email a identidad global/handle, (b) permitir múltiples roles por workspace con verificación por unión (sin personificación), (c) códigos de workspace efímeros con auto-aprobación configurable, (d) tipificación de workspaces y rol GUEST acotado, (e) QR de evento con ambos códigos. La invitación como URL/QR es segura por diseño: el token es opaco/single-use/TTL y la redención requiere email verificado por el IdP; la membresía se crea server-side en transacción (tenant implícito + workspace + rol), y el token no contiene datos sensibles. Los guests SÍ pueden crear propuestas (quedan PENDING) porque es el foco de las funcionalidades a mostrar. No implementar contraseñas propias, magic links ni envío de email por ahora. Consolidar flujos redundantes.
