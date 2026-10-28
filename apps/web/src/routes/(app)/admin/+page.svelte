@@ -15,6 +15,7 @@
   let workspaces = $state<AdminWorkspaceDto[]>([]);
   let selectedId = $state<string | null>(null);
   let members = $state<AdminMemberDto[]>([]);
+  let joinRequests = $state<JoinRequestDto[]>([]);
   let loading = $state(false);
   let error = $state<ApiFailure | null>(null);
 
@@ -45,6 +46,7 @@
     if (!selectedId) return;
     try {
       members = await admin.listMembers(api, selectedId);
+      joinRequests = await admin.listJoinRequests(api, selectedId);
     } catch (e) {
       error = describeFailure(e);
     }
@@ -177,6 +179,19 @@
               <span class="flex gap-1">
                 <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.suspendMember(api, selectedId, m.userId).then(loadMembers)}>{t('admin.suspend')}</button>
                 <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.removeMember(api, selectedId, m.userId).then(loadMembers)}>{t('admin.remove')}</button>
+              </span>
+            </li>
+          {/each}
+        </ul>
+
+        <h3>{t('admin.joinRequests') ?? 'Join requests'}</h3>
+        <ul class="space-y-1">
+          {#each joinRequests as r (r.id)}
+            <li class="flex items-center justify-between gap-2">
+              <span>{r.userId} — {r.status}</span>
+              <span class="flex gap-1">
+                <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.approveJoinRequest(api, selectedId, r.id).then(loadMembers)}>{t('admin.approve') ?? 'Approve'}</button>
+                <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.rejectJoinRequest(api, selectedId, r.id).then(loadMembers)}>{t('admin.reject') ?? 'Reject'}</button>
               </span>
             </li>
           {/each}
