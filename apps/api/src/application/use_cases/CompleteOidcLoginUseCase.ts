@@ -11,6 +11,7 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import {
   generateAuthorHash,
@@ -47,6 +48,7 @@ export class CompleteOidcLoginUseCase {
     private readonly userRepo: IUserRepository,
     private readonly invitationRepo: IInvitationRepository,
     private readonly membershipRepo: IMembershipRepository,
+    private readonly uow: IUnitOfWork,
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly refreshTtlMs: number
   ) {}
@@ -99,7 +101,12 @@ export class CompleteOidcLoginUseCase {
       tenant.id
     );
 
-    // D9: redeem invitation if token present in state.
+    // D9: redeem the invitation carried by the OIDC state.
+    //
+    // Redemption is strict: the token must exist, be PENDING, unexpired and
+    // unused, and the verified identity email must match the email the
+    // invitation was bound to. A failure is an error — never a silent
+    // "logged in without the membership" — so a broken link is visible.
     if (state.invitationToken) {
       const { createHash } = await import('node:crypto');
       const tokenHash = createHash('sha256')
@@ -111,31 +118,44 @@ export class CompleteOidcLoginUseCase {
         tenant.id
       );
 
-      if (invitation && invitation.status === 'PENDING' && invitation.expiresAt > new Date()) {
-        // Validate email if invitation has email.
-        let canRedeem = true;
-        if (invitation.email && identity.emailVerified !== true) {
-          canRedeem = false;
-        }
-        if (canRedeem && invitation.email && identity.email) {
-          // Simple email comparison (normalized).
-          if (invitation.email.toLowerCase() !== identity.email.toLowerCase()) {
-            canRedeem = false;
-          }
+      const usable =
+        invitation !== null &&
+        invitation.status === 'PENDING' &&
+        invitation.expiresAt > new Date() &&
+        (invitation.maxUses === null ||
+          invitation.usedCount < invitation.maxUses);
+      const boundEmail = invitation?.email?.trim().toLowerCase() ?? null;
+      const identityEmail = identity.email?.trim().toLowerCase() ?? null;
+      const emailMatches =
+        boundEmail !== null &&
+        identity.emailVerified === true &&
+        identityEmail !== null &&
+        boundEmail === identityEmail;
+
+      if (!invitation || !usable || !emailMatches) {
+        throw new DomainError('ERR_INVITATION_INVALID');
+      }
+
+      await this.uow.runInTransaction(tenant.id, async (tx) => {
+        // Conditional accept: the second concurrent callback loses the race
+        // and must not create a second membership.
+        const accepted = await this.invitationRepo.accept(
+          invitation.id,
+          tenant.id,
+          tx
+        );
+        if (!accepted) {
+          throw new DomainError('ERR_INVITATION_INVALID');
         }
 
-        if (canRedeem) {
-          // Create membership.
-          await this.membershipRepo.add(
-            user.id,
-            invitation.workspaceId,
-            invitation.role as WorkspaceRole,
-            tenant.id
-          );
-          // Mark invitation as accepted.
-          await this.invitationRepo.accept(invitation.id, tenant.id);
-        }
-      }
+        await this.membershipRepo.add(
+          user.id,
+          invitation.workspaceId,
+          invitation.role as WorkspaceRole,
+          tenant.id,
+          tx
+        );
+      });
     }
 
     const refreshToken = generateRefreshToken(tenant.id);
