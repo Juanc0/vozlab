@@ -186,6 +186,8 @@ export default defineConfig(({ mode }) => {
         }
       : undefined,
     server: {
+      host: '0.0.0.0',
+      allowedHosts: true,
       fs: {
         // The workspace package `@vozlab/shared-types` is served to the
         // browser as source in dev mode; SvelteKit's allow list does not
