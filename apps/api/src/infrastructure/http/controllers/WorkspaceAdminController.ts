@@ -154,6 +154,8 @@ export class WorkspaceAdminController {
         tid: ctx.tid,
         workspaceId: targetWorkspaceId(req, ctx.workspaceId),
         email: parsed.data.email,
+        handle: parsed.data.handle,
+        globalUserId: parsed.data.globalUserId,
         role: parsed.data.role,
         reqId: ctx.reqId,
       });

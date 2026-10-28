@@ -46,8 +46,12 @@ export type UpdateWorkspaceInput = z.infer<typeof UpdateWorkspaceSchema>;
 
 /** `POST /api/v1/workspaces/:workspaceId/members` — add a user already in the tenant. */
 export const AddWorkspaceMemberSchema = z.object({
-  email: z.string().trim().email().max(255),
+  email: z.string().trim().email().max(255).optional(),
+  handle: z.string().trim().min(1).max(64).optional(),
+  globalUserId: z.string().uuid().optional(),
   role: WorkspaceRoleSchema.default('MEMBER'),
+}).refine((d) => d.email || d.handle || d.globalUserId, {
+  message: 'one of email, handle, or globalUserId is required',
 });
 export type AddWorkspaceMemberInput = z.infer<typeof AddWorkspaceMemberSchema>;
 
