@@ -1,6 +1,6 @@
 # Revisión de arquitectura: autenticación y onboarding (tenant / workspace)
 
-Comité: arquitectura + seguridad + producto. Fecha: 2026-10-28 (v2, ampliada con preocupaciones del usuario).
+Comité: arquitectura + seguridad + producto. Fecha: 2026-10-28 (v3, con preocupaciones adicionales del usuario).
 Contexto: VozLab multi-tenant (router DB + una DB por tenant), Fastify API + SvelteKit PWA, OIDC (Zitadel), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin envío de email).
 
 ---
@@ -8,9 +8,17 @@ Contexto: VozLab multi-tenant (router DB + una DB por tenant), Fastify API + Sve
 ## 0. Resumen ejecutivo
 
 - El núcleo actual es **coherente**: OIDC como identidad, invitación como onboarding con rol, código de workspace como "dirección" (nunca llave), aprobación humana para privados.
-- El principal problema de **coherencia** es que hay **demasiadas puertas de entrada** con identidades de calidad distinta y solapamientos; varias pueden reducirse.
-- El principal problema de **seguridad** es que la puerta anónima del event join es demasiado permisiva y los códigos de workspace son estáticos/permanentes (solo rotan manualmente).
-- Se propone: (a) códigos de workspace efímeros y revocables, (b) un rol `GUEST`/`MEMBER_LITE` para asistentes de evento, (c) tipificar workspaces por propósito (evento / público / privado), (d) consolidar flujos redundantes, (e) mantener invitaciones como URL pura sin servicio de email.
+- **Problemas de coherencia**: demasiadas puertas de entrada con identidades de calidad distinta; solapamientos; alta directa por admin usa email (no ideal).
+- **Problemas de seguridad**: puerta anónima del event join demasiado permisiva; códigos de workspace estáticos/permanentes; invitación URL compartible.
+- **Decisiones nuevas propuestas**:
+  - Códigos de workspace efímeros y revocables (nueva tabla) — aprobado por el usuario.
+  - `workspaces.kind` (EVENT/PUBLIC/PRIVATE) — aprobado.
+  - Rol `GUEST` acotado — aprobado, pero aclarar qué es "propuesta sensible".
+  - Alta directa por admin debe dejar de usar email; usar identidad global o handle único por tenant.
+  - Un usuario puede tener múltiples membresías y múltiples roles por workspace; las verificaciones deben considerar todos los roles.
+  - Códigos de acceso separados: tenant vs workspace, con auto-aprobación configurable por tipo de usuario y tipo de workspace.
+  - Evento: QR con ambos códigos (tenant + workspace) en un solo paso.
+  - Invitación: URL/QR compartible, con rol asignado de una vez; seguro por token + email verificado por IdP.
 
 ---
 
@@ -18,13 +26,13 @@ Contexto: VozLab multi-tenant (router DB + una DB por tenant), Fastify API + Sve
 
 | # | Flujo | Emisor | Propósito | Credencial | Resultado |
 |---|-------|--------|-----------|------------|-----------|
-| A | OIDC login | Usuario humano identificado | Entrar al tenant con identidad verificada | Código OIDC + state | Sesión + usuario + membresías existentes |
-| B | Event join | Asistente anónimo | Participar en un evento sin fricción | Código de evento global | Usuario anónimo + membresía MEMBER (o GUEST) en workspace del evento |
-| C | Descubrimiento público | Usuario autenticado sin workspace | Pedir acceso a workspace público | Ninguna | Solicitud PENDING (no grant) |
-| D | Join request por código de workspace | Usuario autenticado | Pedir acceso a workspace privado | `join_code` (rotativo) | Solicitud PENDING |
-| E | Invitación email-bound | Admin de workspace | Onboarding dirigido con rol | Token raw en URL | Sesión (OIDC) + membresía con rol, tras redención |
-| F | Alta directa por admin | Admin de workspace | Añadir usuario ya en tenant a un workspace | Email del usuario | Membresía ACTIVE |
-| G | Aprobación de join request | Admin de workspace | Convertir solicitud PENDING en membresía | — | Membresía ACTIVE |
+| A | OIDC login | Usuario humano identificado | Entrar al tenant con identidad verificada | Código OIDC + state | Sesión + usuario + membresías |
+| B | Event join | Asistente anónimo | Participar en evento sin fricción | Código de evento global | Usuario anónimo + membresía GUEST en workspace EVENT |
+| C | Descubrimiento público | Usuario autenticado | Pedir acceso a workspace público | Ninguna | Solicitud PENDING |
+| D | Join request por código | Usuario autenticado | Pedir acceso a workspace privado | `join_code` (rotativo) | Solicitud PENDING |
+| E | Invitación email-bound | Admin de workspace | Onboarding dirigido con rol | Token raw en URL/QR | Sesión (OIDC) + membresía con rol |
+| F | Alta directa por admin | Admin de workspace | Añadir usuario ya en tenant | Identidad global o handle | Membresía ACTIVE |
+| G | Aprobación de join request | Admin de workspace | Convertir PENDING en ACTIVE | — | Membresía ACTIVE |
 
 Roles: tenant ADMIN (`system_role='ADMIN'`) gestiona todo el tenant; workspace ADMIN (`workspace_memberships.role='ADMIN'` ACTIVE) gestiona su workspace. Roles leídos de DB en cada request.
 
@@ -33,203 +41,248 @@ Roles: tenant ADMIN (`system_role='ADMIN'`) gestiona todo el tenant; workspace A
 ## 2. Explicación clara de los flujos confusos
 
 ### 2.1 "Alta directa por admin" (F)
-Un administrador de workspace añade a un usuario que **ya existe en el tenant** (porque antes hizo OIDC) directamente como miembro ACTIVE, asignándole un rol. No hay solicitud ni aprobación intermedia: el admin decide. Es el flujo más simple y directo para onboarding de personas conocidas.
+Un administrador añade a un usuario que **ya existe en el tenant** directamente como miembro ACTIVE con un rol. El admin decide, sin solicitud intermedia.
 
-- Cuándo usar: el admin conoce al usuario y quiere darle acceso inmediato con un rol concreto.
-- Limitación: el usuario debe haber entrado al tenant antes (OIDC). No crea identidades nuevas.
+**Problema actual**: usa `email` como identificador. Pero:
+- El email no es un identificador único por IdP (mismo email en varios IdPs).
+- Aunque se almacena (`auth.users.email`), no es confiable como clave de búsqueda.
+
+**Solución propuesta**: usar la **identidad global** (`global_identities` en router DB, clave única `(issuer, subject)`) o un **handle único por tenant** (campo `auth.users.handle`, único por tenant, editable por el usuario). El admin busca por handle o por (issuer, subject) resuelto, no por email. El email queda como dato informativo, no como clave.
 
 ### 2.2 "Aprobación de join request" (G)
-Un usuario (autenticado) pidió acceso a un workspace (flujo C o D) y quedó en estado PENDING. El admin revisa la bandeja de solicitudes y aprueba o rechaza. Al aprobar, se crea la membresía ACTIVE.
+Un usuario pidió acceso (C o D) y quedó PENDING. El admin aprueba o rechaza. Al aprobar, se crea la membresía ACTIVE.
 
-- Cuándo usar: workspaces privados donde el admin quiere controlar quién entra.
-- Diferencia con F: aquí el usuario inicia; en F el admin inicia.
-
-### 2.3 Relación entre F y G
-Son dos caras del mismo concepto (crear membresía) con distinto iniciador. Se pueden **consolidar conceptualmente**: "crear membresía" con dos variantes (admin-initiated vs request-approved). A nivel de código, mantener separados por auditoría, pero la UI puede unificarlos en una sola pantalla de "Miembros".
+### 2.3 Relación F y G
+Dos iniciadores del mismo resultado (crear membresía). Consolidar en UI como "Miembros"; backend separado por auditoría.
 
 ---
 
-## 3. Códigos: evento vs workspace join code
+## 3. Membresías y roles múltiples
 
 ### 3.1 Estado actual
-- **Código de evento (B)**: global, en router DB, efímero (expira, capacidad limitada), se consume al entrar. Bien.
-- **Código de workspace (D)**: estático en `workspaces.join_code`, solo rota manualmente por el admin. **Problema**: permanente; si se filtra, cualquiera puede solicitar acceso indefinidamente hasta que el admin rote.
+- Un usuario puede tener **múltiples membresías** a **múltiples workspaces** (tabla `workspace_memberships` es N:M por user/workspace).
+- Pero solo **un rol por (workspace, user)** (una fila por par).
 
-### 3.2 Propuesta: códigos de workspace efímeros y revocables
-Convertir el join code en un recurso gestionable, similar a los códigos de evento pero a nivel workspace:
-- Permitir **múltiples códigos activos** por workspace, cada uno con: etiqueta (ej. "Asamblea marzo"), expiración (TTL), capacidad máxima (opcional), estado (activo/revocado).
-- El admin puede crear, editar (TTL/capacidad/etiqueta), revocar individualmente o rotar todos.
-- Un código revocado/expirado deja de enrutar solicitudes (devuelve `ERR_WORKSPACE_NOT_FOUND` o un error específico).
-- Mantener un código "por defecto" de larga duración para el caso simple, pero permitir códigos efímeros para eventos.
+### 3.2 Propuesta: múltiples roles por workspace
+Cambiar el modelo para que un usuario pueda tener **varios roles simultáneos** en el mismo workspace:
+- Esquema: `workspace_memberships` con PK `(workspace_id, user_id, role)` — permite varias filas por par, una por rol.
+- O alternativa: columna `roles text[]` en la fila única.
 
-**Ventaja**: blindaje del workspace — un código filtrado tiene vida corta y capacidad limitada; el admin puede revocarlo sin afectar otros códigos.
+**Implicaciones**:
+- Las verificaciones de seguridad deben comprobar **todos los roles** del usuario en ese workspace, no solo uno. Un usuario con roles `MEMBER` + `MODERATOR` tiene los permisos de ambos.
+- La UI puede mostrar "tus roles: MEMBER, MODERATOR" y permitir un selector "personificar como…" (opcional, para UX), pero el backend evalúa la unión de todos los roles.
+- Evita el problema de "quedar casado con un solo rol".
 
-**Costo**: nueva tabla `workspace_join_codes` (workspace_id, code_hash, label, expires_at, max_uses, used_count, revoked_at). Migración.
-
-### 3.3 ¿Dónde viven los códigos? (router vs tenant DB)
-
-- **Códigos de evento**: viven en router DB porque el event join ocurre **antes** de resolver el tenant (el código es la única credencial; el tenant se deriva del código). Correcto, no mover.
-- **Códigos de workspace e invitaciones**: son **workspace-scoped** y el workspace vive en tenant DB. Viven ahí. No duplicar en router DB.
-- **Regla**: un código vive en la DB donde se resuelve su alcance. Si el código identifica un tenant/workspace antes de autenticación, va a router DB; si requiere sesión (tenant ya resuelto), va a tenant DB.
-
-No hay duplicación real: cada código tiene un alcance distinto.
+**Recomendación**: modelo de unión (todos los roles activos cuentan). El selector de personificación es solo cosmético.
 
 ---
 
-## 4. Invitación por email sin servicio de email
+## 4. Códigos de acceso: tenant vs workspace
 
-### 4.1 Estado actual
-`CreateInvitationUseCase` crea la invitación y devuelve `{ invitation, url }` donde `url = ${WEB_ORIGIN}/login?invitation=<token>`. El admin copia el enlace y lo envía por el canal que quiera. **No hay envío de email.** Esto es exactamente lo que el usuario quiere.
+### 4.1 Pregunta del usuario
+¿Dividir responsabilidades? ¿Uno para entrar al tenant y otro para el workspace (requiriendo estar en el tenant)? ¿Ambos en solicitud pendiente? ¿Auto-aprobación para eventos?
 
-### 4.2 Recomendaciones
-- Mantener así: la invitación es un **artefacto generable**, no un envío. El admin es responsable de la distribución.
-- Añadir en la UI: botón "Copiar enlace", mostrar expiración, estado (PENDING/USED/EXPIRED/REVOKED), y la posibilidad de revocar/regenerar.
-- No implementar servicio de email ahora; si en el futuro se quiere, se añade como un adaptador opcional sobre el mismo `CreateInvitationUseCase` (el use case no cambia).
-- Añadir recordatorio visual de invitaciones próximas a expirar (PENDING con `expiresAt` < 24h).
+### 4.2 Propuesta
 
----
+**Dos niveles de código, con auto-aprobación configurable:**
 
-## 5. Usuarios temporales / guest y control de acceso por tipo de workspace
+| Código | Alcance | Requiere | Auto-aprobación | Cuándo |
+|--------|---------|----------|-----------------|--------|
+| **Código de tenant (evento)** | Router DB, global | Ninguna (anónimo) | Sí (crea usuario + membresía) | Eventos públicos de baja sensibilidad |
+| **Código de workspace** | Tenant DB, por workspace | Sesión (usuario en tenant) | Configurable por workspace (`autoApproveJoinCode`) | Workspaces con código compartido |
 
-### 5.1 Preocupación del usuario
-Los asistentes a eventos se autentican con información del dispositivo (anónimos, efímeros). Algunos workspaces no deben permitirles.
+**Reglas**:
+- Si `autoApproveJoinCode=true` (ej. workspace de evento), el código de workspace crea la membresía directamente (sin PENDING).
+- Si `autoApproveJoinCode=false` (default para privados), el código crea una solicitud PENDING (como hoy).
+- El tenant admin puede configurar `autoApproveJoinCode` por workspace.
+- Un código de workspace solo funciona para usuarios que ya tienen sesión en el tenant.
 
-### 5.2 Propuesta: rol `GUEST` (o `MEMBER_LITE`)
-Añadir un rol `GUEST` para usuarios creados por event join:
-- Permisos: leer el workspace del evento, participar en discusiones/votos del evento.
-- Sin permisos: solicitar acceso a otros workspaces, crear propuestas sensibles, administrar, crear nodos en workspaces no-evento.
-- Marcado en `auth.users` con `is_anonymous=true` (o derivado del tipo de usuario) y rol GUEST en la membresía.
+**Para eventos**: el QR/enlace puede contener **ambos códigos** (tenant + workspace) y pasarlos en un solo paso:
+1. El cliente primero canjea el código de tenant (crea usuario anónimo + sesión).
+2. Luego canjea el código de workspace (crea membresía, auto-aprobada si el workspace es EVENT).
+3. Todo en una sola interacción del usuario ("escanear QR → entrar").
 
-### 5.3 Tipificación de workspaces
-Añadir `workspaces.kind` (o `purpose`):
-- `EVENT`: creado para un evento; admite event join; los miembros GUEST solo ven este workspace.
-- `PUBLIC`: descubrible, cualquier usuario autenticado puede solicitar acceso.
-- `PRIVATE`: solo por invitación o código (solicitud).
+Esto es coherente y reduce fricción sin sacrificar control.
 
-Reglas de acceso:
-- Un usuario GUEST solo puede ser miembro de workspaces EVENT.
-- Un usuario real (OIDC) puede ser miembro de cualquier tipo.
-- Un workspace EVENT no aparece en descubrimiento público para usuarios reales (o sí, como "eventos abiertos").
-
-Esto resuelve la preocupación: los flujos de entrada a workspaces sensibles quedan vedados a guests.
+### 4.3 Códigos efímeros de workspace
+Nueva tabla `workspace_join_codes` (aprobada por el usuario):
+- `id, workspace_id, code_hash, label, expires_at, max_uses, used_count, auto_approve, revoked_at, created_by, created_at`
+- El admin crea/edita/revoca individualmente.
+- Múltiples códigos activos por workspace.
 
 ---
 
-## 6. Consolidación de flujos (reducir redundancias)
+## 5. Invitación: URL/QR y seguridad
 
-### 6.1 Solapamientos detectados
-- (C) descubrimiento y (D) código de workspace hacen lo mismo (solicitud PENDING) con distinta credencial.
-- (F) alta directa y (G) aprobación crean membresía con distinto iniciador.
-- (E) invitación y (F) alta directa ambos onboardean con rol; la invitación requiere OIDC previo del invitado, F también.
+### 5.1 Propuesta
+La invitación genera una URL (y opcionalmente un QR) que el admin comparte por el canal que quiera. Al escanear/clickear:
+1. Si no hay sesión, redirige a OIDC login con `?invitation=<token>`.
+2. Tras OIDC, se redime la invitación (email verificado + coincide).
+3. Se crea la membresía con el rol asignado.
 
-### 6.2 Propuesta de consolidación
-Reducir a **tres puertas de entrada** por propósito:
+**¿Es riesgoso que un usuario malicioso use la URL?**
+- El token es opaco (SHA-256 hash en reposo), single-use, TTL 72h.
+- La redención requiere que el email del IdP coincida exactamente con el email invitado y esté verificado.
+- Un atacante que obtenga la URL no puede redimirla a menos que controle el email invitado (y el IdP lo verifique).
+- **Riesgo residual**: si el email invitado es comprometido, el atacante redime. Mitigación: TTL corto, single-use, revocación por admin, auditoría.
 
-1. **Identidad (OIDC)** — la única forma de crear un usuario real. Todo lo demás asume un usuario existente (excepto event join).
-2. **Acceso a workspace** — un solo flujo "solicitar acceso" con dos variantes de credencial (id público o código). Ya está casi así (`RequestWorkspaceAccessUseCase`).
-3. **Onboarding con rol** — invitación (URL) como método único; la alta directa se convierte en "invitación auto-redimida por admin" o se elimina a favor de invitaciones. Mantener alta directa solo como atajo para usuarios ya en tenant.
+**¿Para qué usuarios es?** Para cualquier persona con email conocido a la que el admin quiere dar un rol específico. El rol se asigna de una vez al redimir.
 
-Eliminar/reducir:
-- Event join se mantiene pero acotado a workspaces EVENT y rol GUEST.
-- Join request por código y por descubrimiento se unifican en un solo endpoint (ya lo están).
-- Alta directa y aprobación se unifican en la UI de "Miembros" (backend separado por auditoría).
-
-### 6.3 Flujos a descartar o no implementar
-- Magic link / passwordless: no implementar ahora (invitación por URL ya cubre el caso).
-- SCIM/provisioning: no implementar (fuera de alcance).
-- Contraseñas propias: no implementar (OIDC cubre).
-- Códigos que otorgan acceso directo: **nunca**.
+**¿Puede ser QR?** Sí, simplemente codificar la URL en un QR. No cambia la seguridad.
 
 ---
 
-## 7. Lo que se está obviando (tenant auth y otros)
+## 6. GUEST: restricciones claras
 
-1. **Autenticación contra tenant**: el tenant se resuelve por claims OIDC (`hd`/`tid`/org). No hay un paso explícito de "seleccionar tenant" para usuarios multi-tenant. Si un usuario pertenece a varios tenants, el flujo actual no lo soporta bien. Considerar: si un email pertenece a varios tenants, mostrar selector post-login.
-2. **Verificación de email**: la invitación requiere `emailVerified=true`. Si el IdP no lo provee, la invitación es inredimible. Documentar que el IdP debe proveer email verificado.
-3. **Revocación de sesión al cambiar rol**: no hay invalidación inmediata de access token. Recomendado: acortar TTL + invalidar refresh family al suspender.
-4. **Auditoría**: no hay tabla de auditoría de acciones admin.
-5. **Rate limiting específico** por actor en acciones admin.
-6. **Limpieza de invitaciones expiradas** y de usuarios anónimos inactivos.
-7. **CORS/CSRF**: la PWA usa Bearer + cookie HttpOnly; verificar que `/auth/refresh` esté protegido contra CSRF (SameSite cookie).
+### 6.1 Qué puede hacer un GUEST
+- Leer el workspace EVENT del que es miembro.
+- Participar en discusiones y votos de ese workspace.
+- Ver el grafo del evento.
+
+### 6.2 Qué NO puede hacer un GUEST
+- Solicitar acceso a otros workspaces (ni públicos ni por código).
+- Crear propuestas de corrección o fusión ("propuestas sensibles" = propuestas que modifican el grafo o la gobernanza).
+- Crear workspaces.
+- Administrar nada.
+- Ser invitado a workspaces no-EVENT con rol superior sin pasar por OIDC primero.
+
+**"Propuestas sensibles"** = propuestas de edición/fusión de nodos y relaciones (CorrectionProposal, MergeProposal). Un GUEST puede verlas pero no crearlas ni votarlas (o votar con peso 0). Esto evita que asistentes anónimos alteren el grafo.
+
+### 6.3 Promoción de GUEST a MEMBER
+Un admin puede "promover" a un guest cambiándole el rol a MEMBER (requiere que el usuario haya verificado identidad vía OIDC). Si el guest nunca hizo OIDC, la promoción requiere que primero complete OIDC.
 
 ---
 
-## 8. Casos de uso / historias de usuario a cubrir
+## 7. Tipificación de workspaces (aprobado)
+
+`workspaces.kind`: `EVENT` | `PUBLIC` | `PRIVATE`.
+
+| kind | Descubrible | Event join | Código de workspace | Invitación | Join request |
+|------|-------------|------------|---------------------|------------|--------------|
+| EVENT | No (o solo eventos activos) | Sí | Auto-aprobado | Sí | No aplica |
+| PUBLIC | Sí | No | Sí (PENDING por defecto) | Sí | Sí |
+| PRIVATE | No | No | Sí (PENDING por defecto) | Sí | Sí (solo por código) |
+
+---
+
+## 8. Dónde viven los códigos (resumen)
+
+- **Código de tenant/evento**: router DB (`event_codes`), global, pre-autenticación.
+- **Código de workspace**: tenant DB (`workspace_join_codes`), post-sesión.
+- **Invitación**: tenant DB (`invitations`), post-sesión (redención tras OIDC).
+- **Regla**: el código vive donde se resuelve su alcance.
+
+---
+
+## 9. Consolidación de flujos
+
+Reducir de 7 a **3 puertas** + variantes:
+
+1. **Identidad (OIDC)** — única forma de crear usuario real.
+2. **Acceso a workspace** — un flujo con credencial variable (id público / código) y auto-aprobación configurable.
+3. **Onboarding con rol** — invitación (URL/QR) como método único; alta directa se convierte en atajo admin.
+
+Event join se mantiene pero acotado a EVENT + GUEST.
+
+**Descartar**: magic link, SCIM, contraseñas propias, códigos que otorguen acceso directo.
+
+---
+
+## 10. Lo que se está obviando
+
+1. Multi-tenant: selector si el usuario pertenece a varios tenants.
+2. Verificación de email por IdP (requerida para invitaciones).
+3. Revocación de sesión al suspender (invalidar refresh family).
+4. Auditoría de acciones admin.
+5. Rate limiting específico por actor.
+6. Limpieza de invitaciones expiradas y guests inactivos.
+7. CSRF en `/auth/refresh` (SameSite cookie).
+8. Unicidad de handle por tenant.
+
+---
+
+## 11. Casos de uso / historias de usuario
 
 ### Usuarios reales (OIDC)
-- US-A: Como usuario institucional, quiero entrar al tenant con mi cuenta corporativa.
-- US-B: Como usuario sin workspace, quiero descubrir workspaces públicos y solicitar acceso.
-- US-C: Como usuario con código, quiero solicitar acceso a un workspace privado.
-- US-D: Como invitado, quiero redimir una invitación y obtener mi membresía con rol.
+- US-A: Entrar al tenant con cuenta corporativa.
+- US-B: Descubrir workspaces públicos y solicitar acceso.
+- US-C: Solicitar acceso a workspace privado con código.
+- US-D: Redimir invitación y obtener membresía con rol.
 
 ### Asistentes de evento (GUEST)
-- US-E: Como asistente, quiero unirme a un evento con un código sin crear cuenta.
-- US-F: Como asistente, solo quiero ver/participar en el workspace del evento.
+- US-E: Unirse a evento con QR (tenant + workspace en un paso).
+- US-F: Solo ver/participar en workspace EVENT.
 
 ### Administradores
-- US-G: Como admin de workspace, quiero crear códigos de acceso efímeros con expiración y capacidad.
-- US-H: Como admin, quiero revocar un código filtrado sin afectar otros.
-- US-I: Como admin, quiero generar un enlace de invitación y copiarlo (sin envío de email).
-- US-J: Como admin, quiero aprobar/rechazar solicitudes de acceso.
-- US-K: Como admin, quiero añadir directamente a un usuario del tenant.
-- US-L: Como admin, quiero suspender/reactivar/eliminar miembros sin poder quedarme sin admins.
-- US-M: Como tenant admin, quiero crear workspaces (provisionando ontología base) y gestionar usuarios.
+- US-G: Crear códigos de workspace efímeros con TTL/capacidad/auto-aprobación.
+- US-H: Revocar código filtrado.
+- US-I: Generar enlace/QR de invitación y copiarlo.
+- US-J: Aprobar/rechazar solicitudes.
+- US-K: Añadir usuario por handle/identidad global.
+- US-L: Suspender/reactivar/eliminar miembros (sin quedarse sin admins).
+- US-M: Crear workspaces (provisionando ontología base).
 
 ### Seguridad
-- US-N: Como sistema, quiero que un código de workspace nunca otorgue acceso directo.
-- US-O: Como sistema, quiero que un guest no pueda acceder a workspaces no-evento.
-- US-P: Como sistema, quiero que suspender a un usuario invalide su sesión.
+- US-N: Código de workspace nunca otorga acceso directo (salvo auto-aprobación configurada).
+- US-O: Guest no accede a workspaces no-EVENT.
+- US-P: Suspender invalida sesión.
+- US-Q: Múltiples roles por workspace, verificación por unión.
 
 ---
 
-## 9. Opciones y mejores prácticas acotadas al producto
+## 12. Opciones y mejores prácticas
 
-| Decisión | Opción recomendada | Alternativa descartada | Motivo |
-|----------|-------------------|----------------------|--------|
-| Códigos de workspace | Efímeros, múltiples, revocables (P0) | Estático permanente | Blindaje ante filtración |
-| Invitación | URL pura, sin email service | Envío automático de email | Menos infraestructura, admin controla distribución |
-| Guest | Rol GUEST acotado a workspaces EVENT | Permitir todo a anónimos | Menor privilegio |
-| Tipos de workspace | EVENT / PUBLIC / PRIVATE | Un solo tipo | Políticas de acceso claras |
-| Consolidación | 3 puertas: identidad, acceso, onboarding con rol | 7 flujos independientes | Menos complejidad, menos bugs |
-| Multi-tenant | Resolver por claims, añadir selector si varios | Forzar un tenant | Flexibilidad futura |
-| Sesión | TTL corto + invalidar refresh family al suspender | Solo TTL | Revocación efectiva |
+| Decisión | Recomendada | Descartada | Motivo |
+|----------|-------------|------------|--------|
+| Alta directa por admin | Por handle/identidad global | Por email | Email no es clave única por IdP |
+| Roles por workspace | Unión de todos los roles activos | Un solo rol | Evita "casarse" con un rol |
+| Códigos de workspace | Efímeros, revocables, auto-aprobación configurable | Estático permanente | Blindaje + flexibilidad |
+| Evento | QR con ambos códigos, auto-aprobado | Solo código de tenant | Un paso, baja fricción |
+| Invitación | URL/QR, rol asignado al redimir, sin email service | Envío automático | Menos infra, admin controla |
+| Guest | Rol GUEST acotado a EVENT | Anónimo con todo | Menor privilegio |
+| Tipos de workspace | EVENT/PUBLIC/PRIVATE | Uno solo | Políticas claras |
 
 ---
 
-## 10. Lo que ya está bien (no tocar)
+## 13. Lo que ya está bien (no tocar)
 
 - Roles leídos de DB en cada request.
 - Workspace mismatch → 404.
 - Invitación: email-bound, single-use, TTL, hash at rest, revoke-previous, redención estricta, race-safe.
-- Código de workspace solo enruta solicitud.
+- Código de workspace solo enruta solicitud (salvo auto-aprobación configurada).
 - Protección del último admin.
 - Tenant admin vs workspace admin separados.
 - Eventos publicados after-commit best-effort.
-- Invitación como URL pura (sin email service) — ya implementado.
+- Invitación como URL pura.
+- `workspaces.join_code` rotativo (base para efímeros).
 
 ---
 
-## 11. Recomendaciones priorizadas
+## 14. Recomendaciones priorizadas
 
 **P0 (seguridad/coherencia):**
-1. Códigos de workspace efímeros y revocables (nueva tabla + UI).
-2. Acotar event join a workspaces EVENT + rol GUEST.
-3. Añadir `workspaces.kind` (EVENT/PUBLIC/PRIVATE) y `users.is_anonymous`.
-4. Rate limit dedicado por actor en acciones admin.
+1. Alta directa por admin: dejar de usar email, usar handle/identidad global.
+2. Múltiples roles por workspace (esquema + verificación por unión).
+3. Códigos de workspace efímeros y revocables (nueva tabla).
+4. `workspaces.kind` (EVENT/PUBLIC/PRIVATE) + `users.is_anonymous`.
+5. Rol GUEST acotado.
+6. Auto-aprobación configurable por workspace.
 
 **P1 (operación):**
-5. Invalidar refresh family al suspender.
-6. Auditoría de acciones admin.
-7. Limpieza de invitaciones expiradas y guests inactivos.
-8. Selector de tenant si el usuario pertenece a varios.
+7. Invalidar refresh family al suspender.
+8. Auditoría de acciones admin.
+9. Rate limit dedicado por actor.
+10. Selector de tenant si varios.
+11. Limpieza de invitaciones expiradas y guests inactivos.
 
 **P2 (producto):**
-9. Consolidar UI de "Miembros" unificando alta directa y aprobación.
-10. Documentar matriz de decisión en requirements.md.
-11. Event join: exponer en admin conteo de usos y rotación del código de evento.
+12. QR con ambos códigos para eventos.
+13. Consolidar UI de "Miembros".
+14. Documentar matriz de decisión en requirements.md.
+15. Event join: exponer en admin conteo de usos y rotación.
 
 ---
 
-## 12. Conclusión del comité
+## 15. Conclusión del comité
 
-El modelo actual es **coherente en su núcleo** pero **demasiado permisivo en la puerta anónima** y **demasiado estático en los códigos de workspace**. Se recomienda implementar P0 (códigos efímeros, guest acotado, tipificación de workspaces) antes de exponer workspaces sensibles. No implementar contraseñas propias, magic links ni envío de email por ahora; la invitación como URL pura es suficiente y más simple. Consolidar flujos redundantes para reducir superficie de ataque y complejidad.
+El modelo actual es **coherente en su núcleo** pero necesita: (a) cambiar alta directa de email a identidad global/handle, (b) permitir múltiples roles por workspace con verificación por unión, (c) códigos de workspace efímeros con auto-aprobación configurable, (d) tipificación de workspaces y rol GUEST acotado, (e) QR de evento con ambos códigos. La invitación como URL/QR es segura por diseño (token + email verificado por IdP). No implementar contraseñas propias, magic links ni envío de email por ahora. Consolidar flujos redundantes.
