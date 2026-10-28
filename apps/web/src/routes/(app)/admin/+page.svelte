@@ -3,7 +3,7 @@
   import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
-  import type { AdminWorkspaceDto, AdminMemberDto } from '@vozlab/shared-types';
+  import type { AdminWorkspaceDto, AdminMemberDto, JoinRequestDto } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
 
   const api = getApiClient();
