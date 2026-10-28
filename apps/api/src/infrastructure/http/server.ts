@@ -72,6 +72,7 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
 import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
@@ -264,6 +265,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     oidcStateStore
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
+  const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo);
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -471,6 +473,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     logoutUseCase,
     getMeUseCase,
     joinEventUseCase,
+    cleanupUseCase,
     createWorkspaceUseCase,
     getWorkspaceUseCase,
     updateWorkspaceUseCase,

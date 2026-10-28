@@ -38,6 +38,7 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
 import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
@@ -88,6 +89,7 @@ import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
 import { TenantAdminController } from './controllers/TenantAdminController.js';
+import { CleanupController } from './controllers/CleanupController.js';
 import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
 import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
 import { WorkspaceAccessController } from './controllers/WorkspaceAccessController.js';
@@ -138,6 +140,7 @@ export interface RouteDependencies {
   logoutUseCase: LogoutUseCase;
   getMeUseCase: GetMeUseCase;
   joinEventUseCase: JoinEventUseCase;
+  cleanupUseCase?: CleanupExpiredInvitationsUseCase;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
   getWorkspaceUseCase: GetWorkspaceUseCase;
   updateWorkspaceUseCase: UpdateWorkspaceUseCase;
@@ -277,6 +280,9 @@ export async function registerRoutes(
     getMeUseCase,
     joinEventUseCase
   );
+  const cleanupController = deps.cleanupUseCase
+    ? new CleanupController(deps.cleanupUseCase)
+    : null;
   const ingestionController = new IngestionController(
     resolveSourceUseCase,
     deps.ingestSourceUseCase
@@ -414,6 +420,14 @@ export async function registerRoutes(
     { preHandler: tenantAdmin },
     (req, reply) => tenantAdminController.listUsersHandler(req, reply)
   );
+
+  if (cleanupController) {
+    app.post(
+      '/api/v1/admin/cleanup',
+      { preHandler: tenantAdmin },
+      (req, reply) => cleanupController.cleanupHandler(req, reply)
+    );
+  }
 
   // --- Workspace configuration and membership (US-00) ---
   app.get(
