@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-27
-- Related: ADR-0004 (AGE deferred), ADR-0027 (ranked traversal), ADR-0032 (observability)
+- Related: ADR-0004 (AGE deferred), ADR-0027 (ranked traversal), ADR-0032 (observability), ADR-0040 (zrok demo exposure)
 
 ## Context
 
