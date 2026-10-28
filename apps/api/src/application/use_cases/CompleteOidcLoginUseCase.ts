@@ -25,13 +25,15 @@ export interface CompleteOidcLoginInput {
 }
 
 export interface CompleteOidcLoginResult {
-  refreshToken: string;
-  refreshExpiresAt: Date;
+  refreshToken?: string;
+  refreshExpiresAt?: Date;
   /** Absolute path on the PWA origin. */
   redirectPath: string;
-  user: AuthUser;
-  /** v5: tenants linked to this identity (for explicit selection). */
+  user?: AuthUser;
+  /** v5: tenants linked to this identity. */
   linkedTenants: Array<{ id: string; slug: string; status: string }>;
+  /** v6: true when the user must select a tenant. */
+  requiresTenantSelection: boolean;
 }
 
 /**
@@ -73,17 +75,6 @@ export class CompleteOidcLoginUseCase {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
-    // Resolve the tenant from the token claims (hd for Google Workspace,
-    // tid for Entra ID, org ID for Zitadel native). The user does not
-    // choose the institution — it is determined by the identity provider.
-    const tenant = await this.routerDb.findTenantByOidcId(identity.tenantKey);
-    if (!tenant) {
-      throw new DomainError(
-        'ERR_TENANT_NOT_PROVISIONED',
-        `no tenant for claim ${identity.tenantKey}`
-      );
-    }
-
     // D8: resolve or create global identity, upserting profile.
     const globalUser = await this.globalUserRepo.findOrCreate(
       identity.issuer,
@@ -95,6 +86,42 @@ export class CompleteOidcLoginUseCase {
         picture: null,
       }
     );
+
+    const linkedTenants = await this.routerDb.findTenantsByGlobalUser(
+      globalUser.id
+    );
+
+    // v6: explicit tenant selection. If multiple linked tenants, require selection.
+    if (linkedTenants.length > 1) {
+      return {
+        redirectPath: state.redirectPath,
+        linkedTenants: linkedTenants.map((t) => ({
+          id: t.id,
+          slug: t.slug,
+          status: t.status,
+        })),
+        requiresTenantSelection: true,
+      };
+    }
+
+    // Resolve tenant: prefer linked tenant, else claims.
+    let tenantId: string | null = null;
+    if (linkedTenants.length === 1) {
+      tenantId = linkedTenants[0].id;
+    } else {
+      const t = await this.routerDb.findTenantByOidcId(identity.tenantKey);
+      tenantId = t?.id ?? null;
+    }
+    if (!tenantId) {
+      throw new DomainError(
+        'ERR_TENANT_NOT_PROVISIONED',
+        `no tenant for claim ${identity.tenantKey}`
+      );
+    }
+    const tenant = await this.routerDb.findTenantById(tenantId);
+    if (!tenant) {
+      throw new DomainError('ERR_TENANT_NOT_PROVISIONED');
+    }
 
     const user = await this.userRepo.findOrCreateByExternalIdentity(
       {
@@ -179,20 +206,19 @@ export class CompleteOidcLoginUseCase {
       tenant.id
     );
 
-    const linkedTenants = await this.routerDb.findTenantsByGlobalUser(
-      globalUser.id
-    );
+    const linked = await this.routerDb.findTenantsByGlobalUser(globalUser.id);
 
     return {
       refreshToken,
       refreshExpiresAt,
       redirectPath: state.redirectPath,
       user,
-      linkedTenants: linkedTenants.map((t) => ({
+      linkedTenants: linked.map((t) => ({
         id: t.id,
         slug: t.slug,
         status: t.status,
       })),
+      requiresTenantSelection: false,
     };
   }
 }
