@@ -244,6 +244,10 @@ async function seed(): Promise<void> {
         slug: WORKSPACE_SLUG,
         name: 'General Campus',
         description: 'Dev workspace',
+        isPublic: true,
+        // Routing hint only: it identifies the workspace to a user who was
+        // told the code; it never grants access (US-00).
+        joinCode: '7532D05897A9D6C5',
       })
       .onConflictDoNothing();
 

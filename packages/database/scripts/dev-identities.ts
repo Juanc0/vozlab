@@ -115,7 +115,8 @@ export const DEV_IDENTITIES: Readonly<
     authorHash: authorHashFor('maintainer'),
     fullName: 'Dev Maintainer',
     email: 'dev-maintainer@example.edu',
-    systemRole: 'USER',
+    // Tenant administrator (US-00): manages users and every workspace.
+    systemRole: 'ADMIN',
     membership: Object.freeze({
       id: '55555555-5555-4555-8555-555555555555',
       role: 'ADMIN',
