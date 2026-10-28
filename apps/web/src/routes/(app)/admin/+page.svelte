@@ -24,6 +24,9 @@
   let newDesc = $state('');
   let newPublic = $state(true);
   let creating = $state(false);
+  let newCodeLabel = $state('');
+  let createdCode = $state<string | null>(null);
+  let creatingCode = $state(false);
 
   async function loadWorkspaces() {
     loading = true; error = null;
@@ -73,6 +76,20 @@
   }
 
   const selected = $derived(workspaces.find((w) => w.id === selectedId) ?? null);
+
+  async function createJoinCode() {
+    if (!selectedId) return;
+    creatingCode = true;
+    try {
+      const res = await admin.createJoinCode(api, selectedId, { label: newCodeLabel || null, autoApprove: false });
+      createdCode = res.code;
+      newCodeLabel = '';
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      creatingCode = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -140,6 +157,17 @@
         >
           {t('admin.rotateJoinCode')}
         </button>
+
+        <div class="border-t border-rule pt-3 space-y-2">
+          <h3>{t('admin.createJoinCode') ?? 'Create ephemeral join code'}</h3>
+          <input class="field w-full" bind:value={newCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
+          <button type="button" class="btn btn-primary" disabled={creatingCode} onclick={createJoinCode}>
+            {t('admin.createJoinCode') ?? 'Create'}
+          </button>
+          {#if createdCode}
+            <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
+          {/if}
+        </div>
 
         <h3>{t('admin.members')}</h3>
         <ul class="space-y-1">

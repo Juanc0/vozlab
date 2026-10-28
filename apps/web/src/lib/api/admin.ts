@@ -77,6 +77,19 @@ export async function updateAdminWorkspace(
   });
 }
 
+export async function createJoinCode(
+  client: ApiClient,
+  workspaceId: string,
+  input: { label?: string | null; expiresAt?: string | null; maxUses?: number | null; autoApprove?: boolean }
+): Promise<{ id: string; code: string }> {
+  return client.request<{ id: string; code: string }>({
+    method: 'POST',
+    path: `/workspaces/${workspaceId}/join-codes`,
+    workspace: true,
+    body: input
+  });
+}
+
 export async function rotateJoinCode(
   client: ApiClient,
   workspaceId: string
