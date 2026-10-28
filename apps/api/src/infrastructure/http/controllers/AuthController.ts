@@ -12,6 +12,7 @@ import { AuthUser } from '../../../domain/ports/IUserRepository.js';
 import { StartOidcLoginUseCase } from '../../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../../application/use_cases/CompleteOidcLoginUseCase.js';
 import { SelectTenantUseCase } from '../../../application/use_cases/SelectTenantUseCase.js';
+import { ResolveTenantsUseCase } from '../../../application/use_cases/ResolveTenantsUseCase.js';
 import { RefreshSessionUseCase } from '../../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../../application/use_cases/GetMeUseCase.js';
@@ -55,6 +56,7 @@ export class AuthController {
     private readonly startLogin: StartOidcLoginUseCase,
     private readonly completeLogin: CompleteOidcLoginUseCase,
     private readonly selectTenantUseCase: SelectTenantUseCase,
+    private readonly resolveTenantsUseCase: ResolveTenantsUseCase,
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logout: LogoutUseCase,
     private readonly getMe: GetMeUseCase,
@@ -109,9 +111,9 @@ export class AuthController {
         state: query.state,
       });
       if (result.requiresTenantSelection) {
-        // Redirect to tenant selector; pass global user id via short-lived query.
+        const gid = result.globalUserId ?? '';
         return reply.redirect(
-          this.webUrl('/select-tenant')
+          this.webUrl(`/select-tenant?gid=${encodeURIComponent(gid)}`)
         );
       }
       setRefreshCookie(
@@ -143,6 +145,18 @@ export class AuthController {
       });
       setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
       return reply.send({ accessToken: result.user ? 'ok' : 'ok' });
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  /** GET /api/v1/auth/resolve-tenants?globalUserId=... */
+  async resolveTenants(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const query = req.query as { globalUserId?: string };
+    if (!query.globalUserId) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    try {
+      const tenants = await this.resolveTenantsUseCase.execute({ globalIdentityId: query.globalUserId });
+      return reply.send({ tenants });
     } catch (error) {
       return sendError(reply, mapDomainError(error));
     }

@@ -844,6 +844,8 @@ export const es = {
     invitations: 'Invitaciones',
     joinCode: 'Código de acceso',
     rotateJoinCode: 'Rotar código',
+    selectTenantTitle: 'Seleccionar inquilino',
+    selectTenantNone: 'Sin inquilinos vinculados',
     addRole: 'Añadir rol…',
     createJoinCode: 'Crear código efímero',
     joinCodes: 'Códigos efímeros',

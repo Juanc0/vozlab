@@ -779,6 +779,8 @@ export const en: Dictionary<typeof es> = {
     invitations: 'Invitations',
     joinCode: 'Join code',
     rotateJoinCode: 'Rotate code',
+    selectTenantTitle: 'Select tenant',
+    selectTenantNone: 'No tenants linked',
     addRole: 'Add role…',
     createJoinCode: 'Create ephemeral code',
     joinCodes: 'Ephemeral join codes',

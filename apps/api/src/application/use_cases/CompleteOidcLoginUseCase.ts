@@ -32,6 +32,8 @@ export interface CompleteOidcLoginResult {
   user?: AuthUser;
   /** v5: tenants linked to this identity. */
   linkedTenants: Array<{ id: string; slug: string; status: string }>;
+  /** v6: global user id for tenant selection. */
+  globalUserId?: string;
   /** v6: true when the user must select a tenant. */
   requiresTenantSelection: boolean;
 }
@@ -100,6 +102,7 @@ export class CompleteOidcLoginUseCase {
           slug: t.slug,
           status: t.status,
         })),
+        globalUserId: globalUser.id,
         requiresTenantSelection: true,
       };
     }

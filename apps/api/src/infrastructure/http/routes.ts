@@ -34,6 +34,7 @@ import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js'
 import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
 import { SelectTenantUseCase } from '../../application/use_cases/SelectTenantUseCase.js';
+import { ResolveTenantsUseCase } from '../../application/use_cases/ResolveTenantsUseCase.js';
 import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
@@ -142,6 +143,7 @@ export interface RouteDependencies {
   startOidcLoginUseCase: StartOidcLoginUseCase;
   completeOidcLoginUseCase: CompleteOidcLoginUseCase;
   selectTenantUseCase?: SelectTenantUseCase;
+  resolveTenantsUseCase?: ResolveTenantsUseCase;
   refreshSessionUseCase: RefreshSessionUseCase;
   logoutUseCase: LogoutUseCase;
   getMeUseCase: GetMeUseCase;
@@ -286,6 +288,7 @@ export async function registerRoutes(
     startOidcLoginUseCase,
     completeOidcLoginUseCase,
     deps.selectTenantUseCase!,
+    deps.resolveTenantsUseCase!,
     refreshSessionUseCase,
     logoutUseCase,
     getMeUseCase,
