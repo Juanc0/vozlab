@@ -82,10 +82,16 @@ export class CompleteOidcLoginUseCase {
       );
     }
 
-    // D8: resolve or create global identity.
+    // D8: resolve or create global identity, upserting profile.
     const globalIdentity = await this.globalIdentityRepo.findOrCreate(
       identity.issuer,
-      identity.subject
+      identity.subject,
+      {
+        email: identity.email,
+        emailVerified: identity.emailVerified ?? false,
+        fullName: identity.fullName,
+        picture: null,
+      }
     );
 
     const user = await this.userRepo.findOrCreateByExternalIdentity(

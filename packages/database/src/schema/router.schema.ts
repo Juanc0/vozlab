@@ -133,6 +133,13 @@ export const globalIdentities = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     issuer: varchar('issuer', { length: 512 }).notNull(),
     subject: varchar('subject', { length: 255 }).notNull(),
+    // v5: identity profile (PII) stored in router DB as the single source
+    // of truth for "who is this user". Workspace/role data remain in tenant DB.
+    email: varchar('email', { length: 255 }),
+    emailVerified: boolean('email_verified').default(false).notNull(),
+    fullName: varchar('full_name', { length: 255 }),
+    picture: varchar('picture', { length: 1024 }),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   },

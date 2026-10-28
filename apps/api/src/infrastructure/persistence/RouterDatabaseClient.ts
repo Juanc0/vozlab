@@ -2,7 +2,7 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
-import { IGlobalIdentityRepository, GlobalIdentity } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalIdentityRepository, GlobalIdentity, GlobalIdentityProfile } from '../../domain/ports/IGlobalIdentityRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { globalIdentities } from '@vozlab/database';
 import {
@@ -111,9 +111,13 @@ export class RouterDatabaseClient
   }
 
   /**
-   * Find or create a global identity by (issuer, subject).
+   * Find or create a global identity by (issuer, subject), upserting profile.
    */
-  async findOrCreate(issuer: string, subject: string): Promise<GlobalIdentity> {
+  async findOrCreate(
+    issuer: string,
+    subject: string,
+    profile?: GlobalIdentityProfile
+  ): Promise<GlobalIdentity> {
     try {
       const [existing] = await this.db
         .select()
@@ -126,24 +130,38 @@ export class RouterDatabaseClient
         )
         .limit(1);
 
+      const now = new Date();
+      const values = {
+        email: profile?.email ?? null,
+        emailVerified: profile?.emailVerified ?? false,
+        fullName: profile?.fullName ?? null,
+        picture: profile?.picture ?? null,
+        lastLoginAt: now,
+        lastSeenAt: now,
+      };
+
       if (existing) {
-        // Update last_seen_at.
         await this.db
           .update(globalIdentities)
-          .set({ lastSeenAt: new Date() })
+          .set(values)
           .where(eq(globalIdentities.id, existing.id));
         return {
           id: existing.id,
           issuer: existing.issuer,
           subject: existing.subject,
+          email: values.email,
+          emailVerified: values.emailVerified,
+          fullName: values.fullName,
+          picture: values.picture,
+          lastLoginAt: values.lastLoginAt,
           createdAt: existing.createdAt,
-          lastSeenAt: new Date(),
+          lastSeenAt: values.lastSeenAt,
         };
       }
 
       const [created] = await this.db
         .insert(globalIdentities)
-        .values({ issuer, subject })
+        .values({ issuer, subject, ...values })
         .onConflictDoNothing()
         .returning();
 
@@ -152,6 +170,11 @@ export class RouterDatabaseClient
           id: created.id,
           issuer: created.issuer,
           subject: created.subject,
+          email: created.email ?? null,
+          emailVerified: created.emailVerified,
+          fullName: created.fullName ?? null,
+          picture: created.picture ?? null,
+          lastLoginAt: created.lastLoginAt ?? null,
           createdAt: created.createdAt,
           lastSeenAt: created.lastSeenAt,
         };
@@ -176,11 +199,38 @@ export class RouterDatabaseClient
         id: raced.id,
         issuer: raced.issuer,
         subject: raced.subject,
+        email: raced.email ?? null,
+        emailVerified: raced.emailVerified,
+        fullName: raced.fullName ?? null,
+        picture: raced.picture ?? null,
+        lastLoginAt: raced.lastLoginAt ?? null,
         createdAt: raced.createdAt,
         lastSeenAt: raced.lastSeenAt,
       };
     } catch (err) {
       log.error({ err, issuer, subject }, 'failed to find or create global identity');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * Update profile fields for an existing identity.
+   */
+  async updateProfile(id: string, profile: GlobalIdentityProfile): Promise<void> {
+    try {
+      await this.db
+        .update(globalIdentities)
+        .set({
+          email: profile.email ?? undefined,
+          emailVerified: profile.emailVerified,
+          fullName: profile.fullName ?? undefined,
+          picture: profile.picture ?? undefined,
+          lastLoginAt: new Date(),
+          lastSeenAt: new Date(),
+        })
+        .where(eq(globalIdentities.id, id));
+    } catch (err) {
+      log.error({ err, id }, 'failed to update global identity profile');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
@@ -201,6 +251,11 @@ export class RouterDatabaseClient
         id: row.id,
         issuer: row.issuer,
         subject: row.subject,
+        email: row.email ?? null,
+        emailVerified: row.emailVerified,
+        fullName: row.fullName ?? null,
+        picture: row.picture ?? null,
+        lastLoginAt: row.lastLoginAt ?? null,
         createdAt: row.createdAt,
         lastSeenAt: row.lastSeenAt,
       };

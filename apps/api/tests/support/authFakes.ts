@@ -83,22 +83,33 @@ export function makeGlobalIdentityRepository(): {
 } {
   const calls: string[] = [];
   const repo: IGlobalIdentityRepository = {
-    async findOrCreate(issuer, subject) {
+    async findOrCreate(issuer, subject, profile) {
       calls.push(`findOrCreate:${issuer}:${subject}`);
       return {
         id: 'global-id-1',
         issuer,
         subject,
+        email: profile?.email ?? null,
+        emailVerified: profile?.emailVerified ?? false,
+        fullName: profile?.fullName ?? null,
+        picture: profile?.picture ?? null,
+        lastLoginAt: new Date(),
         createdAt: new Date(),
         lastSeenAt: new Date(),
       };
     },
+    async updateProfile() {},
     async findById(id) {
       calls.push(`findById:${id}`);
       return {
         id,
         issuer: 'https://idp.test',
         subject: 'idp-sub-1',
+        email: null,
+        emailVerified: false,
+        fullName: null,
+        picture: null,
+        lastLoginAt: null,
         createdAt: new Date(),
         lastSeenAt: new Date(),
       };
