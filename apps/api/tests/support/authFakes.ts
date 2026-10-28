@@ -18,6 +18,10 @@ import type {
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
 import type { IGlobalUserRepository } from '../../src/domain/ports/IGlobalUserRepository.js';
+import type {
+  GlobalInvitationRecord,
+  IGlobalInvitationRepository,
+} from '../../src/domain/ports/IGlobalInvitationRepository.js';
 import type { IInvitationRepository } from '../../src/domain/ports/IInvitationRepository.js';
 import type {
   CreateRefreshTokenInput,
@@ -149,9 +153,56 @@ export function makeRouterDb(
     async findGlobalTenantLink() {
       return null;
     },
+    async linkGlobalTenant(globalUserId, tenantId, tenantUserId, status) {
+      calls.push(`linkGlobalTenant:${globalUserId}:${tenantId}:${tenantUserId}:${status}`);
+    },
   };
 
   return { routerDb, calls };
+}
+
+export function makeGlobalInvitationRepository(
+  seed: GlobalInvitationRecord[] = []
+): {
+  repo: IGlobalInvitationRepository;
+  records: GlobalInvitationRecord[];
+  accepts: string[];
+} {
+  const records = [...seed];
+  const accepts: string[] = [];
+
+  const repo: IGlobalInvitationRepository = {
+    async createInvitation(input) {
+      const record: GlobalInvitationRecord = {
+        id: `global-inv-${records.length + 1}`,
+        tokenHash: input.tokenHash,
+        tenantId: input.tenantId,
+        workspaceId: input.workspaceId,
+        role: input.role,
+        email: input.email,
+        status: 'PENDING',
+        maxUses: input.maxUses ?? null,
+        usedCount: 0,
+        expiresAt: input.expiresAt,
+        createdAt: new Date(),
+      };
+      records.push(record);
+      return record;
+    },
+    async findByTokenHash(tokenHash) {
+      return records.find((r) => r.tokenHash === tokenHash) ?? null;
+    },
+    async accept(id) {
+      accepts.push(id);
+      const record = records.find((r) => r.id === id);
+      if (!record || record.status !== 'PENDING') return false;
+      record.status = 'ACCEPTED';
+      record.usedCount += 1;
+      return true;
+    },
+  };
+
+  return { repo, records, accepts };
 }
 
 export function makeIdentityProvider(

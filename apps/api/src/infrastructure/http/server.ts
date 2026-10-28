@@ -74,6 +74,7 @@ import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
 import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
+import { RedeemGlobalInvitationUseCase } from '../../application/use_cases/RedeemGlobalInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
@@ -277,6 +278,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
   const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo);
   const createGlobalInvitationUseCase = new CreateGlobalInvitationUseCase(routerDb);
+  const redeemGlobalInvitationUseCase = new RedeemGlobalInvitationUseCase(
+    routerDb,
+    routerDb,
+    routerDb,
+    userRepo,
+    membershipRepo,
+    uow
+  );
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -287,7 +296,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipRepo,
     uow,
     refreshTokenRepo,
-    refreshTtlMs
+    refreshTtlMs,
+    redeemGlobalInvitationUseCase
   );
   const selectTenantUseCase = new SelectTenantUseCase(
     routerDb,

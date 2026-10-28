@@ -6,6 +6,7 @@ import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { hashOpaqueToken, generateAuthorHash } from '../../shared/auth/refreshToken.js';
+import type { AuthUser } from '../../domain/ports/IUserRepository.js';
 import type { WorkspaceRole } from '@vozlab/shared-types';
 
 export interface RedeemGlobalInvitationInput {
@@ -23,6 +24,8 @@ export interface RedeemGlobalInvitationResult {
   workspaceId: string;
   role: WorkspaceRole;
   userId: string;
+  /** Tenant DB user created/linked during redemption (for session issuing). */
+  user: AuthUser;
 }
 
 export class RedeemGlobalInvitationUseCase {
@@ -34,6 +37,19 @@ export class RedeemGlobalInvitationUseCase {
     private readonly membershipRepo: IMembershipRepository,
     private readonly uow: IUnitOfWork
   ) {}
+
+  /**
+   * True when the token exists in the GLOBAL invitation registry
+   * (`global_invitations`), regardless of status. Used by the OIDC callback
+   * to decide between the global redemption path and the tenant-local
+   * invitation path before any tenant is resolved.
+   */
+  async isGlobalToken(token: string): Promise<boolean> {
+    const invitation = await this.globalInvitationRepo.findByTokenHash(
+      hashOpaqueToken(token)
+    );
+    return invitation !== null;
+  }
 
   async execute(input: RedeemGlobalInvitationInput): Promise<RedeemGlobalInvitationResult> {
     const tokenHash = hashOpaqueToken(input.token);
@@ -73,6 +89,15 @@ export class RedeemGlobalInvitationUseCase {
       tenant.id
     );
 
+    // Link the global identity to the tenant in the router DB so the tenant
+    // appears in `findTenantsByGlobalUser` on subsequent logins (v6/TASK-06).
+    await this.routerDb.linkGlobalTenant(
+      input.globalUserId,
+      tenant.id,
+      user.id,
+      'ACTIVE'
+    );
+
     const accepted = await this.globalInvitationRepo.accept(invitation.id);
     if (!accepted) {
       throw new DomainError('ERR_INVITATION_INVALID');
@@ -93,6 +118,7 @@ export class RedeemGlobalInvitationUseCase {
       workspaceId: invitation.workspaceId,
       role: invitation.role as WorkspaceRole,
       userId: user.id,
+      user,
     };
   }
 }

@@ -40,6 +40,7 @@ describe('ConnectionPoolManager', () => {
       async ping() {},
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
+    async linkGlobalTenant() { return undefined; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);
@@ -76,6 +77,7 @@ describe('ConnectionPoolManager', () => {
       async ping() {},
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
+    async linkGlobalTenant() { return undefined; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);
@@ -104,6 +106,7 @@ describe('ConnectionPoolManager', () => {
       async ping() {},
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
+    async linkGlobalTenant() { return undefined; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);

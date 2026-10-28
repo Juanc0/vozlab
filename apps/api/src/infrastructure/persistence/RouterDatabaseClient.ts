@@ -434,6 +434,39 @@ export class RouterDatabaseClient
   }
 
   /**
+   * Upsert the global identity ↔ tenant user link (v6/TASK-06).
+   * Idempotent on `(global_identity_id, tenant_id)`; refreshes
+   * `tenant_user_id`, `status` and `last_seen_at` on conflict.
+   */
+  async linkGlobalTenant(
+    globalUserId: string,
+    tenantId: string,
+    tenantUserId: string,
+    status: 'ACTIVE' | 'SUSPENDED' | 'LEFT'
+  ): Promise<void> {
+    try {
+      await this.db
+        .insert(globalIdentityTenants)
+        .values({
+          globalIdentityId: globalUserId,
+          tenantId,
+          tenantUserId,
+          status,
+        })
+        .onConflictDoUpdate({
+          target: [globalIdentityTenants.globalIdentityId, globalIdentityTenants.tenantId],
+          set: { tenantUserId, status, lastSeenAt: new Date() },
+        });
+    } catch (err) {
+      log.error(
+        { err, globalUserId, tenantId, tenantUserId },
+        'failed to link global identity to tenant'
+      );
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
    * Cheap liveness probe for the router database.
    * Executes `SELECT 1` through Drizzle and throws on failure.
    */

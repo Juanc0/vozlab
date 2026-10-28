@@ -13,6 +13,7 @@ import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
+import type { RedeemGlobalInvitationUseCase } from './RedeemGlobalInvitationUseCase.js';
 import {
   generateAuthorHash,
   generateRefreshToken,
@@ -56,7 +57,14 @@ export class CompleteOidcLoginUseCase {
     private readonly membershipRepo: IMembershipRepository,
     private readonly uow: IUnitOfWork,
     private readonly refreshRepo: IRefreshTokenRepository,
-    private readonly refreshTtlMs: number
+    private readonly refreshTtlMs: number,
+    /**
+     * v6/TASK-06: optional global-invitation redemption. When the OIDC state
+     * carries a token that exists in the GLOBAL registry, redemption happens
+     * before tenant resolution — the invited identity may have no tenant link
+     * and no institutional claim for one.
+     */
+    private readonly redeemGlobalInvitation?: RedeemGlobalInvitationUseCase
   ) {}
 
   async execute(
@@ -88,6 +96,32 @@ export class CompleteOidcLoginUseCase {
         picture: null,
       }
     );
+
+    // v6/TASK-06: a GLOBAL invitation is redeemed before tenant resolution.
+    // The cross-IdP invitee has no tenant link yet and its institutional
+    // claim maps to no tenant; the invitation itself carries the destination.
+    if (state.invitationToken && this.redeemGlobalInvitation) {
+      const isGlobal = await this.redeemGlobalInvitation.isGlobalToken(
+        state.invitationToken
+      );
+      if (isGlobal) {
+        const redeemed = await this.redeemGlobalInvitation.execute({
+          token: state.invitationToken,
+          globalUserId: globalUser.id,
+          identityEmail: identity.email,
+          identityEmailVerified: identity.emailVerified,
+          issuer: identity.issuer,
+          subject: identity.subject,
+          fullName: identity.fullName,
+        });
+        return this.issueSession(
+          redeemed.user,
+          redeemed.tenantId,
+          state.redirectPath,
+          globalUser.id
+        );
+      }
+    }
 
     const linkedTenants = await this.routerDb.findTenantsByGlobalUser(
       globalUser.id
@@ -138,6 +172,11 @@ export class CompleteOidcLoginUseCase {
       },
       tenant.id
     );
+
+    // Keep the router link fresh for every institutional login, not just the
+    // reconcile script: without it `findTenantsByGlobalUser` (the tenant
+    // selector and `switch-tenant`) only ever sees manually reconciled rows.
+    await this.routerDb.linkGlobalTenant(globalUser.id, tenant.id, user.id, 'ACTIVE');
 
     // D9: redeem the invitation carried by the OIDC state.
     //
@@ -196,7 +235,21 @@ export class CompleteOidcLoginUseCase {
       });
     }
 
-    const refreshToken = generateRefreshToken(tenant.id);
+    return this.issueSession(user, tenant.id, state.redirectPath, globalUser.id);
+  }
+
+  /**
+   * Issue the refresh family and build the login result for a resolved
+   * tenant session (shared by the institutional and the global-invitation
+   * redemption paths).
+   */
+  private async issueSession(
+    user: AuthUser,
+    tenantId: string,
+    redirectPath: string,
+    globalUserId: string
+  ): Promise<CompleteOidcLoginResult> {
+    const refreshToken = generateRefreshToken(tenantId);
     const refreshExpiresAt = new Date(Date.now() + this.refreshTtlMs);
 
     await this.refreshRepo.create(
@@ -206,15 +259,15 @@ export class CompleteOidcLoginUseCase {
         tokenHash: hashOpaqueToken(refreshToken),
         expiresAt: refreshExpiresAt,
       },
-      tenant.id
+      tenantId
     );
 
-    const linked = await this.routerDb.findTenantsByGlobalUser(globalUser.id);
+    const linked = await this.routerDb.findTenantsByGlobalUser(globalUserId);
 
     return {
       refreshToken,
       refreshExpiresAt,
-      redirectPath: state.redirectPath,
+      redirectPath,
       user,
       linkedTenants: linked.map((t) => ({
         id: t.id,

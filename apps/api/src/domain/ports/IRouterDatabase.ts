@@ -63,4 +63,17 @@ export interface IRouterDatabase {
     globalUserId: string,
     tenantId: string
   ): Promise<{ tenantUserId: string; status: string } | null>;
+
+  /**
+   * Upsert the link between a global identity and a tenant user
+   * (`global_identity_tenants`). Used when an external identity is created
+   * or redeemed into a tenant (v6/TASK-06: global invitation redemption).
+   * Idempotent: on conflict updates `tenantUserId`/`status`/`lastSeenAt`.
+   */
+  linkGlobalTenant(
+    globalUserId: string,
+    tenantId: string,
+    tenantUserId: string,
+    status: 'ACTIVE' | 'SUSPENDED' | 'LEFT'
+  ): Promise<void>;
 }
