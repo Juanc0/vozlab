@@ -212,7 +212,8 @@ As an institutional administrator I create and configure a workspace with its
 parameters and initial administrators, so faculties or projects keep separate
 contexts. Acceptance: session belongs to the active `tid`; `auth.workspaces`
 row created with the base ontology; the URL stays clean and the workspace
-appears in the PWA selector. *(Admin endpoints not built.)*
+appears in the PWA selector. *(Backend, CLI bootstrap and audit delivered;
+web admin UI is the next slice — see ADR-0041.)*
 
 ### US-01 — Create a node in the graph (PWA User)
 As an authenticated user I draft an initiative or report by picking an active
