@@ -23,6 +23,12 @@ export const workspaces = authSchema.table('workspaces', {
   name: varchar('name', { length: 255 }).notNull(),
   description: varchar('description', { length: 500 }),
   isPublic: boolean('is_public').default(true).notNull(),
+  /**
+   * Routing hint for private workspaces (US-00). It identifies the workspace
+   * but grants nothing: a valid code only lets an authenticated tenant user
+   * create a join request that an admin still has to approve.
+   */
+  joinCode: varchar('join_code', { length: 24 }).notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -139,6 +145,44 @@ export const workspaceMemberships = authSchema.table(
 );
 
 /**
+ * Join requests (US-00).
+ *
+ * A user who is already authenticated in the tenant asks to enter a
+ * workspace. The request is a *hint*, never a grant: an active workspace
+ * ADMIN (or a tenant ADMIN) has to approve it, and only the approval creates
+ * the membership. A workspace code only routes the request to the workspace.
+ *
+ * The partial unique index allows one PENDING request per user/workspace
+ * while keeping the history of the rejected or approved ones.
+ */
+export const workspaceJoinRequests = authSchema.table(
+  'workspace_join_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 20 }).default('PENDING').notNull(), // 'PENDING' | 'APPROVED' | 'REJECTED'
+    message: varchar('message', { length: 500 }),
+    decidedBy: uuid('decided_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_join_requests_workspace_status').on(table.workspaceId, table.status),
+    index('idx_join_requests_user').on(table.userId),
+    uniqueIndex('uniq_join_requests_pending_user_workspace')
+      .on(table.workspaceId, table.userId)
+      .where(sql`status = 'PENDING'`),
+  ]
+);
+
+/**
  * Invitations (D3).
  *
  * An admin creates an invitation with a random single-use token. Only the
@@ -201,4 +245,5 @@ export const refreshTokens = authSchema.table(
 export type Workspace = typeof workspaces.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type WorkspaceMembership = typeof workspaceMemberships.$inferSelect;
+export type WorkspaceJoinRequest = typeof workspaceJoinRequests.$inferSelect;
 export type RefreshTokenRow = typeof refreshTokens.$inferSelect;
