@@ -79,6 +79,9 @@ const membershipRepo: IMembershipRepository = {
   async getRole() {
     return 'ADMIN';
   },
+  async getRoles() {
+    return ['ADMIN'];
+  },
   async add() {},
   async changeRole() {},
   async suspend() {},

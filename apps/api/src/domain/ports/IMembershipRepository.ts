@@ -19,6 +19,8 @@ export type { WorkspaceRole };
 export interface IMembershipRepository {
   isMember(userId: string, workspaceId: string, tid: string): Promise<boolean>;
   getRole(userId: string, workspaceId: string, tid: string): Promise<WorkspaceRole | null>;
+  /** v5: all roles held by the user in the workspace (union). */
+  getRoles(userId: string, workspaceId: string, tid: string): Promise<WorkspaceRole[]>;
   /**
    * Add a membership (event join). Idempotent: a duplicate membership is a
    * no-op thanks to `uniq_memberships_workspace_user`.

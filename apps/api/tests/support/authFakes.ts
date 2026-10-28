@@ -403,6 +403,9 @@ export function makeMembershipRepository(): {
     async getRole() {
       return 'MEMBER';
     },
+    async getRoles() {
+      return ['MEMBER'];
+    },
     async add(userId, workspaceId, role, tid, tx) {
       added.push({ userId, workspaceId, role, tid, tx });
     },

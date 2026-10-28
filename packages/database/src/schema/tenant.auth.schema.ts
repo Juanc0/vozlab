@@ -137,11 +137,12 @@ export const workspaceMemberships = authSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    // One membership per user/workspace; the scheduler never has to choose
-    // between duplicate rows.
-    uniqueIndex('uniq_memberships_workspace_user').on(
+    // v5: a user may hold multiple roles in a workspace simultaneously.
+    // Verification uses the union of all roles. One row per (workspace, user, role).
+    uniqueIndex('uniq_memberships_workspace_user_role').on(
       table.workspaceId,
-      table.userId
+      table.userId,
+      table.role
     ),
   ]
 );

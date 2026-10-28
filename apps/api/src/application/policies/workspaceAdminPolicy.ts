@@ -24,6 +24,11 @@ export interface MembershipRoleLookup {
     workspaceId: string,
     tid: string
   ): Promise<'ADMIN' | 'MODERATOR' | 'MEMBER' | 'GUEST' | null>;
+  getRoles?(
+    userId: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<Array<'ADMIN' | 'MODERATOR' | 'MEMBER' | 'GUEST'>>;
 }
 
 /** Tenant ADMIN (`auth.users.system_role = 'ADMIN'`). */
@@ -62,8 +67,16 @@ export async function assertWorkspaceAdmin(
     return { isTenantAdmin: true };
   }
 
-  const role = await membershipRepo.getRole(actorUserId, workspaceId, tid);
-  if (role !== 'ADMIN') {
+  // v5: union of all roles; ADMIN in any row grants admin.
+  let isAdmin = false;
+  if (membershipRepo.getRoles) {
+    const roles = await membershipRepo.getRoles(actorUserId, workspaceId, tid);
+    isAdmin = roles.includes('ADMIN');
+  } else {
+    const role = await membershipRepo.getRole(actorUserId, workspaceId, tid);
+    isAdmin = role === 'ADMIN';
+  }
+  if (!isAdmin) {
     throw new DomainError('ERR_AUTHORIZATION_FAILED');
   }
   return { isTenantAdmin: false };

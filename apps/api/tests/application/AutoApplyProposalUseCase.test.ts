@@ -62,6 +62,9 @@ function build(existing: EditProposal | null, role: WorkspaceRole | null) {
     async getRole() {
       return role;
     },
+    async getRoles() {
+      return role ? [role] : [];
+    },
     async add() {},
     async changeRole() {},
     async suspend() {},

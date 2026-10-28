@@ -53,6 +53,25 @@ export class DrizzleMembershipRepository implements IMembershipRepository {
     return row ? (row.role as WorkspaceRole) : null;
   }
 
+  async getRoles(
+    userId: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<WorkspaceRole[]> {
+    const db = await this.client(tid);
+    const rows = await db
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+          eq(workspaceMemberships.status, 'ACTIVE')
+        )
+      );
+    return rows.map((r) => r.role as WorkspaceRole);
+  }
+
   async add(
     userId: string,
     workspaceId: string,
