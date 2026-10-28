@@ -855,6 +855,7 @@ export const es = {
     createdCode: 'Código (se muestra una vez)',
     addMember: 'Añadir miembro',
     email: 'Correo',
+    handle: 'Alias de usuario',
     role: 'Rol',
     suspend: 'Suspender',
     reactivate: 'Reactivar',

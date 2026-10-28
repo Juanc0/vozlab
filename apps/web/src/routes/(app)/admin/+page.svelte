@@ -33,7 +33,7 @@
   let createdInviteToken = $state<string | null>(null);
   let creatingInvite = $state(false);
   let joinCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
-  let addMemberEmail = $state('');
+  let addMemberHandle = $state('');
   let addMemberRole = $state('MEMBER');
   let addingMember = $state(false);
 
@@ -125,8 +125,8 @@
     if (!selectedId) return;
     addingMember = true;
     try {
-      await admin.addMember(api, selectedId, addMemberEmail, addMemberRole);
-      addMemberEmail = '';
+      await admin.addMember(api, selectedId, addMemberHandle, addMemberRole);
+      addMemberHandle = '';
       await loadMembers();
     } catch (e) {
       error = describeFailure(e);
@@ -241,7 +241,7 @@
 
         <div class="border-t border-rule pt-3 space-y-2">
           <h3>{t('admin.addMember') ?? 'Add member directly'}</h3>
-          <input class="field w-full" bind:value={addMemberEmail} placeholder={t('admin.email') ?? 'Email'} />
+          <input class="field w-full" bind:value={addMemberHandle} placeholder={t('admin.handle') ?? 'Handle'} />
           <select class="field w-full" bind:value={addMemberRole}>
             <option value="MEMBER">MEMBER</option>
             <option value="MODERATOR">MODERATOR</option>

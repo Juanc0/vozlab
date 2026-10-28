@@ -790,6 +790,7 @@ export const en: Dictionary<typeof es> = {
     createdCode: 'Code (shown once)',
     addMember: 'Add member',
     email: 'Email',
+    handle: 'Username handle',
     role: 'Role',
     suspend: 'Suspend',
     reactivate: 'Reactivate',

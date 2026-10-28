@@ -363,6 +363,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     tenantAdminRepo,
     membershipRepo,
     userRepo,
+    routerDb,
     uow
   );
   const changeMemberRoleUseCase = new ChangeMemberRoleUseCase(

@@ -3,6 +3,7 @@ import { DomainError } from '../../domain/errors/DomainError.js';
 import { IMembershipAdminRepository } from '../../domain/ports/IMembershipAdminRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { ITenantAdminRepository } from '../../domain/ports/ITenantAdminRepository.js';
+import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
@@ -11,7 +12,7 @@ export interface AddWorkspaceMemberInput {
   actorUserId: string;
   tid: string;
   workspaceId: string;
-  email?: string;
+  email?: string; // informational únicamente; ya no es clave de búsqueda
   handle?: string;
   globalUserId?: string;
   role: WorkspaceRole;
@@ -21,9 +22,10 @@ export interface AddWorkspaceMemberInput {
 /**
  * Use Case: add an existing tenant user to a workspace directly (US-00).
  *
- * Direct add is for people who already signed in to the institution: the
- * email has to resolve to an `auth.users` row. Somebody who has never signed
- * in needs an invitation instead.
+ * Direct add is for people who already signed in to the institution. Lookup
+ * is by `handle` (unique per tenant) or by `globalUserId` (identity global
+ * vinculada al tenant). El email dejó de ser clave de búsqueda: quien nunca
+ * se ha autenticado necesita una invitación.
  *
  * A suspended or removed membership is revived with the requested role; an
  * active one is a conflict, not a silent overwrite.
@@ -34,6 +36,7 @@ export class AddWorkspaceMemberUseCase {
     private readonly tenantAdminRepo: ITenantAdminRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly userRepo: IUserRepository,
+    private readonly routerDb: IRouterDatabase,
     private readonly uow: IUnitOfWork
   ) {}
 
@@ -51,10 +54,15 @@ export class AddWorkspaceMemberUseCase {
       const found = await this.userRepo.findByHandle(input.handle, input.tid);
       user = found ? { id: found.id } : null;
     } else if (input.globalUserId) {
-      // Resolve via global user → tenant user link not available; fall back to null (needs wiring).
-      user = null;
-    } else if (input.email) {
-      user = await this.tenantAdminRepo.findUserByEmail(input.email, input.tid);
+      const link = await this.routerDb.findGlobalTenantLink(
+        input.globalUserId,
+        input.tid
+      );
+      const tenantUserId = link?.tenantUserId ?? null;
+      if (tenantUserId) {
+        const found = await this.userRepo.findById(tenantUserId, input.tid);
+        user = found ? { id: found.id } : null;
+      }
     }
     if (!user) {
       throw new DomainError('ERR_USER_NOT_FOUND');

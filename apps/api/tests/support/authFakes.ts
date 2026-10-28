@@ -146,6 +146,9 @@ export function makeRouterDb(
       calls.push(`findTenantsByGlobalUser:${globalUserId}`);
       return tenant ? [{ id: tenant.id, slug: tenant.slug, oidcTenantId: tenant.oidcTenantId ?? 'oidc-1', status: 'ACTIVE' }] : [];
     },
+    async findGlobalTenantLink() {
+      return null;
+    },
   };
 
   return { routerDb, calls };

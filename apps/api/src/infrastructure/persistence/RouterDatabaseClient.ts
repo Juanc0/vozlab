@@ -405,6 +405,35 @@ export class RouterDatabaseClient
   }
 
   /**
+   * Resuelve el usuario interno del tenant vinculado a una identidad global.
+   * (v6/TASK-03: alta directa por identidad global.)
+   */
+  async findGlobalTenantLink(
+    globalUserId: string,
+    tenantId: string
+  ): Promise<{ tenantUserId: string; status: string } | null> {
+    try {
+      const [row] = await this.db
+        .select({
+          tenantUserId: globalIdentityTenants.tenantUserId,
+          status: globalIdentityTenants.status,
+        })
+        .from(globalIdentityTenants)
+        .where(
+          and(
+            eq(globalIdentityTenants.globalIdentityId, globalUserId),
+            eq(globalIdentityTenants.tenantId, tenantId)
+          )
+        )
+        .limit(1);
+      return row ?? null;
+    } catch (err) {
+      log.error({ err, globalUserId, tenantId }, 'failed to find global tenant link');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
    * Cheap liveness probe for the router database.
    * Executes `SELECT 1` through Drizzle and throws on failure.
    */

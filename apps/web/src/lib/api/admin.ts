@@ -141,14 +141,14 @@ export async function listMembers(
 export async function addMember(
   client: ApiClient,
   workspaceId: string,
-  email: string,
+  handle: string,
   role: string
 ): Promise<void> {
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/members`,
     workspace: true,
-    body: { email, role }
+    body: { handle, role }
   });
 }
 

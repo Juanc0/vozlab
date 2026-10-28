@@ -41,9 +41,26 @@ function setup(
     tenantUser({ id: OTHER_ADMIN_ID, email: 'other@example.edu' }),
     tenantUser({ id: NEW_USER_ID, email: 'newcomer@example.edu' }),
   ]);
+  const routerDb = {
+    async findGlobalTenantLink(globalUserId: string, _tid: string) {
+      if (globalUserId === 'global-new-user') {
+        return { tenantUserId: NEW_USER_ID, status: 'ACTIVE' };
+      }
+      return null;
+    },
+  } as never;
   const userRepo = {
-    async findById() {
-      return { ...AUTH_USER, id: USER_ID, systemRole: 'ADMIN' };
+    async findById(userId: string) {
+      return { ...AUTH_USER, id: userId, systemRole: 'USER' };
+    },
+    async findByHandle(handle: string, _tid: string) {
+      const byHandle: Record<string, string> = {
+        newcomer: NEW_USER_ID,
+        other: OTHER_ADMIN_ID,
+      };
+      const id = byHandle[handle];
+      if (!id) return null;
+      return { ...AUTH_USER, id, systemRole: id === NEW_USER_ID ? 'USER' : 'ADMIN' };
     },
   };
   const { uow, ran } = makeUnitOfWork();
@@ -106,6 +123,7 @@ function setup(
       tenantAdmin.repo,
       membershipRepo,
       userRepo as never,
+      routerDb,
       uow
     ),
     input,
@@ -222,12 +240,12 @@ describe('ReactivateMemberUseCase / RemoveMemberUseCase', () => {
 });
 
 describe('AddWorkspaceMemberUseCase', () => {
-  it('adds an existing tenant user by email', async () => {
+  it('adds an existing tenant user by handle', async () => {
     const ctx = setup();
 
     await ctx.add.execute({
       ...ctx.input,
-      email: 'newcomer@example.edu',
+      handle: 'newcomer',
       role: 'MODERATOR',
     });
 
@@ -237,13 +255,40 @@ describe('AddWorkspaceMemberUseCase', () => {
     expect(ctx.membershipAdmin.events[0]?.action).toBe('ADDED');
   });
 
-  it('refuses an email that never signed in', async () => {
+  it('adds an existing tenant user by global identity (globalUserId)', async () => {
+    const ctx = setup();
+
+    await ctx.add.execute({
+      ...ctx.input,
+      globalUserId: 'global-new-user',
+      role: 'MEMBER',
+    });
+
+    expect(
+      ctx.membershipAdmin.members.get(`${ctx.workspace.id}:${NEW_USER_ID}`)?.role
+    ).toBe('MEMBER');
+    expect(ctx.membershipAdmin.events[0]?.action).toBe('ADDED');
+  });
+
+  it('refuses a handle that never signed in', async () => {
     const ctx = setup();
 
     await expect(
       ctx.add.execute({
         ...ctx.input,
-        email: 'stranger@example.edu',
+        handle: 'stranger',
+        role: 'MEMBER',
+      })
+    ).rejects.toMatchObject({ code: 'ERR_USER_NOT_FOUND' });
+  });
+
+  it('refuses a globalUserId without tenant link', async () => {
+    const ctx = setup();
+
+    await expect(
+      ctx.add.execute({
+        ...ctx.input,
+        globalUserId: 'global-orphan',
         role: 'MEMBER',
       })
     ).rejects.toMatchObject({ code: 'ERR_USER_NOT_FOUND' });
@@ -255,7 +300,7 @@ describe('AddWorkspaceMemberUseCase', () => {
     await expect(
       ctx.add.execute({
         ...ctx.input,
-        email: 'other@example.edu',
+        handle: 'other',
         role: 'ADMIN',
       })
     ).rejects.toMatchObject({ code: 'ERR_ALREADY_MEMBER' });

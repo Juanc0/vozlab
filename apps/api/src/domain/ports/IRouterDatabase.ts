@@ -53,4 +53,14 @@ export interface IRouterDatabase {
   findTenantsByGlobalUser(
     globalUserId: string
   ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>>;
+
+  /**
+   * Resuelve el usuario interno del tenant (`tenant_user_id`) vinculado a una
+   * identidad global dentro de un tenant. Devuelve `null` cuando no hay
+   * vínculo. Usado por la alta directa por identidad global (v6/TASK-03).
+   */
+  findGlobalTenantLink(
+    globalUserId: string,
+    tenantId: string
+  ): Promise<{ tenantUserId: string; status: string } | null>;
 }
