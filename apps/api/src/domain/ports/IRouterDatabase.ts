@@ -46,4 +46,11 @@ export interface IRouterDatabase {
 
   /** Cheap liveness probe for the router database. MUST throw on failure. */
   ping(): Promise<void>;
+
+  /**
+   * List tenants linked to a global identity (v5 explicit tenant selection).
+   */
+  findTenantsByGlobalIdentity(
+    globalIdentityId: string
+  ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>>;
 }

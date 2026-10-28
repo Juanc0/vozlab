@@ -30,6 +30,8 @@ export interface CompleteOidcLoginResult {
   /** Absolute path on the PWA origin. */
   redirectPath: string;
   user: AuthUser;
+  /** v5: tenants linked to this identity (for explicit selection). */
+  linkedTenants: Array<{ id: string; slug: string; status: string }>;
 }
 
 /**
@@ -177,11 +179,20 @@ export class CompleteOidcLoginUseCase {
       tenant.id
     );
 
+    const linkedTenants = await this.routerDb.findTenantsByGlobalIdentity(
+      globalIdentity.id
+    );
+
     return {
       refreshToken,
       refreshExpiresAt,
       redirectPath: state.redirectPath,
       user,
+      linkedTenants: linkedTenants.map((t) => ({
+        id: t.id,
+        slug: t.slug,
+        status: t.status,
+      })),
     };
   }
 }

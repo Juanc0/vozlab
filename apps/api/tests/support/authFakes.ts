@@ -142,6 +142,10 @@ export function makeRouterDb(
       return null;
     },
     async ping() {},
+    async findTenantsByGlobalIdentity(globalIdentityId) {
+      calls.push(`findTenantsByGlobalIdentity:${globalIdentityId}`);
+      return tenant ? [{ id: tenant.id, slug: tenant.slug, oidcTenantId: tenant.oidcTenantId ?? 'oidc-1', status: 'ACTIVE' }] : [];
+    },
   };
 
   return { routerDb, calls };

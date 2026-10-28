@@ -12,7 +12,7 @@ import {
 } from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections, tenantIdentityProviders } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -369,6 +369,36 @@ export class RouterDatabaseClient
       };
     } catch (err) {
       log.error({ err, tenantId }, 'failed to resolve tenant database config');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * List tenants linked to a global identity (v5 explicit tenant selection).
+   */
+  async findTenantsByGlobalIdentity(
+    globalIdentityId: string
+  ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>> {
+    try {
+      const rows = await this.db
+        .select({
+          id: tenants.id,
+          slug: tenants.slug,
+          oidcTenantId: tenants.oidcTenantId,
+          status: globalIdentityTenants.status,
+        })
+        .from(globalIdentityTenants)
+        .innerJoin(tenants, eq(globalIdentityTenants.tenantId, tenants.id))
+        .where(eq(globalIdentityTenants.globalIdentityId, globalIdentityId));
+
+      return rows.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        oidcTenantId: r.oidcTenantId,
+        status: r.status,
+      }));
+    } catch (err) {
+      log.error({ err, globalIdentityId }, 'failed to find tenants by global identity');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
