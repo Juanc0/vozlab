@@ -76,6 +76,21 @@ export class DrizzleUserRepository implements IUserRepository {
     }
   }
 
+  async findByHandle(handle: string, tid: string): Promise<AuthUser | null> {
+    try {
+      const db = await this.client(tid);
+      const [row] = await db
+        .select()
+        .from(users)
+        .where(eq(users.handle, handle))
+        .limit(1);
+      return row ? toAuthUser(row) : null;
+    } catch (error) {
+      log.error({ err: error, handle }, 'failed to find auth user by handle');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
   async findOrCreateOidcUser(
     input: NewOidcUser,
     tid: string

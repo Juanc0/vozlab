@@ -66,6 +66,7 @@ export interface UserWorkspace {
  */
 export interface IUserRepository {
   findById(userId: string, tid: string): Promise<AuthUser | null>;
+  findByHandle(handle: string, tid: string): Promise<AuthUser | null>;
   findOrCreateOidcUser(input: NewOidcUser, tid: string): Promise<AuthUser>;
 
   /**

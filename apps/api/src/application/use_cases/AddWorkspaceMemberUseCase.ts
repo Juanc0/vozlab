@@ -11,7 +11,9 @@ export interface AddWorkspaceMemberInput {
   actorUserId: string;
   tid: string;
   workspaceId: string;
-  email: string;
+  email?: string;
+  handle?: string;
+  globalUserId?: string;
   role: WorkspaceRole;
   reqId?: string;
 }
@@ -44,10 +46,16 @@ export class AddWorkspaceMemberUseCase {
       this.membershipRepo
     );
 
-    const user = await this.tenantAdminRepo.findUserByEmail(
-      input.email,
-      input.tid
-    );
+    let user: { id: string } | null = null;
+    if (input.handle) {
+      const found = await this.userRepo.findByHandle(input.handle, input.tid);
+      user = found ? { id: found.id } : null;
+    } else if (input.globalUserId) {
+      // Resolve via global user → tenant user link not available; fall back to null (needs wiring).
+      user = null;
+    } else if (input.email) {
+      user = await this.tenantAdminRepo.findUserByEmail(input.email, input.tid);
+    }
     if (!user) {
       throw new DomainError('ERR_USER_NOT_FOUND');
     }

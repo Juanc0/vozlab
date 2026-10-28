@@ -224,6 +224,9 @@ export function makeUserRepository(
     async findById() {
       return user;
     },
+    async findByHandle() {
+      return user;
+    },
     async findOrCreateOidcUser(input, tid) {
       oidcUpserts.push({ input, tid });
       return user ?? AUTH_USER;
