@@ -82,7 +82,7 @@ describe('JoinEventUseCase', () => {
     expect(membership.added[0]).toMatchObject({
       userId: '44444444-4444-4444-8444-444444444444',
       workspaceId: WORKSPACE_ID,
-      role: 'MEMBER',
+      role: 'GUEST',
       tid: TENANT_ID,
       tx: TX_SENTINEL,
     });

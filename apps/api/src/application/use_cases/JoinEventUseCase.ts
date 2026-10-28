@@ -7,6 +7,7 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import { ITokenIssuer } from '../../domain/ports/ITokenIssuer.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
+import { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository.js';
 import {
   generateAuthorHash,
   generateRefreshToken,
@@ -42,7 +43,8 @@ export class JoinEventUseCase {
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly tokenIssuer: ITokenIssuer,
     private readonly uow: IUnitOfWork,
-    private readonly refreshTtlMs: number
+    private readonly refreshTtlMs: number,
+    private readonly workspaceRepo?: IWorkspaceRepository
   ) {}
 
   async execute(input: JoinEventInput): Promise<JoinEventResult> {
@@ -66,6 +68,16 @@ export class JoinEventUseCase {
       throw new DomainError('ERR_TENANT_NOT_PROVISIONED');
     }
 
+    if (this.workspaceRepo) {
+      const ws = await this.workspaceRepo.findById(
+        consumption.code.workspaceId,
+        tenant.id
+      );
+      if (!ws || ws.kind !== 'EVENT') {
+        throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
+      }
+    }
+
     const alias =
       input.alias?.trim() || `Anonymous ${randomBytes(3).toString('hex')}`;
     const authorHash = generateAuthorHash();
@@ -83,7 +95,7 @@ export class JoinEventUseCase {
       await this.membershipRepo.add(
         created.id,
         consumption.code.workspaceId,
-        'MEMBER',
+        'GUEST',
         tenant.id,
         tx
       );

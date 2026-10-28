@@ -302,7 +302,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     refreshTokenRepo,
     tokenIssuer,
     uow,
-    refreshTtlMs
+    refreshTtlMs,
+    workspaceRepo
   );
 
   // --- Tenant and workspace administration (US-00) ---
@@ -397,7 +398,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const requestWorkspaceAccessUseCase = new RequestWorkspaceAccessUseCase(
     workspaceRepo,
     joinRequestRepo,
-    membershipRepo
+    membershipRepo,
+    userRepo
   );
   const discoverWorkspacesUseCase = new DiscoverWorkspacesUseCase(
     workspaceRepo
