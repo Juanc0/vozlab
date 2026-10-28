@@ -5,10 +5,11 @@
 #   ./scripts/setup-zitadel.sh
 #
 # Public demo behind zrok (the management calls stay on localhost, the printed
-# issuer points at the public auth share):
+# issuer points at the public auth share). Zitadel resolves the instance from
+# the Host header, so the script forwards the public host automatically:
 #   ZITADEL_URL=http://localhost:8081 \
 #   ZITADEL_PUBLIC_URL=https://vozlabauth.share.zrok.io \
-#   API_CALLBACK=https://vozlabdemo.share.zrok.io/api/v1/auth/callback \
+#   API_CALLBACK=https://vozlabapi.share.zrok.io/api/v1/auth/callback \
 #   WEB_ORIGIN=https://vozlabdemo.share.zrok.io \
 #   ./scripts/setup-zitadel.sh
 #
@@ -26,6 +27,9 @@
 # Environment:
 #   ZITADEL_URL              Management base URL       (default http://localhost:8081)
 #   ZITADEL_PUBLIC_URL       Public issuer URL         (default ZITADEL_URL)
+#   ZITADEL_HOST_HEADER      Host header for local management calls (derived from
+#                            ZITADEL_PUBLIC_URL when it differs from ZITADEL_URL)
+#   ZITADEL_FORWARDED_PROTO  X-Forwarded-Proto for local calls (derived too)
 #   API_CALLBACK             OIDC redirect URI         (default http://localhost:3000/api/v1/auth/callback)
 #   WEB_ORIGIN               PWA origin / logout URI   (default http://localhost:5173)
 #   EXTRA_REDIRECT_URIS      Comma-separated extra redirect URIs
@@ -46,6 +50,16 @@ ZITADEL_URL="${ZITADEL_URL:-http://localhost:8081}"
 ZITADEL_URL="${ZITADEL_URL%/}"
 ZITADEL_PUBLIC_URL="${ZITADEL_PUBLIC_URL:-$ZITADEL_URL}"
 ZITADEL_PUBLIC_URL="${ZITADEL_PUBLIC_URL%/}"
+# Zitadel resolves the instance from the Host header. When it runs with a public
+# external domain (ZITADEL_EXTERNALDOMAIN) but the management calls go to
+# localhost, they must carry the public host name and the forwarded protocol or
+# Zitadel answers 404 "Instance not found".
+ZITADEL_HOST_HEADER="${ZITADEL_HOST_HEADER:-}"
+ZITADEL_FORWARDED_PROTO="${ZITADEL_FORWARDED_PROTO:-}"
+if [ -z "$ZITADEL_HOST_HEADER" ] && [ "$ZITADEL_PUBLIC_URL" != "$ZITADEL_URL" ]; then
+  ZITADEL_HOST_HEADER=$(python3 -c 'import sys, urllib.parse as u; print(u.urlparse(sys.argv[1]).netloc)' "$ZITADEL_PUBLIC_URL")
+  ZITADEL_FORWARDED_PROTO=$(python3 -c 'import sys, urllib.parse as u; print(u.urlparse(sys.argv[1]).scheme)' "$ZITADEL_PUBLIC_URL")
+fi
 WEB_ORIGIN="${WEB_ORIGIN:-http://localhost:5173}"
 API_CALLBACK="${API_CALLBACK:-http://localhost:3000/api/v1/auth/callback}"
 EXTRA_REDIRECT_URIS="${EXTRA_REDIRECT_URIS:-}"
@@ -123,6 +137,12 @@ api() {
     -H "Authorization: Bearer $PAT"
     -H 'Accept: application/json'
   )
+  if [ -n "$ZITADEL_HOST_HEADER" ]; then
+    args+=(-H "Host: $ZITADEL_HOST_HEADER")
+  fi
+  if [ -n "$ZITADEL_FORWARDED_PROTO" ]; then
+    args+=(-H "X-Forwarded-Proto: $ZITADEL_FORWARDED_PROTO")
+  fi
   if [ -n "$body" ]; then
     args+=(-H 'Content-Type: application/json' --data-binary "$body")
   fi

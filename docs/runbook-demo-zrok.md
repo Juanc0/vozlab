@@ -1,29 +1,32 @@
 # Runbook: expose the local demo with zrok
 
-This runbook publishes a VozLab demo running on the developer host through two
-reserved zrok public shares:
+This runbook publishes a VozLab demo running on the developer host through three
+reserved zrok public shares. Each service keeps its own hostname; there is no
+reverse proxy.
 
 | Public URL | Local target | Service |
 |---|---|---|
-| `https://vozlabdemo.share.zrok.io` | `http://localhost:8080` | demo proxy → API (`:3000`) + PWA (`:5173`) |
+| `https://vozlabdemo.share.zrok.io` | `http://localhost:5173` | PWA (SvelteKit) |
+| `https://vozlabapi.share.zrok.io` | `http://localhost:3000` | Fastify API |
 | `https://vozlabauth.share.zrok.io` | `http://localhost:8081` | Zitadel (login UI + OIDC endpoints) |
 
-Both hostnames are reserved shares, so they stay stable across restarts. zrok
-terminates TLS; Zitadel must be told that its public origin is
+All three hostnames are reserved shares, so they stay stable across restarts.
+zrok terminates TLS; Zitadel must be told that its public origin is
 `https://vozlabauth.share.zrok.io` (port `443`, secure cookies).
 
-> The web/API share deliberately uses **one** hostname for both. The PWA is built
-> with a relative `PUBLIC_API_BASE_URL=/api/v1`, so the demo proxy can route
-> `/api/*` to the API and everything else to the PWA without CORS.
+> The PWA points at the API share directly
+> (`PUBLIC_API_BASE_URL=https://vozlabapi.share.zrok.io/api/v1`). The API enables
+> CORS with credentials, so cross-origin cookies work between the two shares.
 
 ## 1. Prerequisites
 
 - `zrok` CLI installed and enabled once: `zrok enable <account-token>`.
-- Two reserved shares (create once; reuse the tokens afterwards):
+- Three reserved shares (create once; reuse the tokens afterwards):
 
   ```bash
-  zrok reserve public --unique-name vozlabauth http://localhost:8081
-  zrok reserve public --unique-name vozlabdemo http://localhost:8080
+  zrok reserve public --unique-name vozlabauth http://127.0.0.1:8081
+  zrok reserve public --unique-name vozlabapi  http://127.0.0.1:3000
+  zrok reserve public --unique-name vozlabdemo http://127.0.0.1:5173
   ```
 
   Save the printed share tokens. `zrok overview` lists them again.
@@ -68,7 +71,7 @@ the printed `.env` block matches what browsers will see:
 ```bash
 ZITADEL_URL=http://localhost:8081 \
 ZITADEL_PUBLIC_URL=https://vozlabauth.share.zrok.io \
-API_CALLBACK=https://vozlabdemo.share.zrok.io/api/v1/auth/callback \
+API_CALLBACK=https://vozlabapi.share.zrok.io/api/v1/auth/callback \
 WEB_ORIGIN=https://vozlabdemo.share.zrok.io \
 ./scripts/setup-zitadel.sh
 ```
@@ -94,7 +97,7 @@ Merge the printed block into `.env` and point the public values at zrok:
 ```dotenv
 OIDC_CLIENT_ID=<printed>
 OIDC_CLIENT_SECRET=<printed>
-OIDC_REDIRECT_URI=https://vozlabdemo.share.zrok.io/api/v1/auth/callback
+OIDC_REDIRECT_URI=https://vozlabapi.share.zrok.io/api/v1/auth/callback
 OIDC_ISSUER=https://vozlabauth.share.zrok.io
 OIDC_AUTH_URL=https://vozlabauth.share.zrok.io/oauth/v2/authorize
 OIDC_TOKEN_URL=https://vozlabauth.share.zrok.io/oauth/v2/token
@@ -104,7 +107,11 @@ OIDC_SCOPES=openid profile email urn:zitadel:iam:org:id:<org-id>
 WEB_ORIGIN=https://vozlabdemo.share.zrok.io
 
 ZROK_WEB_URL=https://vozlabdemo.share.zrok.io
+ZROK_API_URL=https://vozlabapi.share.zrok.io
 ZROK_AUTH_URL=https://vozlabauth.share.zrok.io
+ZROK_WEB_SHARE_TOKEN=<reserved share token for :5173>
+ZROK_API_SHARE_TOKEN=<reserved share token for :3000>
+ZROK_AUTH_SHARE_TOKEN=<reserved share token for :8081>
 ```
 
 The API validates the ID token issuer against `OIDC_ISSUER`; it must be the
@@ -113,30 +120,38 @@ restart it after editing.
 
 ## 5. Start the demo processes
 
-Four host processes (the main compose does not run the API or the web):
+Five host processes (the main compose does not run the API or the web):
 
 ```bash
 # Terminal A — API on :3000
 pnpm --filter @vozlab/api dev
 
-# Terminal B — PWA on :5173 with the relative API base
-PUBLIC_API_BASE_URL=/api/v1 pnpm --filter @vozlab/web dev
+# Terminal B — PWA on :5173, pointing at the public API share
+PUBLIC_API_BASE_URL=https://vozlabapi.share.zrok.io/api/v1 \
+  pnpm --filter @vozlab/web dev
 
-# Terminal C — single-port proxy on :8080
-node scripts/demo-proxy.mjs
+# Terminal C — web share
+zrok share reserved <web-share-token> --headless
 
-# Terminal D — public share for the web/API
-zrok share reserved <demo-share-token> --headless
+# Terminal D — API share
+zrok share reserved <api-share-token> --headless
+
+# Terminal E — auth share (started in step 2)
+zrok share reserved <auth-share-token> --headless
 ```
 
-The auth share from step 2 stays running.
+Or use the launcher, which starts the API, the web and the three shares:
+
+```bash
+./scripts/demo.sh
+```
 
 ## 6. Verify
 
 1. Open `https://vozlabdemo.share.zrok.io`.
 2. Log in with `testuser` / `Testpass1!`.
 3. Zitadel redirects to the API callback at
-   `https://vozlabdemo.share.zrok.io/api/v1/auth/callback`, the API exchanges the
+   `https://vozlabapi.share.zrok.io/api/v1/auth/callback`, the API exchanges the
    code (back channel to the public auth URL) and sets the refresh cookie.
 4. The PWA lands on `/workspaces` (or the workspace selector) with a session.
 
@@ -176,15 +191,14 @@ step 3 has completed.
 | Zitadel login page loads but the callback loops | The redirect URI is missing on the app. Re-run the setup script with the public `API_CALLBACK`; it merges URIs. |
 | `Set-Cookie` without `Secure` / `__Host-` | Restart Zitadel with `ZITADEL_EXTERNALSECURE=true` and `ZITADEL_EXTERNALPORT=443`. |
 | `zrok: TLS handshake timeout` / cannot reach `api-v1.zrok.io` | The host cannot reach the zrok API. Check DNS/proxy/firewall; the share cannot start without it. |
-| `ERR_CONNECTION_REFUSED` after login | The web dev server or proxy is not running, or `WEB_ORIGIN` does not match the public origin. |
-| Browser blocks the refresh cookie | Web and API must share the `vozlabdemo` hostname (the proxy routes `/api/*`). Do not expose the API on a second hostname. |
+| `ERR_CONNECTION_REFUSED` after login | The API or web dev server is not running, or `WEB_ORIGIN` does not match the public origin. |
+| CORS / cookie not sent between web and API shares | The API enables CORS with credentials (`origin: true`). Ensure `WEB_ORIGIN` matches the web share and the API restarts after `.env` changes. |
 | Zitadel says the PAT is rejected | The PAT only exists after the first init of an empty DB. See the recovery steps printed by `scripts/setup-zitadel.sh`. |
 
 ## Related
 
 - `scripts/setup-zitadel.sh` — unattended provisioning.
-- `scripts/demo.sh` — local launcher (Cloudflare Quick Tunnel by default;
-  set `DEMO_TUNNEL=zrok` to use the reserved shares).
+- `scripts/demo.sh` — local launcher (zrok, three reserved shares).
 - `docs/runbook-deploy.md` — Cloudflare Tunnel production demo.
 - `docs/decisions/ADR-0030-zitadel-replaces-keycloak.md` — broker decision and
   bootstrap procedure.
