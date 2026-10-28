@@ -342,6 +342,7 @@ export function makeInvitationRepository(): {
     },
     async accept(id, tid) {
       calls.push(`accept:${id}`);
+      return true;
     },
     async revoke(id, tid) {
       calls.push(`revoke:${id}`);

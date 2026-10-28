@@ -4,6 +4,7 @@ import {
   hashOpaqueToken,
   parseRefreshToken,
 } from '../../src/shared/auth/refreshToken.js';
+import { makeUnitOfWork } from '../support/fakes.js';
 import {
   AUTH_USER,
   OIDC_IDENTITY,
@@ -40,6 +41,7 @@ function setup(
   const refresh = makeRefreshTokenRepository();
   const invitation = makeInvitationRepository();
   const membership = makeMembershipRepository();
+  const { uow } = makeUnitOfWork();
   const useCase = new CompleteOidcLoginUseCase(
     states.stateStore,
     identity.identityProvider,
@@ -48,6 +50,7 @@ function setup(
     users.userRepo,
     invitation.repo,
     membership.membershipRepo,
+    uow,
     refresh.refreshRepo,
     REFRESH_TTL_MS
   );

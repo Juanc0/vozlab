@@ -4,18 +4,24 @@ import jwt from 'jsonwebtoken';
 import type { NodeWindowResponseDto, SubgraphResponseDto } from '@vozlab/shared-types';
 import { ActivateOntologyClassUseCase } from '../../src/application/use_cases/ActivateOntologyClassUseCase.js';
 import { AddPostUseCase } from '../../src/application/use_cases/AddPostUseCase.js';
+import { AddWorkspaceMemberUseCase } from '../../src/application/use_cases/AddWorkspaceMemberUseCase.js';
+import { ApproveJoinRequestUseCase } from '../../src/application/use_cases/ApproveJoinRequestUseCase.js';
 import { ApproveProposalUseCase } from '../../src/application/use_cases/ApproveProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../src/application/use_cases/AutoApplyProposalUseCase.js';
 import { CastVoteUseCase } from '../../src/application/use_cases/CastVoteUseCase.js';
+import { ChangeMemberRoleUseCase } from '../../src/application/use_cases/ChangeMemberRoleUseCase.js';
 import { CloseThreadUseCase } from '../../src/application/use_cases/CloseThreadUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
 import { CreateEdgeUseCase } from '../../src/application/use_cases/CreateEdgeUseCase.js';
+import { CreateInvitationUseCase } from '../../src/application/use_cases/CreateInvitationUseCase.js';
 import { CreateNodeUseCase } from '../../src/application/use_cases/CreateNodeUseCase.js';
 import { CreateProposalUseCase } from '../../src/application/use_cases/CreateProposalUseCase.js';
 import { CreateThreadUseCase } from '../../src/application/use_cases/CreateThreadUseCase.js';
+import { CreateWorkspaceUseCase } from '../../src/application/use_cases/CreateWorkspaceUseCase.js';
 import { DeleteEdgeUseCase } from '../../src/application/use_cases/DeleteEdgeUseCase.js';
 import { DeleteNodeUseCase } from '../../src/application/use_cases/DeleteNodeUseCase.js';
 import { DeletePostUseCase } from '../../src/application/use_cases/DeletePostUseCase.js';
+import { DiscoverWorkspacesUseCase } from '../../src/application/use_cases/DiscoverWorkspacesUseCase.js';
 import { GetEdgeUseCase } from '../../src/application/use_cases/GetEdgeUseCase.js';
 import { GetMeUseCase } from '../../src/application/use_cases/GetMeUseCase.js';
 import { GetNodeNeighborsUseCase } from '../../src/application/use_cases/GetNodeNeighborsUseCase.js';
@@ -24,23 +30,37 @@ import { GetNodeWindowUseCase } from '../../src/application/use_cases/GetNodeWin
 import { GetOntologyUseCase } from '../../src/application/use_cases/GetOntologyUseCase.js';
 import { GetProposalUseCase } from '../../src/application/use_cases/GetProposalUseCase.js';
 import { GetSubgraphUseCase } from '../../src/application/use_cases/GetSubgraphUseCase.js';
+import { GetWorkspaceUseCase } from '../../src/application/use_cases/GetWorkspaceUseCase.js';
 import { JoinEventUseCase } from '../../src/application/use_cases/JoinEventUseCase.js';
-import { InviteToWorkspaceUseCase } from '../../src/application/use_cases/InviteToWorkspaceUseCase.js';
 import { ListEdgesUseCase } from '../../src/application/use_cases/ListEdgesUseCase.js';
+import { ListInvitationsUseCase } from '../../src/application/use_cases/ListInvitationsUseCase.js';
+import { ListJoinRequestsUseCase } from '../../src/application/use_cases/ListJoinRequestsUseCase.js';
+import { ListMembersUseCase } from '../../src/application/use_cases/ListMembersUseCase.js';
+import { ListMyJoinRequestsUseCase } from '../../src/application/use_cases/ListMyJoinRequestsUseCase.js';
 import { ListNodesUseCase } from '../../src/application/use_cases/ListNodesUseCase.js';
 import { ListPostsUseCase } from '../../src/application/use_cases/ListPostsUseCase.js';
 import { ListProposalsUseCase } from '../../src/application/use_cases/ListProposalsUseCase.js';
+import { ListTenantUsersUseCase } from '../../src/application/use_cases/ListTenantUsersUseCase.js';
 import { ListThreadsUseCase } from '../../src/application/use_cases/ListThreadsUseCase.js';
+import { ListWorkspacesUseCase } from '../../src/application/use_cases/ListWorkspacesUseCase.js';
 import { LogoutUseCase } from '../../src/application/use_cases/LogoutUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../src/application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../src/application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ProposeOntologyClassUseCase } from '../../src/application/use_cases/ProposeOntologyClassUseCase.js';
+import { ReactivateMemberUseCase } from '../../src/application/use_cases/ReactivateMemberUseCase.js';
 import { RefreshSessionUseCase } from '../../src/application/use_cases/RefreshSessionUseCase.js';
+import { RejectJoinRequestUseCase } from '../../src/application/use_cases/RejectJoinRequestUseCase.js';
 import { RejectProposalUseCase } from '../../src/application/use_cases/RejectProposalUseCase.js';
+import { RemoveMemberUseCase } from '../../src/application/use_cases/RemoveMemberUseCase.js';
+import { RequestWorkspaceAccessUseCase } from '../../src/application/use_cases/RequestWorkspaceAccessUseCase.js';
 import { ResolveSourceUseCase } from '../../src/application/use_cases/ResolveSourceUseCase.js';
+import { RevokeInvitationUseCase } from '../../src/application/use_cases/RevokeInvitationUseCase.js';
+import { RotateJoinCodeUseCase } from '../../src/application/use_cases/RotateJoinCodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../src/application/use_cases/SetNodeEmbeddingUseCase.js';
 import { StartOidcLoginUseCase } from '../../src/application/use_cases/StartOidcLoginUseCase.js';
+import { SuspendMemberUseCase } from '../../src/application/use_cases/SuspendMemberUseCase.js';
 import { UpdateEdgeUseCase } from '../../src/application/use_cases/UpdateEdgeUseCase.js';
+import { UpdateWorkspaceUseCase } from '../../src/application/use_cases/UpdateWorkspaceUseCase.js';
 import { Node } from '../../src/domain/entities/Node.js';
 import { OntologyClass } from '../../src/domain/entities/OntologyClass.js';
 import { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
@@ -57,6 +77,7 @@ import {
   USER_ID,
   WORKSPACE_ID,
   makeMembershipRepository,
+  makeUserRepository,
   makeRouterDb,
   makeTokenBlacklist,
 } from '../support/authFakes.js';
@@ -221,6 +242,7 @@ function makeRouteDependencies(
 ): RouteDependencies {
   const { routerDb } = makeRouterDb();
   const { membershipRepo } = makeMembershipRepository();
+  const { userRepo } = makeUserRepository();
   const { blacklist } = makeTokenBlacklist();
   const ontology = makeOntologyRepository();
   const names = makeDisplayNameCatalog(ontology);
@@ -271,9 +293,30 @@ function makeRouteDependencies(
     logoutUseCase: unused(LogoutUseCase.prototype),
     getMeUseCase: unused(GetMeUseCase.prototype),
     joinEventUseCase: unused(JoinEventUseCase.prototype),
+    createWorkspaceUseCase: unused(CreateWorkspaceUseCase.prototype),
+    getWorkspaceUseCase: unused(GetWorkspaceUseCase.prototype),
+    updateWorkspaceUseCase: unused(UpdateWorkspaceUseCase.prototype),
+    rotateJoinCodeUseCase: unused(RotateJoinCodeUseCase.prototype),
+    listWorkspacesUseCase: unused(ListWorkspacesUseCase.prototype),
+    listTenantUsersUseCase: unused(ListTenantUsersUseCase.prototype),
+    listMembersUseCase: unused(ListMembersUseCase.prototype),
+    addWorkspaceMemberUseCase: unused(AddWorkspaceMemberUseCase.prototype),
+    changeMemberRoleUseCase: unused(ChangeMemberRoleUseCase.prototype),
+    suspendMemberUseCase: unused(SuspendMemberUseCase.prototype),
+    reactivateMemberUseCase: unused(ReactivateMemberUseCase.prototype),
+    removeMemberUseCase: unused(RemoveMemberUseCase.prototype),
+    listJoinRequestsUseCase: unused(ListJoinRequestsUseCase.prototype),
+    approveJoinRequestUseCase: unused(ApproveJoinRequestUseCase.prototype),
+    rejectJoinRequestUseCase: unused(RejectJoinRequestUseCase.prototype),
+    requestWorkspaceAccessUseCase: unused(RequestWorkspaceAccessUseCase.prototype),
+    discoverWorkspacesUseCase: unused(DiscoverWorkspacesUseCase.prototype),
+    listMyJoinRequestsUseCase: unused(ListMyJoinRequestsUseCase.prototype),
+    createInvitationUseCase: unused(CreateInvitationUseCase.prototype),
+    listInvitationsUseCase: unused(ListInvitationsUseCase.prototype),
+    revokeInvitationUseCase: unused(RevokeInvitationUseCase.prototype),
     routerDb,
     membershipRepo,
-    inviteToWorkspaceUseCase: unused(InviteToWorkspaceUseCase.prototype),
+    userRepo,
     // The blacklist is never connected: the guard treats every token as
     // valid, so no Redis is needed for a routing test.
     tokenBlacklist: blacklist as unknown as RedisTokenBlacklist,
