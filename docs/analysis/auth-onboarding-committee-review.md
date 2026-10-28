@@ -17,7 +17,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 - Use cases atómicos ya creados: `ResolveTenantsUseCase`, `SelectTenantUseCase`, `ManageRoleAtomicUseCase`, `RedeemInvitationAtomicUseCase`, `CreateGlobalInvitationUseCase`, `RedeemGlobalInvitationUseCase`, `CreateWorkspaceJoinCodeUseCase`, `RotateJoinCodeUseCase`, `CleanupExpiredInvitationsUseCase`.
 - `CompleteOidcLoginUseCase`: upserta `global_users`, redime invitación GLOBAL antes de resolver tenant, escribe el link `global_identity_tenants` en todo login institucional, resuelve tenants linked, `requiresTenantSelection`, `linkedTenants`, `globalUserId`, redención de invitación tenant-local, emite refresh token (`issueSession` compartido por ambos paths).
 - Endpoints auth: `/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/event-join`, `/auth/select-tenant`, `/auth/resolve-tenants`, `/auth/switch-tenant` (P0-1 cerrado 2026-10-28, commit 22c5481).
-- Endpoints admin: `/admin/workspaces` (GET/POST con rate limit `admin-create-workspace`), `/invitations/global` (create; redención vía callback OIDC), `/workspaces/:id/join-codes` (POST/GET/DELETE; **sin PUT/update**), `/admin/users`, `/admin/cleanup` (invitaciones expiradas OK; guests = 0 placeholder).
+- Endpoints admin: `/admin/workspaces` (GET/POST), `/invitations/global` (create; redención vía callback OIDC), `/workspaces/:id/join-codes` (POST/GET/DELETE; **sin PUT/update**; rotate en `/join-code/rotate`), `/admin/users`, `/admin/cleanup` (invitaciones expiradas OK; guests = 0 placeholder). Todas las escrituras con bucket `scoped` por acción (P0-5).
 - Miembros: list, add (handle y globalUserId resueltos; P0-3), change role, assign/remove role, suspend, reactivate, remove.
 - Join requests: list, approve, reject, request access, list mine, discover.
 - Guards: `authGuard → tenantWorkspaceGuard/workspaceAdminGuard → rateLimit`; `tenantAdminGuard`, `workspaceAdminGuard` (unión de roles); guard GUEST en RequestWorkspaceAccess; kind EVENT en JoinEvent; CreateWorkspace rechaza anonymous/GUEST.
@@ -33,7 +33,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 | B2 | ~~`RedeemGlobalInvitationUseCase` no cableado~~ — **CERRADO 2026-10-28**: redención global en `CompleteOidcLogin` ANTES de la resolución de tenant (`isGlobalToken`), link `global_identity_tenants` en redención Y en todo login institucional (hallazgo: el link solo lo escribía el script de reconciliación), wiring en `server.ts`, 16 tests (8 redeem + 8 login). No requiere endpoint redeem dedicado: la redención necesita identidad IdP por el bind de email. | v6/TASK-06, v5/TASK-06 | ~~P0~~ ✅ |
 | B3 | ~~`globalUserId` en `AddWorkspaceMemberUseCase` devuelve null~~ — **CERRADO 2026-10-28** (commit 85ceb64): `findGlobalTenantLink` en puerto+adapter, `routerDb` inyectado, web envía `handle`. | v6/TASK-03, v5/TASK-07 | ~~P0~~ ✅ |
 | B4 | ~~`IAuditLog` solo en memoria~~ — **CERRADO 2026-10-28**: `DrizzleAuditLog` persistente (tenant `membership_events` + router `global_identity_events`, enrutado por `targetType`/`tenantId`, fail-loud si falta workspace/tenant). Inyectado en códigos efímeros (create/rotate), join requests (creación y auto-aprobación) y redención global. Miembros/invitaciones/workspaces ya registraban vía `recordEvent`. 6 tests de adapter + 4 de use case. Falta: migrar `CompleteOidcLogin`/`SelectTenant` a eventos explícitos (queda en v6/TASK-07 junto con rate limit). | v6/TASK-07, v5/TASK-08 | P0 — auditoría append-only |
-| B5 | **Rate limit dedicado solo en `create-workspace`**. Invitaciones, códigos, join requests, workspaces, cleanup sin rate limit por actor. | v6/TASK-07 | P0 — fuerza bruta admin |
+| B5 | ~~Rate limit dedicado solo en `create-workspace`~~ — **CERRADO 2026-10-28**: helper `scoped(scope)` en `routes.ts` con `scopedRateLimitMiddleware` por acción en las 20 rutas de escritura admin/onboarding (`admin-create-workspace`, `admin-global-invitation`, `admin-cleanup`, `auth-switch-tenant`, `admin-join-code` ×3, `admin-workspace`, `admin-member` ×7, `admin-join-request` ×2, `admin-invitation` ×2, `join-request-create`); bucket por `authorHash` del actor. Extra: `switch-tenant` llevaba `[auth, scoped]` sin `tenant`, por lo que `req.tid` no estaba resuelto y el limiter se saltaba en silencio — añadido `tenant` a la cadena. 41 tests de tabla de rutas. | v6/TASK-07 | ~~P0~~ ✅ |
 | B6 | **Join codes sin Update** (solo create/list/revoke). | v6/TASK-04 | P1 |
 | B7 | **Cleanup guests inactivos = 0** (placeholder). | v6/TASK-09 | P1 |
 | B8 | ~~Web direct add envía `email`~~ — **CERRADO 2026-10-28** (commit 85ceb64): `addMember` envía `handle`, i18n es/en. | v6/TASK-03, v11 | ~~P1~~ ✅ |
@@ -73,7 +73,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 - Miembros: alta directa por `handle` y por `globalUserId` OK (`findGlobalTenantLink`).
 - Códigos efímeros: create/list/revoke OK; **sin update**.
 - Auditoría: `DrizzleAuditLog` persistente desde 2026-10-28 — eventos de miembros/invitaciones/workspaces vía `recordEvent` y de códigos efímeros, join requests (creación + auto-aprobación) y redención global vía `IAuditLog`. Faltan por migrar: eventos explícitos de login/select-tenant (queda con v6/TASK-07).
-- Rate limit: solo `create-workspace` (`admin-create-workspace`) e `ingestion`.
+- Rate limit: genérico por workspace/actor (`limit`) en todas las protegidas + bucket dedicado por acción (`scoped`) en las 20 rutas de escritura admin/onboarding desde 2026-10-28 (P0-5).
 - Cleanup: invitaciones expiradas OK; guests 0.
 
 ### 2.3 Web (SvelteKit)
@@ -112,7 +112,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 | v6-04 | Códigos efímeros port/adapter/use cases | 🟡 Parcial | `Update` use case + endpoint PUT |
 | v6-05 | Auto-aprobación configurable | ✅ Hecho | Nada |
 | v6-06 | Invitaciones globales (router DB) | ✅ Hecho | Nada (redención en callback + link router, tests 2026-10-28) |
-| v6-07 | Rate limit dedicado + auditoría (IAuditLog) | 🟡 Parcial | Auditoría persistente HECHA (2026-10-28); falta rate limit en rutas admin y eventos de login/select-tenant |
+| v6-07 | Rate limit dedicado + auditoría (IAuditLog) | ✅ Hecho | Nada (auditoría persistente + rate limit por acción, 2026-10-28; eventos de login/select-tenant quedan como mejora P2) |
 | v6-08 | Atomizar use cases | 🟡 Parcial | Cablear atómicos en controladores; no regresiones |
 | v6-09 | Social logins Zitadel + cleanup endpoint/cron | 🟡 Parcial | Cleanup guests (DB-level); verificar social en identity lab |
 | v6-10 | Web core | ✅ Hecho | E2E admin flujos; offline rutas admin |
@@ -128,7 +128,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 2. ~~**Redención de invitación global**~~ — **HECHO 2026-10-28**: `isGlobalToken` + redención en `CompleteOidcLogin` antes de resolver tenant + link `global_identity_tenants` (`linkGlobalTenant`, upsert) también en el login institucional + wiring en `server.ts` + 16 tests. Sin endpoint redeem dedicado (decisión: el bind de email exige identidad IdP fresca del callback).
 3. ~~**Resolución `globalUserId` en alta directa**~~ — **HECHO 2026-10-28** (commit 85ceb64): `findGlobalTenantLink` + `routerDb` inyectado + web `handle` + tests.
 4. ~~**Auditoría persistente**~~ — **HECHO 2026-10-28**: `DrizzleAuditLog` sobre `ConnectionPoolManager` (`membership_events`) + `IGlobalIdentityEventRepository` sobre router (`global_identity_events`); inyectado en códigos efímeros, join requests y redención global; 10 tests. Queda migrar `CompleteOidcLogin`/`SelectTenant` a eventos explícitos y cablear los atómicos (v6/TASK-07/08).
-5. **Rate limit por actor en rutas admin**: `scopedRateLimitMiddleware(rateLimiter, '<action>')` en invitaciones globales, códigos efímeros, join requests, workspaces (create/patch), cleanup, miembros; tests.
+5. ~~**Rate limit por actor en rutas admin**~~ — **HECHO 2026-10-28**: `scoped()` en las 20 rutas de escritura (miembros, invitaciones, códigos, join requests, workspaces, cleanup, switch-tenant) + 41 tests; corregido el salto silencioso del limiter en `switch-tenant` (faltaba el guard `tenant`).
 
 ### P1 — Operación
 6. Cleanup guests inactivos (nivel DB) + endpoint/cron.
@@ -148,7 +148,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 | # | Vulnerabilidad | Estado | Mitigación |
 |---|----------------|--------|------------|
 | V1 | Token invitación en URL | Parcial | Single-use + TTL 72h + email-bound + Referrer-Policy no-referrer (ya). Pendiente: fragmento `#token` + HTTPS real. |
-| V2 | Brute-force códigos/event | Parcial | Rate limit solo en create-workspace. Falta extender a auth públicas y admin. |
+| V2 | Brute-force códigos/event | Hecho | `publicAuthRateLimitMiddleware` en auth públicas; bucket `scoped` por acción admin desde 2026-10-28 (P0-5); rate-based rule del limiter por actor (`authorHash`). |
 | V3 | XSS → robo token | Parcial | Token en memoria; CSP `default-src 'self'`; revisar inline scripts. |
 | V4 | CSRF en `/auth/refresh` | Parcial | Cookie SameSite; double-submit pendiente. |
 | V5 | Tenant mismatch → 404 | Implementado | Verificar en todos los endpoints. |
@@ -173,7 +173,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 - [x] `membership_events` append-only (miembros).
 - [ ] HTTPS/TLS real en producción.
 - [x] `IAuditLog` persistente (`DrizzleAuditLog`: `membership_events` + `global_identity_events`, 2026-10-28).
-- [ ] Rate limit dedicado en todas las rutas admin.
+- [x] Rate limit dedicado en todas las rutas admin de escritura (P0-5, 2026-10-28).
 - [x] `switch-tenant` endpoint (2026-10-28).
 - [x] Redención invitación global end-to-end (2026-10-28).
 - [x] Resolución `globalUserId` en alta directa (2026-10-28).
@@ -197,4 +197,4 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 
 ## 9. Conclusión
 
-El núcleo del modelo es coherente y está implementado (OIDC con tenant explícito, múltiples roles, GUEST/kind, códigos efímeros, invitaciones tenant y globales con redención operativa, alta directa por handle/identidad, switch-tenant, auditoría persistente, admin UI, canvas, gobernanza, offline, E2E). **Brechas P0 cerradas 2026-10-28:** `switch-tenant`, redención de invitaciones globales (incluido el link `global_identity_tenants` que antes solo escribía el reconcile), resolución de `globalUserId` en alta directa y `IAuditLog` persistente (`membership_events` + `global_identity_events`). **Queda abierta la P0 de rate limit dedicado en rutas admin** (B5), antes de avanzar a P1/P2.
+El núcleo del modelo es coherente y está implementado (OIDC con tenant explícito, múltiples roles, GUEST/kind, códigos efímeros, invitaciones tenant y globales con redención operativa, alta directa por handle/identidad, switch-tenant, auditoría persistente, rate limit por acción, admin UI, canvas, gobernanza, offline, E2E). **Las cinco brechas P0 están cerradas 2026-10-28:** `switch-tenant`, redención de invitaciones globales (incluido el link `global_identity_tenants`), resolución de `globalUserId` en alta directa, `IAuditLog` persistente (`membership_events` + `global_identity_events`) y rate limit dedicado en las rutas de escritura admin. El siguiente bloque es P1: cleanup de guests, join-code Update, seed completo, HTTPS y consumo web de `switch-tenant`.

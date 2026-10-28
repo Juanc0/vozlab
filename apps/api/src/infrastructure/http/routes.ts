@@ -393,6 +393,11 @@ export async function registerRoutes(
   const workspace = (req: FastifyRequest, reply: FastifyReply) =>
     tenantWorkspaceGuard(req, reply, { routerDb, membershipRepo });
   const limit = rateLimitMiddleware(rateLimiter);
+  // P0-5 (v6/TASK-07): a dedicated per-actor bucket for each administration
+  // write, so hammering one action cannot exhaust the shared workspace
+  // ceiling of the generic limiter. The scope names the action.
+  const scoped = (scope: string) =>
+    scopedRateLimitMiddleware(rateLimiter, scope);
   const guard = [auth, workspace, limit];
   // Tenant-wide administration: no `X-Workspace-ID`, the tenant is the scope.
   const tenantAdmin = [auth, tenant, tenantAdminGuard({ userRepo: deps.userRepo }), limit];
@@ -422,7 +427,10 @@ export async function registerRoutes(
     {
       preHandler: [
         auth,
-        scopedRateLimitMiddleware(rateLimiter, 'auth-switch-tenant'),
+        // `scoped` is keyed by the internal tenant: without the tenant guard
+        // `req.tid` would be unset and the limiter would silently skip.
+        tenant,
+        scoped('auth-switch-tenant'),
       ],
     },
     (req, reply) => authController.switchTenant(req, reply)
@@ -444,14 +452,14 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/admin/workspaces',
-    { preHandler: [...tenantAdmin, scopedRateLimitMiddleware(rateLimiter, 'admin-create-workspace')] },
+    { preHandler: [...tenantAdmin, scoped('admin-create-workspace')] },
     (req, reply) => tenantAdminController.createWorkspaceHandler(req, reply)
   );
 
   if (globalInvitationController) {
     app.post(
       '/api/v1/invitations/global',
-      { preHandler: tenantAdmin },
+      { preHandler: [...tenantAdmin, scoped('admin-global-invitation')] },
       (req, reply) => globalInvitationController.createHandler(req, reply)
     );
   }
@@ -459,7 +467,7 @@ export async function registerRoutes(
   if (joinCodeController) {
     app.post(
       '/api/v1/workspaces/:workspaceId/join-codes',
-      { preHandler: workspaceAdmin },
+      { preHandler: [...workspaceAdmin, scoped('admin-join-code')] },
       (req, reply) => joinCodeController.createHandler(req, reply)
     );
     app.get(
@@ -469,7 +477,7 @@ export async function registerRoutes(
     );
     app.delete(
       '/api/v1/workspaces/:workspaceId/join-codes/:codeId',
-      { preHandler: workspaceAdmin },
+      { preHandler: [...workspaceAdmin, scoped('admin-join-code')] },
       (req, reply) => joinCodeController.revokeHandler(req, reply)
     );
   }
@@ -483,7 +491,7 @@ export async function registerRoutes(
   if (cleanupController) {
     app.post(
       '/api/v1/admin/cleanup',
-      { preHandler: tenantAdmin },
+      { preHandler: [...tenantAdmin, scoped('admin-cleanup')] },
       (req, reply) => cleanupController.cleanupHandler(req, reply)
     );
   }
@@ -497,13 +505,13 @@ export async function registerRoutes(
 
   app.patch(
     '/api/v1/workspaces/:workspaceId',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-workspace')] },
     (req, reply) => workspaceAdminController.updateWorkspaceHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/join-code/rotate',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-join-code')] },
     (req, reply) => workspaceAdminController.rotateJoinCodeHandler(req, reply)
   );
 
@@ -515,43 +523,43 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.addMemberHandler(req, reply)
   );
 
   app.patch(
     '/api/v1/workspaces/:workspaceId/members/:userId',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.changeRoleHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members/:userId/roles',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.assignRoleHandler(req, reply)
   );
 
   app.delete(
     '/api/v1/workspaces/:workspaceId/members/:userId/roles/:role',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.removeRoleHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members/:userId/suspend',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.suspendMemberHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members/:userId/reactivate',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.reactivateMemberHandler(req, reply)
   );
 
   app.delete(
     '/api/v1/workspaces/:workspaceId/members/:userId',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-member')] },
     (req, reply) => workspaceAdminController.removeMemberHandler(req, reply)
   );
 
@@ -565,14 +573,14 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/workspaces/:workspaceId/join-requests/:requestId/approve',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-join-request')] },
     (req, reply) =>
       workspaceAccessAdminController.approveJoinRequestHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/join-requests/:requestId/reject',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-join-request')] },
     (req, reply) =>
       workspaceAccessAdminController.rejectJoinRequestHandler(req, reply)
   );
@@ -586,14 +594,14 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/workspaces/:workspaceId/invitations',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-invitation')] },
     (req, reply) =>
       workspaceAccessAdminController.createInvitationHandler(req, reply)
   );
 
   app.delete(
     '/api/v1/invitations/:invitationId',
-    { preHandler: workspaceAdmin },
+    { preHandler: [...workspaceAdmin, scoped('admin-invitation')] },
     (req, reply) =>
       workspaceAccessAdminController.revokeInvitationHandler(req, reply)
   );
@@ -614,7 +622,7 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/workspace-join-requests',
-    { preHandler: tenantSession },
+    { preHandler: [...tenantSession, scoped('join-request-create')] },
     (req, reply) => workspaceAccessController.requestAccessHandler(req, reply)
   );
 
