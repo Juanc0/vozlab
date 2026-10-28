@@ -521,6 +521,11 @@ export async function buildServer(): Promise<FastifyInstance> {
  */
 export async function startServer(): Promise<FastifyInstance> {
   const app = await buildServer();
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'no-referrer');
+  });
   await app.listen({ port: env.PORT, host: env.HOST });
   logger.info(`VozLab API server running on http://${env.HOST}:${env.PORT}`);
   return app;
