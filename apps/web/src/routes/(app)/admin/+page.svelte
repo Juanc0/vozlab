@@ -102,7 +102,7 @@
                 class="w-full text-left rounded-control px-2 py-1 hover:bg-raised {selectedId === w.id ? 'bg-accent-soft' : ''}"
                 onclick={() => (selectedId = w.id)}
               >
-                {w.name} <span class="text-muted text-small">({w.memberCount})</span>
+                {w.name} <span class="text-muted text-small">({w.memberCount})</span> <span class="text-small text-accent">{w.kind}</span>
               </button>
             </li>
           {/each}

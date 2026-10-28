@@ -133,6 +133,8 @@ export interface AdminWorkspaceDto {
   name: string;
   description: string | null;
   isPublic: boolean;
+  kind: string;
+  autoApproveJoinCode: boolean;
   joinCode: string;
   createdAt: string;
   memberCount: number;
