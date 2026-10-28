@@ -4,6 +4,7 @@ import { IRouterDatabase } from '../../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
 import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
 import { tenantGuard } from './TenantGuard.js';
+import { isValidWorkspaceId } from './workspaceId.js';
 
 /**
  * TenantWorkspaceGuard: Zero-Trust isolation middleware.
@@ -34,9 +35,7 @@ export async function tenantWorkspaceGuard(
   }
 
   // Validate UUID format — reject malformed identifiers early.
-  const UUID_RE =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!UUID_RE.test(workspaceId)) {
+  if (!isValidWorkspaceId(workspaceId)) {
     const err = buildError('ERR_INVALID_WORKSPACE_HEADER');
     return reply.status(err.status).send({
       code: err.code,

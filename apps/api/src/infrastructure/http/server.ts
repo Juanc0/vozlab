@@ -14,6 +14,11 @@ import { DrizzleEdgeRepository } from '../persistence/repositories/DrizzleEdgeRe
 import { DrizzleOntologyRepository } from '../persistence/repositories/DrizzleOntologyRepository.js';
 import { DrizzleProposalRepository } from '../persistence/repositories/DrizzleProposalRepository.js';
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
+import { DrizzleMembershipAdminRepository } from '../persistence/repositories/DrizzleMembershipAdminRepository.js';
+import { DrizzleWorkspaceRepository } from '../persistence/repositories/DrizzleWorkspaceRepository.js';
+import { DrizzleTenantAdminRepository } from '../persistence/repositories/DrizzleTenantAdminRepository.js';
+import { DrizzleJoinRequestRepository } from '../persistence/repositories/DrizzleJoinRequestRepository.js';
+import { DrizzleInvitationAdminRepository } from '../persistence/repositories/DrizzleInvitationAdminRepository.js';
 import { DrizzleInvitationRepository } from '../persistence/repositories/DrizzleInvitationRepository.js';
 import { DrizzleDiscussionRepository } from '../persistence/repositories/DrizzleDiscussionRepository.js';
 import { DrizzleInteractionRepository } from '../persistence/repositories/DrizzleInteractionRepository.js';
@@ -61,11 +66,31 @@ import { DeletePostUseCase } from '../../application/use_cases/DeletePostUseCase
 import { CastVoteUseCase } from '../../application/use_cases/CastVoteUseCase.js';
 import { StartOidcLoginUseCase } from '../../application/use_cases/StartOidcLoginUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../application/use_cases/CompleteOidcLoginUseCase.js';
-import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
 import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessionUseCase.js';
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
+import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
+import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
+import { RotateJoinCodeUseCase } from '../../application/use_cases/RotateJoinCodeUseCase.js';
+import { ListWorkspacesUseCase } from '../../application/use_cases/ListWorkspacesUseCase.js';
+import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUsersUseCase.js';
+import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
+import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
+import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
+import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
+import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
+import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
+import { ListJoinRequestsUseCase } from '../../application/use_cases/ListJoinRequestsUseCase.js';
+import { ApproveJoinRequestUseCase } from '../../application/use_cases/ApproveJoinRequestUseCase.js';
+import { RejectJoinRequestUseCase } from '../../application/use_cases/RejectJoinRequestUseCase.js';
+import { RequestWorkspaceAccessUseCase } from '../../application/use_cases/RequestWorkspaceAccessUseCase.js';
+import { DiscoverWorkspacesUseCase } from '../../application/use_cases/DiscoverWorkspacesUseCase.js';
+import { ListMyJoinRequestsUseCase } from '../../application/use_cases/ListMyJoinRequestsUseCase.js';
+import { CreateInvitationUseCase } from '../../application/use_cases/CreateInvitationUseCase.js';
+import { ListInvitationsUseCase } from '../../application/use_cases/ListInvitationsUseCase.js';
+import { RevokeInvitationUseCase } from '../../application/use_cases/RevokeInvitationUseCase.js';
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
@@ -117,6 +142,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   const ontologyRepo = new DrizzleOntologyRepository(poolManager);
   const proposalRepo = new DrizzleProposalRepository(poolManager);
   const membershipRepo = new DrizzleMembershipRepository(poolManager);
+  const membershipAdminRepo = new DrizzleMembershipAdminRepository(poolManager);
+  const workspaceRepo = new DrizzleWorkspaceRepository(poolManager);
+  const tenantAdminRepo = new DrizzleTenantAdminRepository(poolManager);
+  const joinRequestRepo = new DrizzleJoinRequestRepository(poolManager);
+  const invitationAdminRepo = new DrizzleInvitationAdminRepository(poolManager);
   const discussionRepo = new DrizzleDiscussionRepository(poolManager);
   const interactionRepo = new DrizzleInteractionRepository(poolManager);
   const uow = new UnitOfWork(poolManager);
@@ -231,7 +261,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     oidcStateStore
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
-  const inviteToWorkspaceUseCase = new InviteToWorkspaceUseCase(invitationRepo);
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -240,6 +269,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     userRepo,
     invitationRepo,
     membershipRepo,
+    uow,
     refreshTokenRepo,
     refreshTtlMs
   );
@@ -265,6 +295,126 @@ export async function buildServer(): Promise<FastifyInstance> {
     tokenIssuer,
     uow,
     refreshTtlMs
+  );
+
+  // --- Tenant and workspace administration (US-00) ---
+  const createWorkspaceUseCase = new CreateWorkspaceUseCase(
+    workspaceRepo,
+    membershipAdminRepo,
+    ontologyRepo,
+    userRepo,
+    uow
+  );
+  const getWorkspaceUseCase = new GetWorkspaceUseCase(
+    workspaceRepo,
+    membershipRepo,
+    userRepo
+  );
+  const updateWorkspaceUseCase = new UpdateWorkspaceUseCase(
+    workspaceRepo,
+    membershipRepo,
+    userRepo
+  );
+  const rotateJoinCodeUseCase = new RotateJoinCodeUseCase(
+    workspaceRepo,
+    membershipRepo,
+    userRepo
+  );
+  const listWorkspacesUseCase = new ListWorkspacesUseCase(
+    workspaceRepo,
+    userRepo
+  );
+  const listTenantUsersUseCase = new ListTenantUsersUseCase(
+    tenantAdminRepo,
+    userRepo
+  );
+  const listMembersUseCase = new ListMembersUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo
+  );
+  const addWorkspaceMemberUseCase = new AddWorkspaceMemberUseCase(
+    membershipAdminRepo,
+    tenantAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const changeMemberRoleUseCase = new ChangeMemberRoleUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    workspaceRepo,
+    userRepo,
+    uow
+  );
+  const suspendMemberUseCase = new SuspendMemberUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    workspaceRepo,
+    userRepo,
+    uow
+  );
+  const reactivateMemberUseCase = new ReactivateMemberUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const removeMemberUseCase = new RemoveMemberUseCase(
+    membershipAdminRepo,
+    membershipRepo,
+    workspaceRepo,
+    userRepo,
+    uow
+  );
+  const listJoinRequestsUseCase = new ListJoinRequestsUseCase(
+    joinRequestRepo,
+    membershipRepo,
+    userRepo
+  );
+  const approveJoinRequestUseCase = new ApproveJoinRequestUseCase(
+    joinRequestRepo,
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const rejectJoinRequestUseCase = new RejectJoinRequestUseCase(
+    joinRequestRepo,
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const requestWorkspaceAccessUseCase = new RequestWorkspaceAccessUseCase(
+    workspaceRepo,
+    joinRequestRepo,
+    membershipRepo
+  );
+  const discoverWorkspacesUseCase = new DiscoverWorkspacesUseCase(
+    workspaceRepo
+  );
+  const listMyJoinRequestsUseCase = new ListMyJoinRequestsUseCase(
+    joinRequestRepo
+  );
+  const createInvitationUseCase = new CreateInvitationUseCase(
+    invitationRepo,
+    invitationAdminRepo,
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo,
+    uow
+  );
+  const listInvitationsUseCase = new ListInvitationsUseCase(
+    invitationAdminRepo,
+    membershipRepo,
+    userRepo
+  );
+  const revokeInvitationUseCase = new RevokeInvitationUseCase(
+    invitationAdminRepo,
+    membershipAdminRepo,
+    membershipRepo,
+    userRepo
   );
 
   // --- Routes ---
@@ -307,13 +457,33 @@ export async function buildServer(): Promise<FastifyInstance> {
     logoutUseCase,
     getMeUseCase,
     joinEventUseCase,
+    createWorkspaceUseCase,
+    getWorkspaceUseCase,
+    updateWorkspaceUseCase,
+    rotateJoinCodeUseCase,
+    listWorkspacesUseCase,
+    listTenantUsersUseCase,
+    listMembersUseCase,
+    addWorkspaceMemberUseCase,
+    changeMemberRoleUseCase,
+    suspendMemberUseCase,
+    reactivateMemberUseCase,
+    removeMemberUseCase,
+    listJoinRequestsUseCase,
+    approveJoinRequestUseCase,
+    rejectJoinRequestUseCase,
+    requestWorkspaceAccessUseCase,
+    discoverWorkspacesUseCase,
+    listMyJoinRequestsUseCase,
+    createInvitationUseCase,
+    listInvitationsUseCase,
+    revokeInvitationUseCase,
     routerDb,
     tenantIdentityProviderRepo: routerDb,
     dataSourceRepo: dataSourceRepo,
     ingestSourceUseCase: ingestSourceUseCase,
     membershipRepo,
-    invitationRepo,
-    inviteToWorkspaceUseCase,
+    userRepo,
     tokenBlacklist,
     rateLimiter,
   });

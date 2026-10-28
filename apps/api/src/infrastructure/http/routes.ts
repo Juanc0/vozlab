@@ -37,19 +37,41 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
-import { InviteToWorkspaceUseCase } from '../../application/use_cases/InviteToWorkspaceUseCase.js';
+import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
+import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
+import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
+import { RotateJoinCodeUseCase } from '../../application/use_cases/RotateJoinCodeUseCase.js';
+import { ListWorkspacesUseCase } from '../../application/use_cases/ListWorkspacesUseCase.js';
+import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUsersUseCase.js';
+import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
+import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
+import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
+import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
+import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
+import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
+import { ListJoinRequestsUseCase } from '../../application/use_cases/ListJoinRequestsUseCase.js';
+import { ApproveJoinRequestUseCase } from '../../application/use_cases/ApproveJoinRequestUseCase.js';
+import { RejectJoinRequestUseCase } from '../../application/use_cases/RejectJoinRequestUseCase.js';
+import { RequestWorkspaceAccessUseCase } from '../../application/use_cases/RequestWorkspaceAccessUseCase.js';
+import { DiscoverWorkspacesUseCase } from '../../application/use_cases/DiscoverWorkspacesUseCase.js';
+import { ListMyJoinRequestsUseCase } from '../../application/use_cases/ListMyJoinRequestsUseCase.js';
+import { CreateInvitationUseCase } from '../../application/use_cases/CreateInvitationUseCase.js';
+import { ListInvitationsUseCase } from '../../application/use_cases/ListInvitationsUseCase.js';
+import { RevokeInvitationUseCase } from '../../application/use_cases/RevokeInvitationUseCase.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import { IngestSourceUseCase } from '../../application/use_cases/IngestSourceUseCase.js';
-import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
 import { requireAgentType, requireSystemAgent } from './middlewares/agentGuard.js';
 import { tenantGuard } from './middlewares/TenantGuard.js';
 import { tenantWorkspaceGuard } from './middlewares/TenantWorkspaceGuard.js';
+import { tenantAdminGuard } from './middlewares/TenantAdminGuard.js';
+import { workspaceAdminGuard } from './middlewares/WorkspaceAdminGuard.js';
 import {
   RateLimitingMiddleware,
   publicAuthRateLimitMiddleware,
@@ -64,7 +86,10 @@ import { HealthController } from './controllers/HealthController.js';
 import { DiscussionController } from './controllers/DiscussionController.js';
 import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
-import { MembershipController } from './controllers/MembershipController.js';
+import { TenantAdminController } from './controllers/TenantAdminController.js';
+import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
+import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
+import { WorkspaceAccessController } from './controllers/WorkspaceAccessController.js';
 import { TenantIdentityProviderController } from './controllers/TenantIdentityProviderController.js';
 import { DataSourceController } from './controllers/DataSourceController.js';
 import { IngestionController } from './controllers/IngestionController.js';
@@ -111,13 +136,33 @@ export interface RouteDependencies {
   logoutUseCase: LogoutUseCase;
   getMeUseCase: GetMeUseCase;
   joinEventUseCase: JoinEventUseCase;
+  createWorkspaceUseCase: CreateWorkspaceUseCase;
+  getWorkspaceUseCase: GetWorkspaceUseCase;
+  updateWorkspaceUseCase: UpdateWorkspaceUseCase;
+  rotateJoinCodeUseCase: RotateJoinCodeUseCase;
+  listWorkspacesUseCase: ListWorkspacesUseCase;
+  listTenantUsersUseCase: ListTenantUsersUseCase;
+  listMembersUseCase: ListMembersUseCase;
+  addWorkspaceMemberUseCase: AddWorkspaceMemberUseCase;
+  changeMemberRoleUseCase: ChangeMemberRoleUseCase;
+  suspendMemberUseCase: SuspendMemberUseCase;
+  reactivateMemberUseCase: ReactivateMemberUseCase;
+  removeMemberUseCase: RemoveMemberUseCase;
+  listJoinRequestsUseCase: ListJoinRequestsUseCase;
+  approveJoinRequestUseCase: ApproveJoinRequestUseCase;
+  rejectJoinRequestUseCase: RejectJoinRequestUseCase;
+  requestWorkspaceAccessUseCase: RequestWorkspaceAccessUseCase;
+  discoverWorkspacesUseCase: DiscoverWorkspacesUseCase;
+  listMyJoinRequestsUseCase: ListMyJoinRequestsUseCase;
+  createInvitationUseCase: CreateInvitationUseCase;
+  listInvitationsUseCase: ListInvitationsUseCase;
+  revokeInvitationUseCase: RevokeInvitationUseCase;
   routerDb: IRouterDatabase;
   tenantIdentityProviderRepo?: ITenantIdentityProviderRepository;
   dataSourceRepo?: IDataSourceRepository;
   ingestSourceUseCase?: IngestSourceUseCase;
   membershipRepo: IMembershipRepository;
-  invitationRepo?: IInvitationRepository;
-  inviteToWorkspaceUseCase: InviteToWorkspaceUseCase;
+  userRepo: IUserRepository;
   tokenBlacklist: RedisTokenBlacklist;
   rateLimiter: RateLimitingMiddleware;
 }
@@ -233,10 +278,34 @@ export async function registerRoutes(
     resolveSourceUseCase,
     deps.ingestSourceUseCase
   );
-  const membershipController = new MembershipController(
-    deps.inviteToWorkspaceUseCase,
-    deps.membershipRepo,
-    deps.invitationRepo ?? (deps.membershipRepo as unknown as IInvitationRepository)
+  const tenantAdminController = new TenantAdminController(
+    deps.listWorkspacesUseCase,
+    deps.createWorkspaceUseCase,
+    deps.listTenantUsersUseCase
+  );
+  const workspaceAdminController = new WorkspaceAdminController(
+    deps.getWorkspaceUseCase,
+    deps.updateWorkspaceUseCase,
+    deps.rotateJoinCodeUseCase,
+    deps.listMembersUseCase,
+    deps.addWorkspaceMemberUseCase,
+    deps.changeMemberRoleUseCase,
+    deps.suspendMemberUseCase,
+    deps.reactivateMemberUseCase,
+    deps.removeMemberUseCase
+  );
+  const workspaceAccessAdminController = new WorkspaceAccessAdminController(
+    deps.listJoinRequestsUseCase,
+    deps.approveJoinRequestUseCase,
+    deps.rejectJoinRequestUseCase,
+    deps.listInvitationsUseCase,
+    deps.createInvitationUseCase,
+    deps.revokeInvitationUseCase
+  );
+  const workspaceAccessController = new WorkspaceAccessController(
+    deps.discoverWorkspacesUseCase,
+    deps.requestWorkspaceAccessUseCase,
+    deps.listMyJoinRequestsUseCase
   );
 
   const tipController = deps.tenantIdentityProviderRepo
@@ -288,6 +357,21 @@ export async function registerRoutes(
     tenantWorkspaceGuard(req, reply, { routerDb, membershipRepo });
   const limit = rateLimitMiddleware(rateLimiter);
   const guard = [auth, workspace, limit];
+  // Tenant-wide administration: no `X-Workspace-ID`, the tenant is the scope.
+  const tenantAdmin = [auth, tenant, tenantAdminGuard({ userRepo: deps.userRepo }), limit];
+  // Workspace administration: the header names the workspace. A tenant ADMIN
+  // may target any workspace, a workspace ADMIN only its own.
+  const workspaceAdmin = [
+    auth,
+    tenant,
+    workspaceAdminGuard({
+      userRepo: deps.userRepo,
+      membershipRepo: deps.membershipRepo,
+    }),
+    limit,
+  ];
+  // Onboarding: a session and a tenant, but no workspace membership.
+  const tenantSession = [auth, tenant, limit];
 
   // --- Auth session (Bearer; no workspace required) ---
   app.post(
@@ -302,41 +386,142 @@ export async function registerRoutes(
     (req, reply) => authController.me(req, reply)
   );
 
-  // --- Membership management (D10, ADMIN only) ---
+  // --- Tenant administration (US-00) ---
+  // The tenant is the scope; the caller must be `system_role = 'ADMIN'`.
+  app.get(
+    '/api/v1/admin/workspaces',
+    { preHandler: tenantAdmin },
+    (req, reply) => tenantAdminController.listWorkspacesHandler(req, reply)
+  );
+
   app.post(
-    '/api/v1/workspaces/:workspaceId/members/invite',
-    { preHandler: guard },
-    (req, reply) => membershipController.invite(req, reply)
+    '/api/v1/admin/workspaces',
+    { preHandler: tenantAdmin },
+    (req, reply) => tenantAdminController.createWorkspaceHandler(req, reply)
+  );
+
+  app.get(
+    '/api/v1/admin/users',
+    { preHandler: tenantAdmin },
+    (req, reply) => tenantAdminController.listUsersHandler(req, reply)
+  );
+
+  // --- Workspace configuration and membership (US-00) ---
+  app.get(
+    '/api/v1/workspaces/:workspaceId',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.getWorkspaceHandler(req, reply)
   );
 
   app.patch(
-    '/api/v1/workspaces/:workspaceId/members/:userId/role',
-    { preHandler: guard },
-    (req, reply) => membershipController.changeRole(req, reply)
+    '/api/v1/workspaces/:workspaceId',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.updateWorkspaceHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/join-code/rotate',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.rotateJoinCodeHandler(req, reply)
+  );
+
+  app.get(
+    '/api/v1/workspaces/:workspaceId/members',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.listMembersHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/members',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.addMemberHandler(req, reply)
+  );
+
+  app.patch(
+    '/api/v1/workspaces/:workspaceId/members/:userId',
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.changeRoleHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members/:userId/suspend',
-    { preHandler: guard },
-    (req, reply) => membershipController.suspend(req, reply)
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.suspendMemberHandler(req, reply)
   );
 
   app.post(
     '/api/v1/workspaces/:workspaceId/members/:userId/reactivate',
-    { preHandler: guard },
-    (req, reply) => membershipController.reactivate(req, reply)
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.reactivateMemberHandler(req, reply)
   );
 
   app.delete(
     '/api/v1/workspaces/:workspaceId/members/:userId',
-    { preHandler: guard },
-    (req, reply) => membershipController.expel(req, reply)
+    { preHandler: workspaceAdmin },
+    (req, reply) => workspaceAdminController.removeMemberHandler(req, reply)
+  );
+
+  // --- Join-request inbox and invitation links (US-00) ---
+  app.get(
+    '/api/v1/workspaces/:workspaceId/join-requests',
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.listJoinRequestsHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/join-requests/:requestId/approve',
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.approveJoinRequestHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/join-requests/:requestId/reject',
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.rejectJoinRequestHandler(req, reply)
+  );
+
+  app.get(
+    '/api/v1/workspaces/:workspaceId/invitations',
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.listInvitationsHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspaces/:workspaceId/invitations',
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.createInvitationHandler(req, reply)
   );
 
   app.delete(
     '/api/v1/invitations/:invitationId',
-    { preHandler: guard },
-    (req, reply) => membershipController.revokeInvitation(req, reply)
+    { preHandler: workspaceAdmin },
+    (req, reply) =>
+      workspaceAccessAdminController.revokeInvitationHandler(req, reply)
+  );
+
+  // --- Onboarding: discovery and join requests (US-00) ---
+  // No `X-Workspace-ID`: the user who needs these may belong to none yet.
+  app.get(
+    '/api/v1/workspace-discovery',
+    { preHandler: tenantSession },
+    (req, reply) => workspaceAccessController.discoverHandler(req, reply)
+  );
+
+  app.get(
+    '/api/v1/workspace-join-requests',
+    { preHandler: tenantSession },
+    (req, reply) => workspaceAccessController.listMyRequestsHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/workspace-join-requests',
+    { preHandler: tenantSession },
+    (req, reply) => workspaceAccessController.requestAccessHandler(req, reply)
   );
 
   if (tipController) {
