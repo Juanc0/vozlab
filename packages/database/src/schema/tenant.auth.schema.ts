@@ -24,6 +24,7 @@ export const workspaces = authSchema.table('workspaces', {
   description: varchar('description', { length: 500 }),
   isPublic: boolean('is_public').default(true).notNull(),
   kind: varchar('kind', { length: 20 }).default('PRIVATE').notNull(),
+  autoApproveJoinCode: boolean('auto_approve_join_code').default(false).notNull(),
   /**
    * Routing hint for private workspaces (US-00). It identifies the workspace
    * but grants nothing: a valid code only lets an authenticated tenant user

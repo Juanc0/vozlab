@@ -23,6 +23,7 @@ export interface CreateWorkspaceInput {
   description: string | null;
   isPublic: boolean;
   kind?: string;
+  autoApproveJoinCode?: boolean;
   reqId?: string;
 }
 
@@ -67,6 +68,7 @@ export class CreateWorkspaceUseCase {
           description: input.description,
           isPublic: input.isPublic,
           kind: input.kind ?? 'PRIVATE',
+          autoApproveJoinCode: input.autoApproveJoinCode ?? false,
           joinCode: generateJoinCode(),
         },
         input.tid,

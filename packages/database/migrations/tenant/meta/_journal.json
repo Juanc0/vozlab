@@ -120,6 +120,13 @@
       "when": 1793209472301,
       "tag": "0016_foamy_vision",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793212949565,
+      "tag": "0017_loose_penance",
+      "breakpoints": true
     }
   ]
 }

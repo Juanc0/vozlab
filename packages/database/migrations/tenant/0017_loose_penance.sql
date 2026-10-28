@@ -1,0 +1,1 @@
+ALTER TABLE "auth"."workspaces" ADD COLUMN "auto_approve_join_code" boolean DEFAULT false NOT NULL;

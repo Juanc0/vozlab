@@ -9,6 +9,7 @@ export interface WorkspaceRecord {
   isPublic: boolean;
   /** 'EVENT' | 'PUBLIC' | 'PRIVATE' */
   kind: string;
+  autoApproveJoinCode: boolean;
   /** Routing hint; it identifies a private workspace and grants nothing. */
   joinCode: string;
   createdAt: Date;
@@ -34,6 +35,7 @@ export interface CreateWorkspaceRecordInput {
   description: string | null;
   isPublic: boolean;
   kind?: string;
+  autoApproveJoinCode?: boolean;
   joinCode: string;
 }
 
