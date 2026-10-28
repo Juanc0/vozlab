@@ -83,7 +83,9 @@
   const links = $derived([
     { href: '/', label: t('sidebar.graph'), icon: 'graph' },
     { href: '/proposals', label: t('sidebar.proposals'), icon: 'proposals' },
-    { href: '/discussions', label: t('sidebar.discussions'), icon: 'discussions' }
+    { href: '/discussions', label: t('sidebar.discussions'), icon: 'discussions' },
+    { href: '/admin', label: t('admin.title'), icon: 'proposals' },
+    { href: '/request-access', label: t('requestAccess.title'), icon: 'discussions' }
   ]);
 
   /** The name of the signed-in user, whatever the provider is. */

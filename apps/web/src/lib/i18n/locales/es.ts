@@ -829,5 +829,43 @@ export const es = {
       OPEN: 'Abierto',
       CLOSED: 'Cerrado'
     } satisfies Record<ThreadStatus, string>
+  },
+
+  admin: {
+    title: 'Administración',
+    workspaces: 'Espacios de trabajo',
+    createWorkspace: 'Crear espacio de trabajo',
+    name: 'Nombre',
+    slug: 'Identificador',
+    description: 'Descripción',
+    isPublic: 'Público',
+    members: 'Miembros',
+    joinRequests: 'Solicitudes de acceso',
+    invitations: 'Invitaciones',
+    joinCode: 'Código de acceso',
+    rotateJoinCode: 'Rotar código',
+    addMember: 'Añadir miembro',
+    email: 'Correo',
+    role: 'Rol',
+    suspend: 'Suspender',
+    reactivate: 'Reactivar',
+    remove: 'Eliminar',
+    approve: 'Aprobar',
+    reject: 'Rechazar',
+    createInvitation: 'Crear invitación',
+    revoke: 'Revocar',
+    invitationLink: 'Enlace de invitación',
+    noWorkspaces: 'No hay espacios de trabajo.'
+  },
+
+  requestAccess: {
+    title: 'Solicitar acceso',
+    discover: 'Descubrir espacios públicos',
+    joinByCode: 'Unirse con código',
+    code: 'Código',
+    message: 'Mensaje',
+    request: 'Solicitar',
+    myRequests: 'Mis solicitudes',
+    noWorkspaces: 'No hay espacios públicos disponibles.'
   }
 } as const;

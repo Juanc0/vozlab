@@ -764,5 +764,43 @@ export const en: Dictionary<typeof es> = {
       OPEN: 'Open',
       CLOSED: 'Closed'
     }
+  },
+
+  admin: {
+    title: 'Administration',
+    workspaces: 'Workspaces',
+    createWorkspace: 'Create workspace',
+    name: 'Name',
+    slug: 'Slug',
+    description: 'Description',
+    isPublic: 'Public',
+    members: 'Members',
+    joinRequests: 'Join requests',
+    invitations: 'Invitations',
+    joinCode: 'Join code',
+    rotateJoinCode: 'Rotate code',
+    addMember: 'Add member',
+    email: 'Email',
+    role: 'Role',
+    suspend: 'Suspend',
+    reactivate: 'Reactivate',
+    remove: 'Remove',
+    approve: 'Approve',
+    reject: 'Reject',
+    createInvitation: 'Create invitation',
+    revoke: 'Revoke',
+    invitationLink: 'Invitation link',
+    noWorkspaces: 'No workspaces.'
+  },
+
+  requestAccess: {
+    title: 'Request access',
+    discover: 'Discover public workspaces',
+    joinByCode: 'Join with code',
+    code: 'Code',
+    message: 'Message',
+    request: 'Request',
+    myRequests: 'My requests',
+    noWorkspaces: 'No public workspaces available.'
   }
 };

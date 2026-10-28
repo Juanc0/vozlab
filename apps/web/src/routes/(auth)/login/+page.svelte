@@ -31,10 +31,13 @@
   let selectedProvider = $state<string | undefined>(undefined);
 
   /** The API URL that starts the OIDC login. */
+  const invitation = $derived(page.url.searchParams.get('invitation') ?? undefined);
+
   const url = $derived(
     loginUrl(api, {
       redirectPath: target,
       kcIdpHint: selectedProvider,
+      invitation,
     })
   );
 

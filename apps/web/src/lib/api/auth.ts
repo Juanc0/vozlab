@@ -32,6 +32,7 @@ export interface LoginUrlOptions {
   redirectPath?: string;
   institution?: string;
   kcIdpHint?: string;
+  invitation?: string;
 }
 
 export function loginUrl(
@@ -46,6 +47,7 @@ export function loginUrl(
   const params = new URLSearchParams({ redirect: safePath });
   if (options.institution) params.set('institution', options.institution);
   if (options.kcIdpHint) params.set('kc_idp_hint', options.kcIdpHint);
+  if (options.invitation) params.set('invitation', options.invitation);
   return client.url(`/auth/login?${params.toString()}`);
 }
 
