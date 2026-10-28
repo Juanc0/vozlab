@@ -1,4 +1,13 @@
 import type { ApiClient } from './client';
+
+export async function selectTenant(client: ApiClient, tenantId: string): Promise<{ accessToken: string }> {
+  return client.request<{ accessToken: string }>({
+    method: 'POST',
+    path: '/auth/select-tenant',
+    workspace: false,
+    body: { tenantId }
+  });
+}
 import type {
   AdminMemberDto,
   AdminUserDto,
