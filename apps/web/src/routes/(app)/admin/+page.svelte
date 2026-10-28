@@ -28,6 +28,7 @@
   let newCodeLabel = $state('');
   let createdCode = $state<string | null>(null);
   let creatingCode = $state(false);
+  let joinCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
 
   async function loadWorkspaces() {
     loading = true; error = null;
@@ -47,6 +48,7 @@
     try {
       members = await admin.listMembers(api, selectedId);
       joinRequests = await admin.listJoinRequests(api, selectedId);
+      joinCodes = await admin.listJoinCodes(api, selectedId);
     } catch (e) {
       error = describeFailure(e);
     }
@@ -169,6 +171,16 @@
           {#if createdCode}
             <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
           {/if}
+
+          <h4>{t('admin.joinCodes') ?? 'Ephemeral join codes'}</h4>
+          <ul class="space-y-1">
+            {#each joinCodes as c (c.id)}
+              <li class="flex items-center justify-between gap-2 text-small">
+                <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''} {c.revokedAt ? '(revoked)' : ''}</span>
+                <button class="btn btn-quiet text-small" onclick={async () => { if (selectedId) { await admin.revokeJoinCode(api, selectedId, c.id); await loadMembers(); } }}>{t('admin.revoke') ?? 'Revoke'}</button>
+              </li>
+            {/each}
+          </ul>
         </div>
 
         <h3>{t('admin.members')}</h3>

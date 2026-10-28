@@ -90,6 +90,30 @@ export async function createJoinCode(
   });
 }
 
+export async function listJoinCodes(
+  client: ApiClient,
+  workspaceId: string
+): Promise<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>> {
+  const body = await client.request<{ codes: Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }> }>({
+    method: 'GET',
+    path: `/workspaces/${workspaceId}/join-codes`,
+    workspace: true
+  });
+  return body.codes;
+}
+
+export async function revokeJoinCode(
+  client: ApiClient,
+  workspaceId: string,
+  codeId: string
+): Promise<void> {
+  await client.request({
+    method: 'DELETE',
+    path: `/workspaces/${workspaceId}/join-codes/${codeId}`,
+    workspace: true
+  });
+}
+
 export async function rotateJoinCode(
   client: ApiClient,
   workspaceId: string

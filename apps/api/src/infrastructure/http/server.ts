@@ -481,6 +481,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     cleanupUseCase,
     createWorkspaceJoinCodeUseCase,
+    workspaceJoinCodeRepo,
     createWorkspaceUseCase,
     getWorkspaceUseCase,
     updateWorkspaceUseCase,

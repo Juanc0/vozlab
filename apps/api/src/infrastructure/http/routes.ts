@@ -144,6 +144,7 @@ export interface RouteDependencies {
   joinEventUseCase: JoinEventUseCase;
   cleanupUseCase?: CleanupExpiredInvitationsUseCase;
   createWorkspaceJoinCodeUseCase?: CreateWorkspaceJoinCodeUseCase;
+  workspaceJoinCodeRepo?: any;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
   getWorkspaceUseCase: GetWorkspaceUseCase;
   updateWorkspaceUseCase: UpdateWorkspaceUseCase;
@@ -287,7 +288,7 @@ export async function registerRoutes(
     ? new CleanupController(deps.cleanupUseCase)
     : null;
   const joinCodeController = deps.createWorkspaceJoinCodeUseCase
-    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase)
+    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo as any)
     : null;
   const ingestionController = new IngestionController(
     resolveSourceUseCase,
@@ -426,6 +427,16 @@ export async function registerRoutes(
       '/api/v1/workspaces/:workspaceId/join-codes',
       { preHandler: workspaceAdmin },
       (req, reply) => joinCodeController.createHandler(req, reply)
+    );
+    app.get(
+      '/api/v1/workspaces/:workspaceId/join-codes',
+      { preHandler: workspaceAdmin },
+      (req, reply) => joinCodeController.listHandler(req, reply)
+    );
+    app.delete(
+      '/api/v1/workspaces/:workspaceId/join-codes/:codeId',
+      { preHandler: workspaceAdmin },
+      (req, reply) => joinCodeController.revokeHandler(req, reply)
     );
   }
 
