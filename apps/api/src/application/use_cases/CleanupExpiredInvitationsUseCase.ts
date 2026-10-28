@@ -1,7 +1,7 @@
-/**
- * P1: cleanup of expired PENDING invitations and inactive anonymous guests.
- * Implementations iterate the tenant/router repositories and mark rows EXPIRED/REMOVED.
- */
+import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
+import { IUserRepository } from '../../domain/ports/IUserRepository.js';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
+
 export interface CleanupExpiredInvitationsInput {
   tid: string;
   inactiveGuestDays?: number;
@@ -13,8 +13,22 @@ export interface CleanupResult {
 }
 
 export class CleanupExpiredInvitationsUseCase {
+  constructor(
+    private readonly invitationRepo?: IInvitationRepository,
+    private readonly userRepo?: IUserRepository,
+    private readonly uow?: IUnitOfWork
+  ) {}
+
   async execute(input: CleanupExpiredInvitationsInput): Promise<CleanupResult> {
-    // Stub: concrete repository calls wired in server.ts when repositories are available.
-    return { expiredInvitations: 0, removedGuests: 0 };
+    let expiredInvitations = 0;
+    if (this.invitationRepo) {
+      expiredInvitations = await this.invitationRepo.expirePending(
+        input.tid,
+        new Date()
+      );
+    }
+    // Guest cleanup is a DB-level operation; placeholder for now.
+    const removedGuests = 0;
+    return { expiredInvitations, removedGuests };
   }
 }

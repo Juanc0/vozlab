@@ -64,6 +64,16 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
       .where(eq(invitations.id, id));
   }
 
+  async expirePending(tid: string, now: Date): Promise<number> {
+    const db = await this.client(tid);
+    const res = await db
+      .update(invitations)
+      .set({ status: 'EXPIRED' })
+      .where(and(eq(invitations.status, 'PENDING'), sql`${invitations.expiresAt} < ${now}`))
+      .returning({ id: invitations.id });
+    return res.length;
+  }
+
   async create(
     input: {
       workspaceId: string;

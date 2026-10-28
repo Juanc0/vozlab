@@ -33,6 +33,9 @@ export interface IInvitationRepository {
   /** Revoke an invitation. */
   revoke(id: string, tid: string): Promise<void>;
 
+  /** Mark all PENDING invitations past their expiry as EXPIRED. Returns count. */
+  expirePending(tid: string, now: Date): Promise<number>;
+
   /** Create a new invitation. */
   create(
     input: {

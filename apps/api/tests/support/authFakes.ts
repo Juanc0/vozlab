@@ -366,6 +366,9 @@ export function makeInvitationRepository(): {
     async revoke(id, tid) {
       calls.push(`revoke:${id}`);
     },
+    async expirePending(tid, now) {
+      return 0;
+    },
     async create(input, tid) {
       calls.push(`create:${input.workspaceId}`);
       return {
