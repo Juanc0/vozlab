@@ -38,6 +38,7 @@ export const users = authSchema.table(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: varchar('email', { length: 255 }).unique(),
+    handle: varchar('handle', { length: 64 }).unique(),
     fullName: varchar('full_name', { length: 255 }),
     provider: varchar('provider', { length: 50 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'ANONYMOUS_EVENT'
     providerUserId: varchar('provider_user_id', { length: 255 }),
