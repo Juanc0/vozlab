@@ -39,6 +39,7 @@ import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
+import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
 import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
@@ -90,6 +91,7 @@ import { InteractionController } from './controllers/InteractionController.js';
 import { AuthController } from './controllers/AuthController.js';
 import { TenantAdminController } from './controllers/TenantAdminController.js';
 import { CleanupController } from './controllers/CleanupController.js';
+import { JoinCodeController } from './controllers/JoinCodeController.js';
 import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
 import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
 import { WorkspaceAccessController } from './controllers/WorkspaceAccessController.js';
@@ -141,6 +143,7 @@ export interface RouteDependencies {
   getMeUseCase: GetMeUseCase;
   joinEventUseCase: JoinEventUseCase;
   cleanupUseCase?: CleanupExpiredInvitationsUseCase;
+  createWorkspaceJoinCodeUseCase?: CreateWorkspaceJoinCodeUseCase;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
   getWorkspaceUseCase: GetWorkspaceUseCase;
   updateWorkspaceUseCase: UpdateWorkspaceUseCase;
@@ -283,6 +286,9 @@ export async function registerRoutes(
   const cleanupController = deps.cleanupUseCase
     ? new CleanupController(deps.cleanupUseCase)
     : null;
+  const joinCodeController = deps.createWorkspaceJoinCodeUseCase
+    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase)
+    : null;
   const ingestionController = new IngestionController(
     resolveSourceUseCase,
     deps.ingestSourceUseCase
@@ -414,6 +420,14 @@ export async function registerRoutes(
     { preHandler: [...tenantAdmin, scopedRateLimitMiddleware(rateLimiter, 'admin-create-workspace')] },
     (req, reply) => tenantAdminController.createWorkspaceHandler(req, reply)
   );
+
+  if (joinCodeController) {
+    app.post(
+      '/api/v1/workspaces/:workspaceId/join-codes',
+      { preHandler: workspaceAdmin },
+      (req, reply) => joinCodeController.createHandler(req, reply)
+    );
+  }
 
   app.get(
     '/api/v1/admin/users',

@@ -72,6 +72,7 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
@@ -158,6 +159,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   const tokenBlacklist = new RedisTokenBlacklist();
   const rateLimiter = new RateLimitingMiddleware();
   const userRepo = new DrizzleUserRepository(poolManager);
+  const createWorkspaceJoinCodeUseCase = new CreateWorkspaceJoinCodeUseCase(
+    workspaceJoinCodeRepo,
+    userRepo,
+    membershipRepo
+  );
   const refreshTokenRepo = new DrizzleRefreshTokenRepository(poolManager);
   const identityProvider = new OidcProviderClient();
   const oidcStateStore = new RedisOidcStateStore();
@@ -474,6 +480,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     getMeUseCase,
     joinEventUseCase,
     cleanupUseCase,
+    createWorkspaceJoinCodeUseCase,
     createWorkspaceUseCase,
     getWorkspaceUseCase,
     updateWorkspaceUseCase,
