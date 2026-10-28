@@ -234,7 +234,9 @@ describe('auth integration', () => {
         cookie: `vozlab_refresh=${secondCookie}`,
       },
     });
-    expect(logout.status).toBe(204);
+    expect(logout.status).toBe(200);
+    const logoutBody = (await logout.json()) as { endSessionUrl: string };
+    expect(logoutBody.endSessionUrl).toContain('/end_session');
 
     const afterLogout = await me(session.accessToken);
     expect(afterLogout.status).toBe(401);

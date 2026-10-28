@@ -53,6 +53,8 @@ const EnvSchema = z
     OIDC_USERINFO_URL: z.string().url('OIDC_USERINFO_URL must be a valid URL'),
     OIDC_JWKS_URL: z.string().url('OIDC_JWKS_URL must be a valid URL'),
     OIDC_SCOPES: z.string().default('openid profile email'),
+    // RP-initiated logout (optional; derived from OIDC_ISSUER if absent).
+    OIDC_END_SESSION_URL: z.string().url().optional(),
 
     // --- Web client ---
     // PWA origin used for CORS and as the post-login redirect base.

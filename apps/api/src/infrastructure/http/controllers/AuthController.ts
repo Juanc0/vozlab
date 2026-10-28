@@ -159,7 +159,6 @@ export class AuthController {
         tokenExpiresAt: req.tokenExpiresAt,
         refreshToken,
       });
-      return reply.status(204).send();
     } catch (error) {
       log.error(
         { err: error instanceof Error ? error.message : error },
@@ -167,6 +166,18 @@ export class AuthController {
       );
       return sendError(reply, mapDomainError(error));
     }
+
+    // RP-initiated logout: hand the browser the identity provider's
+    // end_session URL so the SSO session is terminated too. Without this,
+    // clicking "Sign in" again silently reuses the IdP session.
+    const endSessionBase =
+      env.OIDC_END_SESSION_URL ??
+      `${env.OIDC_ISSUER.replace(/\/$/, '')}/oidc/v1/end_session`;
+    const endSessionUrl = `${endSessionBase}?client_id=${encodeURIComponent(
+      env.OIDC_CLIENT_ID
+    )}&post_logout_redirect_uri=${encodeURIComponent(env.WEB_ORIGIN)}`;
+
+    return reply.status(200).send({ endSessionUrl });
   }
 
   /** GET /api/v1/auth/me (Bearer; no X-Workspace-ID) */
