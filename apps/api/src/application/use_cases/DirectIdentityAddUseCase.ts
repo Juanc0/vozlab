@@ -1,7 +1,7 @@
 import type { WorkspaceRole } from '@vozlab/shared-types';
 import { randomBytes } from 'node:crypto';
 import { DomainError } from '../../domain/errors/DomainError.js';
-import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalUserRepository } from '../../domain/ports/IGlobalUserRepository.js';
 import { IUserRepository, NewExternalIdentityInput } from '../../domain/ports/IUserRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
@@ -23,7 +23,7 @@ export interface DirectIdentityAddResult {
 
 export class DirectIdentityAddUseCase {
   constructor(
-    private readonly globalIdentityRepo: IGlobalIdentityRepository,
+    private readonly globalUserRepo: IGlobalUserRepository,
     private readonly routerDb: IRouterDatabase,
     private readonly userRepo: IUserRepository,
     private readonly membershipRepo: IMembershipRepository
@@ -31,23 +31,23 @@ export class DirectIdentityAddUseCase {
 
   async execute(input: DirectIdentityAddInput): Promise<DirectIdentityAddResult> {
     // 1. Verify the global identity exists.
-    const globalIdentity = await this.globalIdentityRepo.findById(
+    const globalUser = await this.globalUserRepo.findById(
       input.globalIdentityId
     );
-    if (!globalIdentity) {
+    if (!globalUser) {
       throw new DomainError('ERR_VALIDATION_FAILED', 'global identity not found');
     }
 
     // 2. Find or create local user via external identity.
     const user = await this.userRepo.findOrCreateByExternalIdentity(
       {
-        issuer: globalIdentity.issuer,
-        subject: globalIdentity.subject,
+        issuer: globalUser.issuer,
+        subject: globalUser.subject,
         email: null,
         emailVerified: null,
         fullName: null,
         authorHash: generateAuthorHash(),
-        globalIdentityId: globalIdentity.id,
+        globalIdentityId: globalUser.id,
       },
       input.tid
     );
@@ -67,7 +67,7 @@ export class DirectIdentityAddUseCase {
 
     return {
       userId: user.id,
-      globalIdentityId: globalIdentity.id,
+      globalIdentityId: globalUser.id,
       workspaceId: input.workspaceId,
       role: input.role,
     };

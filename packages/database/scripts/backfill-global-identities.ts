@@ -15,7 +15,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { sql, eq } from 'drizzle-orm';
-import { tenants, tenantConnections, globalIdentities } from '../src/schema/router.schema.js';
+import { tenants, tenantConnections, globalUsers } from '../src/schema/router.schema.js';
 
 const routerConfig = {
   host: process.env.ROUTER_DB_HOST ?? 'localhost',
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
       for (const u of users) {
         // Upsert into global_identities.
         const [gi] = await routerDb
-          .insert(globalIdentities)
+          .insert(globalUsers)
           .values({ issuer: u.issuer, subject: u.subject })
           .onConflictDoNothing()
           .returning();
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
           // Already exists — fetch it.
           const [existing] = await routerDb
             .select()
-            .from(globalIdentities)
+            .from(globalUsers)
             .where(
               sql`issuer = ${u.issuer} AND subject = ${u.subject}`
             )

@@ -1,5 +1,5 @@
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
-import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalUserRepository } from '../../domain/ports/IGlobalUserRepository.js';
 
 export interface ResolveTenantsInput {
   globalIdentityId: string;
@@ -14,15 +14,15 @@ export interface ResolvedTenant {
 
 export class ResolveTenantsUseCase {
   constructor(
-    private readonly globalIdentityRepo: IGlobalIdentityRepository,
+    private readonly globalUserRepo: IGlobalUserRepository,
     private readonly routerDb: IRouterDatabase
   ) {}
 
   async execute(input: ResolveTenantsInput): Promise<ResolvedTenant[]> {
-    const identity = await this.globalIdentityRepo.findById(input.globalIdentityId);
+    const identity = await this.globalUserRepo.findById(input.globalIdentityId);
     if (!identity) {
       throw new Error('global identity not found');
     }
-    return this.routerDb.findTenantsByGlobalIdentity(input.globalIdentityId);
+    return this.routerDb.findTenantsByGlobalUser(input.globalIdentityId);
   }
 }

@@ -8,7 +8,7 @@ import { IIdentityProvider } from '../../domain/ports/IIdentityProvider.js';
 import type { WorkspaceRole } from '@vozlab/shared-types';
 import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
-import { IGlobalIdentityRepository } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalUserRepository } from '../../domain/ports/IGlobalUserRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
@@ -46,7 +46,7 @@ export class CompleteOidcLoginUseCase {
     private readonly stateStore: IOidcStateStore,
     private readonly identityProvider: IIdentityProvider,
     private readonly routerDb: IRouterDatabase,
-    private readonly globalIdentityRepo: IGlobalIdentityRepository,
+    private readonly globalUserRepo: IGlobalUserRepository,
     private readonly userRepo: IUserRepository,
     private readonly invitationRepo: IInvitationRepository,
     private readonly membershipRepo: IMembershipRepository,
@@ -85,7 +85,7 @@ export class CompleteOidcLoginUseCase {
     }
 
     // D8: resolve or create global identity, upserting profile.
-    const globalIdentity = await this.globalIdentityRepo.findOrCreate(
+    const globalUser = await this.globalUserRepo.findOrCreate(
       identity.issuer,
       identity.subject,
       {
@@ -104,7 +104,7 @@ export class CompleteOidcLoginUseCase {
         emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
-        globalIdentityId: globalIdentity.id,
+        globalIdentityId: globalUser.id,
       },
       tenant.id
     );
@@ -179,8 +179,8 @@ export class CompleteOidcLoginUseCase {
       tenant.id
     );
 
-    const linkedTenants = await this.routerDb.findTenantsByGlobalIdentity(
-      globalIdentity.id
+    const linkedTenants = await this.routerDb.findTenantsByGlobalUser(
+      globalUser.id
     );
 
     return {

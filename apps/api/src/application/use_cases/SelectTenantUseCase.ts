@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
-import { IGlobalIdentityRepository, GlobalIdentity } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalUserRepository, GlobalUser } from '../../domain/ports/IGlobalUserRepository.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
@@ -22,7 +22,7 @@ export interface SelectTenantResult {
 
 export class SelectTenantUseCase {
   constructor(
-    private readonly globalIdentityRepo: IGlobalIdentityRepository,
+    private readonly globalUserRepo: IGlobalUserRepository,
     private readonly routerDb: IRouterDatabase,
     private readonly userRepo: IUserRepository,
     private readonly uow: IUnitOfWork,
@@ -30,12 +30,12 @@ export class SelectTenantUseCase {
   ) {}
 
   async execute(input: SelectTenantInput): Promise<SelectTenantResult> {
-    const identity = await this.globalIdentityRepo.findById(input.globalIdentityId);
+    const identity = await this.globalUserRepo.findById(input.globalIdentityId);
     if (!identity) {
       throw new DomainError('ERR_VALIDATION_FAILED', 'global identity not found');
     }
 
-    const tenants = await this.routerDb.findTenantsByGlobalIdentity(input.globalIdentityId);
+    const tenants = await this.routerDb.findTenantsByGlobalUser(input.globalIdentityId);
     const link = tenants.find((t) => t.id === input.tenantId);
     if (!link || link.status !== 'ACTIVE') {
       throw new DomainError('ERR_TENANT_NOT_PROVISIONED');

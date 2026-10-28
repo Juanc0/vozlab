@@ -50,7 +50,7 @@ export interface IRouterDatabase {
   /**
    * List tenants linked to a global identity (v5 explicit tenant selection).
    */
-  findTenantsByGlobalIdentity(
-    globalIdentityId: string
+  findTenantsByGlobalUser(
+    globalUserId: string
   ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>>;
 }

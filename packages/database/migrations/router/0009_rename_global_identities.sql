@@ -1,0 +1,1 @@
+ALTER TABLE "global_identities" RENAME TO "global_users";

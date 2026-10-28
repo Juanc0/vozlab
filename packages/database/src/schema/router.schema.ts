@@ -127,8 +127,8 @@ export type NewTenantIdentityProvider = typeof tenantIdentityProviders.$inferIns
  * Contains NO PII (no email, name, role). Only the IdP subject hash.
  * One row per unique (issuer, subject) pair across all institutions.
  */
-export const globalIdentities = pgTable(
-  'global_identities',
+export const globalUsers = pgTable(
+  'global_users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     issuer: varchar('issuer', { length: 512 }).notNull(),
@@ -148,8 +148,8 @@ export const globalIdentities = pgTable(
   ]
 );
 
-export type GlobalIdentity = typeof globalIdentities.$inferSelect;
-export type NewGlobalIdentity = typeof globalIdentities.$inferInsert;
+export type GlobalUser = typeof globalUsers.$inferSelect;
+export type NewGlobalUser = typeof globalUsers.$inferInsert;
 
 /**
  * Global identity ↔ tenant link (D7, M2b).
@@ -162,7 +162,7 @@ export const globalIdentityTenants = pgTable(
   {
     globalIdentityId: uuid('global_identity_id')
       .notNull()
-      .references(() => globalIdentities.id, { onDelete: 'cascade' }),
+      .references(() => globalUsers.id, { onDelete: 'cascade' }),
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),

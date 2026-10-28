@@ -440,7 +440,7 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 ### 16.2 Tabla de identidad en router DB (mirror de auth.users, solo identidad)
 
-**Propuesta**: enriquecer `global_identities` (o crear `global_users`) en router DB para que sea el **registro central de identidad**, no solo para invitaciones:
+**Decisión (comité)**: renombrar `global_identities` → `global_users` para homogeneidad con `auth.users` (tenant DB). La tabla es el **registro central de identidad** en router DB:
 
 ```
 global_users (router DB):
@@ -544,7 +544,53 @@ En lugar de use cases monolíticos, dividir en operaciones pequeñas, componible
 
 ---
 
-## 17. Conclusión del comité (v5)
+## 18. Revisión exhaustiva: brechas, vulnerabilidades, rutas faltantes, mejores prácticas
+
+### 18.1 Vulnerabilidades identificadas
+- **Token de invitación en URL**: queda en historial/logs/referrers. Mitigación: single-use + TTL 72h + email-bound + HTTPS obligatorio. Considerar fragmento (`#token`) para evitar envío al servidor en referrer. Añadir `Referrer-Policy: no-referrer`.
+- **Event join anónimo**: código de evento global puede ser brute-forceado. Mitigación: rate limit por IP, códigos largos (≥128 bits), expiry corto, max_uses.
+- **XSS → robo de access token**: token en memoria; CSP estricta, no localStorage. Refresh token en cookie HttpOnly.
+- **CSRF en /auth/refresh**: cookie SameSite=Lax/Strict + double-submit token o Origin check.
+- **Tenant mismatch → 404**: ya implementado; verificar todos los endpoints.
+- **Último admin**: protección existe; verificar en suspensión/reactivación.
+- **Social login email no verificado**: invitación inredimible si emailVerified=false (correcto).
+- **Handle unicidad**: debe ser único por tenant (índice parcial).
+- **Refresh family reuse**: detección implementada; verificar invalidación al suspender (P1).
+
+### 18.2 Rutas faltantes / por implementar
+- `POST /api/v1/auth/select-tenant` (selector multi-tenant).
+- `POST /api/v1/auth/switch-tenant` (re-issue JWT).
+- `POST /api/v1/workspaces/:id/join-codes` (CRUD códigos efímeros).
+- `POST /api/v1/invitations/global` (invitación cross-IdP en router DB).
+- `POST /api/v1/admin/cleanup` (invitaciones expiradas + guests inactivos).
+- `GET /api/v1/tenants/me` (lista de tenants vinculados).
+- Middleware de rate limit dedicado por actor en rutas admin.
+
+### 18.3 Mejores prácticas
+- HTTPS obligatorio en producción; HSTS.
+- Tokens opacos (SHA-256 at rest), single-use, TTL corto.
+- Idempotencia en endpoints de creación (invitación, código).
+- Auditoría append-only (global_identity_events + membership_events).
+- Separación física de DBs (router vs tenant) — ya implementado.
+- Guard order: authGuard → tenantWorkspaceGuard/workspaceAdminGuard → rateLimit.
+- No PII en router DB excepto identidad (email, nombre) — mínimo necesario.
+- Validación Zod en todos los inputs.
+- Tests por operación atómica.
+
+### 18.4 Brechas de implementación (estado actual)
+- Invitaciones globales (router DB): esquema creado, use cases pendientes.
+- Tenant explícito: port method + use cases creados, integración en CompleteOidcLogin pendiente (sigue resolviendo por claims).
+- Múltiples roles: esquema + getRoles implementado; use cases de membresía asumen un rol (pendiente adaptar a unión).
+- Códigos efímeros: tabla creada; port/adapter/use cases pendientes.
+- GUEST role: en shared-types; guards pendientes.
+- workspaces.kind: columna creada; guards/use cases pendientes.
+- users.handle: columna creada; alta directa pendiente de adaptar.
+- Atomización: port IAuditLog creado; refactor pendiente.
+- Social logins: guía creada; config en Zitadel pendiente.
+- QR ambos códigos: nota; cliente pendiente.
+- Consolidación UI Miembros: nota; web pendiente.
+
+## 19. Conclusión del comité (v5)
 
 El modelo actual es **coherente en su núcleo** pero necesita una **evolución hacia tenant explícito por defecto**:
 

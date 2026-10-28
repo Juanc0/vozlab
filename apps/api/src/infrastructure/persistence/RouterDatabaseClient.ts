@@ -2,9 +2,9 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
-import { IGlobalIdentityRepository, GlobalIdentity, GlobalIdentityProfile } from '../../domain/ports/IGlobalIdentityRepository.js';
+import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../domain/ports/IGlobalUserRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
-import { globalIdentities } from '@vozlab/database';
+import { globalUsers } from '@vozlab/database';
 import {
   ConsumeEventCodeResult,
   CreateEventCodeInput,
@@ -22,7 +22,7 @@ import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, global
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalIdentityRepository, ITenantIdentityProviderRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -116,16 +116,16 @@ export class RouterDatabaseClient
   async findOrCreate(
     issuer: string,
     subject: string,
-    profile?: GlobalIdentityProfile
-  ): Promise<GlobalIdentity> {
+    profile?: GlobalUserProfile
+  ): Promise<GlobalUser> {
     try {
       const [existing] = await this.db
         .select()
-        .from(globalIdentities)
+        .from(globalUsers)
         .where(
           and(
-            eq(globalIdentities.issuer, issuer),
-            eq(globalIdentities.subject, subject)
+            eq(globalUsers.issuer, issuer),
+            eq(globalUsers.subject, subject)
           )
         )
         .limit(1);
@@ -142,9 +142,9 @@ export class RouterDatabaseClient
 
       if (existing) {
         await this.db
-          .update(globalIdentities)
+          .update(globalUsers)
           .set(values)
-          .where(eq(globalIdentities.id, existing.id));
+          .where(eq(globalUsers.id, existing.id));
         return {
           id: existing.id,
           issuer: existing.issuer,
@@ -160,7 +160,7 @@ export class RouterDatabaseClient
       }
 
       const [created] = await this.db
-        .insert(globalIdentities)
+        .insert(globalUsers)
         .values({ issuer, subject, ...values })
         .onConflictDoNothing()
         .returning();
@@ -183,11 +183,11 @@ export class RouterDatabaseClient
       // Race condition: re-read.
       const [raced] = await this.db
         .select()
-        .from(globalIdentities)
+        .from(globalUsers)
         .where(
           and(
-            eq(globalIdentities.issuer, issuer),
-            eq(globalIdentities.subject, subject)
+            eq(globalUsers.issuer, issuer),
+            eq(globalUsers.subject, subject)
           )
         )
         .limit(1);
@@ -216,10 +216,10 @@ export class RouterDatabaseClient
   /**
    * Update profile fields for an existing identity.
    */
-  async updateProfile(id: string, profile: GlobalIdentityProfile): Promise<void> {
+  async updateProfile(id: string, profile: GlobalUserProfile): Promise<void> {
     try {
       await this.db
-        .update(globalIdentities)
+        .update(globalUsers)
         .set({
           email: profile.email ?? undefined,
           emailVerified: profile.emailVerified,
@@ -228,7 +228,7 @@ export class RouterDatabaseClient
           lastLoginAt: new Date(),
           lastSeenAt: new Date(),
         })
-        .where(eq(globalIdentities.id, id));
+        .where(eq(globalUsers.id, id));
     } catch (err) {
       log.error({ err, id }, 'failed to update global identity profile');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
@@ -238,12 +238,12 @@ export class RouterDatabaseClient
   /**
    * Find a global identity by its ID.
    */
-  async findById(id: string): Promise<GlobalIdentity | null> {
+  async findById(id: string): Promise<GlobalUser | null> {
     try {
       const [row] = await this.db
         .select()
-        .from(globalIdentities)
-        .where(eq(globalIdentities.id, id))
+        .from(globalUsers)
+        .where(eq(globalUsers.id, id))
         .limit(1);
 
       if (!row) return null;
@@ -376,8 +376,8 @@ export class RouterDatabaseClient
   /**
    * List tenants linked to a global identity (v5 explicit tenant selection).
    */
-  async findTenantsByGlobalIdentity(
-    globalIdentityId: string
+  async findTenantsByGlobalUser(
+    globalUserId: string
   ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>> {
     try {
       const rows = await this.db
@@ -389,7 +389,7 @@ export class RouterDatabaseClient
         })
         .from(globalIdentityTenants)
         .innerJoin(tenants, eq(globalIdentityTenants.tenantId, tenants.id))
-        .where(eq(globalIdentityTenants.globalIdentityId, globalIdentityId));
+        .where(eq(globalIdentityTenants.globalIdentityId, globalUserId));
 
       return rows.map((r) => ({
         id: r.id,
@@ -398,7 +398,7 @@ export class RouterDatabaseClient
         status: r.status,
       }));
     } catch (err) {
-      log.error({ err, globalIdentityId }, 'failed to find tenants by global identity');
+      log.error({ err, globalUserId }, 'failed to find tenants by global identity');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

@@ -17,7 +17,7 @@ import type {
   UserWorkspace,
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
-import type { IGlobalIdentityRepository } from '../../src/domain/ports/IGlobalIdentityRepository.js';
+import type { IGlobalUserRepository } from '../../src/domain/ports/IGlobalUserRepository.js';
 import type { IInvitationRepository } from '../../src/domain/ports/IInvitationRepository.js';
 import type {
   CreateRefreshTokenInput,
@@ -77,12 +77,12 @@ export const OIDC_STATE: OidcStateData = {
   redirectPath: '/proposals',
 };
 
-export function makeGlobalIdentityRepository(): {
-  repo: IGlobalIdentityRepository;
+export function makeGlobalUserRepository(): {
+  repo: IGlobalUserRepository;
   calls: string[];
 } {
   const calls: string[] = [];
-  const repo: IGlobalIdentityRepository = {
+  const repo: IGlobalUserRepository = {
     async findOrCreate(issuer, subject, profile) {
       calls.push(`findOrCreate:${issuer}:${subject}`);
       return {
@@ -142,8 +142,8 @@ export function makeRouterDb(
       return null;
     },
     async ping() {},
-    async findTenantsByGlobalIdentity(globalIdentityId) {
-      calls.push(`findTenantsByGlobalIdentity:${globalIdentityId}`);
+    async findTenantsByGlobalUser(globalUserId) {
+      calls.push(`findTenantsByGlobalUser:${globalUserId}`);
       return tenant ? [{ id: tenant.id, slug: tenant.slug, oidcTenantId: tenant.oidcTenantId ?? 'oidc-1', status: 'ACTIVE' }] : [];
     },
   };

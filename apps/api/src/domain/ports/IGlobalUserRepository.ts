@@ -3,14 +3,14 @@
  *
  * Maps (issuer, subject) → global_identity_id. Contains no PII.
  */
-export interface GlobalIdentityProfile {
+export interface GlobalUserProfile {
   email?: string | null;
   emailVerified?: boolean;
   fullName?: string | null;
   picture?: string | null;
 }
 
-export interface GlobalIdentity {
+export interface GlobalUser {
   id: string;
   issuer: string;
   subject: string;
@@ -23,17 +23,17 @@ export interface GlobalIdentity {
   lastSeenAt: Date;
 }
 
-export interface IGlobalIdentityRepository {
+export interface IGlobalUserRepository {
   /** Find or create a global identity by (issuer, subject), upserting profile. */
   findOrCreate(
     issuer: string,
     subject: string,
-    profile?: GlobalIdentityProfile
-  ): Promise<GlobalIdentity>;
+    profile?: GlobalUserProfile
+  ): Promise<GlobalUser>;
 
   /** Find a global identity by its ID. */
-  findById(id: string): Promise<GlobalIdentity | null>;
+  findById(id: string): Promise<GlobalUser | null>;
 
   /** Update profile fields for an existing identity. */
-  updateProfile(id: string, profile: GlobalIdentityProfile): Promise<void>;
+  updateProfile(id: string, profile: GlobalUserProfile): Promise<void>;
 }

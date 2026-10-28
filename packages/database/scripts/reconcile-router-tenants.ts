@@ -12,7 +12,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { sql, eq } from 'drizzle-orm';
-import { tenants, tenantConnections, globalIdentities, globalIdentityTenants } from '../src/schema/router.schema.js';
+import { tenants, tenantConnections, globalUsers, globalIdentityTenants } from '../src/schema/router.schema.js';
 
 const routerConfig = {
   host: process.env.ROUTER_DB_HOST ?? 'localhost',

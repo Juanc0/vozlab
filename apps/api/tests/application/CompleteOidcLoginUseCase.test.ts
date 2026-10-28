@@ -11,7 +11,7 @@ import {
   OIDC_STATE,
   TENANT,
   TENANT_ID,
-  makeGlobalIdentityRepository,
+  makeGlobalUserRepository,
   makeIdentityProvider,
   makeInvitationRepository,
   makeMembershipRepository,
@@ -36,7 +36,7 @@ function setup(
   const router = makeRouterDb({
     tenant: overrides.tenant === undefined ? TENANT : overrides.tenant,
   });
-  const globalIdentity = makeGlobalIdentityRepository();
+  const globalIdentity = makeGlobalUserRepository();
   const users = makeUserRepository();
   const refresh = makeRefreshTokenRepository();
   const invitation = makeInvitationRepository();
