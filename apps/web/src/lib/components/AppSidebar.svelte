@@ -132,18 +132,20 @@
     signOutError = null;
 
     try {
-      await logout(api);
+      const endSessionUrl = await logout(api);
+      session.clear();
+      forgetDevelopmentToken();
+      if (endSessionUrl) {
+        window.location.href = endSessionUrl;
+        return;
+      }
+      await goto('/login');
+      return;
     } catch (error) {
       signOutError = error instanceof Error ? error.message : t('sidebar.signOutFailed');
       signingOut = false;
       return;
     }
-
-    session.clear();
-    // A development token is kept in the tab so a reload does not cost the
-    // role; signing out has to take it away as well.
-    forgetDevelopmentToken();
-    await goto('/login');
   }
 </script>
 

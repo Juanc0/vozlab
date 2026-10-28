@@ -95,11 +95,16 @@ describe('auth api', () => {
     expect(headersOf(fetchMock).get('X-Workspace-ID')).toBeNull();
   });
 
-  it('logs out with an empty answer', async () => {
+  it('logs out and returns the IdP end_session URL', async () => {
     const { client, fetchMock } = harness();
-    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ endSessionUrl: 'https://idp.example/end_session?client_id=x' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
 
-    await expect(logout(client)).resolves.toBeUndefined();
+    await expect(logout(client)).resolves.toBe('https://idp.example/end_session?client_id=x');
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${BASE_URL}/auth/logout`);
     expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('POST');

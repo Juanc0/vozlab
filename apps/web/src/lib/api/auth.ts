@@ -102,11 +102,14 @@ export async function fetchMe(client: ApiClient): Promise<AuthMeDto> {
   });
 }
 
-/** Ends the session: the access token is blacklisted and the cookie cleared. */
-export async function logout(client: ApiClient): Promise<void> {
-  await client.requestVoid({
+/** Ends the session: the access token is blacklisted and the cookie cleared.
+ *  Returns the identity provider's end_session URL (if any) so the caller can
+ *  terminate the SSO session too. */
+export async function logout(client: ApiClient): Promise<string | null> {
+  const body = await client.request<{ endSessionUrl?: string }>({
     method: 'POST',
     path: '/auth/logout',
     workspace: false
   });
+  return body?.endSessionUrl ?? null;
 }
