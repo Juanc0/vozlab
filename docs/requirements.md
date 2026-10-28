@@ -220,6 +220,15 @@ cross-tenant identity via router DB, explicit tenant selection, global invitatio
 social logins, workspaces.kind (EVENT/PUBLIC/PRIVATE), GUEST role, ephemeral
 workspace codes, multiple roles per workspace (union), alta directa by handle.
 
+### Decision matrix (auth/onboarding)
+| User type | Workspace kind | Flow |
+|---|---|---|
+| Institutional (OIDC) | any | OIDC login → tenant resolution → workspace by invitation/join code/request |
+| External collaborator | any | Global invitation URL → OIDC (any IdP) → redeem |
+| Event attendee (anonymous) | EVENT only | QR with both codes → anonymous user + GUEST membership (auto-approved) |
+| Admin (tenant) | any | Direct add by handle/identity |
+| Admin (workspace) | own | Approve join requests, manage members/roles |
+
 ### US-01 — Create a node in the graph (PWA User)
 As an authenticated user I draft an initiative or report by picking an active
 ontology type, so a problem, idea or resource becomes visible. Acceptance: form
