@@ -157,3 +157,17 @@ more honest, at a modest cost. It is covered in `12`.
 3. Is a person's presence in two institutions something the community should be able to see? (The answer decides
    whether option E is ever acceptable.)
 4. Should anonymous event participants be able to vote on proposals that change the vocabulary, or only on content?
+
+## v5 update (2026-10-28)
+
+- Router DB becomes identity authority: `global_users` stores full identity profile (no workspace/roles).
+- Tenant is explicit by default: authentication → resolution → selection (auto if one, selector if many).
+- Global invitations in router DB enable cross-IdP/external collaborators.
+- Social logins (Google/Microsoft personal) for external collaborators.
+- Workspaces.kind: EVENT/PUBLIC/PRIVATE. users.is_anonymous for guests.
+- GUEST role: restricted to EVENT workspaces but CAN create proposals (PENDING).
+- Multiple roles per workspace: PK (workspace, user, role); verification by union.
+- Ephemeral workspace join codes: TTL, capacity, auto-approve, revocation.
+- Alta directa by handle/identity, not email.
+- Atomized flows: 9 small, auditable operations.
+- See `docs/analysis/auth-onboarding-committee-review.md` and `docs/decisions/ADR-0042-*.md`.

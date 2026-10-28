@@ -215,6 +215,11 @@ row created with the base ontology; the URL stays clean and the workspace
 appears in the PWA selector. *(Backend, CLI bootstrap and audit delivered;
 web admin UI is the next slice — see ADR-0041.)*
 
+v5 extensions (see ADR-0042 and `docs/analysis/auth-onboarding-committee-review.md`):
+cross-tenant identity via router DB, explicit tenant selection, global invitations,
+social logins, workspaces.kind (EVENT/PUBLIC/PRIVATE), GUEST role, ephemeral
+workspace codes, multiple roles per workspace (union), alta directa by handle.
+
 ### US-01 — Create a node in the graph (PWA User)
 As an authenticated user I draft an initiative or report by picking an active
 ontology type, so a problem, idea or resource becomes visible. Acceptance: form

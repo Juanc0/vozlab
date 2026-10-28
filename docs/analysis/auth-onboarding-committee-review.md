@@ -340,15 +340,15 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 ---
 
-## 16. Cross-tenant access y colaboradores externos
+## 15. Cross-tenant access y colaboradores externos
 
-### 16.1 Preocupaciones del usuario
+### 15.1 Preocupaciones del usuario
 - La invitación actual solo cubre miembros del mismo IdP/tenant que el admin.
 - Deja fuera a colaboradores que no están en el IdP o que quieren usar otro correo (de otra universidad o personal).
 - El tenant se define implícitamente para algunos flujos; el usuario quiere saber cuándo/cómo/dónde debe indicarse explícitamente.
 - Proponer la misma estrategia que los códigos (independientes por nivel) pero para usuarios: permitir cross-multi-tenant access y colaboradores externos (gmail/outlook/social).
 
-### 16.2 Análisis
+### 15.2 Análisis
 
 **Estado actual del modelo de identidad:**
 - `global_identities` (router DB) ya es el ancla cross-tenant: clave única `(issuer, subject)`.
@@ -360,7 +360,7 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 - Para encontrar la invitación, hay que saber en qué tenant DB buscar → chicken-and-egg si el tenant se resuelve por el IdP.
 - Por eso hoy solo funciona cuando el invitado usa el mismo IdP/tenant que el admin.
 
-### 16.3 Opciones
+### 15.3 Opciones (A y B preferidas; conciliar en mixta)
 
 **Opción A — Invitación global (router DB):**
 - Crear un registro mínimo de invitación en router DB: `(token_hash, tenant_id, workspace_id, role, email, expires_at, ...)`.
@@ -373,15 +373,17 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 - Si tiene uno, se selecciona automáticamente.
 - Para colaboradores externos sin tenant vinculado, se requiere una invitación (Opción A) o un tenant por defecto.
 
-**Opción C — Tenant por defecto / personal:**
-- Crear un "tenant personal" para usuarios externos sin afiliación institucional.
-- No recomendado: complica el modelo y el aislamiento.
+**Opción mixta (A + B) — RECOMENDADA:**
+- Invitación global (A) para resolver tenant en flujos cross-IdP/externos.
+- Selector de tenant (B) para usuarios con múltiples tenants vinculados.
+- Ambas conviven: la invitación provee el tenant cuando no hay sesión; el selector provee el tenant cuando hay múltiples.
+- Para usuarios con un solo tenant, selección automática (sin fricción).
 
-**Opción D — Invitación que especifica tenant en el state:**
-- Similar a A pero el tenant se pasa en el state OIDC, no en router DB.
-- Menos robusto: si el state se pierde, no se puede recuperar el tenant.
+**Descartadas:**
+- Opción C (tenant personal): complica aislamiento.
+- Opción D (tenant en state OIDC): frágil si el state se pierde.
 
-### 16.4 Cuándo indicar el tenant explícitamente
+### 15.4 Cuándo indicar el tenant explícitamente
 
 | Flujo | Tenant implícito | Tenant explícito |
 |-------|-----------------|------------------|
@@ -395,7 +397,7 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 **Regla**: el tenant es implícito cuando hay una credencial que lo identifica (código, invitación, sesión única). Es explícito cuando el usuario tiene múltiples tenants o cuando la invitación es cross-IdP.
 
-### 16.5 Colaboradores externos (gmail/outlook/social)
+### 15.5 Colaboradores externos (gmail/outlook/social)
 
 - **IdP genérico**: Zitadel puede brokerizar Google (personal), Microsoft (personal), Facebook, etc. El `issuer` será el del proveedor social.
 - **Identidad global**: se crea con `(issuer=social-provider, subject=social-id)`. Funciona igual que con IdP institucional.
@@ -403,14 +405,14 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 - **Recomendación**: habilitar social logins en Zitadel para colaboradores externos, y usar invitaciones globales (Opción A) para que el admin pueda invitar a cualquier email.
 - **Seguridad**: social logins tienen menor nivel de verificación de email (algunos proveedores no verifican). La invitación debe requerir `emailVerified=true` (como hoy). Si el proveedor social no lo provee, la invitación es inredimible → correcto por seguridad.
 
-### 16.6 Cross-multi-tenant access
+### 15.6 Cross-multi-tenant access
 
 - Un usuario puede pertenecer a N tenants (global_identity_tenants).
 - Para acceder a un workspace de otro tenant, necesita: (a) membresía en ese tenant (global_identity_tenants), (b) membresía en el workspace (workspace_memberships en la DB de ese tenant).
 - La invitación cross-tenant (Opción A) puede crear ambas: vincular la identidad global al tenant + crear membresía al workspace.
 - **No** se permite acceso cross-tenant sin invitación o membresía explícita.
 
-### 16.7 Recomendación
+### 15.7 Recomendación
 
 1. **Implementar invitaciones globales (Opción A)**: mover la creación de invitación a un use case que primero crea un registro en router DB (token → tenant+workspace+role+email), y luego redime en el tenant DB. Esto permite invitar a cualquier email con cualquier IdP.
 2. **Selector de tenant post-login** para usuarios con múltiples tenants.
@@ -418,7 +420,7 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 4. **Mantener la verificación de email** (`emailVerified=true`) como requisito para redimir invitaciones.
 5. **No crear tenants personales** — mantener el modelo de invitación.
 
-### 16.8 Historias de usuario adicionales
+### 15.8 Historias de usuario adicionales
 
 - US-R: Como admin, quiero invitar a un colaborador externo (gmail) a un workspace, aunque no esté en mi IdP.
 - US-S: Como colaborador externo, quiero usar mi cuenta de Google personal para redimir una invitación.
@@ -428,18 +430,156 @@ Event join se mantiene pero acotado a EVENT + GUEST.
 
 ---
 
-## 17. Conclusión del comité (v4)
+## 16. Tenant explícito por defecto y tabla de identidad en router DB
 
-El modelo actual es **coherente en su núcleo** pero tiene un **límite importante**: las invitaciones solo funcionan dentro del mismo IdP/tenant. Para colaboradores externos y cross-tenant access, se necesita:
+### 16.1 Preocupaciones del usuario
+- La invitación en router DB solo cubre invitaciones, no logins generales. Se quiere que el tenant sea **explícito para todos los flujos**, y que la verificación por defecto pase por router DB.
+- Cualquier usuario debería poder escalar a multi-tenant sin complicación; la estructura debe facilitarlo desde el principio.
+- La tabla en router DB no debe conocer workspace ni roles — solo la identificación única del usuario (pareja proveedor+user_id, o identidades externas/personales).
+- Se quiere una ruta más robusta, estándar y atomizada: dividir flujos en operaciones pequeñas, auditables, escalables.
 
-1. **Invitaciones globales** (token en router DB que resuelve tenant+workspace+role) → permite invitar a cualquier email con cualquier IdP.
-2. **Selector de tenant post-login** para usuarios multi-tenant.
-3. **Social logins** habilitados en Zitadel para colaboradores externos.
-4. **Tenant explícito** cuando la credencial no lo identifica (invitación cross-IdP, usuario multi-tenant).
+### 16.2 Tabla de identidad en router DB (mirror de auth.users, solo identidad)
 
-Mantener: OIDC como identidad, invitación como URL/QR, código de workspace como dirección, roles por unión, GUEST acotado, tipificación de workspaces. No implementar contraseñas propias ni tenants personales. Consolidar flujos redundantes.
+**Propuesta**: enriquecer `global_identities` (o crear `global_users`) en router DB para que sea el **registro central de identidad**, no solo para invitaciones:
 
-Además de los P0 anteriores, añadir:
-- **P0 nuevo**: Invitaciones globales (router DB) para cross-IdP/externos.
-- **P1 nuevo**: Selector de tenant post-login.
-- **P1 nuevo**: Habilitar social logins en Zitadel.
+```
+global_users (router DB):
+  id (uuid, PK)
+  issuer (varchar) — URL del IdP
+  subject (varchar) — subject del IdP
+  email (varchar, nullable)
+  email_verified (boolean)
+  full_name (varchar, nullable)
+  picture (varchar, nullable)
+  created_at
+  last_login_at
+  UNIQUE(issuer, subject)
+```
+
+**Lo que NO contiene**: workspace, roles, author_hash, system_role, handle. Esos son tenant-specific y viven en tenant DB (`auth.users`).
+
+**Tabla de vinculación (ya existe, enriquecer):**
+```
+global_user_tenants (router DB):
+  global_user_id (FK → global_users)
+  tenant_id (FK → tenants)
+  status (ACTIVE | SUSPENDED | PENDING)
+  linked_at
+  linked_by (global_user_id del invitador, nullable)
+  PRIMARY KEY (global_user_id, tenant_id)
+```
+
+**Ventajas:**
+- Cualquier usuario puede vincularse a N tenants sin complicación (solo insert en `global_user_tenants`).
+- La estructura facilita multi-tenant desde el principio (no es un afterthought).
+- Un solo lugar para verificar "¿quién es este usuario?" (router DB).
+- Tenant DB solo guarda datos tenant-specific (author_hash, system_role, handle).
+
+### 16.3 Tenant explícito por defecto
+
+**Principio**: el tenant nunca se infiere silenciosamente de claims del IdP como única fuente. En su lugar:
+
+1. **Autenticación (OIDC)** → resuelve identidad (global_user en router DB). El IdP provee identidad, NO tenant.
+2. **Resolución de tenant** → consulta `global_user_tenants` para ese global_user:
+   - 0 tenants → "sin acceso" o redirigir a invitación.
+   - 1 tenant → selección automática (sin fricción).
+   - N tenants → selector explícito.
+3. **Invitación cross-IdP** → la invitación (global, en router DB) provee el tenant. Al redimir, se vincula la identidad al tenant (`global_user_tenants`) y se crea el tenant user.
+
+**Flujos donde el tenant es implícito (aceptable):**
+- Event join (código de evento → tenant en router DB).
+- Invitación same-IdP (el admin y el invitado comparten IdP/tenant).
+
+**Flujos donde el tenant debe ser explícito:**
+- Login de usuario con múltiples tenants → selector.
+- Invitación cross-IdP/externo → tenant de la invitación.
+- Admin con múltiples tenants → selector.
+
+### 16.4 Atomización de flujos
+
+En lugar de use cases monolíticos, dividir en operaciones pequeñas, componibles y auditables:
+
+| Operación atómica | Responsabilidad | Entrada | Salida |
+|-------------------|-----------------|---------|--------|
+| `Authenticate` | OIDC code exchange → identidad global | código OIDC + state | global_user (router DB) |
+| `ResolveTenants` | Listar tenants vinculados a una identidad | global_user_id | lista de tenants |
+| `SelectTenant` | Vincular identidad a tenant (si no lo está) + crear tenant user | global_user_id, tenant_id | tenant user + session |
+| `RedeemInvitation` | Validar token global → vincular identidad a tenant + crear workspace membership | invitation token, global_user | membership |
+| `JoinEvent` | Crear usuario anónimo + membresía GUEST en workspace EVENT | código de evento | sesión anónima |
+| `RequestWorkspaceAccess` | Crear solicitud PENDING | user, workspace/code | join request |
+| `ApproveJoinRequest` | Crear membresía ACTIVE | request_id, admin | membership |
+| `CreateWorkspace` | Crear workspace + ontología base + admin membership | admin, datos | workspace |
+| `ManageRole` | Asignar/retirar rol en workspace | admin, user, workspace, role, add/remove | membership actualizada |
+
+**Ventajas de la atomización:**
+- Cada operación es testeable, auditable y reutilizable.
+- El controller compone las operaciones según el flujo.
+- Fácil de añadir nuevos flujos sin modificar los existentes.
+- Auditoría granular: cada operación genera un evento.
+
+### 16.5 Estructura de sesiones con tenant explícito
+
+- **JWT de VozLab**: contiene `globalUserId`, `tenantId` (seleccionado), `authorHash`. El tenant es explícito en el token.
+- **Switch de tenant**: el usuario puede cambiar de tenant sin re-autenticarse (si tiene múltiples). La API emite un nuevo JWT con el nuevo `tenantId`.
+- **X-Tenant-ID header**: no necesario si el tenant está en el JWT. Pero para admin multi-tenant, un header `X-Tenant-ID` puede permitir override (con verificación de que el usuario tiene acceso).
+
+### 16.6 Historias de usuario adicionales
+
+- US-W: Como usuario, quiero que el sistema me muestre un selector de tenant si pertenezco a varios, y seleccione automáticamente si solo tengo uno.
+- US-X: Como admin, quiero que la tabla de identidad en router DB sea la fuente única de verdad para "quién es este usuario".
+- US-Y: Como desarrollador, quiero que cada operación de auth/onboarding sea atómica y testeable independientemente.
+- US-Z: Como sistema, quiero que el tenant nunca se infiera silenciosamente de claims del IdP como única fuente.
+
+### 16.7 Recomendaciones actualizadas
+
+**P0 (adicionales):**
+- Enriquecer `global_identities` en router DB como tabla de identidad central (solo identidad, sin workspace/roles).
+- Tenant explícito por defecto: autenticación → resolución de tenant → selección.
+- Atomizar flujos en operaciones pequeñas y auditables.
+
+**P1 (adicionales):**
+- Selector de tenant post-login (multi-tenant).
+- Switch de tenant sin re-autenticación.
+- Auditoría por operación atómica.
+
+---
+
+## 17. Conclusión del comité (v5)
+
+El modelo actual es **coherente en su núcleo** pero necesita una **evolución hacia tenant explícito por defecto**:
+
+1. **Tabla de identidad en router DB** (`global_users`) como fuente única de verdad para "quién es este usuario" (solo identidad, sin workspace/roles).
+2. **Tenant explícito por defecto**: autenticación → resolución de tenant → selección (no inferir silenciosamente de claims del IdP).
+3. **Invitaciones globales** (token en router DB) para cross-IdP/externos.
+4. **Selector de tenant post-login** para usuarios multi-tenant.
+5. **Social logins** en Zitadel para colaboradores externos.
+6. **Atomización de flujos** en operaciones pequeñas, auditables y reutilizables.
+7. **Multi-tenant desde el principio**: cualquier usuario puede vincularse a N tenants sin complicación.
+
+Mantener: OIDC como identidad, invitación como URL/QR, código de workspace como dirección, roles por unión (sin personificación), GUEST acotado (sí puede crear propuestas PENDING), tipificación de workspaces. No implementar contraseñas propias ni tenants personales. Consolidar flujos redundantes.
+
+**P0 consolidado (seguridad/coherencia):**
+1. Alta directa por admin: dejar de usar email, usar handle/identidad global.
+2. Múltiples roles por workspace (esquema + unión, sin personificación).
+3. Códigos de workspace efímeros y revocables.
+4. `workspaces.kind` + `users.is_anonymous`.
+5. Rol GUEST acotado.
+6. Auto-aprobación configurable por workspace.
+7. Invitaciones globales (router DB) para cross-IdP/externos.
+8. Enriquecer `global_identities` como tabla de identidad central.
+9. Tenant explícito por defecto.
+
+**P1 (operación):**
+10. Invalidar refresh family al suspender.
+11. Auditoría por operación atómica.
+12. Rate limit dedicado por actor.
+13. Selector de tenant post-login.
+14. Habilitar social logins en Zitadel.
+15. Switch de tenant sin re-autenticación.
+16. Limpieza de invitaciones expiradas y guests inactivos.
+
+**P2 (producto):**
+17. Atomizar flujos en use cases pequeños.
+18. QR con ambos códigos para eventos.
+19. Consolidar UI de "Miembros".
+20. Documentar matriz de decisión en requirements.md.
