@@ -28,6 +28,10 @@
   let newCodeLabel = $state('');
   let createdCode = $state<string | null>(null);
   let creatingCode = $state(false);
+  let inviteEmail = $state('');
+  let inviteRole = $state('MEMBER');
+  let createdInviteToken = $state<string | null>(null);
+  let creatingInvite = $state(false);
   let joinCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
 
   async function loadWorkspaces() {
@@ -80,6 +84,25 @@
   }
 
   const selected = $derived(workspaces.find((w) => w.id === selectedId) ?? null);
+
+  async function createGlobalInvite() {
+    if (!selectedId) return;
+    creatingInvite = true;
+    try {
+      const res = await admin.createGlobalInvitation(api, {
+        workspaceId: selectedId,
+        email: inviteEmail,
+        role: inviteRole,
+        expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+      });
+      createdInviteToken = res.token;
+      inviteEmail = '';
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      creatingInvite = false;
+    }
+  }
 
   async function createJoinCode() {
     if (!selectedId) return;
@@ -171,6 +194,22 @@
           {#if createdCode}
             <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
           {/if}
+
+          <div class="border-t border-rule pt-3 space-y-2">
+            <h3>{t('admin.globalInvitation') ?? 'Global invitation (cross-IdP)'}</h3>
+            <input class="field w-full" bind:value={inviteEmail} placeholder={t('admin.email') ?? 'Email'} />
+            <select class="field w-full" bind:value={inviteRole}>
+              <option value="MEMBER">MEMBER</option>
+              <option value="MODERATOR">MODERATOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <button type="button" class="btn btn-primary" disabled={creatingInvite} onclick={createGlobalInvite}>
+              {t('admin.createInvitation') ?? 'Create invitation'}
+            </button>
+            {#if createdInviteToken}
+              <p class="text-small">{t('admin.invitationToken') ?? 'Token (shown once)'}: <code>{createdInviteToken}</code></p>
+            {/if}
+          </div>
 
           <h4>{t('admin.joinCodes') ?? 'Ephemeral join codes'}</h4>
           <ul class="space-y-1">

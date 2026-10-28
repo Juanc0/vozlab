@@ -72,6 +72,7 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
+import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
@@ -272,6 +273,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
   const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo);
+  const createGlobalInvitationUseCase = new CreateGlobalInvitationUseCase(routerDb);
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -481,6 +483,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     cleanupUseCase,
     createWorkspaceJoinCodeUseCase,
+    createGlobalInvitationUseCase,
     workspaceJoinCodeRepo,
     createWorkspaceUseCase,
     getWorkspaceUseCase,

@@ -274,6 +274,18 @@ export async function revokeInvitation(
   });
 }
 
+export async function createGlobalInvitation(
+  client: ApiClient,
+  input: { workspaceId: string; email: string; role: string; expiresAt: string; maxUses?: number | null }
+): Promise<{ id: string; token: string }> {
+  return client.request<{ id: string; token: string }>({
+    method: 'POST',
+    path: '/invitations/global',
+    workspace: false,
+    body: input
+  });
+}
+
 // Access flows
 export async function discoverWorkspaces(
   client: ApiClient
