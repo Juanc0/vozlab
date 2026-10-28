@@ -9,7 +9,7 @@ import { z } from 'zod';
  * (`isModeratorOrAdmin`) consumes it. Keep in sync with
  * `packages/database/src/schema/tenant.auth.schema.ts`.
  */
-export const WorkspaceRoleSchema = z.enum(['ADMIN', 'MODERATOR', 'MEMBER']);
+export const WorkspaceRoleSchema = z.enum(['ADMIN', 'MODERATOR', 'MEMBER', 'GUEST']);
 export type WorkspaceRole = z.infer<typeof WorkspaceRoleSchema>;
 
 /**

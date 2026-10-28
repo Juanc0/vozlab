@@ -23,7 +23,7 @@ export interface MembershipRoleLookup {
     userId: string,
     workspaceId: string,
     tid: string
-  ): Promise<'ADMIN' | 'MODERATOR' | 'MEMBER' | null>;
+  ): Promise<'ADMIN' | 'MODERATOR' | 'MEMBER' | 'GUEST' | null>;
 }
 
 /** Tenant ADMIN (`auth.users.system_role = 'ADMIN'`). */

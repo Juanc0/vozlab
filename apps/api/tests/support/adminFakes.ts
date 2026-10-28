@@ -45,6 +45,7 @@ export function workspaceRecord(
     name: 'General',
     description: null,
     isPublic: true,
+    kind: 'PRIVATE',
     joinCode: 'JOINCODE00000001',
     createdAt: NOW,
     ...overrides,
@@ -92,6 +93,7 @@ export function makeWorkspaceRepository(initial: WorkspaceRecord[] = []): {
         name: input.name,
         description: input.description,
         isPublic: input.isPublic,
+        kind: input.kind ?? 'PRIVATE',
         joinCode: input.joinCode,
         createdAt: NOW,
       };

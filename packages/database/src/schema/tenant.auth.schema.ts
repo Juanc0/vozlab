@@ -23,6 +23,7 @@ export const workspaces = authSchema.table('workspaces', {
   name: varchar('name', { length: 255 }).notNull(),
   description: varchar('description', { length: 500 }),
   isPublic: boolean('is_public').default(true).notNull(),
+  kind: varchar('kind', { length: 20 }).default('PRIVATE').notNull(),
   /**
    * Routing hint for private workspaces (US-00). It identifies the workspace
    * but grants nothing: a valid code only lets an authenticated tenant user
@@ -42,6 +43,7 @@ export const users = authSchema.table(
     providerUserId: varchar('provider_user_id', { length: 255 }),
     authorHash: varchar('author_hash', { length: 64 }).notNull().unique(),
     anonymousAlias: varchar('anonymous_alias', { length: 100 }),
+    isAnonymous: boolean('is_anonymous').default(false).notNull(),
     systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT'
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
     globalIdentityId: uuid('global_identity_id'),

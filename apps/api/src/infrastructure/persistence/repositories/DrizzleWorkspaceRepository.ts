@@ -24,6 +24,7 @@ function toWorkspace(row: WorkspaceRow): WorkspaceRecord {
     name: row.name,
     description: row.description,
     isPublic: row.isPublic,
+    kind: row.kind,
     joinCode: row.joinCode,
     createdAt: row.createdAt,
   };
@@ -71,6 +72,7 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
         name: input.name,
         description: input.description,
         isPublic: input.isPublic,
+        kind: input.kind ?? 'PRIVATE',
         joinCode: input.joinCode,
       })
       .returning();
@@ -223,6 +225,7 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
       name: workspaces.name,
       description: workspaces.description,
       isPublic: workspaces.isPublic,
+      kind: workspaces.kind,
       joinCode: workspaces.joinCode,
       createdAt: workspaces.createdAt,
     };
