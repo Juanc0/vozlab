@@ -1,204 +1,199 @@
 # Revisión de arquitectura: autenticación y onboarding (tenant / workspace)
 
-Comité: arquitectura + seguridad + producto + devops. Fecha: 2026-10-29 (v6 — estado actual tras P0/P1/P2).
-Contexto: VozLab multi-tenant (router DB + una DB por tenant), Fastify API + SvelteKit PWA, OIDC (Zitadel), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin envío de email).
+Comité: arquitectura + seguridad + producto + devops + frontend + base de datos.
+Fecha: 2026-10-29 (v6 — estado REAL verificado sobre código, no aspiracional).
+Contexto: VozLab multi-tenant (router DB `vozlab_router` + una DB por tenant), Fastify API + SvelteKit 5 PWA, OIDC (Zitadel local en `:8081` vía identity-lab, actualmente CAÍDO en dev), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin servicio de email), códigos efímeros, invitaciones globales cross-IdP, roles múltiples por workspace.
 
-Estado de referencia: commits hasta P2 (docs/notes/*, docs/tasks/auth-onboarding-v5/*). Build/type-check/tests verdes (242 API tests).
-
----
-
-## 0. Resumen ejecutivo (estado actual)
-
-**Hecho (P0):**
-- Schema DB: `global_users` (router, renombrado), `global_user_tenants`, `workspace_join_codes`, `workspaces.kind`, `users.is_anonymous`, `users.handle`, `workspace_memberships` PK compuesta `(workspace, user, role)`, `global_invitations`.
-- Ports/adapters: `IGlobalUserRepository` (findOrCreate + updateProfile + findById), `findTenantsByGlobalUser`, `getRoles` (unión), `revokeAllForUser`.
-- Shared-types: `WorkspaceRole` incluye `GUEST`.
-- Use cases: `ResolveTenantsUseCase`, `SelectTenantUseCase`, `CleanupExpiredInvitationsUseCase`, `IAuditLog` port.
-- `CompleteOidcLoginUseCase` upserta perfil en `global_users` y devuelve `linkedTenants`.
-- `SuspendMemberUseCase` invalida refresh family.
-- `DrizzleWorkspaceRepository` mapea `kind`.
-- Migraciones router (0007–0009) y tenant (0014–0016) generadas.
-- Docs: ADR-0042, requirements.md (US-00 + matriz de decisión), knowledge-transfer/08, tasks index, notas P2.
-
-**Hecho (P1):**
-- Rate limit dedicado por actor (`scopedRateLimitMiddleware` keyed por authorHash/ip).
-- Selector/switch de tenant: use cases creados.
-- Social logins: guía Zitadel.
-- Limpieza: stub use case.
-
-**Hecho (P2):**
-- Matriz de decisión documentada.
-- Notas de QR, atomización, consolidación UI.
-
-**Pendiente (brechas):** integración end-to-end de invitaciones globales, tenant explícito en CompleteOidcLogin, guards GUEST/kind, códigos efímeros port/adapter/use cases, alta directa por handle, atomización profunda, UI web, seed/devops.
+Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests API, 515 tests web, 41+60 archivos de test). El build pasa, pero **verde no significa completo**: varias tareas reportadas como "hecha" están a medias (endpoint faltante, uso case no cableado, resolución que devuelve null, auditoría en memoria, rate limit en una sola ruta, seed incompleto, sin HTTPS real).
 
 ---
 
-## 1. Inventario de flujos por emisor y propósito
+## 0. Resumen ejecutivo (estado real, verificado sobre código)
 
-| # | Flujo | Emisor | Propósito | Credencial | Resultado | Estado |
-|---|-------|--------|-----------|------------|-----------|--------|
-| A | OIDC login | Usuario humano | Entrar al tenant | Código OIDC + state | Sesión + usuario + membresías | Implementado (tenant por claims; selector pendiente) |
-| B | Event join | Asistente anónimo | Participar en evento | Código de evento global | Usuario anónimo + GUEST en workspace EVENT | Implementado (guards GUEST pendientes) |
-| C | Descubrimiento público | Usuario autenticado | Pedir acceso a workspace público | Ninguna | Solicitud PENDING | Implementado |
-| D | Join request por código | Usuario autenticado | Pedir acceso a workspace privado | `join_code` | Solicitud PENDING | Implementado (código estático; efímero pendiente) |
-| E | Invitación email-bound | Admin workspace | Onboarding con rol | Token raw URL/QR | Sesión + membresía con rol | Implementado (same-IdP; global pendiente) |
-| F | Alta directa por admin | Admin workspace | Añadir usuario existente | Identidad global/handle | Membresía ACTIVE | Parcial (usa email; handle pendiente) |
-| G | Aprobación join request | Admin workspace | Convertir PENDING→ACTIVE | — | Membresía ACTIVE | Implementado |
+### Lo que SÍ está hecho y funciona
+- DB: `global_users`, `global_identity_tenants`, `global_invitations`, `global_identity_events` (router); `workspaces` (+`kind`, `auto_approve_join_code`, `join_code`), `users` (+`handle`, `is_anonymous`, `provider`), `workspace_memberships` (PK única por `(workspace, user, role)`), `workspace_join_codes`, `invitations`, `workspace_join_requests`, `membership_events` (append-only), `external_identities`.
+- Migraciones: router 0000–0009, tenant 0000–0016. `db:migrate:router` / `db:migrate:tenant`.
+- Ports/adapters: `IGlobalUserRepository`, `IGlobalInvitationRepository`, `IWorkspaceJoinCodeRepository`, `IAuditLog` (puerto), `DrizzleAuditLog` (ahora **en memoria**, NO persistido), `DrizzleWorkspaceJoinCodeRepository`, `RouterDatabaseClient` (implementa `IRouterDatabase`, `IGlobalUserRepository`, `IGlobalInvitationRepository`, `ITenantIdentityProviderRepository`, `IEventCodeRepository`).
+- Use cases atómicos ya creados: `ResolveTenantsUseCase`, `SelectTenantUseCase`, `ManageRoleAtomicUseCase`, `RedeemInvitationAtomicUseCase`, `CreateGlobalInvitationUseCase`, `RedeemGlobalInvitationUseCase`, `CreateWorkspaceJoinCodeUseCase`, `RotateJoinCodeUseCase`, `CleanupExpiredInvitationsUseCase`.
+- `CompleteOidcLoginUseCase`: upserta `global_users`, resuelve tenants linked, `requiresTenantSelection`, `linkedTenants`, `globalUserId`, redención de invitación tenant-local, emite refresh token.
+- Endpoints auth: `/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/event-join`, `/auth/select-tenant`, `/auth/resolve-tenants`. **NO existe `/auth/switch-tenant`.**
+- Endpoints admin: `/admin/workspaces` (GET/POST con rate limit `admin-create-workspace`), `/invitations/global` (solo CREATE), `/workspaces/:id/join-codes` (POST/GET/DELETE; **sin PUT/update**), `/admin/users`, `/admin/cleanup` (invitaciones expiradas OK; guests = 0 placeholder).
+- Miembros: list, add (handle OK; globalUserId devuelve null), change role, assign/remove role, suspend, reactivate, remove.
+- Join requests: list, approve, reject, request access, list mine, discover.
+- Guards: `authGuard → tenantWorkspaceGuard/workspaceAdminGuard → rateLimit`; `tenantAdminGuard`, `workspaceAdminGuard` (unión de roles); guard GUEST en RequestWorkspaceAccess; kind EVENT en JoinEvent; CreateWorkspace rechaza anonymous/GUEST.
+- Web: estado global (session/workspace/shell/panels), route groups `(auth)`/`(app)`, Cytoscape canvas, governance UI, offline shell, E2E (Playwright, 20+ specs), admin UI (códigos, invitación global URL/QR, roles multi, kind badge, selector tenant, Miembros consolidados, i18n es/en). **Web direct add envía `email`, no `handle`.**
+- Seed: `db:seed:dev` crea tenant admin, workspace `general` (PUBLIC), `Evento Demo` (EVENT, autoApprove), código efímero evento. **Faltan:** workspaces PUBLIC/PRIVATE de ejemplo, invitaciones de ejemplo, roles múltiples demo.
+- Devops: docker-compose Postgres 18 + Redis 7 + Ollama; perfil `idp` (Zitadel `:8081`); perfil `observability`; perfil `app` (API+web Dockerfiles, no verificado build contenedor). API/web corren como procesos host. Security headers: nosniff, frame-options DENY, referrer no-referrer, HSTS, CSP `default-src 'self'`. **Sin TLS/HTTPS real (HSTS es solo header).**
+- CI: `.github/workflows/ci.yml` (TS gate, Python gate, worker image builds). Workers Python (embedder, relacionador, extractor); consolidador pendiente.
+
+### Brechas reales (lo que NO está hecho, a pesar de reportarse)
+| # | Brecha | Tarea | Impacto |
+|---|--------|-------|---------|
+| B1 | **`switch-tenant` endpoint ausente** — solo `select-tenant`. No se puede cambiar de tenant sin re-auth. | v6/TASK-01, v5/TASK-02 | P0 — coherencia tenant explícito |
+| B2 | **`RedeemGlobalInvitationUseCase` no cableado** — ni en `CompleteOidcLogin` ni como endpoint. Invitaciones globales no redimibles end-to-end. | v6/TASK-06, v5/TASK-06 | P0 — onboarding cross-IdP |
+| B3 | **`globalUserId` en `AddWorkspaceMemberUseCase` devuelve null** — alta directa por identidad global no operativa. | v6/TASK-03, v5/TASK-07 | P0 — alta directa por handle/identidad |
+| B4 | **`IAuditLog` solo en memoria** (`DrizzleAuditLog` es `InMemoryAuditLog`). `membership_events` se escribe por `membershipAdminRepo.recordEvent` en algunos use cases, pero invitaciones/códigos/join-requests/workspaces no dejan rastro persistente y el puerto genérico no está implementado. | v6/TASK-07, v5/TASK-08 | P0 — auditoría append-only |
+| B5 | **Rate limit dedicado solo en `create-workspace`**. Invitaciones, códigos, join requests, workspaces, cleanup sin rate limit por actor. | v6/TASK-07 | P0 — fuerza bruta admin |
+| B6 | **Join codes sin Update** (solo create/list/revoke). | v6/TASK-04 | P1 |
+| B7 | **Cleanup guests inactivos = 0** (placeholder). | v6/TASK-09 | P1 |
+| B8 | **Web direct add envía `email`**, no `handle`. | v6/TASK-03, v11 | P1 — UX |
+| B9 | **Social logins no verificados** en Zitadel (doc existe, infra no probada). | v6/TASK-09, v5/TASK-09 | P1 |
+| B10 | **Seed incompleto**: sin PUBLIC/PRIVATE ejemplo, sin invitaciones ejemplo, sin roles múltiples demo. | v6/TASK-12 | P1 |
+| B11 | **HTTPS/reverse proxy pendiente** (solo headers). | v6/TASK-12 | P1 — producción |
+| B12 | **Atomización parcial**: `CompleteOidcLogin` y otros siguen monolíticos; los use cases atómicos existen pero no todos están cableados en controladores. | v6/TASK-08, v5/TASK-08 | P2 |
 
 ---
 
-## 2. Estado por capa
+## 1. Inventario de flujos (emisor → propósito → estado real)
+
+| # | Flujo | Emisor | Credencial | Resultado | Estado real |
+|---|-------|--------|------------|-----------|-------------|
+| A | OIDC login + tenant explícito | Humano | Código OIDC + state | Sesión + usuario + tenant en JWT | Hecho (auto-select 1; selector N; **switch-tenant FALTA**) |
+| B | Event join anónimo | Asistente | Código de evento global | Usuario anónimo + GUEST en WORKSPACE EVENT | Hecho (kind EVENT validado) |
+| C | Descubrimiento público | Autenticado | Ninguna | Solicitud PENDING | Hecho |
+| D | Join request por código | Autenticado | Código efímero | PENDING o ACTIVE (autoApprove) | Hecho |
+| E | Invitación tenant email-bound | Admin WS | Token URL/QR | Sesión + membresía rol | Hecho (same-IdP) |
+| F | Invitación global cross-IdP | Admin tenant | Token URL/QR | Vinculación global + membresía | **Parcial: create OK, redención NO cableada** |
+| G | Alta directa por admin | Admin WS | handle / identidad global | Membresía ACTIVE | **Parcial: handle OK, globalUserId null** |
+| H | Aprobación join request | Admin WS | — | PENDING → ACTIVE | Hecho |
+| I | Creación de workspace | Admin tenant/WS | — | Workspace + creador ADMIN | Hecho (kind + autoApprove) |
+
+---
+
+## 2. Estado por capa (veraz)
 
 ### 2.1 Base de datos
-
-**Router DB (`vozlab_router`):**
-- `global_users` (renamed): id, issuer, subject, email, email_verified, full_name, picture, last_login_at, created_at, last_seen_at. UNIQUE(issuer,subject). ✅
-- `global_user_tenants`: global_user_id, tenant_id, tenant_user_id, status, first_seen_at, last_seen_at. ✅
-- `global_invitations`: token_hash, tenant_id, workspace_id, role, email, status, max_uses, used_count, expires_at, created_at. ✅ (esquema; use cases pendientes)
-- `event_codes`, `tenants`, `tenant_connections`, `tenant_identity_providers`, `global_identity_events`. ✅
-
-**Tenant DB (`vozlab_tenant_dev`):**
-- `auth.workspaces`: + `kind` (varchar), `join_code`. ✅ schema; default 'PRIVATE'.
-- `auth.users`: + `is_anonymous`, `handle` (unique). ✅ schema.
-- `auth.workspace_memberships`: PK compuesta `(workspace_id, user_id, role)`. ✅ schema; migración 0014.
-- `auth.workspace_join_codes`: id, workspace_id, code_hash, label, expires_at, max_uses, used_count, auto_approve, revoked_at, created_by, created_at. ✅ schema.
-- `auth.invitations`, `auth.workspace_join_requests`, `auth.membership_events`. ✅
-
-**Migraciones:** router 0000–0009, tenant 0000–0016. Aplicar con `db:migrate:router` / `db:migrate:tenant`.
-
-**Seed/devops:** `db:seed:dev` crea tenant admin + workspace join code. Falta seed de workspaces kind=EVENT y códigos efímeros de ejemplo. `docker compose up -d --build` provisiona Postgres/Redis/Ollama; init SQL solo en volumen fresco.
+- Router: schema + migraciones 0000–0009 OK. `global_invitations` creado pero **sin redención**. `global_identity_events` existe (audit cross-tenant, sin uso).
+- Tenant: schema + migraciones 0000–0016 OK. `membership_events` existe (append-only) y `membershipAdminRepo.recordEvent` ya escribe ahí para miembros. `workspace_join_codes` completo (create/list/revoke/increment/findByCodeHash; **sin update**).
+- Seed: solo `general` + `Evento Demo` + código efímero.
 
 ### 2.2 API
-
-**Implementado:**
-- Auth: StartOidcLogin, CompleteOidcLogin (upsert global_users, linkedTenants), Refresh, Logout, GetMe.
-- Workspaces: CRUD, join code rotate (estático), list with stats, discover public.
-- Members: list, add (por email aún), change role, suspend (invalida refresh), reactivate, remove.
-- Join requests: list, approve, reject, request access, list mine, discover.
-- Invitations: create (tenant-local), list, revoke.
-- Guards: authGuard, tenantWorkspaceGuard, tenantAdminGuard, workspaceAdminGuard (unión de roles).
-- Event join: consume code, create anonymous user + GUEST membership.
-- Source resolution: resolve-source (agent-only, tenant-scoped).
-
-**Pendiente (API):**
-- `POST /api/v1/auth/select-tenant`, `switch-tenant`.
-- `POST /api/v1/workspaces/:id/join-codes` (CRUD efímeros) + adaptar RequestWorkspaceAccess a nueva tabla.
-- `POST /api/v1/invitations/global` (router DB) + redeem cross-IdP.
-- Alta directa por handle/identidad global (adaptar AddWorkspaceMember).
-- Guards GUEST: restringir a EVENT, no crear workspaces, no request access a otros.
-- Auto-aprobación configurable por workspace (`autoApproveJoinCode`).
-- Atomizar use cases + auditoría (IAuditLog implementación).
-- Rate limit dedicado por actor en rutas admin (middleware existe, falta cablear).
-- Cleanup endpoint (invitaciones expiradas + guests inactivos).
+- Auth: login/callback/refresh/logout/me/select-tenant/resolve-tenants/event-join OK. **switch-tenant ausente**. `CompleteOidcLogin` no redime invitación global.
+- Invitaciones globales: `POST /invitations/global` create OK; **sin redeem endpoint**, no cableado en `CompleteOidcLogin`.
+- Miembros: alta directa por `handle` OK; `globalUserId` → null (no resuelve link global→tenant user).
+- Códigos efímeros: create/list/revoke OK; **sin update**.
+- Auditoría: `membership_events` se usa por `membershipAdminRepo.recordEvent` (miembros). Puerto `IAuditLog` solo en memoria; invitaciones/códigos/join-requests/workspaces sin evento persistente.
+- Rate limit: solo `create-workspace` (`admin-create-workspace`) e `ingestion`.
+- Cleanup: invitaciones expiradas OK; guests 0.
 
 ### 2.3 Web (SvelteKit)
-
-**Implementado:** scaffold 3.1 (SSR, manifest, SW), `/admin` page, `/request-access` page, admin API module, sidebar entries, i18n es/en.
-
-**Pendiente (Web):**
-- Estado global (auth store, workspace store).
-- Route groups ((auth), (app)).
-- Cytoscape canvas.
-- Governance UI (propuestas).
-- Offline shell.
-- E2E suite completa (solo smoke admin.spec.ts).
-- UI de selector de tenant post-login.
-- UI de gestión de códigos efímeros (crear/editar/revocar, mostrar raw una vez).
-- UI de invitación global (generar URL/QR).
-- Consolidación de "Miembros" (direct add + join requests).
-- UI de roles múltiples (lista, asignar/retirar).
-- Badges de kind (EVENT/PUBLIC/PRIVATE).
-- QR con ambos códigos (cliente).
+- Hecho: estado, route groups, canvas, governance, offline, E2E, admin UI completa.
+- Pendiente: direct add por `handle` (hoy `email`); switch sin re-auth cuando backend lo expondrá; E2E flujos admin completos (códigos/invitaciones globales/roles); offline shell rutas admin.
 
 ### 2.4 DevOps / Seed
-
-- `docker compose up -d --build`: Postgres 18 (vozlab/postgres:18-age-pgvector), Redis 7, Ollama. Init SQL solo en volumen fresco.
-- `docker compose --profile idp up -d`: Zitadel en :8081. Setup: scripts/setup-zitadel.sh.
-- `docker compose --profile observability up -d`: Prometheus/Grafana/Tempo.
-- API y web son procesos host (no contenedores): `pnpm --filter @vozlab/api dev`, `pnpm --filter @vozlab/web dev`.
-- Seed: `db:seed:dev` (tenant admin + workspace join code). Falta seed de workspaces EVENT, códigos efímeros, invitaciones de ejemplo.
-- CI: .github/workflows/ci.yml (TS gate, Python gate, worker image builds).
-- Workers: embedder, relacionador, extractor (Python/uv). Consolidador pendiente.
+- Hecho: docker-compose (db/redis/ollama, perfiles idp/observability/app), headers, seed básico.
+- Pendiente: HTTPS/reverse proxy (TLS real), verificar build contenedores api/web, seed PUBLIC/PRIVATE/invitaciones/roles múltiples, social logins en Zitadel.
 
 ---
 
-## 3. Vulnerabilidades y mitigaciones
+## 3. Matriz de tareas v5 (aceptación vs. estado real)
+
+| Task | Título | Real estado | Queda por hacer |
+|------|--------|-------------|-----------------|
+| v5-01 | Router DB identity (`global_users`) + linking | ✅ Hecho | Nada |
+| v5-02 | Explicit tenant selection + selector | 🟡 Parcial | `switch-tenant` endpoint (emitir JWT sin re-auth) |
+| v5-03 | Ephemeral/revocable join codes | 🟡 Parcial | `Update` use case + endpoint PUT |
+| v5-04 | Workspaces.kind + is_anonymous + GUEST | ✅ Hecho | Nada |
+| v5-05 | Multiple roles per workspace | ✅ Hecho | Nada |
+| v5-06 | Global invitations (cross-IdP) | 🟡 Parcial | Redención end-to-end (cablear en CompleteOidcLogin + endpoint redeem) |
+| v5-07 | Alta directa by handle/identity | 🟡 Parcial | Resolver `globalUserId` (link global→tenant user); web enviar `handle` |
+| v5-08 | Atomize auth flows + audit | 🟡 Parcial | IAuditLog persistente; cablear atómicos en controladores; auditoría en invitaciones/códigos/join-requests/workspaces |
+| v5-09 | Social logins + knowledge transfer | 🟡 Parcial | Verificar config Zitadel (Google/Microsoft personal); knowledge transfer al día |
+
+---
+
+## 4. Matriz de tareas v6 (aceptación vs. estado real)
+
+| Task | Título | Real estado | Queda por hacer |
+|------|--------|-------------|-----------------|
+| v6-01 | Tenant explícito en login + selector/switch | 🟡 Parcial | **switch-tenant endpoint** |
+| v6-02 | Guards GUEST + kind enforcement | ✅ Hecho | Nada |
+| v6-03 | Alta directa por handle/identidad global | 🟡 Parcial | Resolver `globalUserId`; web `handle` |
+| v6-04 | Códigos efímeros port/adapter/use cases | 🟡 Parcial | `Update` use case + endpoint PUT |
+| v6-05 | Auto-aprobación configurable | ✅ Hecho | Nada |
+| v6-06 | Invitaciones globales (router DB) | 🟡 Parcial | Redención cableada |
+| v6-07 | Rate limit dedicado + auditoría (IAuditLog) | 🟡 Parcial | Rate limit en todas las rutas admin; IAuditLog persistente |
+| v6-08 | Atomizar use cases | 🟡 Parcial | Cablear atómicos en controladores; no regresiones |
+| v6-09 | Social logins Zitadel + cleanup endpoint/cron | 🟡 Parcial | Cleanup guests (DB-level); verificar social en identity lab |
+| v6-10 | Web core | ✅ Hecho | E2E admin flujos; offline rutas admin |
+| v6-11 | Web admin UI | ✅ Hecho | Direct add por `handle` |
+| v6-12 | Seed + devops | 🟡 Parcial | Seed PUBLIC/PRIVATE/invitaciones/roles; HTTPS/reverse proxy; verificar contenedores |
+
+---
+
+## 5. Plan de cierre (priorizado, real)
+
+### P0 — Seguridad y coherencia (cerrar antes de cualquier UX nuevo)
+1. **`switch-tenant`**: endpoint `POST /api/v1/auth/switch-tenant` + método en `AuthController` (reusa `SelectTenantUseCase`, emite nuevo JWT sin re-auth) + ruta en `routes.ts` + wiring en `server.ts` + tests unitarios.
+2. **Redención de invitación global**: cablear `RedeemGlobalInvitationUseCase` en `CompleteOidcLoginUseCase` (cuando `state.invitationToken` es global, resuelve tenant desde la invitación y crea membresía sin requerir tenant previo) y/o endpoint dedicado `POST /invitations/global/redeem` + tests.
+3. **Resolución `globalUserId` en alta directa**: agregar `IRouterDatabase.findGlobalTenantLink(globalUserId, tenantId)` → `tenantUserId`; inyectar `routerDb` en `AddWorkspaceMemberUseCase` y resolver `globalUserId` → `auth.users` por `findById(tenantUserId, tid)`; web `addMember` enviar `handle`; tests.
+4. **Auditoría persistente**: reimplementar `DrizzleAuditLog` sobre `ConnectionPoolManager` insertando en `auth.membership_events` (tenant) y `global_identity_events` (router); inyectar `IAuditLog` en use cases admin (invitaciones, códigos, join-requests, workspaces, miembros) y registrar evento por operación; tests.
+5. **Rate limit por actor en rutas admin**: `scopedRateLimitMiddleware(rateLimiter, '<action>')` en invitaciones globales, códigos efímeros, join requests, workspaces (create/patch), cleanup, miembros; tests.
+
+### P1 — Operación
+6. Cleanup guests inactivos (nivel DB) + endpoint/cron.
+7. Social logins en Zitadel (Google/Microsoft personal) + verificación en identity lab.
+8. Seed: workspaces PUBLIC/PRIVATE ejemplo, invitaciones de ejemplo, roles múltiples demo.
+9. Join codes `Update` (TTL/capacidad/label/auto_approve/revocar).
+
+### P2 — Producto / UX
+10. Atomización profunda: cablear use cases atómicos en controladores sin regresión; tests por operación.
+11. E2E cobertura flujos admin completos (códigos, invitaciones globales, roles, selector tenant).
+12. Offline shell rutas admin; HTTPS/reverse proxy (Caddy/Traefik) para producción.
+
+---
+
+## 6. Vulnerabilidades y mitigaciones (estado real)
 
 | # | Vulnerabilidad | Estado | Mitigación |
 |---|----------------|--------|------------|
-| V1 | Token invitación en URL (historial/logs/referrer) | Parcial | Single-use + TTL 72h + email-bound + HTTPS. Pendiente: fragmento `#token`, Referrer-Policy no-referrer. |
-| V2 | Brute-force códigos de evento | Parcial | Rate limit por IP pendiente de cablear. Códigos ≥128 bits. |
-| V3 | XSS → robo access token | Parcial | CSP estricta pendiente; token en memoria (OK). |
-| V4 | CSRF en /auth/refresh | Parcial | SameSite cookie; double-submit pendiente. |
-| V5 | Tenant mismatch → 404 | Implementado | Verificar todos los endpoints. |
-| V6 | Último admin | Implementado | Verificar en suspensión/reactivación. |
-| V7 | Social login email no verificado | Implementado | Invitación inredimible si !emailVerified. |
-| V8 | Handle no único | Parcial | Índice unique creado; validación pendiente. |
-| V9 | Refresh family reuse | Implementado | Detección + invalidación al suspender. |
-| V10 | Invitación URL compartible (riesgo residual) | Aceptado | TTL corto, single-use, revocación, auditoría. |
+| V1 | Token invitación en URL | Parcial | Single-use + TTL 72h + email-bound + Referrer-Policy no-referrer (ya). Pendiente: fragmento `#token` + HTTPS real. |
+| V2 | Brute-force códigos/event | Parcial | Rate limit solo en create-workspace. Falta extender a auth públicas y admin. |
+| V3 | XSS → robo token | Parcial | Token en memoria; CSP `default-src 'self'`; revisar inline scripts. |
+| V4 | CSRF en `/auth/refresh` | Parcial | Cookie SameSite; double-submit pendiente. |
+| V5 | Tenant mismatch → 404 | Implementado | Verificar en todos los endpoints. |
+| V6 | Último admin | Implementado | Tests existen; verificar en suspend/reactivate. |
+| V7 | Social email no verificado | Implementado | Invitación inredimible si `!emailVerified`. |
+| V8 | Handle no único | Parcial | Índice unique en `users.handle`; validación UI pendiente. |
+| V9 | Refresh family reuse | Implementado | Invalidación al suspender. |
+| V10 | Invitación URL compartible | Aceptado | TTL corto, single-use, revocación, auditoría (ahora en memoria, P0 la persiste). |
 
 ---
 
-## 4. Mejores prácticas (checklist)
+## 7. Checklist de mejores prácticas (estado real)
 
 - [x] Roles leídos de DB en cada request.
 - [x] Workspace mismatch → 404.
-- [x] Invitación: email-bound, single-use, TTL, hash at rest, revoke-previous, redención estricta, race-safe.
-- [x] Código de workspace solo enruta solicitud (salvo auto-aprobación).
-- [x] Protección del último admin.
 - [x] Tenant admin vs workspace admin separados.
-- [x] Eventos publicados after-commit best-effort.
 - [x] Separación física DBs (router vs tenant).
-- [x] Guard order: authGuard → tenantWorkspaceGuard/workspaceAdminGuard → rateLimit.
-- [x] Migraciones drizzle generadas.
-- [ ] HTTPS/HSTS en producción (devops).
-- [ ] Tokens opacos (SHA-256 at rest), single-use, TTL corto (invitaciones OK; códigos efímeros pendiente).
-- [ ] Idempotencia en endpoints de creación.
-- [ ] Auditoría append-only (port creado; implementación pendiente).
-- [ ] No PII en router DB excepto identidad (OK: global_users tiene email/nombre mínimo).
-- [ ] Validación Zod en todos los inputs (parcial).
-- [ ] Tests por operación atómica (pendiente atomización).
+- [x] Guard order: auth → tenant/workspace → rateLimit.
+- [x] Migraciones Drizzle generadas.
+- [x] Security headers (nosniff, frame-options, referrer, HSTS, CSP).
+- [x] `global_users` como SSO de identidad (router).
+- [x] `membership_events` append-only (miembros).
+- [ ] HTTPS/TLS real en producción.
+- [ ] `IAuditLog` persistente (solo en memoria).
+- [ ] Rate limit dedicado en todas las rutas admin.
+- [ ] `switch-tenant` endpoint.
+- [ ] Redención invitación global end-to-end.
+- [ ] Resolución `globalUserId` en alta directa.
+- [ ] Social logins verificados en Zitadel.
+- [ ] Seed completo (PUBLIC/PRIVATE/invitaciones/roles).
+- [ ] Tests por operación atómica.
 
 ---
 
-## 5. Siguientes pasos (priorizados)
+## 8. Trazabilidad
 
-### P0 (cerrar brechas de seguridad/coherencia)
-1. Integrar tenant explícito en CompleteOidcLogin (usar ResolveTenants/SelectTenant cuando >1 tenant).
-2. Implementar guards GUEST (restringir a EVENT, no crear workspaces, no request access a otros).
-3. Adaptar AddWorkspaceMember a handle/identidad global.
-4. Adaptar RequestWorkspaceAccess a workspace_join_codes (efímeros).
-5. Auto-aprobación configurable por workspace (autoApproveJoinCode).
-6. Invitaciones globales: use cases CreateGlobalInvitation + RedeemGlobalInvitation (router DB).
-7. Cablear rate limit dedicado por actor en rutas admin.
-
-### P1 (operación)
-8. Implementar IAuditLog (Drizzle adapter + eventos).
-9. Atomizar use cases (split monolíticos).
-10. Social logins en Zitadel (config).
-11. Cleanup endpoint + cron (invitaciones expiradas + guests inactivos).
-12. Selector/switch de tenant en web + API.
-
-### P2 (producto/UX)
-13. UI web: estado global, route groups, Cytoscape, governance, offline, E2E.
-14. UI: gestión códigos efímeros, invitación global, roles múltiples, badges kind, selector tenant, consolidación Miembros.
-15. QR con ambos códigos (cliente).
-16. Seed: workspaces EVENT, códigos efímeros, invitaciones de ejemplo.
-17. Devops: contenerizar API/web, HTTPS, HSTS, CSP.
-
----
-
-## 6. Trazabilidad
-
-- Tasks: `docs/tasks/auth-onboarding-v5/TASK-01..09`.
-- ADRs: ADR-0041 (admin), ADR-0042 (cross-tenant/identity).
-- Análisis: este documento.
-- Knowledge transfer: `knowledge-transfer/08-identity-tenancy-and-guests.md`.
+- Tasks v5: `docs/tasks/auth-onboarding-v5/TASK-01..09`.
+- Tasks v6: `docs/tasks/auth-onboarding-v6/TASK-01..12` (sin subtasks 11.x/12.x activos; el trabajo real está en TASK-01..09 de v6 + v5).
+- ADRs: ADR-0041 (admin model), ADR-0042 (cross-tenant/identity), ADR-0013 (authorHash pseudónimo), ADR-0025 (resolve-source), ADR-0026 (propuesta union kind), ADR-0028 (external identities).
+- Análisis: este documento (estado actual).
+- Knowledge transfer: `knowledge-transfer/08-identidad-tenencia-invitados.md` (verificar vigencia).
 - Requirements: `docs/requirements.md` (US-00 + matriz de decisión).
 
 ---
 
-## 7. Conclusión
+## 9. Conclusión
 
-El modelo es coherente en su núcleo. La evolución v5 (tenant explícito, global_users, invitaciones globales, atomización) está en progreso: esquemas y puertos creados, integración end-to-end pendiente. Prioridad: cerrar P0 (seguridad/coherencia) antes de avanzar en UX.
+El núcleo del modelo es coherente y está implementado (OIDC con tenant explícito, múltiples roles, GUEST/kind, códigos efímeros, invitaciones tenant, admin UI, canvas, gobernanza, offline, E2E). **Las brechas reales que bloquean "completado" son P0:** `switch-tenant`, redención de invitaciones globales, resolución de `globalUserId`, auditoría persistente y rate limit dedicado en admin. Se prioriza cerrar P0 con tests antes de avanzar en UX (P1/P2).
