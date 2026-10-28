@@ -5,6 +5,7 @@ import {
 } from '../../domain/ports/IJoinRequestRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
+import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import {
   IWorkspaceRepository,
   WorkspaceRecord,
@@ -31,7 +32,8 @@ export class RequestWorkspaceAccessUseCase {
     private readonly workspaceRepo: IWorkspaceRepository,
     private readonly joinRequestRepo: IJoinRequestRepository,
     private readonly membershipRepo: IMembershipRepository,
-    private readonly userRepo?: IUserRepository
+    private readonly userRepo?: IUserRepository,
+    private readonly codeRepo?: IWorkspaceJoinCodeRepository
   ) {}
 
   async execute(
@@ -39,7 +41,23 @@ export class RequestWorkspaceAccessUseCase {
   ): Promise<JoinRequestWithWorkspace> {
     let workspace: WorkspaceRecord | null = null;
     if (input.code !== undefined && input.code !== '') {
-      workspace = await this.workspaceRepo.findByJoinCode(input.code, input.tid);
+      if (this.codeRepo) {
+        const { hashOpaqueToken } = await import('../../shared/auth/refreshToken.js');
+        const codeHash = hashOpaqueToken(input.code);
+        const codeRecord = await this.codeRepo.findByCodeHash(codeHash, input.tid);
+        if (codeRecord) {
+          const now = new Date();
+          const valid =
+            codeRecord.revokedAt === null &&
+            (codeRecord.expiresAt === null || codeRecord.expiresAt > now) &&
+            (codeRecord.maxUses === null || codeRecord.usedCount < codeRecord.maxUses);
+          if (valid) {
+            workspace = await this.workspaceRepo.findById(codeRecord.workspaceId, input.tid);
+          }
+        }
+      } else {
+        workspace = await this.workspaceRepo.findByJoinCode(input.code, input.tid);
+      }
     } else if (input.workspaceId !== undefined && input.workspaceId !== '') {
       workspace = await this.workspaceRepo.findById(
         input.workspaceId,

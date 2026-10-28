@@ -16,6 +16,7 @@ import { DrizzleProposalRepository } from '../persistence/repositories/DrizzlePr
 import { DrizzleMembershipRepository } from '../persistence/repositories/DrizzleMembershipRepository.js';
 import { DrizzleMembershipAdminRepository } from '../persistence/repositories/DrizzleMembershipAdminRepository.js';
 import { DrizzleWorkspaceRepository } from '../persistence/repositories/DrizzleWorkspaceRepository.js';
+import { DrizzleWorkspaceJoinCodeRepository } from '../persistence/repositories/DrizzleWorkspaceJoinCodeRepository.js';
 import { DrizzleTenantAdminRepository } from '../persistence/repositories/DrizzleTenantAdminRepository.js';
 import { DrizzleJoinRequestRepository } from '../persistence/repositories/DrizzleJoinRequestRepository.js';
 import { DrizzleInvitationAdminRepository } from '../persistence/repositories/DrizzleInvitationAdminRepository.js';
@@ -145,6 +146,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const membershipRepo = new DrizzleMembershipRepository(poolManager);
   const membershipAdminRepo = new DrizzleMembershipAdminRepository(poolManager);
   const workspaceRepo = new DrizzleWorkspaceRepository(poolManager);
+  const workspaceJoinCodeRepo = new DrizzleWorkspaceJoinCodeRepository(poolManager);
   const tenantAdminRepo = new DrizzleTenantAdminRepository(poolManager);
   const joinRequestRepo = new DrizzleJoinRequestRepository(poolManager);
   const invitationAdminRepo = new DrizzleInvitationAdminRepository(poolManager);
@@ -399,7 +401,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     workspaceRepo,
     joinRequestRepo,
     membershipRepo,
-    userRepo
+    userRepo,
+    workspaceJoinCodeRepo
   );
   const discoverWorkspacesUseCase = new DiscoverWorkspacesUseCase(
     workspaceRepo
