@@ -405,7 +405,7 @@ export async function registerRoutes(
 
   app.post(
     '/api/v1/admin/workspaces',
-    { preHandler: tenantAdmin },
+    { preHandler: [...tenantAdmin, scopedRateLimitMiddleware(rateLimiter, 'admin-create-workspace')] },
     (req, reply) => tenantAdminController.createWorkspaceHandler(req, reply)
   );
 
