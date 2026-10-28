@@ -4,7 +4,7 @@ Comité: arquitectura + seguridad + producto + devops + frontend + base de datos
 Fecha: 2026-10-29 (v6 — estado REAL verificado sobre código, no aspiracional).
 Contexto: VozLab multi-tenant (router DB `vozlab_router` + una DB por tenant), Fastify API + SvelteKit 5 PWA, OIDC (Zitadel local en `:8081` vía identity-lab, actualmente CAÍDO en dev), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin servicio de email), códigos efímeros, invitaciones globales cross-IdP, roles múltiples por workspace.
 
-Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests API, 515 tests web, 41+60 archivos de test). El build pasa, pero **verde no significa completo**: varias tareas reportadas como "hecha" están a medias (endpoint faltante, uso case no cableado, resolución que devuelve null, auditoría en memoria, rate limit en una sola ruta, seed incompleto, sin HTTPS real).
+Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests API, 515 tests web). Las cinco brechas P0 están cerradas (commits `22c5481`, `f1a28e9`, `85ceb64`, `835468c`, `150e067`) y el login real contra Zitadel está **verificado end-to-end** (B13, §6.5). El build pasa, pero **verde no significa completo**: quedan las brechas P1/P2 de las tablas B6–B12.
 
 ---
 
@@ -41,6 +41,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 | B10 | **Seed incompleto**: sin PUBLIC/PRIVATE ejemplo, sin invitaciones ejemplo, sin roles múltiples demo. | v6/TASK-12 | P1 |
 | B11 | **HTTPS/reverse proxy pendiente** (solo headers). | v6/TASK-12 | P1 — producción |
 | B12 | **Atomización parcial**: `CompleteOidcLogin` y otros siguen monolíticos; los use cases atómicos existen pero no todos están cableados en controladores. | v6/TASK-08, v5/TASK-08 | P2 |
+| B13 | **Login Zitadel caído (RESUELTO 2026-10-28, verificado E2E)** — tres causas reales, ninguna era el código de auth: (1) la migración de router `0009_rename_global_identities` escrita a mano nunca se registró en `meta/_journal.json` → `global_users` no existía → `ERR_DATABASE_CONNECTION_FAILED` (fix `f0890e9`); (2) el volumen dev tenía el tenant DB a 0014/0017 → `auth.users.handle` ausente (aplicado `db:migrate:tenant`); (3) carrera de doble-send de Fastify 4.29 con dos hooks `onSend` async: `sendError()` resuelve con `undefined` con la cadena pendiente y `wrapThenable` re-envía → `ERR_HTTP_HEADERS_SENT` **mata el proceso API** en cualquier respuesta de error de auth (fix `1c77d29`, hooks ahora callback-sync + test de regresión) | v6/TASK-01, v5/TASK-02 | ~~P0~~ ✅ |
 
 ---
 
@@ -160,6 +161,18 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 
 ---
 
+## 6.5 Verificación E2E del login real (2026-10-28, Zitadel vía zrok)
+
+Flujo completo con navegador automatizado contra el entorno dev real (`vozlabdemo`/`vozlabapi`/`vozlabauth` vía zrok, API y web como procesos host):
+
+1. `/login` → botón "Cuenta local (Zitadel)" → `302` a `vozlabauth/oauth/v2/authorize` (state+PKCE OK).
+2. Zitadel: `testuser` + password → prompt 2FA (Skip) → callback `vozlabapi/api/v1/auth/callback`.
+3. Primera intentos fallaron y revelaron B13 (journal sin 0009; tenant DB a 0014; crash doble-send). Tras los fixes `f0890e9`/`1c77d29` + `db:migrate:tenant`: **login completado**.
+4. Evidencia en DB: `global_users` upsertado (`testuser@example.org`, verificado), `global_identity_tenants` con link ACTIVE (`84e38267… → c3fa967b…`, escrito por `linkGlobalTenant` de P0-2 en el login), `auth.users` JIT con `global_identity_id`, refresh token emitido; la PWA muestra "Sesión iniciada como Test User" y el empty-state correcto de "sin workspace" (sin membresía, por diseño).
+5. Ninguna membresía se crea en login JIT (US-00 lo prohíbe); el invite entra por invitación/código/solicitud — flujos E/F/B probados unitariamente, pendientes de E2E (P2/TASK-10).
+
+Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev` sin supervisor si se prueban paths de error (el crash histórico mataba el listener; zrok devolvía 502). Con el fix, la API sobrevive respuestas 401/422 repetidas.
+
 ## 7. Checklist de mejores prácticas (estado real)
 
 - [x] Roles leídos de DB en cada request.
@@ -170,6 +183,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (242 tests AP
 - [x] Migraciones Drizzle generadas.
 - [x] Security headers (nosniff, frame-options, referrer, HSTS, CSP).
 - [x] `global_users` como SSO de identidad (router).
+- [x] Login OIDC real contra Zitadel verificado end-to-end (§6.5, 2026-10-28).
 - [x] `membership_events` append-only (miembros).
 - [ ] HTTPS/TLS real en producción.
 - [x] `IAuditLog` persistente (`DrizzleAuditLog`: `membership_events` + `global_identity_events`, 2026-10-28).
