@@ -4,6 +4,7 @@ import {
   JoinRequestWithWorkspace,
 } from '../../domain/ports/IJoinRequestRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import {
   IWorkspaceRepository,
   WorkspaceRecord,
@@ -29,7 +30,8 @@ export class RequestWorkspaceAccessUseCase {
   constructor(
     private readonly workspaceRepo: IWorkspaceRepository,
     private readonly joinRequestRepo: IJoinRequestRepository,
-    private readonly membershipRepo: IMembershipRepository
+    private readonly membershipRepo: IMembershipRepository,
+    private readonly userRepo?: IUserRepository
   ) {}
 
   async execute(
@@ -52,6 +54,14 @@ export class RequestWorkspaceAccessUseCase {
 
     if (!workspace) {
       throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
+    }
+
+    // v6: GUEST (anonymous) cannot request access to non-EVENT workspaces.
+    if (this.userRepo) {
+      const user = await this.userRepo.findById(input.userId, input.tid);
+      if (user && user.provider === 'ANONYMOUS_EVENT' && workspace.kind !== 'EVENT') {
+        throw new DomainError('ERR_AUTHORIZATION_FAILED');
+      }
     }
 
     const role = await this.membershipRepo.getRole(

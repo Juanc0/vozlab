@@ -106,7 +106,17 @@ export class AuthController {
         code: query.code,
         state: query.state,
       });
-      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+      if (result.requiresTenantSelection) {
+        // Redirect to tenant selector; pass global user id via short-lived query.
+        return reply.redirect(
+          this.webUrl('/select-tenant')
+        );
+      }
+      setRefreshCookie(
+        reply,
+        result.refreshToken as string,
+        result.refreshExpiresAt as Date
+      );
       return reply.redirect(this.webUrl(result.redirectPath));
     } catch (error) {
       log.warn(

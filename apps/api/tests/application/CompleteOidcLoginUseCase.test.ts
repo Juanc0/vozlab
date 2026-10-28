@@ -88,7 +88,7 @@ describe('CompleteOidcLoginUseCase', () => {
     expect(created.familyId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );
-    expect(created.tokenHash).toBe(hashOpaqueToken(result.refreshToken));
+    expect(created.tokenHash).toBe(hashOpaqueToken(result.refreshToken as string));
     expect(created.tokenHash).not.toBe(result.refreshToken);
     expect(created.expiresAt.getTime()).toBeGreaterThanOrEqual(
       before + REFRESH_TTL_MS - 1_000
@@ -97,7 +97,7 @@ describe('CompleteOidcLoginUseCase', () => {
       Date.now() + REFRESH_TTL_MS + 1_000
     );
 
-    expect(parseRefreshToken(result.refreshToken)).toEqual({
+    expect(parseRefreshToken(result.refreshToken as string)).toEqual({
       tenantId: TENANT_ID,
     });
     expect(result.redirectPath).toBe('/proposals');

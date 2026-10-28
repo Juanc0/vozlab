@@ -48,6 +48,10 @@ export class CreateWorkspaceUseCase {
   ) {}
 
   async execute(input: CreateWorkspaceInput): Promise<WorkspaceWithStats> {
+    const actor = await this.userRepo.findById(input.actorUserId, input.tid);
+    if (!actor || actor.provider === 'ANONYMOUS_EVENT') {
+      throw new DomainError('ERR_AUTHORIZATION_FAILED');
+    }
     await assertTenantAdmin(input.actorUserId, input.tid, this.userRepo);
 
     const existing = await this.workspaceRepo.findBySlug(input.slug, input.tid);
