@@ -3,6 +3,7 @@ import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../domain/ports/IGlobalUserRepository.js';
+import { IGlobalInvitationRepository, GlobalInvitationRecord, CreateGlobalInvitationInput } from '../../domain/ports/IGlobalInvitationRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { globalUsers } from '@vozlab/database';
 import {
@@ -12,7 +13,7 @@ import {
 } from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants, globalInvitations } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -22,7 +23,7 @@ import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, global
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -409,6 +410,82 @@ export class RouterDatabaseClient
    */
   async ping(): Promise<void> {
     await this.db.execute(sql`SELECT 1`);
+  }
+
+  // --- IGlobalInvitationRepository ---
+
+  async createInvitation(input: CreateGlobalInvitationInput): Promise<GlobalInvitationRecord> {
+    try {
+      const [row] = await this.db
+        .insert(globalInvitations)
+        .values({
+          tokenHash: input.tokenHash,
+          tenantId: input.tenantId,
+          workspaceId: input.workspaceId,
+          role: input.role,
+          email: input.email,
+          expiresAt: input.expiresAt,
+          maxUses: input.maxUses ?? null,
+        })
+        .returning();
+      return {
+        id: row.id,
+        tokenHash: row.tokenHash,
+        tenantId: row.tenantId,
+        workspaceId: row.workspaceId,
+        role: row.role,
+        email: row.email,
+        status: row.status,
+        maxUses: row.maxUses,
+        usedCount: row.usedCount,
+        expiresAt: row.expiresAt,
+        createdAt: row.createdAt,
+      };
+    } catch (err) {
+      log.error({ err }, 'failed to create global invitation');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async findByTokenHash(tokenHash: string): Promise<GlobalInvitationRecord | null> {
+    try {
+      const [row] = await this.db
+        .select()
+        .from(globalInvitations)
+        .where(eq(globalInvitations.tokenHash, tokenHash))
+        .limit(1);
+      if (!row) return null;
+      return {
+        id: row.id,
+        tokenHash: row.tokenHash,
+        tenantId: row.tenantId,
+        workspaceId: row.workspaceId,
+        role: row.role,
+        email: row.email,
+        status: row.status,
+        maxUses: row.maxUses,
+        usedCount: row.usedCount,
+        expiresAt: row.expiresAt,
+        createdAt: row.createdAt,
+      };
+    } catch (err) {
+      log.error({ err }, 'failed to find global invitation');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async accept(id: string): Promise<boolean> {
+    try {
+      const res = await this.db
+        .update(globalInvitations)
+        .set({ status: 'ACCEPTED', usedCount: sql`${globalInvitations.usedCount} + 1` })
+        .where(and(eq(globalInvitations.id, id), eq(globalInvitations.status, 'PENDING')))
+        .returning();
+      return res.length > 0;
+    } catch (err) {
+      log.error({ err }, 'failed to accept global invitation');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
   }
 
   async close(): Promise<void> {
