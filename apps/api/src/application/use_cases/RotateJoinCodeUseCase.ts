@@ -6,6 +6,7 @@ import {
   WorkspaceRecord,
 } from '../../domain/ports/IWorkspaceRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
+import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import { generateJoinCode } from './CreateWorkspaceUseCase.js';
 
 export interface RotateJoinCodeInput {
@@ -25,7 +26,8 @@ export class RotateJoinCodeUseCase {
   constructor(
     private readonly workspaceRepo: IWorkspaceRepository,
     private readonly membershipRepo: IMembershipRepository,
-    private readonly userRepo: IUserRepository
+    private readonly userRepo: IUserRepository,
+    private readonly audit?: IAuditLog
   ) {}
 
   async execute(input: RotateJoinCodeInput): Promise<WorkspaceRecord> {
@@ -45,6 +47,14 @@ export class RotateJoinCodeUseCase {
     if (!workspace) {
       throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
     }
+    await this.audit?.record({
+      actorId: input.actorUserId,
+      actorType: 'ADMIN',
+      action: 'JOIN_CODE_ROTATED',
+      targetType: 'workspace',
+      targetId: input.workspaceId,
+      tenantId: input.tid,
+    });
     return workspace;
   }
 }

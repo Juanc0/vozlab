@@ -76,6 +76,7 @@ import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.j
 import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
 import { RedeemGlobalInvitationUseCase } from '../../application/use_cases/RedeemGlobalInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
+import { DrizzleAuditLog } from '../persistence/repositories/DrizzleAuditLog.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
@@ -164,10 +165,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   const tokenBlacklist = new RedisTokenBlacklist();
   const rateLimiter = new RateLimitingMiddleware();
   const userRepo = new DrizzleUserRepository(poolManager);
+  // P0-4: persistent audit trail — tenant `membership_events` + router
+  // `global_identity_events`. Wired into every onboarding write use case.
+  const auditLog = new DrizzleAuditLog(poolManager, routerDb);
   const createWorkspaceJoinCodeUseCase = new CreateWorkspaceJoinCodeUseCase(
     workspaceJoinCodeRepo,
     userRepo,
-    membershipRepo
+    membershipRepo,
+    auditLog
   );
   const refreshTokenRepo = new DrizzleRefreshTokenRepository(poolManager);
   const identityProvider = new OidcProviderClient();
@@ -284,7 +289,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     routerDb,
     userRepo,
     membershipRepo,
-    uow
+    uow,
+    auditLog
   );
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
@@ -353,7 +359,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const rotateJoinCodeUseCase = new RotateJoinCodeUseCase(
     workspaceRepo,
     membershipRepo,
-    userRepo
+    userRepo,
+    auditLog
   );
   const listWorkspacesUseCase = new ListWorkspacesUseCase(
     workspaceRepo,
@@ -440,7 +447,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinRequestRepo,
     membershipRepo,
     userRepo,
-    workspaceJoinCodeRepo
+    workspaceJoinCodeRepo,
+    auditLog
   );
   const discoverWorkspacesUseCase = new DiscoverWorkspacesUseCase(
     workspaceRepo

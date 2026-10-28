@@ -6,6 +6,7 @@ import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { hashOpaqueToken, generateAuthorHash } from '../../shared/auth/refreshToken.js';
+import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import type { AuthUser } from '../../domain/ports/IUserRepository.js';
 import type { WorkspaceRole } from '@vozlab/shared-types';
 
@@ -35,7 +36,8 @@ export class RedeemGlobalInvitationUseCase {
     private readonly routerDb: IRouterDatabase,
     private readonly userRepo: IUserRepository,
     private readonly membershipRepo: IMembershipRepository,
-    private readonly uow: IUnitOfWork
+    private readonly uow: IUnitOfWork,
+    private readonly audit?: IAuditLog
   ) {}
 
   /**
@@ -111,6 +113,22 @@ export class RedeemGlobalInvitationUseCase {
         tenant.id,
         tx
       );
+    });
+
+    // Cross-tenant identity trail in the router DB (append-only).
+    await this.audit?.record({
+      actorId: input.globalUserId,
+      actorType: 'USER',
+      action: 'GLOBAL_INVITATION_REDEEMED',
+      targetType: 'global_identity',
+      targetId: input.globalUserId,
+      tenantId: tenant.id,
+      globalIdentityId: input.globalUserId,
+      metadata: {
+        invitationId: invitation.id,
+        workspaceId: invitation.workspaceId,
+        role: invitation.role,
+      },
     });
 
     return {

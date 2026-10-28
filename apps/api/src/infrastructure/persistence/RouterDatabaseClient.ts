@@ -5,6 +5,7 @@ import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRou
 import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../domain/ports/IGlobalUserRepository.js';
 import { IGlobalInvitationRepository, GlobalInvitationRecord, CreateGlobalInvitationInput } from '../../domain/ports/IGlobalInvitationRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
+import { GlobalIdentityEventInput, IGlobalIdentityEventRepository } from '../../domain/ports/IGlobalIdentityEventRepository.js';
 import { globalUsers } from '@vozlab/database';
 import {
   ConsumeEventCodeResult,
@@ -13,7 +14,7 @@ import {
 } from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants, globalInvitations } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants, globalInvitations, globalIdentityEvents } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -23,7 +24,7 @@ import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, global
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalIdentityEventRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -461,6 +462,32 @@ export class RouterDatabaseClient
       log.error(
         { err, globalUserId, tenantId, tenantUserId },
         'failed to link global identity to tenant'
+      );
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  // --- IGlobalIdentityEventRepository ---
+
+  /** Append a cross-tenant identity event. Never update/delete from code. */
+  async recordIdentityEvent(input: GlobalIdentityEventInput): Promise<void> {
+    try {
+      await this.db.insert(globalIdentityEvents).values({
+        globalIdentityId: input.globalIdentityId,
+        tenantId: input.tenantId,
+        actorType: input.actorType,
+        actorId: input.actorId,
+        action: input.action,
+        metadata:
+          input.metadata && Object.keys(input.metadata).length > 0
+            ? JSON.stringify(input.metadata)
+            : null,
+        requestId: input.requestId ?? null,
+      });
+    } catch (err) {
+      log.error(
+        { err, globalIdentityId: input.globalIdentityId, action: input.action },
+        'failed to record global identity event'
       );
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }

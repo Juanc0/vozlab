@@ -114,6 +114,41 @@ describe('RedeemGlobalInvitationUseCase', () => {
     ]);
   });
 
+  it('records a GLOBAL_INVITATION_REDEEMED event in the router audit', async () => {
+    const globalInvitations = makeGlobalInvitationRepository();
+    const router = makeRouterDb();
+    const events: Array<Record<string, unknown>> = [];
+    const useCase = new RedeemGlobalInvitationUseCase(
+      globalInvitations.repo,
+      makeGlobalUserRepository().repo,
+      router.routerDb,
+      makeUserRepository().userRepo,
+      makeMembershipRepository().membershipRepo,
+      makeUnitOfWork().uow,
+      { async record(e) { events.push(e as unknown as Record<string, unknown>); } }
+    );
+    const created = await globalInvitations.repo.createInvitation({
+      tenantId: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+      role: 'MEMBER',
+      email: 'ada@example.edu',
+      tokenHash: hashOpaqueToken(TOKEN),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await useCase.execute(input());
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: 'GLOBAL_INVITATION_REDEEMED',
+      targetType: 'global_identity',
+      globalIdentityId: 'global-id-1',
+      tenantId: TENANT_ID,
+      actorType: 'USER',
+      metadata: { invitationId: created.id, workspaceId: WORKSPACE_ID },
+    });
+  });
+
   it('rejects an unknown token', async () => {
     const { useCase } = setup([]);
     await expect(useCase.execute(input())).rejects.toMatchObject({

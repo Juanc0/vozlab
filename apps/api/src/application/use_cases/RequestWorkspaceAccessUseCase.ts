@@ -10,6 +10,7 @@ import {
   IWorkspaceRepository,
   WorkspaceRecord,
 } from '../../domain/ports/IWorkspaceRepository.js';
+import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 
 export interface RequestWorkspaceAccessInput {
   userId: string;
@@ -33,7 +34,8 @@ export class RequestWorkspaceAccessUseCase {
     private readonly joinRequestRepo: IJoinRequestRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly userRepo?: IUserRepository,
-    private readonly codeRepo?: IWorkspaceJoinCodeRepository
+    private readonly codeRepo?: IWorkspaceJoinCodeRepository,
+    private readonly audit?: IAuditLog
   ) {}
 
   async execute(
@@ -63,6 +65,15 @@ export class RequestWorkspaceAccessUseCase {
               if (this.codeRepo) {
                 await this.codeRepo.incrementUse(codeRecord.id, input.tid);
               }
+              await this.audit?.record({
+                actorId: input.userId,
+                actorType: 'USER',
+                action: 'MEMBERSHIP_AUTO_APPROVED_BY_CODE',
+                targetType: 'join_request',
+                targetId: codeRecord.id,
+                tenantId: input.tid,
+                metadata: { workspaceId: workspace.id, userId: input.userId },
+              });
               const pending = await this.joinRequestRepo.findPending(workspace.id, input.userId, input.tid);
               // Return a synthetic approved request.
               return {
@@ -130,6 +141,15 @@ export class RequestWorkspaceAccessUseCase {
       },
       input.tid
     );
+    await this.audit?.record({
+      actorId: input.userId,
+      actorType: 'USER',
+      action: 'JOIN_REQUESTED',
+      targetType: 'join_request',
+      targetId: created.id,
+      tenantId: input.tid,
+      metadata: { workspaceId: workspace.id, userId: input.userId },
+    });
     return { ...created, workspaceName: workspace.name };
   }
 }

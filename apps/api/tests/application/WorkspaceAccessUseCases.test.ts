@@ -72,6 +72,35 @@ describe('RequestWorkspaceAccessUseCase', () => {
     expect(ctx.joinRequests.rows.size).toBe(1);
   });
 
+  it('records a JOIN_REQUESTED audit event with tenant and workspace', async () => {
+    const ctx = setup();
+    const events: Array<Record<string, unknown>> = [];
+    const audited = new RequestWorkspaceAccessUseCase(
+      ctx.workspaces.repo,
+      ctx.joinRequests.repo,
+      { async getRole() { return null; } } as never,
+      undefined,
+      undefined,
+      { async record(e) { events.push(e as unknown as Record<string, unknown>); } }
+    );
+
+    await audited.execute({
+      userId: USER_ID,
+      tid: TENANT_ID,
+      workspaceId: ctx.workspace.id,
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      actorId: USER_ID,
+      actorType: 'USER',
+      action: 'JOIN_REQUESTED',
+      targetType: 'join_request',
+      tenantId: TENANT_ID,
+      metadata: { workspaceId: ctx.workspace.id, userId: USER_ID },
+    });
+  });
+
   it('never reveals a private workspace by id', async () => {
     const ctx = setup(
       makeWorkspaceRepository([workspaceRecord({ isPublic: false })])
