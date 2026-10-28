@@ -33,6 +33,9 @@
   let createdInviteToken = $state<string | null>(null);
   let creatingInvite = $state(false);
   let joinCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
+  let addMemberEmail = $state('');
+  let addMemberRole = $state('MEMBER');
+  let addingMember = $state(false);
 
   async function loadWorkspaces() {
     loading = true; error = null;
@@ -115,6 +118,20 @@
       error = describeFailure(e);
     } finally {
       creatingCode = false;
+    }
+  }
+
+  async function addMemberDirect() {
+    if (!selectedId) return;
+    addingMember = true;
+    try {
+      await admin.addMember(api, selectedId, addMemberEmail, addMemberRole);
+      addMemberEmail = '';
+      await loadMembers();
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      addingMember = false;
     }
   }
 </script>
@@ -220,6 +237,19 @@
               </li>
             {/each}
           </ul>
+        </div>
+
+        <div class="border-t border-rule pt-3 space-y-2">
+          <h3>{t('admin.addMember') ?? 'Add member directly'}</h3>
+          <input class="field w-full" bind:value={addMemberEmail} placeholder={t('admin.email') ?? 'Email'} />
+          <select class="field w-full" bind:value={addMemberRole}>
+            <option value="MEMBER">MEMBER</option>
+            <option value="MODERATOR">MODERATOR</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+          <button type="button" class="btn btn-primary" disabled={addingMember} onclick={addMemberDirect}>
+            {t('admin.addMember') ?? 'Add'}
+          </button>
         </div>
 
         <h3>{t('admin.members')}</h3>
