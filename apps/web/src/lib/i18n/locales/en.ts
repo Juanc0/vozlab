@@ -780,6 +780,7 @@ export const en: Dictionary<typeof es> = {
     joinCode: 'Join code',
     rotateJoinCode: 'Rotate code',
     createJoinCode: 'Create ephemeral code',
+    joinCodes: 'Ephemeral join codes',
     label: 'Label',
     createdCode: 'Code (shown once)',
     addMember: 'Add member',

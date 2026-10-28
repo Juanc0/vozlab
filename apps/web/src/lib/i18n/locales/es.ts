@@ -845,6 +845,7 @@ export const es = {
     joinCode: 'Código de acceso',
     rotateJoinCode: 'Rotar código',
     createJoinCode: 'Crear código efímero',
+    joinCodes: 'Códigos efímeros',
     label: 'Etiqueta',
     createdCode: 'Código (se muestra una vez)',
     addMember: 'Añadir miembro',
