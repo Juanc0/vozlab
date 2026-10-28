@@ -18,7 +18,12 @@ Change PK to `(workspace_id, user_id, role)` allowing multiple rows. Update all 
 - Guards: WorkspaceAdminGuard (check if any of user's roles is ADMIN)
 - Web: members list shows all roles; admin assigns/removes roles individually
 
-## 4. Acceptance criteria
+## 4. Additional: consolidate "Members" UI
+- Unify direct add (admin-initiated) and approval of join requests into a single "Members" screen.
+- Backend remains separate for audit; UI presents one consolidated view.
+
+## 5. Acceptance criteria
 - Multiple roles per workspace supported.
 - Verification uses union (user with MEMBER+MODERATOR has both permissions).
+- Members UI consolidated.
 - `pnpm turbo run build type-check test` passes.

@@ -19,8 +19,15 @@ Create `global_invitations` table in router DB (token_hash, tenant_id, workspace
 - Zitadel config (social IdPs)
 - Web: admin UI generates invitation URL/QR from global invitation
 
-## 4. Acceptance criteria
+## 4. Additional: cleanup of expired invitations and inactive guests
+- Add a scheduled/cron job (or manual admin action) to mark PENDING invitations as EXPIRED after TTL.
+- Add cleanup of anonymous (guest) users inactive for N days (configurable).
+- Expose cleanup as admin endpoint or background task.
+
+## 5. Acceptance criteria
 - Invite any email with any IdP.
 - Redemption requires emailVerified + match.
 - Social logins work.
+- Expired invitations cleaned up.
+- Inactive guests cleaned up.
 - `pnpm turbo run build type-check test` passes.

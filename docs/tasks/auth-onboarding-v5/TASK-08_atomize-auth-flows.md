@@ -13,10 +13,19 @@ Refactor auth/onboarding into atomic use cases: Authenticate, ResolveTenants, Se
 - `apps/api/src/application/use_cases/` (split existing use cases)
 - `apps/api/src/application/audit/` (new audit port + adapter)
 - `apps/api/src/infrastructure/http/controllers/AuthController.ts` (compose operations)
+- `apps/api/src/infrastructure/ratelimit/` (dedicated per-actor rate limiter)
+- `apps/api/src/infrastructure/persistence/repositories/DrizzleRefreshTokenRepository.ts` (invalidate family)
 - Tests for each atomic use case
 
-## 4. Acceptance criteria
+## 4. Additional: invalidate refresh family on suspend + dedicated rate limit
+- When a user is suspended, invalidate their refresh token family (all sessions).
+- Add dedicated per-actor rate limiting for admin actions (create invitation, request access, rotate code, create workspace).
+- Rate limit keyed by (actorUserId, action).
+
+## 5. Acceptance criteria
 - Each operation independently testable.
 - Audit event per operation.
+- Refresh family invalidated on suspend.
+- Dedicated rate limit per actor/action.
 - No regression in existing flows.
 - `pnpm turbo run build type-check test` passes.

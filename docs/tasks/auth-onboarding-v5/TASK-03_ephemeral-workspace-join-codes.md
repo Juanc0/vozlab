@@ -35,7 +35,13 @@ Create `workspace_join_codes` table (tenant DB) and endpoints to create/edit/rev
 7. Add endpoints under `/api/v1/workspaces/:workspaceId/join-codes`.
 8. Web: admin UI to manage codes (create/edit/revoke, show raw code once, copy).
 
-## 6. Acceptance criteria
+## 6. Additional: QR with both codes for events
+- Event entry flow supports a single QR/enlace containing both the tenant code and the workspace code.
+- Client redeems tenant code first (creates anonymous user + session), then workspace code (auto-approved if workspace is EVENT).
+- Both steps in one user interaction (scan QR → enter).
+
+## 7. Acceptance criteria
 - Multiple codes per workspace.
 - Expired/revoked/full codes rejected.
+- QR with both codes works end-to-end.
 - `pnpm turbo run build type-check test` passes.

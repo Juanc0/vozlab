@@ -15,8 +15,12 @@ Enable Google (personal) and Microsoft (personal) social logins in Zitadel realm
 - `knowledge-transfer/guia-identidad-ia/` (update or add files for v5 model)
 - `docs/analysis/auth-onboarding-committee-review.md` (already exists; keep as reference)
 
-## 4. Acceptance criteria
+## 4. Additional: document decision matrix
+- Add a decision matrix to requirements.md or a dedicated doc: when to use each flow (OIDC, event join, invitation, join request, direct add) based on user type and workspace kind.
+- Include the matrix in knowledge-transfer.
+
+## 5. Acceptance criteria
 - Social login works in identity lab.
 - ADR created.
-- requirements.md updated.
+- requirements.md updated with decision matrix.
 - Knowledge transfer updated.
