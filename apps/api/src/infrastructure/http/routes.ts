@@ -417,6 +417,17 @@ export async function registerRoutes(
     (req, reply) => authController.logoutHandler(req, reply)
   );
 
+  app.post(
+    '/api/v1/auth/switch-tenant',
+    {
+      preHandler: [
+        auth,
+        scopedRateLimitMiddleware(rateLimiter, 'auth-switch-tenant'),
+      ],
+    },
+    (req, reply) => authController.switchTenant(req, reply)
+  );
+
   app.get(
     '/api/v1/auth/me',
     { preHandler: [auth, tenant] },

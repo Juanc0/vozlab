@@ -150,6 +150,27 @@ export class AuthController {
     }
   }
 
+  /** POST /api/v1/auth/switch-tenant (Bearer). Cambia el tenant de la sesión
+   *  activa sin re-autenticar. Valida que el tenant destino esté vinculado al
+   *  identity global y emite un nuevo refresh token para ese tenant. */
+  async switchTenant(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const body = req.body as { globalUserId?: string; tenantId?: string };
+    if (!body?.globalUserId || !body?.tenantId) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED');
+    }
+    try {
+      const result = await this.selectTenantUseCase.execute({
+        globalIdentityId: body.globalUserId,
+        tenantId: body.tenantId,
+        refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
+      });
+      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+      return reply.status(200).send({ tenantId: body.tenantId });
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
   /** GET /api/v1/auth/resolve-tenants?globalUserId=... */
   async resolveTenants(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const query = req.query as { globalUserId?: string };
