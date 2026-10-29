@@ -4,7 +4,7 @@ Comité: arquitectura + seguridad + producto + devops + frontend + base de datos
 Fecha: 2026-10-29 (v6 — estado REAL verificado sobre código, no aspiracional).
 Contexto: VozLab multi-tenant (router DB `vozlab_router` + una DB por tenant), Fastify API + SvelteKit 5 PWA, OIDC (Zitadel local en `:8081` vía identity-lab, actualmente CAÍDO en dev), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin servicio de email), códigos efímeros, invitaciones globales cross-IdP, roles múltiples por workspace.
 
-Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests API, 515 tests web). Las cinco brechas P0 están cerradas (commits `22c5481`, `f1a28e9`, `85ceb64`, `835468c`, `150e067`) y el login real contra Zitadel está **verificado end-to-end** (B13, §6.5). El build pasa, pero **verde no significa completo**: quedan las brechas P1/P2 de las tablas B6–B12.
+Estado de referencia: `pnpm turbo run build type-check test` VERDE (334 tests API, 521 tests web). Las cinco P0 están cerradas (commits `22c5481`, `f1a28e9`, `85ceb64`, `835468c`, `150e067`), el login real contra Zitadel está **verificado end-to-end** (B13, §6.5), el selector de tenants web está cerrado (v6-01) y las P1 **B6** (`e9bde8b`), **B7** (`7833c75`) y **B10** (seed v6, 2026-10-29) están cerradas con evidencia E2E. Cerrada también la brecha **B14** recién encontrada (el handle JIT nunca se escribía — verificado en vivo: `testuser` reparado por `select-tenant` con el código nuevo). Quedan B9 (social logins), B11 (HTTPS) y B12 (atomización, P2).
 
 ---
 
@@ -34,11 +34,12 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 | B3 | ~~`globalUserId` en `AddWorkspaceMemberUseCase` devuelve null~~ — **CERRADO 2026-10-28** (commit 85ceb64): `findGlobalTenantLink` en puerto+adapter, `routerDb` inyectado, web envía `handle`. | v6/TASK-03, v5/TASK-07 | ~~P0~~ ✅ |
 | B4 | ~~`IAuditLog` solo en memoria~~ — **CERRADO 2026-10-28**: `DrizzleAuditLog` persistente (tenant `membership_events` + router `global_identity_events`, enrutado por `targetType`/`tenantId`, fail-loud si falta workspace/tenant). Inyectado en códigos efímeros (create/rotate), join requests (creación y auto-aprobación) y redención global. Miembros/invitaciones/workspaces ya registraban vía `recordEvent`. 6 tests de adapter + 4 de use case. Falta: migrar `CompleteOidcLogin`/`SelectTenant` a eventos explícitos (queda en v6/TASK-07 junto con rate limit). | v6/TASK-07, v5/TASK-08 | P0 — auditoría append-only |
 | B5 | ~~Rate limit dedicado solo en `create-workspace`~~ — **CERRADO 2026-10-28**: helper `scoped(scope)` en `routes.ts` con `scopedRateLimitMiddleware` por acción en las 20 rutas de escritura admin/onboarding (`admin-create-workspace`, `admin-global-invitation`, `admin-cleanup`, `auth-switch-tenant`, `admin-join-code` ×3, `admin-workspace`, `admin-member` ×7, `admin-join-request` ×2, `admin-invitation` ×2, `join-request-create`); bucket por `authorHash` del actor. Extra: `switch-tenant` llevaba `[auth, scoped]` sin `tenant`, por lo que `req.tid` no estaba resuelto y el limiter se saltaba en silencio — añadido `tenant` a la cadena. 41 tests de tabla de rutas. | v6/TASK-07 | ~~P0~~ ✅ |
-| B6 | **Join codes sin Update** (solo create/list/revoke). | v6/TASK-04 | P1 |
-| B7 | **Cleanup guests inactivos = 0** (placeholder). | v6/TASK-09 | P1 |
+| B6 | ~~Join codes sin Update~~ — **CERRADO 2026-10-29** (commit `e9bde8b`): puerto `findById`+`update(patch)`, `UpdateWorkspaceJoinCodeUseCase` (assertWorkspaceAdmin, 404 propio `ERR_JOIN_CODE_NOT_FOUND`, revocado congelado, cap ≥ usado, auditoría `JOIN_CODE_UPDATED`), `PATCH /workspaces/:id/join-codes/:codeId` con `scoped('admin-join-code')`, formulario inline en admin. 5+2 tests + E2E real. | v6/TASK-04 | ~~P1~~ ✅ |
+| B7 | ~~Cleanup guests inactivos = 0~~ — **CERRADO 2026-10-29** (commit `7833c75`): `IUserRepository.removeInactiveGuests` (borra guests anonimos sin NINGUN signal: cuenta, membresias, eventos ni emision de refresh token desde el corte), barrido opt-in por `inactiveGuestDays` (1..3650), UI "Higiene del inquilino". 5 tests + E2E real (guest de 100 días cae con cascadas, activo se preserva, auditoría append-only sobrevive). | v6/TASK-09 | ~~P1~~ ✅ |
 | B8 | ~~Web direct add envía `email`~~ — **CERRADO 2026-10-28** (commit 85ceb64): `addMember` envía `handle`, i18n es/en. | v6/TASK-03, v11 | ~~P1~~ ✅ |
 | B9 | **Social logins no verificados** en Zitadel (doc existe, infra no probada). | v6/TASK-09, v5/TASK-09 | P1 |
-| B10 | **Seed incompleto**: sin PUBLIC/PRIVATE ejemplo, sin invitaciones ejemplo, sin roles múltiples demo. | v6/TASK-12 | P1 |
+| B10 | ~~Seed incompleto~~ — **CERRADO 2026-10-29**: `seed-dev.ts` siembra `general`/`community` (PUBLIC), `paper-lab` (PRIVATE con hint) y `evento-demo` (EVENT) con join codes efímeros (cap/expiry/auto-approve variados), dos invitaciones de ejemplo (PENDING con URL `/login?invitation=…` + EXPIRED para el sweep), roles múltiples (`dev-member` = MODERATOR+MEMBER en `general`) y handles `dev-maintainer/dev-moderator/dev-member`. Idempotencia verificada (dos pasadas) y E2E en admin. | v6/TASK-12 | ~~P1~~ ✅ |
+| B14 | ~~`auth.users.handle` no se escribe en el login JIT~~ — **CERRADO 2026-10-29** (descubierta al cerrar B10: los usuarios OIDC reales tenían `handle = NULL` y la alta directa por handle solo funcionaba contra identidades sembradas). `deriveHandle()` en `shared/auth/deriveHandle.ts` (local-part del email → subject con prefijo `u-`, normalizado [a-z0-9_-] ≤64, determinista) alimentado por `NewExternalIdentityInput.handle`; los cuatro caminos que tocan el usuario de tenant (`CompleteOidcLogin`, `SelectTenant` — el sitio del login multi-tenant, donde el perfil del router no trae preferred_username —, `RedeemGlobalInvitation`, `DirectIdentityAdd`) lo pasan, y el adaptador lo inserta en el alta y lo **repara en cada entrada al tenant** sin pisar uno ya puesto; colisión de alias deja NULL (es alias de búsqueda, no credencial — el login no puede fallar por él). Tests: 6 de `deriveHandle` + aserción en el flujo + 1 del claim propuesto. | v6/TASK-03 | ~~P1~~ ✅ |
 | B11 | **HTTPS/reverse proxy pendiente** (solo headers). | v6/TASK-12 | P1 — producción |
 | B12 | **Atomización parcial**: `CompleteOidcLogin` y otros siguen monolíticos; los use cases atómicos existen pero no todos están cableados en controladores. | v6/TASK-08, v5/TASK-08 | P2 |
 | B13 | **Login Zitadel caído (RESUELTO 2026-10-28, verificado E2E)** — tres causas reales, ninguna era el código de auth: (1) la migración de router `0009_rename_global_identities` escrita a mano nunca se registró en `meta/_journal.json` → `global_users` no existía → `ERR_DATABASE_CONNECTION_FAILED` (fix `f0890e9`); (2) el volumen dev tenía el tenant DB a 0014/0017 → `auth.users.handle` ausente (aplicado `db:migrate:tenant`); (3) carrera de doble-send de Fastify 4.29 con dos hooks `onSend` async: `sendError()` resuelve con `undefined` con la cadena pendiente y `wrapThenable` re-envía → `ERR_HTTP_HEADERS_SENT` **mata el proceso API** en cualquier respuesta de error de auth (fix `1c77d29`, hooks ahora callback-sync + test de regresión) | v6/TASK-01, v5/TASK-02 | ~~P0~~ ✅ |
@@ -82,8 +83,8 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 - Pendiente: E2E flujos admin completos (códigos/invitaciones globales/roles); offline shell rutas admin.
 
 ### 2.4 DevOps / Seed
-- Hecho: docker-compose (db/redis/ollama, perfiles idp/observability/app), headers, seed básico.
-- Pendiente: HTTPS/reverse proxy (TLS real), verificar build contenedores api/web, seed PUBLIC/PRIVATE/invitaciones/roles múltiples, social logins en Zitadel.
+- Hecho: docker-compose (db/redis/ollama, perfiles idp/observability/app), headers. **Seed v6 completo (B10, 2026-10-29)**: workspaces `general`/`community` (PUBLIC), `paper-lab` (PRIVATE), `evento-demo` (EVENT); join codes efímeros con cap/expiry/auto-approve variados; dos invitaciones de ejemplo (PENDING con URL `/login?invitation=…` + EXPIRED para el sweep); roles múltiples (`dev-member` = MODERATOR+MEMBER en `general`); handles `dev-maintainer/dev-moderator/dev-member` para la alta directa. Idempotencia verificada (dos pasadas) y E2E en `/admin`.
+- Pendiente: HTTPS/reverse proxy (TLS real, B11), verificar build contenedores api/web, social logins en Zitadel (B9).
 
 ---
 
@@ -93,7 +94,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 |------|--------|-------------|-----------------|
 | v5-01 | Router DB identity (`global_users`) + linking | ✅ Hecho | Nada |
 | v5-02 | Explicit tenant selection + selector | ✅ Hecho | Nada (`switch-tenant` cerrado 2026-10-28, commit 22c5481) |
-| v5-03 | Ephemeral/revocable join codes | 🟡 Parcial | `Update` use case + endpoint PUT |
+| v5-03 | Ephemeral/revocable join codes | ✅ Hecho | Nada (`Update` use case + `PATCH` + UI inline, commit `e9bde8b`, E2E 2026-10-29) |
 | v5-04 | Workspaces.kind + is_anonymous + GUEST | ✅ Hecho | Nada |
 | v5-05 | Multiple roles per workspace | ✅ Hecho | Nada |
 | v5-06 | Global invitations (cross-IdP) | ✅ Hecho | Nada (redención cableada en CompleteOidcLogin 2026-10-28; no requiere endpoint redeem dedicado) |
@@ -109,16 +110,16 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 |------|--------|-------------|-----------------|
 | v6-01 | Tenant explícito en login + selector/switch | ✅ Hecho | Nada (backend `22c5481` + selector web `TenantSwitcher` verificado E2E contra Zitadel 2026-10-28) |
 | v6-02 | Guards GUEST + kind enforcement | ✅ Hecho | Nada |
-| v6-03 | Alta directa por handle/identidad global | ✅ Hecho | Nada (backend + web + i18n, commit 85ceb64) |
-| v6-04 | Códigos efímeros port/adapter/use cases | 🟡 Parcial | `Update` use case + endpoint PUT |
+| v6-03 | Alta directa por handle/identidad global | ✅ Hecho | Nada (backend + web + i18n, commit 85ceb64; escritura del handle en el cierre de B14 2026-10-29, E2E: alta de `dev-moderator` por handle en `paper-lab`) |
+| v6-04 | Códigos efímeros port/adapter/use cases | ✅ Hecho | Nada (`Update` + `PATCH` + UI, commit `e9bde8b`) |
 | v6-05 | Auto-aprobación configurable | ✅ Hecho | Nada |
 | v6-06 | Invitaciones globales (router DB) | ✅ Hecho | Nada (redención en callback + link router, tests 2026-10-28) |
 | v6-07 | Rate limit dedicado + auditoría (IAuditLog) | ✅ Hecho | Nada (auditoría persistente + rate limit por acción, 2026-10-28; eventos de login/select-tenant quedan como mejora P2) |
 | v6-08 | Atomizar use cases | 🟡 Parcial | Cablear atómicos en controladores; no regresiones |
-| v6-09 | Social logins Zitadel + cleanup endpoint/cron | 🟡 Parcial | Cleanup guests (DB-level); verificar social en identity lab |
+| v6-09 | Social logins Zitadel + cleanup endpoint/cron | 🟡 Parcial | Verificar social en identity lab (B9); cleanup de guests HECHO (commit `7833c75`); cron opcional no cableado |
 | v6-10 | Web core | ✅ Hecho | E2E admin flujos; offline rutas admin |
-| v6-11 | Web admin UI | ✅ Hecho | Direct add por `handle` |
-| v6-12 | Seed + devops | 🟡 Parcial | Seed PUBLIC/PRIVATE/invitaciones/roles; HTTPS/reverse proxy; verificar contenedores |
+| v6-11 | Web admin UI | ✅ Hecho | Nada (direct add por `handle` E2E-verificado con handles sembrados 2026-10-29; edición inline de códigos, `e9bde8b`) |
+| v6-12 | Seed + devops | 🟡 Parcial | Seed HECHO (2026-10-29: PUBLIC/PRIVATE/EVENT + códigos + invitaciones + roles múltiples + handles); falta HTTPS/reverse proxy (B11) y verificar contenedores api/web |
 
 ---
 
@@ -132,10 +133,10 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 5. ~~**Rate limit por actor en rutas admin**~~ — **HECHO 2026-10-28**: `scoped()` en las 20 rutas de escritura (miembros, invitaciones, códigos, join requests, workspaces, cleanup, switch-tenant) + 41 tests; corregido el salto silencioso del limiter en `switch-tenant` (faltaba el guard `tenant`).
 
 ### P1 — Operación
-6. Cleanup guests inactivos (nivel DB) + endpoint/cron.
+6. ~~Cleanup guests inactivos~~ — **HECHO 2026-10-29** (commit `7833c75`): `removeInactiveGuests` con señales de actividad reales, barrido opt-in + UI; cron opcional sigue pendiente.
 7. Social logins en Zitadel (Google/Microsoft personal) + verificación en identity lab.
-8. Seed: workspaces PUBLIC/PRIVATE ejemplo, invitaciones de ejemplo, roles múltiples demo.
-9. Join codes `Update` (TTL/capacidad/label/auto_approve/revocar).
+8. ~~Seed: workspaces PUBLIC/PRIVATE, invitaciones, roles múltiples~~ — **HECHO 2026-10-29**: seed v6 completo (ver B10/§2.4), idempotencia doble pasada + E2E en `/admin`.
+9. ~~Join codes `Update`~~ — **HECHO 2026-10-29** (commit `e9bde8b`): `PATCH /workspaces/:id/join-codes/:codeId` + edición inline en admin.
 
 ### P2 — Producto / UX
 10. Atomización profunda: cablear use cases atómicos en controladores sin regresión; tests por operación.
@@ -171,6 +172,7 @@ Flujo completo con navegador automatizado contra el entorno dev real (`vozlabdem
 4. Evidencia en DB: `global_users` upsertado (`testuser@example.org`, verificado), `global_identity_tenants` con link ACTIVE (`84e38267… → c3fa967b…`, escrito por `linkGlobalTenant` de P0-2 en el login), `auth.users` JIT con `global_identity_id`, refresh token emitido; la PWA muestra "Sesión iniciada como Test User" y el empty-state correcto de "sin workspace" (sin membresía, por diseño).
 5. Ninguna membresía se crea en login JIT (US-00 lo prohíbe); el invite entra por invitación/código/solicitud — flujos E/F/B probados unitariamente, pendientes de E2E (P2/TASK-10).
 6. **Selector de tenants E2E (2026-10-28)**: con la identidad `testuser` vinculada a dos instituciones (`sabana` + `local`), el callback redirige a `/select-tenant?gid=…` (la ruta `resolve-tenants` antes no estaba registrada y el page usaba claves de contexto/DTO incorrectas — ambas corregidas), la elección crea la sesión, y el `TenantSwitcher` de la barra lateral cambia `sabana → local → sabana` con `switch-tenant(200) → refresh(200) → me(200)` sin re-autenticar y sin un solo `ERR_` en el log de la API. Prueba unitaria web: 4 casos en `tenant-switcher.test.ts`.
+7. **Seed v6 + handle JIT E2E (2026-10-29)**: `/admin` (testuser, sesión Zitadel real) lista los 4 workspaces con badges `PUBLIC/PUBLIC/PRIVATE/EVENT`; `general` muestra a `Dev Member` con **dos chips de rol** (MODERATOR+MEMBER — regla de unión v5); la alta directa por `handle` funcionó por primera vez (añadir `dev-moderator` a `paper-lab` → 200, fila en `workspace_memberships`); limpieza con ventana 30 dejó la invitación PENDING y contó la EXPIRED. Con B14 cableado, el login real de `testuser` reparó su `handle` a `testuser` (Zitadel afirma `preferred_username`; en su defecto, la parte local del email). Gates: 334 tests API / 521 web, `db:seed:dev` idempotente (dos pasadas sin deltas).
 
 Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev` sin supervisor si se prueban paths de error (el crash histórico mataba el listener; zrok devolvía 502). Con el fix, la API sobrevive respuestas 401/422 repetidas.
 
