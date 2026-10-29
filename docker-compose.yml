@@ -261,12 +261,16 @@ services:
       - vozlab-net
 
   # --- Application (profile: app) -----------------------------------------
+  # The containers reuse the host `.env` (OIDC_*, JWT_SECRET, DB passwords)
+  # and override only the container-network values here: env wins over
+  # env_file. Without .env the API fails fast at startup by design.
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: vozlab-api
     profiles: ["app"]
+    env_file: .env
     environment:
       ROUTER_DB_HOST: postgres
       ROUTER_DB_PORT: 5432
@@ -292,7 +296,10 @@ services:
     container_name: vozlab-web
     profiles: ["app"]
     environment:
-      API_BASE_URL: http://api:3000
+      # Browser-reachable absolute API origin (T2/T1 model, ADR-0040): in the
+      # local app profile the browser sees the API through its host port.
+      PUBLIC_API_BASE_URL: http://localhost:3000/api/v1
+      ORIGIN: http://localhost:5173
     ports:
       - "5173:3000"
     depends_on:

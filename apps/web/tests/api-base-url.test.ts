@@ -24,8 +24,10 @@ describe('normalizeApiBaseUrl', () => {
     expect(normalizeApiBaseUrl('  http://localhost:3000/api/v1  ')).toBe('http://localhost:3000/api/v1');
   });
 
-  it('accepts relative paths and rejects non-http(s) schemes', () => {
-    expect(normalizeApiBaseUrl('/api/v1')).toBe('/api/v1');
+  it('rejects relative bases and non-http(s) schemes (T3 rejected — see ADR-0040 / B11)', () => {
+    // A relative base would silently resolve against the app origin; the
+    // approved topology (T2) always configures the absolute API origin.
+    expect(normalizeApiBaseUrl('/api/v1')).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl('api/v1')).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl('ftp://api.vozlab.example')).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl('javascript:alert(1)')).toBe(DEFAULT_API_BASE_URL);

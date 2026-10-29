@@ -1,0 +1,68 @@
+# VozLab — Caddy reverse proxy (production topology T2)
+#
+# B11 / docs/analysis/production-topology-b11.md, ADR-0043. The real hostnames
+# and the ACME email come from the environment (APP_HOSTNAME, API_HOSTNAME,
+# AUTH_HOSTNAME, ACME_EMAIL — set by the `caddy` service in
+# docker-compose.prod.yml; the Caddyfile-style {$VAR:default} substitution
+# happens at parse time and works in site addresses). The defaults below are
+# placeholders so `caddy validate` passes without any env.
+#
+# Point DNS A/AAAA records for app./api./auth. at this host, open ONLY ports
+# 80/443 inbound (the backends publish loopback-only), then
+# `caddy run --config /etc/caddy/Caddyfile` (done by the compose service).
+#
+# Caddy terminates TLS (automatic Let's Encrypt), redirects HTTP->HTTPS and
+# serves HSTS + security headers. It forwards X-Forwarded-For/-Proto to the
+# backends — the API trusts them only from loopback/private peers
+# (apps/api/src/infrastructure/http/proxyTrust.ts: Docker NAT presents the
+# bridge gateway as the socket peer inside the container, and no public peer
+# can reach these loopback-published ports anyway).
+#
+# Backends (docker-compose.prod.yml, loopback host ports):
+#   web  127.0.0.1:5173   (SvelteKit adapter-node)
+#   api  127.0.0.1:3000   (Fastify)
+#   auth 127.0.0.1:8081   (Zitadel)
+
+{
+	# Email for the Let's Encrypt account / certificate expiry notices.
+	email {$ACME_EMAIL:ops@REPLACE_ME.example}
+}
+
+# Reusable HSTS + security headers. 63072000s = two years. Do NOT add
+# "preload": it is semi-irreversible and applies to every subdomain of the
+# zone (B11 analysis, section 5).
+(secheaders) {
+	header Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	header X-Content-Type-Options "nosniff"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	header -Server
+}
+
+# --- PWA (SvelteKit, adapter-node) ------------------------------------------
+{$APP_HOSTNAME:app.example.com} {
+	import secheaders
+	# TASK-12.3 baseline — MUST be tuned against a real staging build before
+	# go-live: SvelteKit can emit inline bootstrap styles/scripts depending on
+	# config, and the service-worker scope must stay 'self'. Iterate the policy
+	# here, at the TLS terminator, not in the app.
+	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://{$API_HOSTNAME:api.example.com} https://{$AUTH_HOSTNAME:auth.example.com}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	header X-Frame-Options "DENY"
+	reverse_proxy 127.0.0.1:5173
+}
+
+# --- API (Fastify) ------------------------------------------------------------
+{$API_HOSTNAME:api.example.com} {
+	import secheaders
+	# JSON API only — no browser-rendered documents, so no CSP needed.
+	# CORS is enforced by the API itself against WEB_ORIGIN.
+	header X-Frame-Options "DENY"
+	reverse_proxy 127.0.0.1:3000
+}
+
+# --- Zitadel (identity broker) ------------------------------------------------
+{$AUTH_HOSTNAME:auth.example.com} {
+	import secheaders
+	# Zitadel serves the login UI and console: no X-Frame-Options DENY here —
+	# verify the frame policy in staging instead (TASK-12.3).
+	reverse_proxy 127.0.0.1:8081
+}

@@ -1,10 +1,14 @@
 # Topologías de despliegue (B11) — análisis para producción y preparación sin romper la demo
 
-> Fecha: 2026-10-29 · Status: **análisis / decisión pendiente** — no es un ADR todavía.
+> Fecha: 2026-10-29 · Status: **DECIDIDO — T2 adoptada, T3 rechazada
+> ([ADR-0043](../decisions/ADR-0043-production-topology-caddy-t2.md))**.
+> Preps P1–P3 y P5 aplicadas en la misma tanda; P4 (CI) y el despliegue real
+> siguen pendientes del hostname.
 > Relacionado: [ADR-0040](../decisions/ADR-0040-zrok-three-shares-demo.md),
 > [ADR-0033](../decisions/ADR-0033-demo-topology-single-host.md),
 > [committee review §B11](auth-onboarding-committee-review.md),
-> [runbook zrok](../runbook-demo-zrok.md).
+> [runbook zrok](../runbook-demo-zrok.md),
+> [runbook producción](../ops/production-deployment.md).
 
 ## 0. TL;DR
 
@@ -109,9 +113,10 @@ Internet ──443──▶ Caddy ──┬─ /api/*  → vozlab-api
   - Rompería la simetría demo↔producción que hoy existe: la demo correría
     cross-origin y producción same-origin → bugs que solo aparecen en un lado.
   - El E2E (que hoy sirve la API en `:3100` y la web en `:5174`) divergiría.
-- **Preparado donde ya toca el código**: `normalizeApiBaseUrl()`
-  (`api-base-url.ts:26-29`) **acepta rutas relativas** (`/api/v1`) para este
-  escenario — quedó del proxy viejo y es la pieza que T3 necesitaría sin cambio.
+- **Resuelto con la decisión**: el soporte de URL relativas de
+  `normalizeApiBaseUrl()` (la pieza que T3 necesitaría) **se eliminó** al
+  rechazar T2 sobre T3 — configurar una base relativa (`/api/v1`) ahora cae
+  al default de localhost, igual que cualquier valor no absoluto.
 - **Veredicto**: no recomendada; es estrictamente peor que T1/T2 para la
   topología multi-origen que ya está probada en la demo.
 
@@ -214,6 +219,12 @@ Reglas que hacen esto predecible (ya verificadas en código):
 
 ### Sin riesgo (recomendado hacer ya)
 
+> **Estado tras la decisión (2026-10-29): P1 ✔** (build + smoke: los dos
+> contenedores arrancan y `/health` 200; se corrigió de paso `allowBuilds`
+> protobufjs y `env_file` del perfil app), **P2 ✔** (`deploy/caddy/Caddyfile`
+> + `deploy/README.md`), **P3 ✔** (`docs/ops/production-deployment.md`),
+> **P4 pendiente**, **P5 ✔** (`proxyTrust.ts` + 5 tests).
+
 | Prep | Qué es | Por qué es seguro | Cierra |
 |---|---|---|---|
 | **P1. Imagenes api/web verificadas** | `docker compose --profile app build api web` (Dockerfiles existen; el bloque estaba mal anidado y quedó corregido en `b28b5bc`) | No arranca nada; solo compila | "verificar build contenedores" de v6-12 |
@@ -232,12 +243,14 @@ Reglas que hacen esto predecible (ya verificadas en código):
 | Relative `PUBLIC_API_BASE_URL=/api/v1` | solo aplica a T3; adoptarlo ahora reintroduciría el acoplamiento de ADR-0040 |
 | HSTS con `preload` | el preload es semi-irreversible y aplica a TODOS los subdominios; se decide con el hostname final (hoy el header de la API ya es conservador y solo afecta al dominio de la API) |
 
-## 6. Preguntas abiertas para decidir (comité)
+## 6. Preguntas abiertas (resueltas 2026-10-29 salvo la 2-3)
 
-1. ¿Primer despliegue real en VPS (T2/Caddy) o en AWS (T1/ALB)?
-   — *Recomendación del agente: T2, reversible a T1 sin tocar URLs modelo.*
-2. ¿Hostname final y subdominios fijos (`app. api. auth.`)? La matriz §3 se
-   resuelve con eso.
-3. ¿Dónde se construyen/deployean las imágenes (GHCR?) — afecta P1 y el runner.
-4. ¿Se decide T3 en algún momento? Si no, el soporte de URL relativa de
-   `api-base-url.ts` queda como latente documentado.
+1. ~~¿T2 o T1?~~ **Resuelto: T2** (decisión del usuario 2026-10-29,
+   [ADR-0043](../decisions/ADR-0043-production-topology-caddy-t2.md)); T1
+   queda disponible como swap de DNS porque el modelo de orígenes no cambia.
+2. ¿Hostname final y subdominios fijos (`app. api. auth.`)? La matriz §3 y
+   el `deploy/caddy/Caddyfile` se resuelven con eso. **Único bloqueante real.**
+3. ¿Dónde se construyen/publican las imágenes (GHCR?) para el runner del
+   despliegue.
+4. ~~¿Se decide T3?~~ **Rechazada** (ADR-0043): el soporte de URL relativas
+   de `api-base-url.ts` se eliminó; no queda nada latente que mantener.

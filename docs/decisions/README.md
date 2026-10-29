@@ -53,6 +53,9 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0038](ADR-0038-ingestion-gateway-deferred.md) | Ingestion stays in the API for the MVP; extraction to a dedicated gateway is deferred | Accepted (deferred extraction) | Hexagonal use case is extraction-ready; triggers defined for future split. |
 | [0039](ADR-0039-deploy-strategy-mvp.md) | Deploy strategy for the MVP — single host, published images, Cloudflare Tunnel | Accepted | Local images + compose.prod + tunnel; Floci/Terraform for IaC testing. |
 | [0040](ADR-0040-zrok-three-shares-demo.md) | Demo exposure uses three independent zrok shares (no reverse proxy) | Accepted | vozlabdemo/web, vozlabapi/api, vozlabauth/auth; proxy and Cloudflare mode removed. |
+| [0041](ADR-0041-tenant-and-workspace-administration.md) | Tenant and workspace administration (US-00) | accepted | Two-level admin model: tenant maintainer + workspace admin. |
+| [0042](ADR-0042-cross-tenant-identity-and-explicit-tenant.md) | Cross-tenant identity and explicit tenant selection | proposed | Global identity in the router with explicit tenant selection at login. |
+| [0043](ADR-0043-production-topology-caddy-t2.md) | Production topology is T2 — Caddy on a single host, three origins | Accepted | `app.`/`api.`/`auth.` mirror the zrok demo; T3 (single origin) rejected; T1 stays a DNS swap. Supersedes 0039's tunnel exposure for production. |
 
 ## How to add an ADR
 

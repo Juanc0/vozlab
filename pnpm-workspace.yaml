@@ -5,6 +5,10 @@ overrides:
   drizzle-orm: 0.45.4
 allowBuilds:
   esbuild: true
+  # B11/T2 P1: protobufjs (transitive of the API's gRPC-capable deps) runs a
+  # postinstall codegen step; pnpm >=10 refuses silently-ignored builds with
+  # ERR_PNPM_IGNORED_BUILDS when the image installs with --frozen-lockfile.
+  protobufjs: true
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.9'
   - '@turbo/darwin-arm64@2.11.9'

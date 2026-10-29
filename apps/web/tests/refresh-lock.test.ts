@@ -66,7 +66,13 @@ describe('ApiClient.serializeRefresh', () => {
       throw new Error('401');
     });
 
-    await expect(client.serializeRefresh(failing)).rejects.toThrow('401');
+    // vitest-dev/vitest#5285: the @testing-library/jest-dom/vitest extension
+    // (tests/setup.ts) breaks `rejects.toThrow(<string|regex>)` — the matcher
+    // reads an empty message. The no-arg form is unaffected, and the message
+    // is asserted on the captured rejection reason directly.
+    const reason = await client.serializeRefresh(failing).catch((error: unknown) => error);
+    expect(reason).toBeInstanceOf(Error);
+    expect((reason as Error).message).toBe('401');
 
     // A failed refresh must not poison the next one.
     const succeeding = vi.fn(async () => 'token');

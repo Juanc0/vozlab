@@ -890,6 +890,13 @@ Decided, and not to be re-opened without evidence:
 - [x] 4.6 Deploy pipeline for MVP: docker-compose.prod.yml, .env.production.example,
       migration one-shot container, Cloudflare Tunnel runbook, Floci + Terraform
       IaC skeleton, GitHub Actions deploy workflow (manual). ADR-0039.
+      Updated 2026-10-29 (ADR-0043, topology T2): prod compose re-aligned to
+      Caddy three origins (`app.`/`api.`/`auth.`), Zitadel + Caddy services
+      added, backends loopback-only, initdb dev-scripts unmounted, file
+      validity fixed (`floci` was misnested under a duplicate `volumes:`);
+      `.env.production.example` rewritten to the T2 matrix; runbook in
+      `docs/ops/production-deployment.md`. api/web images build + smoke
+      verified. Real hostname + staging CSP tuning remain the go-live steps.
 - [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
 
 ## Tracked, not scheduled

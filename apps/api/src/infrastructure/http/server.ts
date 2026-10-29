@@ -105,6 +105,7 @@ import { RevokeInvitationUseCase } from '../../application/use_cases/RevokeInvit
 import { RouterDatabaseClient } from '../persistence/RouterDatabaseClient.js';
 import { ConnectionPoolManager } from '../persistence/ConnectionPoolManager.js';
 import { UnitOfWork } from '../persistence/UnitOfWork.js';
+import { TRUST_PROXY } from './proxyTrust.js';
 
 /**
  * Composition Root: wire up adapters and use cases at application startup.
@@ -115,6 +116,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     requestIdHeader: 'x-correlation-id',
     requestIdLogLabel: 'reqId',
     genReqId: () => randomUUID(),
+    // B11/T2: same-host reverse proxy (Caddy) — `req.ip` follows
+    // X-Forwarded-For only when the peer is loopback. See proxyTrust.ts.
+    trustProxy: TRUST_PROXY,
   });
 
   // --- Hooks ---
