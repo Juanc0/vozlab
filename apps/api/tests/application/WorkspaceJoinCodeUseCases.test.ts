@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { CreateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
+import { UpdateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
 import { RotateJoinCodeUseCase } from '../../src/application/use_cases/RotateJoinCodeUseCase.js';
 import type { AuditEvent } from '../../src/domain/ports/IAuditLog.js';
-import type { WorkspaceJoinCodeRecord } from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
+import type {
+  UpdateWorkspaceJoinCodeInput,
+  WorkspaceJoinCodeRecord,
+} from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
 import { AUTH_USER, TENANT_ID, USER_ID, WORKSPACE_ID } from '../support/authFakes.js';
 import { workspaceRecord } from '../support/adminFakes.js';
 
@@ -104,6 +108,139 @@ describe('CreateWorkspaceJoinCodeUseCase', () => {
     const serialized = JSON.stringify(audit.events[0]);
     expect(serialized).not.toContain(result.code);
     expect(serialized).not.toContain('hash-1');
+  });
+});
+
+describe('UpdateWorkspaceJoinCodeUseCase (v6/TASK-04, B6)', () => {
+  /** In-memory repo: findById answers `existing`, update merges the patch. */
+  function makeCodeRepo(existing: WorkspaceJoinCodeRecord | null) {
+    const patches: Array<{ id: string; patch: UpdateWorkspaceJoinCodeInput }> = [];
+    return {
+      repo: {
+        async findById() {
+          return existing;
+        },
+        async update(id: string, patch: UpdateWorkspaceJoinCodeInput) {
+          patches.push({ id, patch });
+          if (!existing) return null;
+          return { ...existing, ...patch } as WorkspaceJoinCodeRecord;
+        },
+      },
+      patches,
+    };
+  }
+
+  function useCaseWith(existing: WorkspaceJoinCodeRecord | null) {
+    const { repo, patches } = makeCodeRepo(existing);
+    const audit = makeAudit();
+    return {
+      patches,
+      audit,
+      useCase: new UpdateWorkspaceJoinCodeUseCase(
+        repo as never,
+        adminUserRepo as never,
+        membershipRepo as never,
+        audit
+      ),
+    };
+  }
+
+  it('patches the mutable attributes and records JOIN_CODE_UPDATED', async () => {
+    const { useCase, audit, patches } = useCaseWith(codeRecord());
+
+    const updated = await useCase.execute({
+      actorUserId: USER_ID,
+      tid: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+      codeId: 'code-1',
+      patch: { label: 'meetup-2', autoApprove: true },
+    });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch).toEqual({ label: 'meetup-2', autoApprove: true });
+    expect(updated.label).toBe('meetup-2');
+    expect(updated.autoApprove).toBe(true);
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      actorId: USER_ID,
+      actorType: 'ADMIN',
+      action: 'JOIN_CODE_UPDATED',
+      targetType: 'join_code',
+      targetId: 'code-1',
+      tenantId: TENANT_ID,
+    });
+    // The hash is never part of the patch or the audit payload.
+    expect(JSON.stringify([patches, audit.events])).not.toContain('hash-1');
+  });
+
+  it('rejects a code of another workspace with NOT_FOUND (no ownership leak)', async () => {
+    const foreign = { ...codeRecord(), workspaceId: 'other-workspace' };
+    const { useCase, patches } = useCaseWith(foreign);
+
+    await expect(
+      useCase.execute({
+        actorUserId: USER_ID,
+        tid: TENANT_ID,
+        workspaceId: WORKSPACE_ID,
+        codeId: 'code-1',
+        patch: { label: 'x' },
+      })
+    ).rejects.toMatchObject({ code: 'ERR_JOIN_CODE_NOT_FOUND' });
+    expect(patches).toHaveLength(0);
+  });
+
+  it('refuses to patch a revoked code (the withdrawn secret stays withdrawn)', async () => {
+    const revoked = { ...codeRecord(), revokedAt: new Date() };
+    const { useCase, patches } = useCaseWith(revoked);
+
+    await expect(
+      useCase.execute({
+        actorUserId: USER_ID,
+        tid: TENANT_ID,
+        workspaceId: WORKSPACE_ID,
+        codeId: 'code-1',
+        patch: { autoApprove: true },
+      })
+    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    expect(patches).toHaveLength(0);
+  });
+
+  it('refuses a cap below the uses already consumed', async () => {
+    const used = { ...codeRecord(), usedCount: 3 };
+    const { useCase, patches } = useCaseWith(used);
+
+    await expect(
+      useCase.execute({
+        actorUserId: USER_ID,
+        tid: TENANT_ID,
+        workspaceId: WORKSPACE_ID,
+        codeId: 'code-1',
+        patch: { maxUses: 2 },
+      })
+    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    expect(patches).toHaveLength(0);
+
+    // The cap equal to what was consumed is legal (the code simply closes).
+    const ok = await useCase.execute({
+      actorUserId: USER_ID,
+      tid: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+      codeId: 'code-1',
+      patch: { maxUses: 3 },
+    });
+    expect(ok.maxUses).toBe(3);
+  });
+
+  it('clearing the expiry (null) is a legal patch', async () => {
+    const { useCase, patches } = useCaseWith(codeRecord());
+    await useCase.execute({
+      actorUserId: USER_ID,
+      tid: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+      codeId: 'code-1',
+      patch: { expiresAt: null },
+    });
+    expect(patches[0].patch.expiresAt).toBeNull();
   });
 });
 

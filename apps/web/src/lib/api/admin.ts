@@ -154,6 +154,30 @@ export async function listJoinCodes(
   return body.codes;
 }
 
+/**
+ * PATCH the mutable attributes of an ephemeral join code (v6/TASK-04, B6):
+ * label, expiry, cap and auto-approve. The secret itself never changes —
+ * rotating stays a revoke + create.
+ */
+export async function updateJoinCode(
+  client: ApiClient,
+  workspaceId: string,
+  codeId: string,
+  patch: {
+    label?: string | null;
+    expiresAt?: string | null;
+    maxUses?: number | null;
+    autoApprove?: boolean;
+  }
+): Promise<void> {
+  await client.requestVoid({
+    method: 'PATCH',
+    path: `/workspaces/${workspaceId}/join-codes/${codeId}`,
+    workspace: true,
+    body: patch
+  });
+}
+
 export async function revokeJoinCode(
   client: ApiClient,
   workspaceId: string,

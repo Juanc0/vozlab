@@ -15,6 +15,7 @@ import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/Comple
 import { CreateGlobalInvitationUseCase } from '../../src/application/use_cases/CreateGlobalInvitationUseCase.js';
 import { CreateInvitationUseCase } from '../../src/application/use_cases/CreateInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
+import { UpdateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
 import { CreateWorkspaceUseCase } from '../../src/application/use_cases/CreateWorkspaceUseCase.js';
 import { DiscoverWorkspacesUseCase } from '../../src/application/use_cases/DiscoverWorkspacesUseCase.js';
 import { GetMeUseCase } from '../../src/application/use_cases/GetMeUseCase.js';
@@ -169,6 +170,7 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     joinEventUseCase: unused(JoinEventUseCase.prototype),
     cleanupUseCase: unused(CleanupExpiredInvitationsUseCase.prototype),
     createWorkspaceJoinCodeUseCase: unused(CreateWorkspaceJoinCodeUseCase.prototype),
+    updateWorkspaceJoinCodeUseCase: unused(UpdateWorkspaceJoinCodeUseCase.prototype),
     createGlobalInvitationUseCase: unused(CreateGlobalInvitationUseCase.prototype),
     createWorkspaceUseCase: unused(CreateWorkspaceUseCase.prototype),
     getWorkspaceUseCase: unused(GetWorkspaceUseCase.prototype),
@@ -223,6 +225,7 @@ describe('admin routes carry dedicated per-actor rate limits (P0-5)', () => {
     { title: 'cleanup', scope: 'admin-cleanup', route: { method: 'POST', url: '/api/v1/admin/cleanup', withWorkspaceHeader: false } },
     { title: 'switch tenant', scope: 'auth-switch-tenant', route: { method: 'POST', url: '/api/v1/auth/switch-tenant', withWorkspaceHeader: false } },
     { title: 'join code create', scope: 'admin-join-code', route: { method: 'POST', url: `/api/v1/workspaces/${WS}/join-codes` } },
+    { title: 'join code update', scope: 'admin-join-code', route: { method: 'PATCH', url: `/api/v1/workspaces/${WS}/join-codes/c-1` } },
     { title: 'join code revoke', scope: 'admin-join-code', route: { method: 'DELETE', url: `/api/v1/workspaces/${WS}/join-codes/c-1` } },
     { title: 'join code rotate', scope: 'admin-join-code', route: { method: 'POST', url: `/api/v1/workspaces/${WS}/join-code/rotate` } },
     { title: 'workspace patch', scope: 'admin-workspace', route: { method: 'PATCH', url: `/api/v1/workspaces/${WS}` } },

@@ -1,6 +1,11 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { workspaceJoinCodes } from '@vozlab/database';
-import { IWorkspaceJoinCodeRepository, WorkspaceJoinCodeRecord, CreateWorkspaceJoinCodeInput } from '../../../domain/ports/IWorkspaceJoinCodeRepository.js';
+import {
+  IWorkspaceJoinCodeRepository,
+  WorkspaceJoinCodeRecord,
+  CreateWorkspaceJoinCodeInput,
+  UpdateWorkspaceJoinCodeInput,
+} from '../../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { ConnectionPoolManager } from '../ConnectionPoolManager.js';
 import { DbTransaction } from '../../../domain/ports/Transaction.js';
 import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
@@ -56,6 +61,16 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
     return rows.map((r) => this.toRecord(r));
   }
 
+  async findById(id: string, tid: string): Promise<WorkspaceJoinCodeRecord | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(workspaceJoinCodes)
+      .where(eq(workspaceJoinCodes.id, id))
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
   async findByCodeHash(codeHash: string, tid: string): Promise<WorkspaceJoinCodeRecord | null> {
     const db = await this.client(tid);
     const [row] = await db
@@ -63,6 +78,27 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
       .from(workspaceJoinCodes)
       .where(eq(workspaceJoinCodes.codeHash, codeHash))
       .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async update(
+    id: string,
+    patch: UpdateWorkspaceJoinCodeInput,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<WorkspaceJoinCodeRecord | null> {
+    const db = await this.client(tid, tx);
+    const values: Record<string, unknown> = {};
+    if (patch.label !== undefined) values.label = patch.label;
+    if (patch.expiresAt !== undefined) values.expiresAt = patch.expiresAt;
+    if (patch.maxUses !== undefined) values.maxUses = patch.maxUses;
+    if (patch.autoApprove !== undefined) values.autoApprove = patch.autoApprove;
+    if (Object.keys(values).length === 0) return this.findById(id, tid);
+    const [row] = await db
+      .update(workspaceJoinCodes)
+      .set(values)
+      .where(eq(workspaceJoinCodes.id, id))
+      .returning();
     return row ? this.toRecord(row) : null;
   }
 

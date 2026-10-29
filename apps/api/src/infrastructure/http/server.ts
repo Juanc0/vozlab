@@ -76,6 +76,7 @@ import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.j
 import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
 import { RedeemGlobalInvitationUseCase } from '../../application/use_cases/RedeemGlobalInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
+import { UpdateWorkspaceJoinCodeUseCase } from '../../application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
 import { DrizzleAuditLog } from '../persistence/repositories/DrizzleAuditLog.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
@@ -169,6 +170,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // `global_identity_events`. Wired into every onboarding write use case.
   const auditLog = new DrizzleAuditLog(poolManager, routerDb);
   const createWorkspaceJoinCodeUseCase = new CreateWorkspaceJoinCodeUseCase(
+    workspaceJoinCodeRepo,
+    userRepo,
+    membershipRepo,
+    auditLog
+  );
+  const updateWorkspaceJoinCodeUseCase = new UpdateWorkspaceJoinCodeUseCase(
     workspaceJoinCodeRepo,
     userRepo,
     membershipRepo,
@@ -520,6 +527,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     joinEventUseCase,
     cleanupUseCase,
     createWorkspaceJoinCodeUseCase,
+    updateWorkspaceJoinCodeUseCase,
     createGlobalInvitationUseCase,
     workspaceJoinCodeRepo,
     createWorkspaceUseCase,

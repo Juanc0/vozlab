@@ -98,6 +98,10 @@ export const ERROR_CODES = {
     status: 404,
     message: 'Invitation not found',
   },
+  ERR_JOIN_CODE_NOT_FOUND: {
+    status: 404,
+    message: 'Workspace join code not found',
+  },
   ERR_INVITATION_INVALID: {
     status: 400,
     message: 'The invitation is invalid, expired or has already been used',

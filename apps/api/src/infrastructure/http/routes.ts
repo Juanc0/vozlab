@@ -96,6 +96,7 @@ import { AuthController } from './controllers/AuthController.js';
 import { TenantAdminController } from './controllers/TenantAdminController.js';
 import { CleanupController } from './controllers/CleanupController.js';
 import { JoinCodeController } from './controllers/JoinCodeController.js';
+import type { UpdateWorkspaceJoinCodeUseCase } from '../../application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
 import { GlobalInvitationController } from './controllers/GlobalInvitationController.js';
 import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
 import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
@@ -150,6 +151,7 @@ export interface RouteDependencies {
   joinEventUseCase: JoinEventUseCase;
   cleanupUseCase?: CleanupExpiredInvitationsUseCase;
   createWorkspaceJoinCodeUseCase?: CreateWorkspaceJoinCodeUseCase;
+  updateWorkspaceJoinCodeUseCase?: UpdateWorkspaceJoinCodeUseCase;
   createGlobalInvitationUseCase?: CreateGlobalInvitationUseCase;
   workspaceJoinCodeRepo?: any;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
@@ -298,7 +300,7 @@ export async function registerRoutes(
     ? new CleanupController(deps.cleanupUseCase)
     : null;
   const joinCodeController = deps.createWorkspaceJoinCodeUseCase
-    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo as any)
+    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo as any, deps.updateWorkspaceJoinCodeUseCase)
     : null;
   const globalInvitationController = deps.createGlobalInvitationUseCase
     ? new GlobalInvitationController(deps.createGlobalInvitationUseCase)
@@ -484,6 +486,13 @@ export async function registerRoutes(
       '/api/v1/workspaces/:workspaceId/join-codes',
       { preHandler: workspaceAdmin },
       (req, reply) => joinCodeController.listHandler(req, reply)
+    );
+    // v6/TASK-04 (B6): patch label/expiry/cap/auto-approve. The secret is
+    // never updated; rotating stays a revoke + create.
+    app.patch(
+      '/api/v1/workspaces/:workspaceId/join-codes/:codeId',
+      { preHandler: [...workspaceAdmin, scoped('admin-join-code')] },
+      (req, reply) => joinCodeController.updateHandler(req, reply)
     );
     app.delete(
       '/api/v1/workspaces/:workspaceId/join-codes/:codeId',

@@ -43,7 +43,8 @@ export type DomainErrorCode =
   | 'ERR_JOIN_REQUEST_NOT_PENDING'
   | 'ERR_INVITATION_NOT_FOUND'
   | 'ERR_INVITATION_INVALID'
-  | 'ERR_INVITATION_NOT_PENDING';
+  | 'ERR_INVITATION_NOT_PENDING'
+  | 'ERR_JOIN_CODE_NOT_FOUND';
 
 export class DomainError extends Error {
   constructor(
