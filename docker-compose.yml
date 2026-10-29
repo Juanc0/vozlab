@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     build:
@@ -262,18 +260,6 @@ services:
     networks:
       - vozlab-net
 
-volumes:
-  postgres_data:
-  redis_data:
-  ollama_data:
-  zitadel_db_data:
-  prometheus_data:
-  grafana_data:
-  tempo_data:
-
-networks:
-  vozlab-net:
-    driver: bridge
   # --- Application (profile: app) -----------------------------------------
   api:
     build:
@@ -285,16 +271,11 @@ networks:
       ROUTER_DB_HOST: postgres
       ROUTER_DB_PORT: 5432
       ROUTER_DB_NAME: vozlab_router
-      ROUTER_DB_USER: postgres
-      ROUTER_DB_PASSWORD: postgres
       TENANT_DB_HOST: postgres
       TENANT_DB_PORT: 5432
       TENANT_DB_NAME: vozlab_tenant_dev
-      TENANT_DB_USER: postgres
-      TENANT_DB_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: dev-secret-change-me-please-32chars-minimum
       WEB_ORIGIN: http://localhost:5173
     ports:
       - "3000:3000"
@@ -318,3 +299,17 @@ networks:
       - api
     networks:
       - vozlab-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  zitadel_db_data:
+  prometheus_data:
+  grafana_data:
+  tempo_data:
+
+networks:
+  vozlab-net:
+    driver: bridge
+

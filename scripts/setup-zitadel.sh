@@ -43,6 +43,13 @@
 #   ZITADEL_TEST_PASSWORD    Test user password        (default Testpass1!)
 #   ZITADEL_TEST_EMAIL       Test user email           (default testuser@example.org)
 #   TENANT_SLUG              Tenant to update          (default sabana)
+#   Social logins (optional, skipped when unset). Create an OAuth client at the
+#   provider first and register its redirect URI
+#   $ZITADEL_PUBLIC_URL/ui/login/login/externalidp/callback (B9):
+#   ZITADEL_GOOGLE_CLIENT_ID / ZITADEL_GOOGLE_CLIENT_SECRET     (Google Cloud)
+#   ZITADEL_GOOGLE_ISSUER      (default https://accounts.google.com)
+#   ZITADEL_MICROSOFT_CLIENT_ID / ZITADEL_MICROSOFT_CLIENT_SECRET (Azure Entra)
+#   ZITADEL_MICROSOFT_ISSUER   (default https://login.microsoftonline.com/common/v2.0)
 
 set -euo pipefail
 
@@ -84,7 +91,7 @@ fail() {
 }
 
 usage() {
-  sed -n '2,41p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,52p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 need() {
@@ -422,6 +429,111 @@ print(json.dumps({
   USER_ID=$(printf '%s' "$USER_RESP" | json_get 'userId')
   [ -n "$USER_ID" ] || fail "user creation returned no userId"
   log "7. Created test user '$TEST_USER' ($USER_ID)."
+fi
+
+# 8. Social identity providers (optional).
+#    Zitadel v4 removed the built-in Google/Microsoft provider types: a social
+#    login is a plain OIDC IdP discovered from its issuer. Google and Microsoft
+#    expose standard OIDC discovery, so they are configured with their issuer
+#    URLs below. The section is skipped when no credentials are set; connect
+#    real Google/Microsoft app credentials (see docs/ops/zitadel-social-logins.md)
+#    and rerun the script to provision them.
+#    Once an IdP is linked and the login policy allows it, Zitadel auto-creates
+#    a human user on first external login (autoRegister on the IdP config).
+GOOGLE_CLIENT_ID="${ZITADEL_GOOGLE_CLIENT_ID:-}"
+GOOGLE_CLIENT_SECRET="${ZITADEL_GOOGLE_CLIENT_SECRET:-}"
+MICROSOFT_CLIENT_ID="${ZITADEL_MICROSOFT_CLIENT_ID:-}"
+MICROSOFT_CLIENT_SECRET="${ZITADEL_MICROSOFT_CLIENT_SECRET:-}"
+GOOGLE_ISSUER="${ZITADEL_GOOGLE_ISSUER:-https://accounts.google.com}"
+# common = personal (MSA) and Entra accounts; use .../consumers/v2.0 for personal only.
+MICROSOFT_ISSUER="${ZITADEL_MICROSOFT_ISSUER:-https://login.microsoftonline.com/common/v2.0}"
+
+# ensure_login_policy: the org has no login policy by default and linking an
+# IdP fails with "Login Policy not found" until one exists. Creating one from
+# the instance defaults keeps password login working alongside IdP logins.
+ensure_login_policy() {
+  local POLICY_OWNER
+  POLICY_OWNER=$(api GET /management/v1/policies/login | json_get 'policy.details.resourceOwner')
+  if [ "$POLICY_OWNER" = "$ORG_ID" ]; then
+    return 0
+  fi
+  local CREATE_POLICY='{"allowUsernameLogin":true,"allowIdpLogin":true,"allowRegistration":true,"passwordlessType":"PASSWORDLESS_TYPE_ALLOWED"}'
+  api POST /management/v1/policies/login "$CREATE_POLICY" >/dev/null ||
+    fail "could not create the organization login policy."
+  log "   Created organization login policy (username + external IdP + registration allowed)."
+}
+
+# setup_idp NAME ISSUER CLIENT_ID CLIENT_SECRET -> prints/links the provider,
+# idempotent: an existing provider with the same name is updated, not duplicated.
+setup_idp() {
+  local name="$1" issuer="$2" client_id="$3" client_secret="$4"
+  local search idp_id body
+  search=$(api POST /management/v1/idps/_search '{}') ||
+    fail "could not list identity providers."
+  idp_id=$(printf '%s' "$search" | python3 -c '
+import json, sys
+for idp in json.load(sys.stdin).get("result") or []:
+    if (idp.get("name") or "").lower() == sys.argv[1].lower():
+        print(idp["id"])
+        break
+' "$name")
+  if [ -n "$idp_id" ]; then
+    body=$(python3 -c '
+import json, sys
+print(json.dumps({
+    "clientId": sys.argv[1],
+    "clientSecret": sys.argv[2],
+    "issuer": sys.argv[3],
+    "scopes": ["openid", "profile", "email"],
+}))
+' "$client_id" "$client_secret" "$issuer")
+    api_no_changes_ok PUT "/management/v1/idps/$idp_id/oidc_config" "$body" >/dev/null ||
+      fail "could not update the '$name' identity provider."
+    log "   Updated existing $name IdP ($idp_id)."
+  else
+    body=$(python3 -c '
+import json, sys
+print(json.dumps({
+    "name": sys.argv[1],
+    "clientId": sys.argv[2],
+    "clientSecret": sys.argv[3],
+    "issuer": sys.argv[4],
+    "scopes": ["openid", "profile", "email"],
+    "autoRegister": True,
+    "displayNameMapping": "OIDC_MAPPING_FIELD_PREFERRED_USERNAME",
+    "usernameMapping": "OIDC_MAPPING_FIELD_EMAIL",
+}))
+' "$name" "$client_id" "$client_secret" "$issuer")
+    idp_id=$(api POST /management/v1/idps/oidc "$body" | json_get 'idpId')
+    [ -n "$idp_id" ] || fail "creating the $name IdP returned no idpId."
+    log "   Created $name IdP ($idp_id)."
+  fi
+  ensure_login_policy
+  # Linking an already-linked IdP errors; verify membership instead.
+  api POST /management/v1/policies/login/idps \
+    "$(python3 -c 'import json,sys;print(json.dumps({"idpId":sys.argv[1],"ownerType":"IDP_OWNER_TYPE_ORG"}))' "$idp_id")" \
+    >/dev/null 2>&1 || true
+  if ! api POST /management/v1/policies/login/idps/_search '{}' | grep -q "$idp_id"; then
+    fail "the $name IdP ($idp_id) is not linked to the login policy."
+  fi
+  log "   $name IdP linked to the login policy."
+}
+
+if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+  log "8. Provisioning Google social login."
+  setup_idp "Google" "$GOOGLE_ISSUER" "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_SECRET"
+else
+  log "8. Google social login skipped (set ZITADEL_GOOGLE_CLIENT_ID / _CLIENT_SECRET)."
+fi
+if [ -n "$MICROSOFT_CLIENT_ID" ] && [ -n "$MICROSOFT_CLIENT_SECRET" ]; then
+  log "   Provisioning Microsoft social login."
+  setup_idp "Microsoft" "$MICROSOFT_ISSUER" "$MICROSOFT_CLIENT_ID" "$MICROSOFT_CLIENT_SECRET"
+else
+  log "   Microsoft social login skipped (set ZITADEL_MICROSOFT_CLIENT_ID / _CLIENT_SECRET)."
+fi
+if [ -n "$GOOGLE_CLIENT_ID$MICROSOFT_CLIENT_ID" ]; then
+  log "   Register the Zitadel redirect URI at the provider:"
+  log "   $ZITADEL_PUBLIC_URL/ui/login/login/externalidp/callback"
 fi
 
 cat <<EOF
