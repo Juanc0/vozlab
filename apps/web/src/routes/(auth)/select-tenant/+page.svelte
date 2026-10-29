@@ -1,19 +1,17 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { getContext } from 'svelte';
-  import type { SessionState } from '$lib/state/session.svelte';
-  import { getApiClient } from '$lib/state/context';
-  import { selectTenant } from '$lib/api/admin';
-  import { getLocaleState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState } from '$lib/state/context';
+  import { listLinkedTenants, selectTenant, type LinkedTenantDto } from '$lib/api/admin';
+  import { refreshSession } from '$lib/api/auth';
 
   const locale = getLocaleState();
   const t = locale.t;
-  const session = getContext<SessionState>('session');
+  const session = getSessionState();
   const api = getApiClient();
 
   const gid = $derived(page.url.searchParams.get('gid') ?? '');
-  let tenants = $state<Array<{ id: string; slug: string; status: string }>>([]);
+  let tenants = $state<LinkedTenantDto[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let selecting = $state(false);
@@ -25,12 +23,7 @@
     }
     (async () => {
       try {
-        const body = await api.request<{ tenants: Array<{ id: string; slug: string; status: string }> }>({
-          method: 'GET',
-          path: `/auth/resolve-tenants?globalUserId=${encodeURIComponent(gid)}`,
-          workspace: false
-        });
-        tenants = body.tenants ?? [];
+        tenants = await listLinkedTenants(api, gid);
       } catch (e) {
         error = (e as Error).message;
       } finally {
@@ -43,14 +36,11 @@
     selecting = true;
     error = null;
     try {
-      await selectTenant(api, tenantId);
-      // cookie set; refresh to get access token
-      const body = await api.request<{ accessToken: string; expiresAt: string; user: any }>({
-        method: 'POST',
-        path: '/auth/refresh',
-        workspace: false
-      });
-      session.setSession({ accessToken: body.accessToken, expiresAt: body.expiresAt, user: body.user });
+      // The API answers by setting the refresh cookie for the chosen tenant.
+      await selectTenant(api, gid, tenantId);
+      // The cookie is shared by every tab: trade it for the access token
+      // through the serialized refresh, exactly like the restore does.
+      session.setSession(await refreshSession(api));
       goto('/');
     } catch (e) {
       error = (e as Error).message;

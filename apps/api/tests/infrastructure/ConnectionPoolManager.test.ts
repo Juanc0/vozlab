@@ -41,6 +41,7 @@ describe('ConnectionPoolManager', () => {
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
     async linkGlobalTenant() { return undefined; },
+    async findGlobalIdentityForTenantUser() { return null; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);
@@ -78,6 +79,7 @@ describe('ConnectionPoolManager', () => {
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
     async linkGlobalTenant() { return undefined; },
+    async findGlobalIdentityForTenantUser() { return null; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);
@@ -107,6 +109,7 @@ describe('ConnectionPoolManager', () => {
     async findTenantsByGlobalUser() { return []; },
     async findGlobalTenantLink() { return null; },
     async linkGlobalTenant() { return undefined; },
+    async findGlobalIdentityForTenantUser() { return null; },
     };
 
     const manager = new ConnectionPoolManager(fakeRouterDb);

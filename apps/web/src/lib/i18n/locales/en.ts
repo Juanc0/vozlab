@@ -165,6 +165,13 @@ export const en: Dictionary<typeof es> = {
     noneSelected: 'No workspace selected.'
   },
 
+  /** The institution switcher (tenant change without re-authentication). */
+  tenant: {
+    label: 'Institution',
+    switching: 'Switching institution…',
+    switchFailed: 'Could not switch institution.'
+  },
+
   locale: {
     label: 'Language',
     es: 'Español',

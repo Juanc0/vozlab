@@ -123,7 +123,12 @@ export function makeGlobalUserRepository(): {
 }
 
 export function makeRouterDb(
-  options: { tenant?: typeof TENANT | null; byId?: typeof TENANT | null } = {}
+  options: {
+    tenant?: typeof TENANT | null;
+    byId?: typeof TENANT | null;
+    /** Value returned by `findGlobalIdentityForTenantUser`. */
+    globalUserId?: string;
+  } = {}
 ): { routerDb: IRouterDatabase; calls: string[] } {
   const tenant = options.tenant === undefined ? TENANT : options.tenant;
   const byId = options.byId === undefined ? tenant : options.byId;
@@ -155,6 +160,10 @@ export function makeRouterDb(
     },
     async linkGlobalTenant(globalUserId, tenantId, tenantUserId, status) {
       calls.push(`linkGlobalTenant:${globalUserId}:${tenantId}:${tenantUserId}:${status}`);
+    },
+    async findGlobalIdentityForTenantUser(tenantId, tenantUserId) {
+      calls.push(`findGlobalIdentityForTenantUser:${tenantId}:${tenantUserId}`);
+      return options.globalUserId ?? null;
     },
   };
 

@@ -385,6 +385,16 @@ export async function registerRoutes(
     (req, reply) => authController.selectTenant(req, reply)
   );
 
+  // v6/TASK-01: the PWA needs the tenant list for BOTH the login-time
+  // selector (no session yet — the globalUserId arrives via the callback
+  // redirect) and the authenticated switcher. Public + rate-limited, exactly
+  // like `/auth/select-tenant`; the globalUserId is the only secret.
+  app.get(
+    '/api/v1/auth/resolve-tenants',
+    { preHandler: [publicAuthLimit] },
+    (req, reply) => authController.resolveTenants(req, reply)
+  );
+
   // --- Protected chain ---
   const auth = authGuard(tokenBlacklist);
   const tenant = async (req: FastifyRequest, reply: FastifyReply) => {

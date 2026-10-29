@@ -78,8 +78,8 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 - Cleanup: invitaciones expiradas OK; guests 0.
 
 ### 2.3 Web (SvelteKit)
-- Hecho: estado, route groups, canvas, governance, offline, E2E, admin UI completa. Direct add envía `handle` (B8 cerrado con P0-3).
-- Pendiente: consumir `switch-tenant` en el selector (hoy cambia por re-auth o select-tenant); E2E flujos admin completos (códigos/invitaciones globales/roles); offline shell rutas admin.
+- Hecho: estado, route groups, canvas, governance, offline, E2E, admin UI completa. Direct add envía `handle` (B8 cerrado con P0-3). **Selector de tenant cerrado (v6/TASK-01, 2026-10-28)**: `/auth/me` expone `globalUserId` + `tenantId` (nuevo puerto `findGlobalIdentityForTenantUser` en el router); `TenantSwitcher` en la barra lateral cambia de institución sin re-auth (`switch-tenant` → `refresh` serializado → recarga de membresías); la página `select-tenant` del primer login ahora funciona (antes pedía el contexto con clave equivocada y enviaba `{tenantId}` sin `globalUserId`).
+- Pendiente: E2E flujos admin completos (códigos/invitaciones globales/roles); offline shell rutas admin.
 
 ### 2.4 DevOps / Seed
 - Hecho: docker-compose (db/redis/ollama, perfiles idp/observability/app), headers, seed básico.
@@ -107,7 +107,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (314 tests AP
 
 | Task | Título | Real estado | Queda por hacer |
 |------|--------|-------------|-----------------|
-| v6-01 | Tenant explícito en login + selector/switch | 🟡 Parcial | Backend cerrado (switch-tenant, commit 22c5481); queda que el selector web consuma `switch-tenant` sin re-auth |
+| v6-01 | Tenant explícito en login + selector/switch | ✅ Hecho | Nada (backend `22c5481` + selector web `TenantSwitcher` verificado E2E contra Zitadel 2026-10-28) |
 | v6-02 | Guards GUEST + kind enforcement | ✅ Hecho | Nada |
 | v6-03 | Alta directa por handle/identidad global | ✅ Hecho | Nada (backend + web + i18n, commit 85ceb64) |
 | v6-04 | Códigos efímeros port/adapter/use cases | 🟡 Parcial | `Update` use case + endpoint PUT |
@@ -170,6 +170,7 @@ Flujo completo con navegador automatizado contra el entorno dev real (`vozlabdem
 3. Primera intentos fallaron y revelaron B13 (journal sin 0009; tenant DB a 0014; crash doble-send). Tras los fixes `f0890e9`/`1c77d29` + `db:migrate:tenant`: **login completado**.
 4. Evidencia en DB: `global_users` upsertado (`testuser@example.org`, verificado), `global_identity_tenants` con link ACTIVE (`84e38267… → c3fa967b…`, escrito por `linkGlobalTenant` de P0-2 en el login), `auth.users` JIT con `global_identity_id`, refresh token emitido; la PWA muestra "Sesión iniciada como Test User" y el empty-state correcto de "sin workspace" (sin membresía, por diseño).
 5. Ninguna membresía se crea en login JIT (US-00 lo prohíbe); el invite entra por invitación/código/solicitud — flujos E/F/B probados unitariamente, pendientes de E2E (P2/TASK-10).
+6. **Selector de tenants E2E (2026-10-28)**: con la identidad `testuser` vinculada a dos instituciones (`sabana` + `local`), el callback redirige a `/select-tenant?gid=…` (la ruta `resolve-tenants` antes no estaba registrada y el page usaba claves de contexto/DTO incorrectas — ambas corregidas), la elección crea la sesión, y el `TenantSwitcher` de la barra lateral cambia `sabana → local → sabana` con `switch-tenant(200) → refresh(200) → me(200)` sin re-autenticar y sin un solo `ERR_` en el log de la API. Prueba unitaria web: 4 casos en `tenant-switcher.test.ts`.
 
 Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev` sin supervisor si se prueban paths de error (el crash histórico mataba el listener; zrok devolvía 502). Con el fix, la API sobrevive respuestas 401/422 repetidas.
 

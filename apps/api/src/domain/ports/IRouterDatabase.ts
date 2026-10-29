@@ -76,4 +76,14 @@ export interface IRouterDatabase {
     tenantUserId: string,
     status: 'ACTIVE' | 'SUSPENDED' | 'LEFT'
   ): Promise<void>;
+
+  /**
+   * Reverse of `findGlobalTenantLink`: the global identity bound to a tenant
+   * user. Used by `GET /auth/me` to expose the `globalUserId` the PWA needs
+   * for the tenant selector (`switch-tenant`). `null` when there is no link.
+   */
+  findGlobalIdentityForTenantUser(
+    tenantId: string,
+    tenantUserId: string
+  ): Promise<string | null>;
 }

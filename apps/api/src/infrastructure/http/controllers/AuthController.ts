@@ -259,6 +259,8 @@ export class AuthController {
       const body: AuthMeDto = {
         ...toAuthUserDto(result.user),
         workspaces: result.workspaces,
+        globalUserId: result.globalUserId,
+        tenantId: tid,
       };
       return reply.status(200).send(body);
     } catch (error) {

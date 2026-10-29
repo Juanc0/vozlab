@@ -325,7 +325,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     routerDb,
     refreshTokenRepo
   );
-  const getMeUseCase = new GetMeUseCase(userRepo);
+  const getMeUseCase = new GetMeUseCase(userRepo, routerDb);
   const joinEventUseCase = new JoinEventUseCase(
     routerDb,
     routerDb,

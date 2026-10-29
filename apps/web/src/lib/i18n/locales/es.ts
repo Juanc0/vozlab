@@ -180,6 +180,13 @@ export const es = {
     noneSelected: 'No hay ningún espacio de trabajo seleccionado.'
   },
 
+  /** El selector de institución (cambio de tenant sin re-autenticar). */
+  tenant: {
+    label: 'Institución',
+    switching: 'Cambiando de institución…',
+    switchFailed: 'No se pudo cambiar de institución.'
+  },
+
   /** The selector of the language. */
   locale: {
     label: 'Idioma',

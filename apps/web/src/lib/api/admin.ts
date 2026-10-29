@@ -1,12 +1,64 @@
 import type { ApiClient } from './client';
 
-export async function selectTenant(client: ApiClient, tenantId: string): Promise<{ accessToken: string }> {
-  return client.request<{ accessToken: string }>({
+/** A tenant linked to a global identity (`GET /auth/resolve-tenants`). */
+export interface LinkedTenantDto {
+  id: string;
+  slug: string;
+  status: string;
+}
+
+/**
+ * First tenant choice right after the OIDC login (no session yet): the
+ * callback redirected the browser to the selector with the `globalUserId`.
+ * The API answers by setting the refresh cookie; the caller must then
+ * `refreshSession` to pick the access token up.
+ */
+export async function selectTenant(
+  client: ApiClient,
+  globalUserId: string,
+  tenantId: string
+): Promise<void> {
+  await client.request<{ accessToken: string }>({
     method: 'POST',
     path: '/auth/select-tenant',
     workspace: false,
-    body: { tenantId }
+    body: { globalUserId, tenantId }
   });
+}
+
+/**
+ * Tenant change of an ACTIVE session (v6/TASK-01): Bearer-protected, it
+ * validates the link and rotates the refresh cookie for the destination
+ * tenant. No re-authentication. The caller must then `refreshSession` to
+ * trade the new cookie for an access token.
+ */
+export async function switchTenant(
+  client: ApiClient,
+  globalUserId: string,
+  tenantId: string
+): Promise<void> {
+  await client.request<{ tenantId: string }>({
+    method: 'POST',
+    path: '/auth/switch-tenant',
+    workspace: false,
+    body: { globalUserId, tenantId }
+  });
+}
+
+/** The tenants linked to a global identity — the options of the selector. */
+export async function listLinkedTenants(
+  client: ApiClient,
+  globalUserId: string
+): Promise<LinkedTenantDto[]> {
+  const body = await client.request<{ tenants: LinkedTenantDto[] }>({
+    method: 'GET',
+    path: '/auth/resolve-tenants',
+    // Public route: the selector of the FIRST login has no session yet.
+    auth: 'none',
+    workspace: false,
+    query: { globalUserId }
+  });
+  return body.tenants;
 }
 import type {
   AdminMemberDto,

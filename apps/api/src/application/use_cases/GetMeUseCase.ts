@@ -4,6 +4,7 @@ import {
   IUserRepository,
   UserWorkspace,
 } from '../../domain/ports/IUserRepository.js';
+import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 
 export interface GetMeInput {
   userId: string;
@@ -13,6 +14,12 @@ export interface GetMeInput {
 export interface GetMeResult {
   user: AuthUser;
   workspaces: UserWorkspace[];
+  /**
+   * Router-DB global identity linked to this tenant user (v6/TASK-01).
+   * `null` when no link exists (legacy rows predating the login-time link).
+   * The PWA needs it to render the tenant switcher (`switch-tenant`).
+   */
+  globalUserId: string | null;
 }
 
 /**
@@ -21,7 +28,11 @@ export interface GetMeResult {
  * to one workspace.
  */
 export class GetMeUseCase {
-  constructor(private readonly userRepo: IUserRepository) {}
+  constructor(
+    private readonly userRepo: IUserRepository,
+    /** Optional: without it `globalUserId` is always `null`. */
+    private readonly routerDb?: IRouterDatabase
+  ) {}
 
   async execute(input: GetMeInput): Promise<GetMeResult> {
     const user = await this.userRepo.findById(input.userId, input.tid);
@@ -34,6 +45,10 @@ export class GetMeUseCase {
       input.tid
     );
 
-    return { user, workspaces };
+    const globalUserId = this.routerDb
+      ? await this.routerDb.findGlobalIdentityForTenantUser(input.tid, user.id)
+      : null;
+
+    return { user, workspaces, globalUserId };
   }
 }

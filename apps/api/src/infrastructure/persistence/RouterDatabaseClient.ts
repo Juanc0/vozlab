@@ -467,6 +467,35 @@ export class RouterDatabaseClient
     }
   }
 
+  /**
+   * Resolve the global identity linked to a tenant user (v6/TASK-01: the PWA
+   * needs its `globalUserId` to render the tenant switcher).
+   */
+  async findGlobalIdentityForTenantUser(
+    tenantId: string,
+    tenantUserId: string
+  ): Promise<string | null> {
+    try {
+      const [row] = await this.db
+        .select({ globalIdentityId: globalIdentityTenants.globalIdentityId })
+        .from(globalIdentityTenants)
+        .where(
+          and(
+            eq(globalIdentityTenants.tenantId, tenantId),
+            eq(globalIdentityTenants.tenantUserId, tenantUserId)
+          )
+        )
+        .limit(1);
+      return row?.globalIdentityId ?? null;
+    } catch (err) {
+      log.error(
+        { err, tenantId, tenantUserId },
+        'failed to resolve global identity for tenant user'
+      );
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
   // --- IGlobalIdentityEventRepository ---
 
   /** Append a cross-tenant identity event. Never update/delete from code. */

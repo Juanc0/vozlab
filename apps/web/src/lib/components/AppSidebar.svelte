@@ -37,6 +37,7 @@
   } from '$lib/state/context';
   import LocaleSelector from './LocaleSelector.svelte';
   import RailMenu from './RailMenu.svelte';
+  import TenantSwitcher from './TenantSwitcher.svelte';
   import WorkspaceSelector from './WorkspaceSelector.svelte';
 
   /** The id of the navigation — the toggle of the rail points at it. */
@@ -219,6 +220,13 @@
       {t('sidebar.signedInAs')}
       <span class="block truncate text-body font-medium text-text">{displayName}</span>
     </p>
+
+    <!--
+      The institution switcher: when the identity is linked to more than one
+      ACTIVE tenant, the session moves without re-authenticating
+      (v6/TASK-01). Hidden when there is nothing to switch.
+    -->
+    <TenantSwitcher />
 
     <button
       type="button"

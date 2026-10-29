@@ -24,6 +24,19 @@ export class SessionState {
   /** The authenticated caller. `null` when there is no session. */
   user = $state<AuthUserDto | null>(null);
 
+  /**
+   * Router-DB global identity of the signed-in user (`GET /auth/me`).
+   * `null` until the memberships are loaded, or when the user has no link.
+   * The tenant switcher needs it for `POST /auth/switch-tenant` (v6/TASK-01).
+   */
+  globalUserId = $state<string | null>(null);
+
+  /**
+   * Internal UUID of the tenant the active session belongs to (`GET
+   * /auth/me`). The tenant switcher marks the current option with it.
+   */
+  currentTenantId = $state<string | null>(null);
+
   /** `true` while an access token is held. */
   isAuthenticated = $derived(this.accessToken !== null);
 
@@ -44,5 +57,7 @@ export class SessionState {
     this.accessToken = null;
     this.expiresAt = null;
     this.user = null;
+    this.globalUserId = null;
+    this.currentTenantId = null;
   }
 }

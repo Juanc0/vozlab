@@ -131,6 +131,11 @@ export async function loadMemberships(deps: SessionRestoreDeps): Promise<Session
     });
   }
 
+  // The tenant switcher needs the router identity the API resolved for this
+  // tenant user (v6/TASK-01: the loop is closed with `POST /auth/switch-tenant`).
+  session.globalUserId = me.globalUserId;
+  session.currentTenantId = me.tenantId;
+
   workspace.hydrate(me.workspaces);
 
   if (me.workspaces.length === 0) {
