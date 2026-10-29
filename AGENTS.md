@@ -69,6 +69,11 @@ they disagree with the code, **the code wins** — fix the doc.
   `db:migrate[...]`, `db:push[...]`, `db:seed:dev`,
   `db:mint-token -- --as maintainer|moderator|member|agent`,
   `db:grant-mcp-reader` (dev-only read-only role for the Postgres MCP).
+- **Postgres MCP** (`opencode.json` → `mcp.servers.postgres`): `crystaldba/postgres-mcp`
+  in restricted mode as `mcp_reader`, pointed at `vozlab_tenant_dev` only. Read-only by
+  design; `vozlab_router` and `auth.refresh_tokens` are unreachable. On a new machine or
+  fresh clone, follow the 4 checks in `docs/agent-tooling.md` § *Verifying the setup*.
+  Never point it at a production tenant.
 - `docker compose up -d --build` — Postgres 18 (`vozlab/postgres:18-age-pgvector`),
   Redis 7, Ollama. Init SQL runs only on a fresh volume.
 - `docker compose --profile idp up -d` — adds Zitadel (identity broker, replaces

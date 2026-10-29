@@ -137,6 +137,51 @@ The password is a development credential, in the same category as the
 contains the data of every tenant hosted there. Point it at a development
 database, never at a production tenant.
 
+#### Verifying the setup (from a fresh clone or machine)
+
+Run these four checks in order. All must pass before trusting the server;
+the exact same assertions were verified on 2026-10-28.
+
+```bash
+# 0. Prerequisites: the dev stack is up and the role exists
+docker ps --format '{{.Names}}' | grep -q vozlab-postgres || \
+  echo "FATAL: docker compose up -d postgres redis first"
+docker exec -e PGPASSWORD=vozlab_mcp_local vozlab-postgres \
+  psql -U mcp_reader -h 127.0.0.1 -d vozlab_tenant_dev -c "SELECT 1;" >/dev/null 2>&1 || \
+  pnpm --filter @vozlab/database db:grant-mcp-reader
+
+# 1. The session is on the tenant DB, as the reader role
+opencode mcp list   # postgres should be connected
+# then, through the MCP itself:
+#   SELECT current_database(), current_user;
+#   -> vozlab_tenant_dev | mcp_reader
+
+# 2. Denied table: permission denied (engine-level, not just the validator)
+#   SELECT count(*) FROM auth.refresh_tokens;   -> permission denied
+
+# 3. Engine-level read-only and router isolation (bypasses the MCP validator)
+docker exec -e PGPASSWORD=vozlab_mcp_local vozlab-postgres psql \
+  -U mcp_reader -h 127.0.0.1 -d vozlab_tenant_dev \
+  -c "INSERT INTO public.nodes (id) VALUES (gen_random_uuid());"
+#   -> ERROR: cannot execute INSERT in a read-only transaction
+docker exec -e PGPASSWORD=vozlab_mcp_local vozlab-postgres psql \
+  -U mcp_reader -h 127.0.0.1 -d vozlab_router -c "SELECT 1;"
+#   -> FATAL: permission denied for database "vozlab_router"
+```
+
+Defense layers, outermost first:
+
+1. `--access-mode=restricted` — the MCP validator refuses DDL/DML outright
+   ("Error validating query"), so most mistakes never reach the server.
+2. `default_transaction_read_only` — even a query that slips past the
+   validator is rejected by the engine.
+3. Privileges — `SELECT` only, `auth.refresh_tokens` revoked, no `CONNECT`
+   on `vozlab_router` (it holds the tenant connection passwords).
+
+When an agent calls the MCP from code mode, the tools live under
+`tools.postgres` (`execute_sql`, `list_objects`, `get_object_details`,
+`analyze_db_health`, …). They are **not** callable as top-level tool names.
+
 ### The GitHub server
 
 It is a remote server using a personal access token. The token is read from
