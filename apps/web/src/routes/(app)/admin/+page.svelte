@@ -183,7 +183,11 @@
     runningCleanup = true;
     cleanupResult = null;
     try {
-      const days = cleanupDays.trim() === '' ? undefined : Number(cleanupDays);
+      // The `type="number"` binding hands back a number as soon as the
+      // operator edits the field (and the initial `'30'` is a string): read
+      // both shapes through `String` or the sweep throws on `.trim`.
+      const daysText = String(cleanupDays ?? '').trim();
+      const days = daysText === '' ? undefined : Number(daysText);
       const res = await admin.runCleanup(api, days);
       cleanupResult = t('admin.cleanupResult', {
         invitations: res.expiredInvitations,
