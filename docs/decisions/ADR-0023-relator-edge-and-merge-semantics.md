@@ -103,7 +103,7 @@ merge is silently lost either — it is in the log.
 
 ## Links
 
-- [Relator spec](../spec/relator.md) — the flow this decision serves.
+- [Relator spec](../components/relator.md) — the flow this decision serves.
 - [ADR-0022 neighbour lookup](ADR-0022-relator-neighbour-lookup.md) — where the
   candidate set comes from.
 - [ADR-0009 API-owned source registry](ADR-0009-api-owned-source-registry.md) —

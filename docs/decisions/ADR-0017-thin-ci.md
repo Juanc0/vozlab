@@ -36,10 +36,10 @@ The full Phase 4 pipeline remains planned: integration tests with an ephemeral d
 ## Links
 
 - `.github/workflows/ci.yml`
-- `docs/spec/ci-cd.md`
+- `docs/components/ci-cd.md`
 - `package.json` (root scripts)
 - `turbo.json` (`build`, `type-check`, `test`)
 - `docs/archive/spec-v1/devops/devops_01_deployment_ci_cd_docker.md` §2
 - `docs/archive/spec-v1/devops/devops_03_qa_and_testing_plan.md`
 - `docs/archive/history/EXECUTION_PLAN-2026-10-19.md` -> Phase 4
-- `.claude/tasks/TASK-45_test-task-wiring.md`
+- `docs/archive/tasks/TASK-45_test-task-wiring.md`

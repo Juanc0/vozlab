@@ -58,7 +58,7 @@ institutional login that has no membership yet.
   `ERR_OIDC_EXCHANGE_FAILED`; unverified email → `ERR_EMAIL_NOT_VERIFIED`.
 - Event join returns `ERR_EVENT_EXPIRED` for unknown/revoked/expired codes and
   `ERR_EVENT_FULL` at capacity. The QR contains only the code; see the
-  [runbook](runbook-dev.md) for `db:event-code`.
+  [runbook](ops/runbook-dev.md) for `db:event-code`.
 - Refresh reuse revokes the whole family and returns
   `401 ERR_REFRESH_TOKEN_INVALID`. Agents never receive a refresh session.
 - The full contract is in [auth-and-tenancy.md](auth-and-tenancy.md).

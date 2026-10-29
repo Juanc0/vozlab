@@ -41,4 +41,4 @@ The real auth flow is deferred to its own milestone: `/api/v1/auth/login`, `/aut
 - `apps/api/src/domain/ports/IRouterDatabase.ts`
 - `docs/archive/spec-v1/system/system_04_authentication_and_multitenancy.md` §1.1, §3
 - `docs/archive/history/EXECUTION_PLAN-2026-10-19.md` -> Deferred (auth flow endpoints)
-- `.claude/tasks/TASK-19_dev-identity-bootstrap.md`
+- `docs/archive/tasks/TASK-19_dev-identity-bootstrap.md`

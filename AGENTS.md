@@ -20,18 +20,19 @@ they disagree with the code, **the code wins** — fix the doc.
 - `apps/api` — the API. Hexagonal: `domain/` (pure),
   `application/use_cases/`, `infrastructure/{http,persistence,events}/`, `shared/`.
 - `apps/web` — SvelteKit 5 PWA (Svelte 5 runes, Tailwind 4, adapter-node).
-  Phase 3: only the 3.1 scaffold exists — it builds, serves SSR and ships a
-  manifest and a service worker. The state layer, the route groups, the
-  Cytoscape canvas, the governance UI, the offline shell and the E2E suite
-  are 3.2–3.7. `docs/spec/web-pwa.md` is the normative spec.
-- `apps/worker-consolidador` — empty scaffold; not in the build yet.
+  Phase 3 is complete: state layer, route groups, Cytoscape canvas, governance
+  UI, admin UI (tenancy v5/v6), tenant selector, offline shell, i18n and a
+  Playwright E2E suite. `docs/components/web-pwa.md` is the living component
+  doc.
+- `apps/worker-consolidador` — **does not exist yet** (FR-20 deferred; `docs/components/consolidator.md` is the design).
 - `apps/worker-embedder` — Python 3.12/uv worker: consumes `NODE_CREATED`,
   calls Ollama (`nomic-embed-text`, 768 dims) and writes the vector through
   the agent-only `PUT /api/v1/nodes/:id/embedding` route.
 - `apps/worker-relacionador` — Python 3.12/uv worker: consumes the same stream
   (group `relator`), reads the top-5 neighbours through
   `GET /api/v1/nodes/:id/neighbors`, asks the local LLM and creates a
-  `PENDING` edge. A `MERGE` verdict is logged, not applied (ADR-0023).
+  `PENDING` edge. A `MERGE` verdict becomes a merge proposal (ADR-0023/0026);
+  approving it applies the merge.
 - `apps/worker-extractor` — Python 3.12/uv worker: consumes `stream:source_raw`
   (group `extractor`), masks the PII locally, asks the local LLM for a draft
   and creates a `PENDING` node. Nothing publishes that stream yet.
@@ -40,16 +41,21 @@ they disagree with the code, **the code wins** — fix the doc.
   `XAUTOCLAIM`, retries and DLQ.
 - `packages/database` — Drizzle schemas + migrations (router and tenant);
   `packages/shared-types` — Zod DTOs + `ERROR_CODES`; `packages/ts-config`.
-- Docs entry point: `docs/README.md`. Roadmap: `ROADMAP.md`. Decisions:
-  `docs/decisions/`. Unbuilt specs: `docs/spec/`. History: `docs/archive/`.
+- Docs entry point: `docs/README.md` (structure + lifecycle rules there).
+  Roadmap: `ROADMAP.md` (the single board). Decisions: `docs/decisions/`
+  (ADRs, append-only). Per component: `docs/components/<x>.md` with a
+  `STATUS:` banner (built = living doc, unbuilt = spec). Active work:
+  `docs/plans/<area>/v<N>.md`. Deep not-yet-realized material:
+  `docs/knowledge/`. Runbooks: `docs/ops/`. Records of open interventions:
+  `docs/analysis/`. The cemetery for finished process docs: `docs/archive/`.
 
 ## Commands (pnpm only)
 - `pnpm install` — workspace install.
 - `pnpm turbo run build` — `tsc --noEmit` for every TS package (no JS emitted).
 - `pnpm type-check` — build + type-check tests and DB scripts (see below).
 - `pnpm test` — Turbo test task; `pnpm --filter @vozlab/api test` for one package.
-- `pnpm lint` — repo ESLint. **Currently red** (24 pre-existing
-  `@typescript-eslint/no-explicit-any` errors); not in CI. Do not claim it passes.
+- `pnpm lint` — repo ESLint, enforced in CI (errors fail). 0 errors / ~35
+  warnings since 2026-10-29 (the `no-explicit-any` debt was paid).
 - `uv sync` — Python 3.12 workspace environment from `uv.lock` (uses the
   repo-root `.venv`; keep it dedicated to this workspace).
 - `uv run pytest` — 103 Python runtime/worker tests; `uv run ruff check
@@ -107,9 +113,12 @@ they disagree with the code, **the code wins** — fix the doc.
   config exits. Required: `ROUTER_DB_*`, `REDIS_HOST`, `JWT_SECRET` (≥32 chars),
   all `OIDC_*` URLs. No `.env` is committed.
 
-## Current state / gotchas (verified 2026-10-19)
-- Phase 0/1/1R/1S/1T done; every vertical is wired (~30 routes). 60 TypeScript
-  tests plus 105 Python worker-runtime tests.
+## Current state / gotchas (verified 2026-10-29)
+- Phase 0/1/1R/1S/1T/3 done; the auth/onboarding v5+v6 intervention is closed
+  on code (`docs/analysis/auth-onboarding-committee-review.md`). ~352 API +
+  ~521 web unit tests, 105 Python worker tests, real Zitadel login E2E
+  verified. E2E Playwright: 17 green / 1 opt-in (`E2E_OIDC=1`) / 14 red =
+  graph-suite realignment (task 13, ROADMAP).
 - `GET /api/v1/ingestion/resolve-source` is the one protected route without
   `X-Workspace-ID` (the workspace is the answer); it is agent-only and
   tenant-scoped (ADR-0025).
@@ -124,14 +133,19 @@ they disagree with the code, **the code wins** — fix the doc.
 - `build` type-checks `src/**`; `type-check` additionally covers
   `apps/api/tests/**` and `packages/database/scripts/**` via
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
-- CI at `.github/workflows/ci.yml` has three jobs: the TypeScript gate, the
-  Python gate (uv/pytest/ruff) and the worker image builds.
+- CI: `ci.yml` has four jobs (verify + coverage + lint, integration with
+  Postgres/Redis services, python, image builds incl. api/web); manual
+  `e2e.yml` + `deploy.yml`. **No git remote is configured**, so Actions have
+  never executed on a runner — the local gate is the effective discipline.
+  Production topology T2 (Caddy, three origins) is instrumented per ADR-0043:
+  `docker-compose.prod.yml`, `deploy/caddy/Caddyfile`,
+  `docs/ops/production-deployment.md`. The API trusts `X-Forwarded-*` from
+  loopback/RFC1918 CIDRs (`infrastructure/http/proxyTrust.ts`).
 - Not built: the Consolidator handler, an ingestion producer for
-  `stream:source_raw`, a management route for `meta.data_sources`, PWA, SSE,
-  AGE adapter, metrics/tracing, the API image and the deployment pipeline,
-  backfill of existing nodes. The embedding pipeline (FR-18) and the Relator
-  (FR-19) are implemented but the workers are not deployed. Real auth endpoints
-  exist (FR-01/02/03).
+  `stream:source_raw`, a management route for `meta.data_sources`, SSE, AGE
+  adapter, backfill of existing nodes, a real deployment (T2 is ready pending
+  the hostname). Workers run via the `workers` compose profile / host
+  processes; they are not deployed either.
 - **Redis port conflict (fixed 2026-10-26):** `docker/identity-lab/compose.yml`
   used to publish its own `redis` on `127.0.0.1:6379`, colliding with
   `vozlab-redis` from the main compose. Keycloak does not need redis, so the
@@ -162,8 +176,13 @@ they disagree with the code, **the code wins** — fix the doc.
   component at a time.
 - `ROADMAP.md` is the only live task board. Completed work is archived — do not
   re-open `TODO.md` or `EXECUTION_PLAN.md`.
-- `/next-task` (`.claude/commands/next-task.md`): take the next open item,
+- `/next-task` (`.opencode/commands/next-task.md`): take the next open item,
   implement it, run `pnpm turbo run build type-check test`, mark it `[x]` with a
   one-line result, and update `docs/README.md` if a requirement changed.
-- `/review-arch` (`.claude/commands/review-arch.md`): audit code vs `docs/` vs
+- `/review-arch` (`.opencode/commands/review-arch.md`): audit code vs `docs/` vs
   `ROADMAP.md` and report gaps.
+- Document lifecycle: active work lives in `docs/plans/<area>/v<N>.md`; on
+  closure its evidence must already be in `docs/components/` + ADRs, its
+  unfinished slivers move forward with an origin citation, and the plan file
+  goes to `docs/archive/plans/`. Never leave completed task prompts or status
+  notes in the living docs.

@@ -45,7 +45,7 @@ system, not the details of a single file.
 1. Read the live docs first: `docs/README.md` (index **and** requirement status
    matrix), `docs/requirements.md`, `docs/architecture.md`,
    `docs/conventions.md`, `docs/domain-model.md`, the relevant
-   `docs/decisions/ADR-*.md` and `docs/spec/*.md`.
+   `docs/decisions/ADR-*.md` and `docs/components/*.md`.
 2. Consult `ROADMAP.md` — it is the only live task board. Completed work lives
    in `docs/archive/`; do not revive `TODO.md` or `EXECUTION_PLAN.md`.
 3. When a requirement is ambiguous, **stop and ask** with structured options,

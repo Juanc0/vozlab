@@ -102,5 +102,5 @@ route can be exercised locally.
 - [ADR-0009 API-owned source registry](ADR-0009-api-owned-source-registry.md) —
   the decision this implements.
 - [ADR-0008 cross-workspace 404](ADR-0008-cross-workspace-404.md).
-- [Extractor spec](../spec/extractor.md) — the consumer of the route.
+- [Extractor spec](../components/extractor.md) — the consumer of the route.
 - [FR-17](../requirements.md) — the ingestion requirement.

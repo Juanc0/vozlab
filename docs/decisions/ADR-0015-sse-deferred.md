@@ -33,4 +33,4 @@ When SSE is built, it must reuse the same authentication and workspace scoping a
 - `docs/archive/spec-v1/modules/modules_03_frontend_pwa_sveltekit.md` (SSE notifications)
 - `apps/api/src/infrastructure/events/RedisEventPublisher.ts` (internal stream only)
 - `docs/archive/history/EXECUTION_PLAN-2026-10-19.md` -> Deferred (SSE notifications)
-- `.claude/reviews/REVIEW-2026-10-17_phase-1r.md` concern #2
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1r.md` concern #2

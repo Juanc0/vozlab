@@ -36,8 +36,8 @@ The API owns the `source_id -> workspace` mapping in a per-tenant `meta.data_sou
 
 - `packages/shared-types/src/schemas/ingestion.schema.ts`
 - `docs/archive/spec-v1/modules/modules_05_ai_worker_extractor.md` §5
-- `docs/spec/extractor.md`
+- `docs/components/extractor.md`
 - `docs/archive/spec-v1/00_ARCHITECTURE_OVERVIEW.md` §6, edge case 3
 - `docs/archive/history/EXECUTION_PLAN-2026-10-19.md` — Phase 1T.4 and Deferred
-- `.claude/reviews/REVIEW-2026-10-17_phase-1s.md` concern C2
-- `.claude/tasks/TASK-41_datasource-workspace-mapping-decision.md`
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1s.md` concern C2
+- `docs/archive/tasks/TASK-41_datasource-workspace-mapping-decision.md`

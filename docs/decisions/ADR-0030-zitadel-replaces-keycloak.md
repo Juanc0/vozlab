@@ -72,7 +72,7 @@ WEB_ORIGIN=https://vozlabdemo.share.zrok.io \
 ./scripts/setup-zitadel.sh
 ```
 
-See `docs/runbook-demo-zrok.md`.
+See `docs/ops/runbook-demo-zrok.md`.
 
 ## Consequences
 
@@ -86,7 +86,7 @@ See `docs/runbook-demo-zrok.md`.
 
 - Zitadel's SAML/LDAP federation is less battle-tested than Keycloak's in some flows.
 - Documentation and runbooks that referenced Keycloak as production must be updated
-  (knowledge-transfer, AGENTS.md references).
+  (docs/knowledge/, docs/archive/guia-identidad-ia/, AGENTS.md references).
 - A migration path exists if Zitadel proves insufficient: Keycloak remains in the lab.
 
 ## Links

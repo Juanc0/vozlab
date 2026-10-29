@@ -213,7 +213,7 @@ export const en: Dictionary<typeof es> = {
     localCommandLabel: 'The command that mints a development token',
     localNote:
       'That token belongs to the API (scripts, workers, `curl`). The app itself needs an identity provider or an event code.',
-    localRunbook: 'The runbook describes the whole flow: `docs/runbook-dev.md`.'
+    localRunbook: 'The runbook describes the whole flow: `docs/ops/runbook-dev.md`.'
   },
 
   join: {

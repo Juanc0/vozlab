@@ -67,7 +67,7 @@ lives in `vozlab_worker`; a worker package imports it.
 
 ## How you work
 
-1. Read `docs/conventions.md` §10, the relevant `docs/spec/*.md` (extractor,
+1. Read `docs/conventions.md` §10, the relevant `docs/components/*.md` (extractor,
    relator, consolidator) and the ADRs before you start.
 2. Change one worker at a time. Do not refactor `vozlab_worker` "while you
    are in there" unless the task is about the shared runtime.

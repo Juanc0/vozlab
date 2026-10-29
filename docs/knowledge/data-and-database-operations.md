@@ -1,5 +1,7 @@
 # 05 — Data and database
 
+> **Knowledge doc** — verified against code 2026-10-29; graduation path in [README.md](README.md). Open items it drives: F-04 filtered-recall fix, fleet data-layer plan, D-15 erasure decision.
+
 This file covers the data model as built, the vector and graph read paths, how schemas change, how a fleet of
 per-institution databases is operated (today and what it needs), backup and recovery, personal data, and the
 database architecture options with a recommendation.

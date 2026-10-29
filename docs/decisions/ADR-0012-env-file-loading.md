@@ -38,5 +38,5 @@ Local processes load the repository-root `.env` through Node's own loader:
 - `packages/database/package.json` (`db:seed:dev`, `db:mint-token`)
 - `.env.example` header
 - `docs/archive/spec-v1/devops/devops_01_deployment_ci_cd_docker.md` §1.1
-- `.claude/reviews/REVIEW-2026-10-17_phase-1s.md` H-6
-- `.claude/tasks/TASK-32_dev-env-loading.md`
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1s.md` H-6
+- `docs/archive/tasks/TASK-32_dev-env-loading.md`

@@ -9,7 +9,7 @@
 # script starts the API, the PWA and the three reserved shares, and stops them
 # all on Ctrl+C.
 #
-# zrok prerequisites (see docs/runbook-demo-zrok.md):
+# zrok prerequisites (see docs/ops/runbook-demo-zrok.md):
 #   - the CLI is enabled once: zrok enable <account-token>
 #   - three reserved shares exist:
 #       zrok reserve public --unique-name vozlabauth http://localhost:8081
@@ -66,9 +66,9 @@ ZROK_WEB_SHARE_TOKEN_NAME="${ZROK_WEB_SHARE_TOKEN_NAME:-vozlabdemo}"
 ZROK_API_SHARE_TOKEN_NAME="${ZROK_API_SHARE_TOKEN_NAME:-vozlabapi}"
 ZROK_AUTH_SHARE_TOKEN_NAME="${ZROK_AUTH_SHARE_TOKEN_NAME:-vozlabauth}"
 
-: "${ZROK_WEB_SHARE_TOKEN_NAME:?set ZROK_WEB_SHARE_TOKEN_NAME in .env (see docs/runbook-demo-zrok.md)}"
-: "${ZROK_API_SHARE_TOKEN_NAME:?set ZROK_API_SHARE_TOKEN_NAME in .env (see docs/runbook-demo-zrok.md)}"
-: "${ZROK_AUTH_SHARE_TOKEN_NAME:?set ZROK_AUTH_SHARE_TOKEN_NAME in .env (see docs/runbook-demo-zrok.md)}"
+: "${ZROK_WEB_SHARE_TOKEN_NAME:?set ZROK_WEB_SHARE_TOKEN_NAME in .env (see docs/ops/runbook-demo-zrok.md)}"
+: "${ZROK_API_SHARE_TOKEN_NAME:?set ZROK_API_SHARE_TOKEN_NAME in .env (see docs/ops/runbook-demo-zrok.md)}"
+: "${ZROK_AUTH_SHARE_TOKEN_NAME:?set ZROK_AUTH_SHARE_TOKEN_NAME in .env (see docs/ops/runbook-demo-zrok.md)}"
 
 PIDS=()
 

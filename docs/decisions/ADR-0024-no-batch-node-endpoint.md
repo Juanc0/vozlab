@@ -69,7 +69,7 @@ The facts that matter:
 
 - [ADR-0008 cross-workspace 404](ADR-0008-cross-workspace-404.md) — the write
   path's isolation rules.
-- [Extractor spec](../spec/extractor.md) — the one-record-per-entry contract.
+- [Extractor spec](../components/extractor.md) — the one-record-per-entry contract.
 - [ADR-0021 worker runtime](ADR-0021-python-worker-runtime.md) — the retry and
   dead-letter model that a per-record loop relies on.
 - [FR-17](../requirements.md) — the ingestion requirement.

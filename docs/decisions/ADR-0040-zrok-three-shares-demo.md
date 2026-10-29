@@ -59,6 +59,6 @@ let the PWA talk to the API share directly, relying on the API's CORS policy.
 ## Links
 
 - `scripts/demo.sh`
-- `docs/runbook-demo-zrok.md`
+- `docs/ops/runbook-demo-zrok.md`
 - `.env.example`
 - `docs/decisions/ADR-0033-demo-topology-single-host.md`

@@ -37,5 +37,5 @@ Per-actor caps are 300 requests/minute for reads and 30 requests/minute for writ
 - `apps/api/src/infrastructure/http/middlewares/RateLimitingMiddleware.ts`
 - `apps/api/src/shared/config/env.ts` (`RATE_LIMIT_*`)
 - `docs/archive/spec-v1/system/system_01_functional_and_non_functional_requirements.md` NFR-08
-- `.claude/reviews/REVIEW-2026-10-17_phase-1r.md` concern #4
-- `.claude/tasks/TASK-26_rate-limit-per-actor.md`
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1r.md` concern #4
+- `docs/archive/tasks/TASK-26_rate-limit-per-actor.md`

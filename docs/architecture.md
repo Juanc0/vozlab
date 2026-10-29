@@ -113,21 +113,42 @@ The shared Python runtime (ADR-0021) implements groups, `XAUTOCLAIM`, bounded at
 | Redis | `redis:7-alpine` | 6379 | No auth locally; password optional |
 | Ollama | `ollama/ollama:latest` | 11434 | Not called by the API today |
 
-Environment is validated by Zod at startup (`shared/config/env.ts`); missing or invalid values call `process.exit(1)`. The API loads the repo-root `.env` via `tsx --env-file-if-exists`; process env wins. `ROUTER_DB_*`, `REDIS_HOST`, `JWT_SECRET` (≥ 32 chars), all `OIDC_*` values and `WEB_ORIGIN` are required. CI (`.github/workflows/ci.yml`) runs `pnpm install --frozen-lockfile` and `pnpm turbo run build type-check test`; it does not run lint or provision Postgres/Redis.
+Environment is validated by Zod at startup (`shared/config/env.ts`); missing or invalid values call `process.exit(1)`. The API loads the repo-root `.env` via `tsx --env-file-if-exists`; process env wins. `ROUTER_DB_*`, `REDIS_HOST`, `JWT_SECRET` (≥ 32 chars), all `OIDC_*` values and `WEB_ORIGIN` are required. CI (`.github/workflows/ci.yml`) runs the TypeScript gate (`build type-check test`), coverage with thresholds, lint (errors fail), an integration job against provisioned Postgres/Redis services, the Python gate and the worker/api/web image builds. The API sits behind a same-host reverse proxy in production (`trustProxy` = loopback+RFC1918 CIDRs, `infrastructure/http/proxyTrust.ts`; [ADR-0043](decisions/ADR-0043-production-topology-caddy-t2.md)).
+
+## Channels and guarantees
+
+| Channel | Used for | Guarantee | Where it breaks |
+| --- | --- | --- | --- |
+| HTTPS JSON (Bearer access token, `X-Workspace-ID`) | All product reads and writes. | Synchronous; the response reflects the commit. | A missing or wrong workspace header returns 400 or 403; a cross-workspace object returns 404. |
+| HttpOnly refresh cookie (`/api/v1/auth`) | Session restore and rotation. | Rotation with reuse detection revokes the family. | If the cookie is not sent (wrong path, third-party blocking), the user is signed out. |
+| Redis Streams (`stream:<event>`) | Asynchronous work for workers. | At-least-once delivery to each consumer group, with `XAUTOCLAIM` recovery and a dead-letter stream. | Publication is fire-and-forget after commit: if Redis is down when the event is published, it is lost (F-12 — no outbox yet). |
+| Ollama HTTP | Embeddings and chat. | None beyond retries. | An unavailable model leaves entries pending; the work is delayed, not lost, while Redis holds it. |
+| OIDC | Institutional sign-in. | Authorisation code with PKCE, state and nonce single-use in Redis. | IdP outage returns 503; the API never accepts an IdP token as a graph credential. |
+
+**Not present:** server-sent events, WebSockets, webhooks in or out, email, object storage, and any outbox.
+
+## Failure modes and their effects
+
+| Component down | Effect on users | Effect on data | Detection today |
+| --- | --- | --- | --- |
+| Router DB | Every protected request returns 503 at tenant resolution. Readiness reports `degraded`. | None. | `/health/ready`. |
+| Tenant DB (one institution) | That institution's requests return 503 when the pool is used. Readiness stays `ready` because it does not probe tenants. | None. | Logs only (F-13). |
+| Redis | Access tokens are treated as valid (blacklist fails open). Rate limits fail open. OIDC login returns 503. Events are dropped. | Missed embeddings and evaluations for events published during the outage. | Readiness reports `degraded`; logs. |
+| Ollama | Nothing user-facing. | Embeddings and verdicts are delayed. Entries wait in pending state. | Logs only. |
+| IdP | New sign-ins fail with 503. Existing sessions continue until the refresh token expires. | None. | Logs. |
+| An embedder bug | Nothing user-facing. | Nodes without vectors; the Relator waits on them. | Stream pending counts (manual). |
+| The API process | Full outage until restart. Graceful shutdown drains requests. | None; writes are synchronous. | Process supervisor (not defined). |
 
 ## What is not built
 
 - PWA: Phase 3 is complete. The event QR **scanner** is not built — the join page takes the code as text — and the ontology's proposed properties are not published, so only the active ones reach the dynamic form.
-- A local IdP in Compose; `db:mint-token` remains the no-IdP development path.
 - SSE, GraphQL.
-- Python Consolidador handler. The embedder, the Relator and the Extractor are implemented; the worker **images** and the compose profile exist (2.7), but the API image and the deployment pipeline land in Phase 4 (4.6).
+- Python Consolidator handler. The embedder, the Relator and the Extractor are implemented; `apps/worker-consolidador` does not exist yet.
 - An ingestion producer: nothing publishes `stream:source_raw` yet, so the Extractor has no input (the gateway is an open option in the spec).
 - Management of the source registry: `meta.data_sources` exists and the resolution route reads it, but there is no route to create or deactivate a source ([ADR-0025](decisions/ADR-0025-source-resolution-route.md)).
 - Apache AGE mirroring/Cypher adapter. The read path is a bounded SQL recursive CTE over `public.edges`.
-- Data-source registry (`meta.data_sources`) and ingestion resolution route (Phase 2).
-- Metrics, tracing, dashboards and load tests.
-- Production deployment manifests (no API/worker Dockerfiles; compose is local-only).
+- The T2 production deployment (Caddy + `docker-compose.prod.yml`) is instrumented ([ADR-0043](decisions/ADR-0043-production-topology-caddy-t2.md), runbook `ops/production-deployment.md`) but **no real host exists yet** — pending the final hostname, staging CSP tuning and a first go-live. The `deploy.yml`/`e2e.yml` workflows are valid YAML now (heredoc artifacts removed 2026-10-29) but have never run: the repo has no git remote configured.
 
 ## Decisions and further reading
 
-The architecture decisions are recorded in the [ADR set](decisions/) (`docs/decisions/ADR-*.md`): Bearer access JWT with an `HttpOnly` refresh credential, OIDC + JIT accounts, physical database per tenant, the global event-code exception, bounded SQL CTE over Apache AGE for reads, synchronous vote scoring, soft-delete policy, opaque pseudonyms, the API-owned source registry, the dedicated embedding pipeline (ADR-0020) and the shared Python worker runtime (ADR-0021). The manual Composition Root is a convention, described in [conventions.md](conventions.md). Implementation details are in [auth-and-tenancy.md](auth-and-tenancy.md), [domain-model.md](domain-model.md), [api-reference.md](api-reference.md) and [runbook-ops.md](runbook-ops.md).
+The architecture decisions are recorded in the [ADR set](decisions/) (`docs/decisions/ADR-*.md`): Bearer access JWT with an `HttpOnly` refresh credential, OIDC + JIT accounts, physical database per tenant, the global event-code exception, bounded SQL CTE over Apache AGE for reads, synchronous vote scoring, soft-delete policy, opaque pseudonyms, the API-owned source registry, the dedicated embedding pipeline (ADR-0020) and the shared Python worker runtime (ADR-0021). The manual Composition Root is a convention, described in [conventions.md](conventions.md). Implementation details are in [auth-and-tenancy.md](auth-and-tenancy.md), [domain-model.md](domain-model.md), [api-reference.md](api-reference.md) and [runbook-ops.md](ops/runbook-ops.md).

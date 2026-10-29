@@ -5,7 +5,7 @@ serve, and the user stories that describe them. The **implementation status** of
 every requirement is tracked in the matrix at [docs/README.md](README.md); this
 page states *what the system must do*, not what is built. Architecture decisions
 are in [docs/decisions/](decisions/); unbuilt components are specified in
-[docs/spec/](spec/).
+[docs/components/](components/).
 
 > Status legend (matrix): **Implemented** · **Partial** · **Deferred** ·
 > **Unverified**. A requirement can be normative even when its status is
@@ -127,7 +127,7 @@ The identity model, guard chain and pseudonym rules are in
   drafts by calling the API. *(Partial: the worker exists — it consumes
   `stream:source_raw`, masks the PII locally, extracts a draft and creates a
   `PENDING` node. **Nothing publishes `stream:source_raw` yet**: the ingestion
-  gateway is missing. Contract in [spec/extractor.md](spec/extractor.md).)*
+  gateway is missing. Contract in [spec/extractor.md](components/extractor.md).)*
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
@@ -149,7 +149,7 @@ The identity model, guard chain and pseudonym rules are in
   scheduled analysis of subgraph density and community interactions and publish
   a "Consolidated Improvement Opportunity" for co-creation. *(Worker and
   opportunity endpoint not built; contract in
-  [spec/consolidator.md](spec/consolidator.md).)*
+  [spec/consolidator.md](components/consolidator.md).)*
 
 ## 3. Non-functional requirements
 

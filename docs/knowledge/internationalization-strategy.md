@@ -1,5 +1,7 @@
 # 13 — Internationalisation: interface, content, vocabulary and models
 
+> **Knowledge doc** — verified 2026-10-29 (no content `lang` column exists). Graduation path in [README.md](README.md).
+
 You asked for a rethought language strategy for both content and interface, with the options, their pros and cons, and
 their implications. This file separates the six places where language matters, because each has a different answer.
 

@@ -2,7 +2,7 @@
 
 How to run VozLab locally from a clean checkout. Production/operations guidance
 lives in [runbook-ops.md](runbook-ops.md); architecture and contracts live in
-[architecture.md](architecture.md) and [api-reference.md](api-reference.md).
+[architecture.md](../architecture.md) and [api-reference.md](../api-reference.md).
 
 ## Prerequisites
 
@@ -253,7 +253,7 @@ docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
 
 A `MERGE` verdict is submitted as a **merge proposal** (`POST /api/v1/proposals`
 with `kind: "MERGE"`), not applied by the bot
-([ADR-0026](decisions/ADR-0026-merge-contract.md)). Check the proposals:
+([ADR-0026](../decisions/ADR-0026-merge-contract.md)). Check the proposals:
 
 ```bash
 docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
@@ -340,7 +340,7 @@ reload, so assets are never swapped silently mid-session.
 
 > The login page, the event-code join and the workspace selector exist
 > (roadmap 3.3), and so do the graph canvas (3.4), the governance screens
-> (3.5) and the offline shell (3.6). See [spec/web-pwa.md](spec/web-pwa.md).
+> (3.5) and the offline shell (3.6). See [web-pwa.md](../components/web-pwa.md).
 
 > **A production build stops the dev server.** `pnpm --filter @vozlab/web
 > build` empties `apps/web/dev-dist/`, which is the directory the dev server
@@ -460,7 +460,7 @@ uv run pytest
 The integration suite starts the API on `13000`, a mock OIDC provider on
 `18080`, and uses the local PostgreSQL/Redis from Compose. It creates and
 deletes its own users and event codes; never point it at production. See
-[testing.md](testing.md) for scope, configuration and planned levels.
+[testing.md](../testing.md) for scope, configuration and planned levels.
 
 ## Agent tooling (optional)
 
@@ -482,7 +482,7 @@ Keep the URI in sync with `mcp.servers.postgres.environment.DATABASE_URI` in
 `opencode.json`. To use a different password, set `MCP_READER_PASSWORD` in
 the root `.env` before running the script. The full description of the role,
 the MCP servers, the subagents and the skills is in
-[agent-tooling.md](agent-tooling.md).
+[agent-tooling.md](../agent-tooling.md).
 
 The GitHub MCP server reads its token from the process environment, not from
 `.env`:
@@ -520,9 +520,9 @@ export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # scopes: repo, read:org
 
 The three AI worker apps are still empty scaffolds; the embedder exists and
 computes vectors for new nodes, but there is no backfill for older ones and
-nothing queries `nodes.embedding` yet. See [testing.md](testing.md) for scope
-and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
-[ADR-0021](decisions/ADR-0021-python-worker-runtime.md) for the design.
+nothing queries `nodes.embedding` yet. See [testing.md](../testing.md) for scope
+and [ADR-0020](../decisions/ADR-0020-dedicated-embedding-pipeline.md) /
+[ADR-0021](../decisions/ADR-0021-python-worker-runtime.md) for the design.
 
 ## The comparison of the engines
 

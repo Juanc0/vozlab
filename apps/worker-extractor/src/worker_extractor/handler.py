@@ -1,6 +1,6 @@
 """`source_raw` handler: turn one institutional record into one node.
 
-Flow (docs/spec/extractor.md):
+Flow (docs/components/extractor.md):
 
 1. Resolve the workspace through the API's source registry
    (`GET /api/v1/ingestion/resolve-source`) — the worker never chooses a

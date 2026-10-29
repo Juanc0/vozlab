@@ -149,7 +149,7 @@ outbox; that is not part of Phase 2.
 ## Links
 
 - [FR-18](../requirements.md)
-- [Relator spec](../spec/relator.md)
+- [Relator spec](../components/relator.md)
 - [Worker runtime decision](ADR-0021-python-worker-runtime.md)
 - [API-only writes and Python worker conventions](../conventions.md#10-python-workers)
 - [Soft-delete policy](ADR-0006-soft-delete-policy.md)

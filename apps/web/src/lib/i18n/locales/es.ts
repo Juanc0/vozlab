@@ -231,7 +231,7 @@ export const es = {
     localCommandLabel: 'El comando que genera un token de desarrollo',
     localNote:
       'Ese token pertenece a la API (scripts, workers, `curl`). La aplicación en sí necesita un proveedor de identidad o un código de evento.',
-    localRunbook: 'El runbook describe el flujo completo: `docs/runbook-dev.md`.'
+    localRunbook: 'El runbook describe el flujo completo: `docs/ops/runbook-dev.md`.'
   },
 
   /** The join of an event with a code. */

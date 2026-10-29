@@ -1,5 +1,7 @@
 # 07 — Graph and ontology
 
+> **Knowledge doc** — verified 2026-10-29 (G1–G9 gaps re-confirmed against code). Graduation path in [README.md](README.md).
+
 Your vision is a knowledge base built on an ontology that **grows through community input**, with nodes and
 edges that support higher-level analysis, internal and external. This file answers three questions: what graph
 capability exists today, whether a graph database is needed, and what has to change for the ontology to grow

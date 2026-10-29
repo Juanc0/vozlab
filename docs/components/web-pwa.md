@@ -1,10 +1,15 @@
 # Web PWA (`apps/web`)
 
-> **Partially implemented (Phase 3).** `apps/web/` is a working SvelteKit 5
-> app: it builds, serves SSR and ships a PWA manifest and service worker
-> (roadmap 3.1). The state layer, the route groups, the graph canvas, the
-> governance UI, the offline shell and the E2E suite are still to come —
-> 3.2 to 3.7. This page remains the normative spec for the whole phase.
+> **STATUS: BUILT — living component doc** (was the Phase 3 normative spec;
+> migrated from `docs/spec/` 2026-10-29). Phase 3 is complete: state layer,
+> route groups, Cytoscape canvas, governance UI, admin UI, tenant selector,
+> offline shell, i18n (es/en) and the Playwright E2E suite ship today.
+> Known remaining gaps: the graph E2E journeys need realignment to the
+> toolbar redesign (task 13, `docs/analysis/auth-onboarding-committee-review.md`
+> §5), the event QR *scanner* is not built (join is by typed code), and the
+> admin invitation QR rendering is open backlog. The routing/layout sections
+> below that predate the toolbar redesign (3.57–3.64) describe the *planned*
+> shape; the code is authoritative.
 
 ## Stack
 
@@ -622,7 +627,7 @@ declared.
 The attributes are **merged** into the target's own: the delta wins for the
 keys it carries (`Node.updateAttributes` is `{...attributes, ...delta}`).
 That is the rule of an edit; the rule of a *merge* is the opposite — the
-survivor's own values win ([ADR-0026](decisions/ADR-0026-merge-contract.md)).
+survivor's own values win ([ADR-0026](../decisions/ADR-0026-merge-contract.md)).
 The API can neither remove nor rename an attribute, so the form cannot offer
 it either: the key of an existing attribute is read-only and emptying it is
 refused with an explicit message.
@@ -723,4 +728,4 @@ applied only when the user accepts it.
 - [architecture.md](../architecture.md) — client/API topology.
 - [api-reference.md](../api-reference.md) — endpoints and payloads.
 - [auth-and-tenancy.md](../auth-and-tenancy.md) — JWT and workspace rules.
-- [runbook-dev.md](../runbook-dev.md) — local token minting.
+- [runbook-dev.md](../ops/runbook-dev.md) — local token minting.

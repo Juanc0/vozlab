@@ -5,7 +5,7 @@ import { CreateNodeSchema } from './node.schema.js';
  * Zod schema for batched node ingestion.
  *
  * Contract only — no endpoint is implemented yet. It exists so the Extractor
- * worker (docs/modules/modules_05) and the API agree on the payload shape when
+ * worker (docs/archive/spec-v1/modules/modules_05) and the API agree on the payload shape when
  * batch ingestion is wired in a later batch. A batch carries between 1 and
  * 1000 nodes, each validated by `CreateNodeSchema`.
  */

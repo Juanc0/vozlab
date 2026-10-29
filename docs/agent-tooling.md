@@ -223,3 +223,29 @@ and quality (`vitest`, `testcontainers`, `contract-testing`,
 - [../CLAUDE.md](../CLAUDE.md) — the working agreement and the committee roles.
 - [conventions.md](conventions.md) — the code conventions the agents enforce.
 - [testing.md](testing.md) — the test layers the skills map onto.
+
+
+---
+
+# Appendix — agent-work risks and rules
+
+> Lifted 2026-10-29 from `docs/archive/knowledge-transfer/14-process-communication-quality.md` §9.3–§9.4.
+
+### 9.3 Risks
+
+| Risk | Example in this repository | Control |
+| --- | --- | --- |
+| Credentials in configuration | `opencode.json` contains a database password (F-06) | Secret scanning; references to environment variables only |
+| Unreviewed generated code in sensitive paths | Authorisation and tenancy code can be changed by an agent in one session | Human review of those paths (section 3) |
+| Document drift | Counts and statuses are typed by hand (section 5) | Generated numbers |
+| Over-large skill catalogue | 56 skills plus copies; some for technologies the project does not use (for example, iOS design) | Curate to what the project uses; keep one canonical copy |
+| Scope creep | A graph canvas consumed most of one week while governance was not on the board (`02` §6) | The roadmap must show the product-critical items at the top, and an explicit rule that governance items take precedence |
+| Dependence on a tool version | Agent behaviour changes with tool versions | Pin tool versions in the repository where possible |
+
+### 9.4 Rules to keep the benefit and remove the risk
+
+1. Commits produced with agent help say so in a trailer, so that the review knows where to look.
+2. Changes to authentication, authorisation, tenancy, data retention and AI write paths require a human reviewer.
+3. No secret ever appears in a tracked file, including agent configuration.
+4. The security reviewer agent's findings are recorded; accepted risks are written down with the reason.
+5. The skill catalogue is reduced to what the project uses; duplicates are generated, not copied.

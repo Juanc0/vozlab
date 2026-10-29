@@ -200,6 +200,80 @@ step 3 has completed.
 
 - `scripts/setup-zitadel.sh` — unattended provisioning.
 - `scripts/demo.sh` — local launcher (zrok, three reserved shares).
-- `docs/runbook-deploy.md` — Cloudflare Tunnel production demo.
+- `docs/archive/history/runbook-deploy-cloudflare-tunnel.md` — Cloudflare Tunnel production demo.
 - `docs/decisions/ADR-0030-zitadel-replaces-keycloak.md` — broker decision and
   bootstrap procedure.
+
+---
+
+# Appendices — carried from the frozen demo analysis
+
+> Lifted 2026-10-29 from `docs/archive/knowledge-transfer/12-local-demo-and-parity.md`
+> (§3, §5, §7, §9), which is otherwise archived. Adjusted to the current stack
+> (Zitadel broker, zrok three shares, containers built).
+
+## Demo hardening for a live audience
+
+| Item | Action | Why |
+| --- | --- | --- |
+| Published ports | Bind to `127.0.0.1` (for example `127.0.0.1:5432:5432`); do not publish Ollama | Conference networks are shared (`09` S-05). |
+| Credentials | Change the database password; set a Redis password; generate a fresh `JWT_SECRET` (at least 32 characters) | The example values are public in the repository. |
+| Mode | Build the web app and run the built server; keep the dev server for development only | Fewer moving parts and no hot reload during the talk. |
+| Dev sign-in | Keep it (development builds only); it is the presenter's maintainer role | Needed to approve seeded proposals (ROADMAP 3.9). |
+| Network | Work with the network disabled after the first pull | Proves the local claim and removes a failure mode. Confirm the fonts and assets are vendored (they are: IBM Plex). |
+| Logs | Keep `LOG_PRETTY=true` on the presenter's screen only if it helps; otherwise off | Readability versus noise. |
+| Machine | Power adapter, the presentation resolution, and a second screen for the presenter's notes | Routine, but it breaks talks. |
+| Rehearsal | Full run twice, the day before and the morning of | Catches the stale state and the port conflicts. |
+
+## A demonstration script that does not depend on luck
+
+The script is a suggestion. Each scene states what it shows and what to say about the limits, because an honest limit
+builds more trust than a claim that breaks.
+
+| # | Scene | What to show | What to say (and the honest limit) |
+| --- | --- | --- | --- |
+| 1 | The problem | The Spanish demo graph, three clusters | "This is a seeded demonstration. The seed is labelled as such." |
+| 2 | Joining | An event code (the raw code is shown once by the CLI) | "No tenant is visible in the code. Codes expire and can be revoked." |
+| 3 | Signing in | Zitadel sign-in (after section 6) | "This is a real sign-in flow; the identity provider is local for the talk." |
+| 4 | Exploring | Zoom, walk by clicking, the inspector | "The layout is a physics simulation; it is deterministic for a given input." |
+| 5 | Creating | A new node | **Limit:** the node is `PENDING` and stays so. "Acceptance of a new item is not yet in the product; it is the next milestone." (F-01) |
+| 6 | Proposing | A correction proposal, then approval as maintainer | Works. Show the diff. |
+| 7 | Discussing and voting | A thread, a reply, a vote | Works. |
+| 8 | The AI | Create a node, then show the embedding arriving in the logs (seconds). The Relator verdict can take minutes on a laptop CPU | Pre-run it, or show the recording. "The agents propose; people decide." |
+| 9 | Offline | Disable the network; the shell still opens | **Limit:** data needs the network. "The product is online-first by design." |
+| 10 | Architecture | The ADRs, the decision register (`15`) | "Every decision has a recorded trade-off." |
+
+**Traps to avoid:**
+
+- Do not promise that agent suggestions become accepted content. They cannot yet (F-01).
+- Do not create dozens of nodes live; the AI queue on a laptop will lag and the graph will move unpredictably.
+- Do not show the Consolidator. It does not exist.
+- Do not claim performance numbers you have not measured for the audience's scale. The verified synthetic figures are
+  in ADR-0027 and should be quoted as synthetic.
+
+## Presenter's checklist (the morning of)
+
+- [ ] Machine on power; notifications off; a second screen or a printed copy of the script.
+- [ ] Pull request and branch state known; no uncommitted changes in the demo path.
+- [ ] `.env` with fresh secrets; ports bound to loopback (`docker compose ps` shows `127.0.0.1`).
+- [ ] `docker compose up -d`; `db:migrate`; `db:seed:dev` (the seed is idempotent); API health returns `ready`.
+- [ ] Models pulled and loaded (`ollama list`); the embedding of a test node completes.
+- [ ] Web built; the built server serves on the expected port; the browser cache cleared once.
+- [ ] Sign-in works (Zitadel or dev sign-in); the presenter can approve a seeded proposal.
+- [ ] Network disabled and the demo runs; then re-enabled for the questions.
+- [ ] Recorded fallback for scenes 8 and 9 on the desktop; screenshots of scenes 4 and 6.
+- [ ] Mobile layout checked at 375 px if the audience may ask (the layout is mobile-first).
+- [ ] After the talk: stop the stack; do not leave the laptop serving anything.
+
+## Parity: what the local stack must keep equal to production
+
+The rule is that **a local behaviour that production cannot have is a defect**, not a convenience. Keep these equal:
+
+- The environment variable names (the same set, loaded from a file locally and from Secrets Manager in production).
+- The Redis-compatible engine: Valkey locally and in ElastiCache (`11` §4.4).
+- The database extensions: pgvector locally and in RDS; AGE removed from both (`05` §13).
+- The identity contract: the same issuer and claim mapping, with Zitadel standing in for the institutional provider.
+- The model contract: the same HTTP interface for Ollama, and the same embedding dimension and model identifier.
+- The transport: HTTPS in production; on the laptop, document the difference and test cookies in staging.
+
+The gaps that will remain (no load balancer, no CDN, no WAF locally) are acceptable because they are tested in staging.

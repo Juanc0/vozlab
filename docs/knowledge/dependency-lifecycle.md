@@ -1,5 +1,7 @@
 # 10 — Dependencies and lifecycle
 
+> **Knowledge doc** — verified 2026-10-29 (Fastify 4 / node-redis 4 / Zod 3 / jose 5 / dead Cytoscape deps still true). Upgrade waves graduate via `plans/upgrade-waves/`.
+
 This file answers two questions: which versions does VozLab run, and how far are they from supported releases?
 Installed versions are from `node_modules` and `uv.lock` on 2026-10-23. "Latest" is from the npm registry (dist-tags)
 on the same date, or from the vendor's page where noted. [run][web]

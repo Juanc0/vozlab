@@ -7,7 +7,7 @@ This directory is the **canonical decision record** for VozLab. An ADR states a 
 - `Rejected` — the option was considered and will not be used without a new ADR.
 - `Superseded` — a later ADR replaced the decision; the old ADR stays as history.
 
-When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conflicts with an ADR, the ADR wins. Those documents are archived as history. Specifications for components that are not built yet live under `docs/spec/`; the ADR log records decisions, not designs.
+When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conflicts with an ADR, the ADR wins. Those documents are archived as history. Specifications for components that are not built yet live under `docs/components/`; the ADR log records decisions, not designs.
 
 ## Index
 

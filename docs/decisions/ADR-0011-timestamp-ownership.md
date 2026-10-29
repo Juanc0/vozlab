@@ -42,5 +42,5 @@ Two writers must never stamp the same column. The rule is:
 - `apps/api/src/infrastructure/persistence/repositories/DrizzleNodeRepository.ts`
 - `apps/api/src/domain/entities/Node.ts`
 - `apps/api/tests/infrastructure/timestampOwnership.test.ts`
-- `.claude/tasks/TASK-38_timestamp-ownership.md`
-- `.claude/reviews/REVIEW-2026-10-17_phase-1s.md` M-12, concern C4
+- `docs/archive/tasks/TASK-38_timestamp-ownership.md`
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1s.md` M-12, concern C4

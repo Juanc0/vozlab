@@ -156,8 +156,8 @@ be followed from `NODE_CREATED` to the worker's API call.
 ## Links
 
 - [ADR-0020 embedding pipeline](ADR-0020-dedicated-embedding-pipeline.md)
-- [Extractor spec](../spec/extractor.md)
-- [Relator spec](../spec/relator.md)
-- [Consolidator spec](../spec/consolidator.md)
+- [Extractor spec](../components/extractor.md)
+- [Relator spec](../components/relator.md)
+- [Consolidator spec](../components/consolidator.md)
 - [Event conventions](../conventions.md)
 - [Auth and tenancy](../auth-and-tenancy.md)

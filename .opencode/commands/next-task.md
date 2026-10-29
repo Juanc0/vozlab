@@ -8,7 +8,7 @@ Act as the High-Level Engineering Committee.
 1. Read `ROADMAP.md` and pick the first open (`[ ]`) item, respecting the batch
    order (do not start Phase 2/3 work before the current batch is closed unless
    the user says so).
-2. Load the relevant detail: `docs/spec/<component>.md`, the ADRs in
+2. Load the relevant detail: `docs/components/<component>.md`, the ADRs in
    `docs/decisions/`, `docs/requirements.md`, `docs/conventions.md`.
 3. If there are technical ambiguities, apply the **Clarification Protocol**
    (options with pros, cons, implications and cost).

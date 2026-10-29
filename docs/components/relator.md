@@ -1,5 +1,7 @@
 # Relator Worker (`worker-relacionador`)
 
+> **STATUS: BUILT — living component doc** (migrated from `docs/spec/` 2026-10-29; two documented deviations: ADR-0022/0023). Details below.
+
 > **Implemented (milestone 2.5), with two documented deviations.** The worker
 > lives in `apps/worker-relacionador/` and runs against the shared runtime
 > (`packages/worker-shared`, ADR-0021). It reads its neighbours through the

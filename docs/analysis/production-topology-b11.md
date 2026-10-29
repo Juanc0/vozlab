@@ -7,7 +7,7 @@
 > Relacionado: [ADR-0040](../decisions/ADR-0040-zrok-three-shares-demo.md),
 > [ADR-0033](../decisions/ADR-0033-demo-topology-single-host.md),
 > [committee review §B11](auth-onboarding-committee-review.md),
-> [runbook zrok](../runbook-demo-zrok.md),
+> [runbook zrok](../ops/runbook-demo-zrok.md),
 > [runbook producción](../ops/production-deployment.md).
 
 ## 0. TL;DR

@@ -1,5 +1,7 @@
 # 06 — AI agents, models and data flows
 
+> **Knowledge doc** — verified 2026-10-29. The normative unbuilt task specs (block E1–E13, A4/A5, F2) are frozen at `docs/archive/guia-identidad-ia/` and referenced from [README.md](README.md).
+
 ## 1. The judgment
 
 The AI pipeline is **designed carefully and built partly**. Its safety rules are sound: agents create `PENDING`
@@ -258,7 +260,7 @@ accepts delay**. The pipeline is asynchronous, so delay is acceptable if it is c
 
 What exists: JSON logs with correlation identifiers; Redis pending and dead-letter counts (manual). What is missing:
 metrics for call latency, error rates by type, validation rejections, queue lag, cost per workspace, and an alert
-when the dead-letter stream grows. The runbook documents the manual checks [repo] `docs/runbook-ops.md`.
+when the dead-letter stream grows. The runbook documents the manual checks [repo] `docs/ops/runbook-ops.md`.
 
 ## 11. Responsibilities for the AI pipeline (proposed)
 

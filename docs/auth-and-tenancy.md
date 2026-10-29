@@ -11,11 +11,12 @@ VozLab separates three questions:
 
 ## 1. Current auth flow
 
-| Concern | Implementation (2026-10-19) |
+| Concern | Implementation (2026-10-29) |
 | --- | --- |
 | Browser login | `GET /api/v1/auth/login?redirect=/path` → 302 to the IdP |
-| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, 302 to the PWA |
-| Access token | HS256 JWT, 15 min default, returned in JSON; the future PWA holds it in memory |
+| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-identity upsert, `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the identity is linked to N>1 institutions) |
+| Tenant selection | `GET /api/v1/auth/resolve-tenants?gid=` + `POST /api/v1/auth/select-tenant {globalIdentityId, tenantId}` (first login, no session yet); `POST /api/v1/auth/switch-tenant` (authenticated, re-points the session to another linked institution) — every selection writes `TENANT_SELECTED` |
+| Access token | HS256 JWT, 15 min default, returned in JSON; the PWA holds it in memory only |
 | Refresh token | Opaque `v1.<tenant UUID>.<64 hex>`, 30 d default, `HttpOnly` cookie, rotated on every use |
 | Refresh storage | `auth.refresh_tokens` (tenant DB): SHA-256 hash, family id, expiry, revocation timestamp |
 | Logout | `POST /api/v1/auth/logout` (Bearer + cookie): blacklist `jti`, revoke the refresh family, clear the cookie |
@@ -26,6 +27,52 @@ VozLab separates three questions:
 The API is a **resource server**, not an identity provider. It never accepts an
 IdP access token as a graph credential; it exchanges the authorization code,
 validates the ID token, and issues its own short-lived JWT.
+
+### Participants and trust boundaries
+
+| Participant | What it is | What it owns / controls |
+|---|---|---|
+| **PWA** (`apps/web`, SvelteKit) | The app in the browser | The UI, the in-memory access token, the per-tab workspace selection. It owns **no** secret and no long-lived token. |
+| **API** (`apps/api`, Fastify) | The backend / BFF | The `JWT_SECRET`, the OIDC `client_secret`, the OIDC state in Redis, the refresh cookie, the user accounts in the databases. The **only** component that talks to the broker. |
+| **Zitadel** (identity broker) | The OIDC broker (self-hosted; ADR-0030) | The organizations (one per institution, resolved from `urn:zitadel:iam:org:id`), the OIDC app, the login policy, the federated social IdPs (Google/Microsoft as generic OIDC IdPs; B9). |
+| **External IdP** (Google, Microsoft Entra) | The real identity providers | The user credentials and `email_verified`. The browser never sends them to VozLab. |
+
+**Golden rule:** the PWA never sees an IdP configuration, never holds a broker
+token and never knows the `client_secret`. Every broker exchange is
+server-side (API ↔ Zitadel). The browser only receives 302 redirects and, at
+the end, an `HttpOnly` cookie plus a JSON access token. There are no popups:
+the whole flow is full-page navigation (PWA → API → Zitadel → optional social
+IdP → back).
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (untrusted zone)"]
+        PWA["PWA (SvelteKit)"]
+    end
+    subgraph Host["Host (trusted zone)"]
+        API["API (Fastify)"]
+        Redis["Redis 7<br/>OIDC state · blacklist · streams"]
+        PG["PostgreSQL<br/>router + tenant DBs"]
+    end
+    subgraph IdPZone["Broker + IdPs (external zone)"]
+        ZIT["Zitadel<br/>orgs · OIDC app · social IdPs"]
+        EXT["Google / Entra ID<br/>user credentials"]
+    end
+
+    PWA -->|"HTTPS JSON · redirects · refresh cookie"| API
+    API -->|"back-channel, client_secret"| ZIT
+    API --> Redis
+    API --> PG
+    ZIT -->|"back-channel (OIDC IdP configs)"| EXT
+```
+
+Frontiers: **Browser ↔ API** — redirects, `HttpOnly` cookie and Bearer JSON
+only; nothing secret ever appears in a URL. **API ↔ Zitadel** — server-side
+token exchange + JWKS validation; the browser never observes it.
+**Zitadel ↔ social IdPs** — brokered by Zitadel itself; VozLab code is
+unaware of Google/Microsoft (ADR-0018 + B9). **API ↔ Redis/PG** — host
+internal; the production topology places Caddy in front of all three origins
+(ADR-0043).
 
 ### Login sequence
 
@@ -221,7 +268,7 @@ the tenant is known, so the registry must be global.
 - The QR contains only the raw code (`vle_<24 base64url chars>`); no tenant
   slug or URL prefix. The API stores and looks up only its SHA-256 hash.
 - Operators create codes with `db:event-code` (see
-  [runbook-dev](runbook-dev.md)); the CLI validates the target workspace in the
+  [runbook-dev](ops/runbook-dev.md)); the CLI validates the target workspace in the
   tenant DB before inserting.
 - `POST /api/v1/auth/event-join { code, alias? }` consumes the code with one
   conditional `UPDATE` that enforces revocation, expiry and `max_uses`

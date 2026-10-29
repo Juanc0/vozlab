@@ -41,4 +41,4 @@ Vote scoring is a synchronous, atomic database increment inside the same `UnitOf
 - `apps/api/src/infrastructure/persistence/repositories/DrizzleInteractionRepository.ts`
 - `docs/archive/spec-v1/modules/modules_01_data_model_and_metamodel.md` §5
 - `docs/archive/spec-v1/modules/modules_02_backend_fastify_guide.md` §1
-- `.claude/tasks/TASK-27_vote-semantics-alignment.md`
+- `docs/archive/tasks/TASK-27_vote-semantics-alignment.md`

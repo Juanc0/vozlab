@@ -18,7 +18,7 @@ locally and run via `docker-compose.prod.yml`.
    restart policies and a one-shot `migrate` container.
 3. **Migrations run as a one-shot container** before the API starts.
 4. **Public access via Cloudflare Tunnel** (free, TLS included, no inbound ports).
-   See `docs/runbook-deploy.md`.
+   See `docs/archive/history/runbook-deploy-cloudflare-tunnel.md`.
 5. **Floci + Terraform** provide a local AWS emulation for IaC testing
    (`docker/floci/`, `infra/terraform/`). They are optional and do not affect
    the demo.
@@ -43,7 +43,7 @@ locally and run via `docker-compose.prod.yml`.
 
 - `docker-compose.prod.yml`
 - `.env.production.example`
-- `docs/runbook-deploy.md`
+- `docs/archive/history/runbook-deploy-cloudflare-tunnel.md`
 - `docker/floci/docker-compose.yml`
 - `infra/terraform/`
 - `.github/workflows/deploy.yml`

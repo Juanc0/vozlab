@@ -186,5 +186,5 @@ The `EDGE` verdict is unchanged (ADR-0023 §1): a `PENDING` edge through
   missing survivor is a 404.
 - [ADR-0011 timestamp ownership](ADR-0011-timestamp-ownership.md) — the
   domain owns `updated_at`; the adapter owns `deleted_at`.
-- [Relator spec](../spec/relator.md) — the flow this decision serves.
+- [Relator spec](../components/relator.md) — the flow this decision serves.
 - [FR-19](../requirements.md) — the requirement being closed.

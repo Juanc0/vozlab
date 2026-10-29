@@ -2,7 +2,7 @@
  * The endpoints and the identifiers the suite talks to.
  *
  * The suite runs on **its own pair of ports**, next to the local stack of
- * `docs/runbook-dev.md` (API on `:3000`, PWA on `:5173`), so a developer who
+ * `docs/ops/runbook-dev.md` (API on `:3000`, PWA on `:5173`), so a developer who
  * keeps the stack running does not lend it to the suite. That matters:
  * Playwright starts the API of the run with a **test budget** for the rate
  * limiter (the suite is one actor and writes as one person, so the real

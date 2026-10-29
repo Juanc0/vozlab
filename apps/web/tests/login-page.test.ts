@@ -172,7 +172,7 @@ describe('the login page in a production build', () => {
     expect(screen.getByText(/no guarda contraseñas/i)).toBeInTheDocument();
     expect(screen.getByText(/proveedor de identidad de tu institución te autentica/i)).toBeInTheDocument();
     expect(screen.getByText(/db:mint-token/)).toBeInTheDocument();
-    expect(screen.getByText(/docs\/runbook-dev\.md/)).toBeInTheDocument();
+    expect(screen.getByText(/docs\/ops\/runbook-dev\.md/)).toBeInTheDocument();
   });
 });
 

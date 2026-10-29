@@ -227,7 +227,7 @@ lint. Build, type-check and unit tests are green.
 | E2E | Playwright against API + PWA + seeded DB | Login/mint → create node → suggest edge → approve | Critical flow completes with no browser console errors |
 | Load | k6 + `db:seed:stress` | Subgraph reads, mutations, votes, HNSW | Subgraph (<200 nodes) p95 < 30 ms (NFR-01); mutations p95 < 15 ms (NFR-03) |
 | Resilience | Fault injection | Redis/Ollama unavailable | API stays available; AI work remains queued (NFR-10) |
-| CI | GitHub Actions | All of the above | Merge blocked on any failure; see [ci-cd.md](spec/ci-cd.md) |
+| CI | GitHub Actions | All of the above | Merge blocked on any failure; see [ci-cd.md](components/ci-cd.md) |
 
 Integration tests must build or pull the repository's
 `vozlab/postgres:18-age-pgvector` image. Do not substitute a stock
@@ -237,5 +237,5 @@ Integration tests must build or pull the repository's
 ## Related
 
 - [conventions.md](conventions.md) — NodeNext imports and layering rules.
-- [runbook-dev.md](runbook-dev.md) — local commands.
+- [runbook-dev.md](ops/runbook-dev.md) — local commands.
 - [requirements.md](requirements.md) — FR/NFR sources.

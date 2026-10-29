@@ -32,7 +32,7 @@ The Drizzle schema under `packages/database/src/schema/` is the source of truth.
 
 ## Links
 
-- `.claude/tasks/TASK-02_reset-and-regenerate-drizzle-migrations.md`
+- `docs/archive/tasks/TASK-02_reset-and-regenerate-drizzle-migrations.md`
 - `docs/archive/history/TODO-phase-1T.md` — TASK-02 result note
 - `packages/database/drizzle.router.config.ts`
 - `packages/database/drizzle.tenant.config.ts`

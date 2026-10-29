@@ -17,7 +17,7 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (352 tests AP
 - Use cases atómicos ya creados: `ResolveTenantsUseCase`, `SelectTenantUseCase`, `ManageRoleAtomicUseCase`, `RedeemInvitationAtomicUseCase`, `CreateGlobalInvitationUseCase`, `RedeemGlobalInvitationUseCase`, `CreateWorkspaceJoinCodeUseCase`, `RotateJoinCodeUseCase`, `CleanupExpiredInvitationsUseCase`.
 - `CompleteOidcLoginUseCase`: upserta `global_users`, redime invitación GLOBAL antes de resolver tenant, escribe el link `global_identity_tenants` en todo login institucional, resuelve tenants linked, `requiresTenantSelection`, `linkedTenants`, `globalUserId`, redención de invitación tenant-local, emite refresh token (`issueSession` compartido por ambos paths).
 - Endpoints auth: `/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/event-join`, `/auth/select-tenant`, `/auth/resolve-tenants`, `/auth/switch-tenant` (P0-1 cerrado 2026-10-28, commit 22c5481).
-- Endpoints admin: `/admin/workspaces` (GET/POST), `/invitations/global` (create; redención vía callback OIDC), `/workspaces/:id/join-codes` (POST/GET/DELETE; **sin PUT/update**; rotate en `/join-code/rotate`), `/admin/users`, `/admin/cleanup` (invitaciones expiradas OK; guests = 0 placeholder). Todas las escrituras con bucket `scoped` por acción (P0-5).
+- Endpoints admin: `/admin/workspaces` (GET/POST), `/invitations/global` (create; redención vía callback OIDC), `/workspaces/:id/join-codes` (POST/GET/PATCH/DELETE; edición inline B6 `e9bde8b`; rotate en `/join-code/rotate`), `/admin/users`, `/admin/cleanup` (invitaciones expiradas + barrido opt-in de guests B7 `7833c75`). Todas las escrituras con bucket `scoped` por acción (P0-5).
 - Miembros: list, add (handle y globalUserId resueltos; P0-3), change role, assign/remove role, suspend, reactivate, remove.
 - Join requests: list, approve, reject, request access, list mine, discover.
 - Guards: `authGuard → tenantWorkspaceGuard/workspaceAdminGuard → rateLimit`; `tenantAdminGuard`, `workspaceAdminGuard` (unión de roles); guard GUEST en RequestWorkspaceAccess; kind EVENT en JoinEvent; CreateWorkspace rechaza anonymous/GUEST.
@@ -66,14 +66,14 @@ Estado de referencia: `pnpm turbo run build type-check test` VERDE (352 tests AP
 
 ### 2.1 Base de datos
 - Router: schema + migraciones 0000–0009 OK. `global_invitations` con redención operativa (vía callback OIDC). `global_identity_tenants` ahora se escribe en cada login institucional y en cada redención global (`linkGlobalTenant`, upsert idempotente) — antes solo lo creaba el script de reconciliación. `global_identity_events` existe (audit cross-tenant, sin uso).
-- Tenant: schema + migraciones 0000–0016 OK. `membership_events` existe (append-only) y `membershipAdminRepo.recordEvent` ya escribe ahí para miembros. `workspace_join_codes` completo (create/list/revoke/increment/findByCodeHash; **sin update**).
+- Tenant: schema + migraciones 0000–0016 OK. `membership_events` existe (append-only) y `membershipAdminRepo.recordEvent` ya escribe ahí para miembros. `workspace_join_codes` completo (create/list/revoke/increment/findByCodeHash/update — B6).
 - Seed: solo `general` + `Evento Demo` + código efímero.
 
 ### 2.2 API
 - Auth: login/callback/refresh/logout/me/select-tenant/resolve-tenants/event-join/switch-tenant OK. `CompleteOidcLogin` redime invitación global (path cross-IdP antes de resolver tenant) y escribe el link global↔tenant en el path institucional.
 - Invitaciones globales: `POST /invitations/global` create OK; redención integrada en el callback OIDC (no hace falta endpoint redeem: el bind de email exige identidad IdP fresca).
 - Miembros: alta directa por `handle` y por `globalUserId` OK (`findGlobalTenantLink`).
-- Códigos efímeros: create/list/revoke OK; **sin update**.
+- Códigos efímeros: create/list/revoke/update OK (B6).
 - Auditoría: `DrizzleAuditLog` persistente desde 2026-10-28 — eventos de miembros/invitaciones/workspaces vía `recordEvent` y de códigos efímeros, join requests (creación + auto-aprobación) y redención global vía `IAuditLog`. Faltan por migrar: eventos explícitos de login/select-tenant (queda con v6/TASK-07).
 - Rate limit: genérico por workspace/actor (`limit`) en todas las protegidas + bucket dedicado por acción (`scoped`) en las 20 rutas de escritura admin/onboarding desde 2026-10-28 (P0-5).
 - Cleanup: invitaciones expiradas OK; guests 0.
@@ -204,11 +204,11 @@ Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev`
 
 ## 8. Trazabilidad
 
-- Tasks v5: `docs/tasks/auth-onboarding-v5/TASK-01..09`.
-- Tasks v6: `docs/tasks/auth-onboarding-v6/TASK-01..12` (sin subtasks 11.x/12.x activos; el trabajo real está en TASK-01..09 de v6 + v5).
+- Tasks v5: `docs/archive/tasks/auth-onboarding-v5/TASK-01..09`.
+- Tasks v6: `docs/archive/tasks/auth-onboarding-v6/TASK-01..12` (sin subtasks 11.x/12.x activos; el trabajo real está en TASK-01..09 de v6 + v5).
 - ADRs: ADR-0041 (admin model), ADR-0042 (cross-tenant/identity), ADR-0013 (authorHash pseudónimo), ADR-0025 (resolve-source), ADR-0026 (propuesta union kind), ADR-0028 (external identities).
 - Análisis: este documento (estado actual).
-- Knowledge transfer: `knowledge-transfer/08-identity-tenancy-and-guests.md` y `knowledge-transfer/guia-identidad-ia/login-tasks/README.md` (status reconciliado 2026-10-29 — D13/D14 y átomos confirmados en código; D4 formalizado en `docs/dns-domain-verification-design.md`; brechas honestas restantes: D3 resend/rotate, D5 sin diseño de prueba propio, F4 inventario PII no creado).
+- Knowledge transfer: `docs/archive/knowledge-transfer/08-identity-tenancy-and-guests.md` y `docs/archive/guia-identidad-ia/login-tasks/README.md` (status reconciliado 2026-10-29 — D13/D14 y átomos confirmados en código; D4 formalizado en `docs/components/dns-domain-verification.md`; brechas honestas restantes: D3 resend/rotate, D5 sin diseño de prueba propio, F4 inventario PII no creado).
 - Requirements: `docs/requirements.md` (US-00 + matriz de decisión).
 
 ---

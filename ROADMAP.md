@@ -3,7 +3,7 @@
 Open work only. Completed tasks, the old phase plan and the per-task prompts are
 frozen in [docs/archive/](docs/archive/); the decision record is
 [docs/decisions/](docs/decisions/) and the component specs are
-[docs/spec/](docs/spec/).
+[docs/components/](docs/components/).
 
 **Rules:** one checkbox = one PR-sized batch that leaves `pnpm turbo run build
 type-check test` green; update the status matrix in [docs/README.md](docs/README.md)
@@ -122,7 +122,7 @@ Milestones:
       ([ADR-0025](docs/decisions/ADR-0025-source-resolution-route.md)); no
       management route for the registry yet.
 - [x] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
-      ([spec](docs/spec/extractor.md)). Result: `apps/worker-extractor` masks
+      ([spec](docs/components/extractor.md)). Result: `apps/worker-extractor` masks
       the PII locally, resolves the workspace through the registry, extracts a
       draft and creates a `PENDING` node; **nothing publishes
       `stream:source_raw` yet** (the ingestion gateway is still missing).
@@ -133,13 +133,13 @@ Milestones:
       /`embedded_at` columns, HNSW index exercised, verified end to end against
       the local stack; there is no backfill for pre-existing nodes.
 - [x] 2.5 Relator: vector top-5 → LLM evaluation → merge/edge proposals
-      ([spec](docs/spec/relator.md)). Result: `apps/worker-relacionador` reads
+      ([spec](docs/components/relator.md)). Result: `apps/worker-relacionador` reads
       the neighbours through the API (ADR-0022), asks the local LLM and creates
       `PENDING` edges; a `MERGE` verdict is submitted as a merge proposal and
       the API applies the merge when the proposal is approved
       (ADR-0023, ADR-0026).
 - [~] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
-      the API ([spec](docs/spec/consolidator.md)); add the opportunity endpoint.
+      the API ([spec](docs/components/consolidator.md)); add the opportunity endpoint.
       **Deferred for MVP** (2026-10-26): not needed to ship; moved to
       "Tracked, not scheduled" until a concrete use case appears.
 - [x] 2.7 Worker Dockerfiles + compose profiles + worker tests; update
@@ -898,9 +898,47 @@ Decided, and not to be re-opened without evidence:
       `docs/ops/production-deployment.md`. api/web images build + smoke
       verified. Real hostname + staging CSP tuning remain the go-live steps.
 - [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
+      (2026-10-29: the claim had drifted — 19 errors were still live and CI
+      gate was failing on main; they were paid the same day, boundary
+      validation replaced the casts, and the heredoc-corrupted `deploy.yml` /
+      `e2e.yml` / floci compose were repaired. 0 errors / ~35 warnings.)
 
 ## Tracked, not scheduled
 
+Identity/auth survivors (promoted from the archived v5/v6 task trees and
+`docs/archive/notes/` on 2026-10-29; the intervention record is
+`docs/analysis/auth-onboarding-committee-review.md`):
+
+- B9 — create the Google/Microsoft OAuth clients (external step) and re-run
+  `scripts/setup-zitadel.sh` with the credentials (`docs/ops/zitadel-social-logins.md`).
+- B11 — T2 go-live: final hostname, first real deploy, CSP tuned against the
+  staging build (TASK-12.3 remainder; runbook `docs/ops/production-deployment.md`).
+- Cleanup cron: wire OR formally decline the scheduled trigger for
+  `POST /admin/cleanup` (manual endpoint + UI exist).
+- Invitation QR: render the global-invitation URL as QR in admin (v6-11 AC
+  half shipped as URL-only); the old two-code QR design
+  (`docs/archive/notes/p2-qr-both-codes.md`) is superseded by the single
+  event code embedding the workspaceId — accepted deviation.
+- `workspaces.kind` has no DB CHECK constraint (app-level validation only —
+  deviation vs v5-04 AC; add constraint or accept).
+- `workspaces.auto_approve_join_code` is a dead flag: written at create, read
+  by nothing (auto-approve is per-code). Consume it or drop it.
+- F4 — PII inventory + privacy notice (not created; needs product/legal
+  input; erasure options in `docs/knowledge/data-and-database-operations.md`).
+- Security open items (verified 2026-10-29, table in
+  `docs/knowledge/security-baseline.md`): S-02 committed credential in
+  `opencode.json`, S-03 plaintext router password, S-04 (see baseline),
+  S-05 dev DB ports unbound, S-12 unpinned images, S-15 unattended agent
+  approvals.
+- Vulnerability slivers accepted-as-partial in the committee (§6): V1
+  invitation token to `#` fragment (needs HTTPS go-live), V4 double-submit
+  CSRF on `/auth/refresh`, V8 handle-uniqueness UI validation.
+- Open decisions without owner (register:
+  `docs/archive/knowledge-transfer/15-decision-register-and-roadmap.md`):
+  D-03, D-04/05, D-06/07 (model choice/eval), D-12, D-13, D-15/16 (retention,
+  erasure), D-18/19.
+- D3 deviation accepted: invitation resend = revoke + create (no token-rotate
+  endpoint).
 - E2E graph-suite realignment (14 Playwright journeys): the toolbar redesign of
   roadmap 3.57–3.64 retired the `Lista`/`Raíz`/view-switch controls the specs
   drive (`WorkspaceToolbar` keeps the toggle props but renders no buttons;
@@ -924,6 +962,10 @@ Decided, and not to be re-opened without evidence:
 
 ## How to take a task
 
-`.claude/commands/next-task.md` describes the executor workflow; follow it,
+`.opencode/commands/next-task.md` describes the executor workflow; follow it,
 then mark the checkbox here with a one-line result and update
-[docs/README.md](docs/README.md) if a requirement status changed.
+[docs/README.md](docs/README.md) if a requirement status changed. For a deep
+pass over one area, open `docs/plans/<area>/v1.md` (template in
+[docs/plans/README.md](docs/plans/README.md)) and follow the lifecycle in
+[docs/README.md](docs/README.md): the plan is where board items become sliced
+tasks, and the closure checklist is what keeps `docs/` free of process debris.

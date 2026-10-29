@@ -2,7 +2,7 @@
 
 - Status: Accepted (broker choice amended by ADR-0030)
 - Date: 2026-10-24
-- Supersedes: the deferred cross-institution identity entry (D-23 in `knowledge-transfer/15-decision-register-and-roadmap.md`), subject to the conditions in §Consequences.
+- Supersedes: the deferred cross-institution identity entry (D-23 in `docs/archive/knowledge-transfer/15-decision-register-and-roadmap.md`), subject to the conditions in §Consequences.
 - Amended by: ADR-0030 (Zitadel replaces Keycloak)
 
 ## Context
@@ -115,9 +115,9 @@ privacy evaluation is recorded. If those conditions are not met, D-23's defer st
 
 ## Links
 
-- `knowledge-transfer/guia-identidad-ia/01-explicacion-logins-y-ia.md` (sections 6 to 9, 11, 13)
-- `knowledge-transfer/guia-identidad-ia/02-tareas-para-modelo-pequeno.md` (blocks A, B, C, D, F1, F4)
-- `knowledge-transfer/guia-identidad-ia/login-tasks/` (atomic tasks)
+- `docs/archive/guia-identidad-ia/01-explicacion-logins-y-ia.md` (sections 6 to 9, 11, 13)
+- `docs/archive/guia-identidad-ia/02-tareas-para-modelo-pequeno.md` (blocks A, B, C, D, F1, F4)
+- `docs/archive/guia-identidad-ia/login-tasks/` (atomic tasks)
 - `docs/decisions/ADR-0002-two-physical-databases.md`
 - `docs/decisions/ADR-0013-random-opaque-pseudonym.md`
 - `docs/decisions/ADR-0018-oidc-jit-hybrid-sessions.md`

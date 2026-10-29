@@ -1,41 +1,43 @@
 # CI/CD
 
-## Current pipeline (thin, implemented)
+> STATUS: **PARTIAL — living doc** (migrated from `docs/spec/` 2026-10-29).
+> The "current" section describes `.github/workflows/` as committed; note the
+> repo currently has **no git remote**, so GitHub Actions have never actually
+> executed against a hosted runner — the workflows are local truth pending a
+> first push.
 
-`.github/workflows/ci.yml` is intentionally minimal. It runs on every pull
-request and on pushes to `main`; a concurrency group cancels superseded runs.
-It has **three jobs**.
+## Current pipeline (as committed, 2026-10-29)
+
+`.github/workflows/` contains three files; `ci.yml` runs on pull requests and
+pushes to `main`; a concurrency group cancels superseded runs. It has
+**four jobs**.
 
 | Job | Steps |
 | --- | --- |
-| `verify` (TypeScript) | `actions/checkout@v4` → `pnpm/action-setup@v4` (version from `packageManager`) → `actions/setup-node@v4` (Node 22, pnpm cache) → `pnpm install --frozen-lockfile` → `pnpm turbo run build type-check test` |
-| `python` (worker runtime) | `actions/checkout@v4` → `astral-sh/setup-uv@v10` (uv 0.11.8, cache) → `uv sync --frozen --all-packages --all-groups` → `uv run pytest` → `uv run ruff check …` → `uv run ruff format --check …` |
-| `images` (worker images) | `actions/checkout@v4` → `docker build` of the embedder, Relator and Extractor images |
+| `verify` (TypeScript) | checkout → `pnpm/action-setup@v4` (version from `packageManager`) → `setup-node@v4` (Node 22, pnpm cache) → `pnpm install --frozen-lockfile` → `pnpm turbo run build type-check test` → per-package coverage runs with thresholds enforced by the vitest config → `pnpm lint` (warnings allowed; **errors fail**) |
+| `integration` | ephemeral Postgres 18 (`vozlab/postgres:18-age-pgvector`) + Redis 7 services; provisions router + tenant databases and migrations, then runs the integration suite |
+| `python` (worker runtime) | `astral-sh/setup-uv@v10` → `uv sync --frozen` → `uv run pytest` → `ruff check` → `ruff format --check` |
+| `images` | `docker build` of the embedder, Relator, Extractor **and the API and web** images (not pushed anywhere) |
 
-`build` type-checks `src`; `type-check` covers API tests, database scripts and
-the web app (`svelte-check`); `test` runs the Vitest unit suite (31 API files /
-165 tests plus 35 web files / 275 tests).
-The Playwright suite is **not** in the gate: it needs a running stack and
-is opt-in (`pnpm --filter @vozlab/web test:e2e`). Wiring it into Actions
-with the PostgreSQL and Redis services is roadmap 4.3. The Python job runs the worker runtime
-suite (105 tests) and the format/lint gate for the Python code. The image job
-proves the worker Dockerfiles still build — the images are not pushed anywhere.
+Companion workflows (manual, valid YAML since 2026-10-29 — before that they
+carried literal `EOF`/`echo created` artifacts that made them unloadable):
 
-Turborepo caching is enabled for all tasks; the uv job uses the setup action's
-cache.
+- `e2e.yml`: Playwright against API + PWA + seeded stack (`workflow_dispatch`
+  + push to `main`). Never executed (no remote).
+- `deploy.yml`: manual `workflow_dispatch`; the deploy job is fully commented
+  out pending a real host — the T2 procedure today is `docs/ops/production-deployment.md`.
+
+The unit gate is `build type-check test` (≈352 API tests, ≈521 web tests).
+`pnpm lint` passes with 0 errors / ~35 warnings (the `no-explicit-any` debt
+was paid 2026-10-29).
 
 What it does **not** do:
 
-- No lint. `pnpm lint` is known red (26 `no-explicit-any` errors), so adding it
-  now would block every merge. (The Python `ruff` gate *is* enforced.)
-- No PostgreSQL, Redis or Ollama services; the suites are unit-only.
-- No migrations, seed or integration tests.
-- No Playwright, k6 or coverage.
-- No registry push, SBOM or vulnerability scan.
-- No deployment or migration job.
-- No `develop` branch trigger (the old spec claimed one; it does not exist).
-- No `test:ci` execution: the Turbo task is declared, but no package defines
-  the script, so it is a no-op.
+- No registry push, SBOM or vulnerability scan; the image job only proves the
+  Dockerfiles build.
+- No nightly/load (k6) trigger; the k6 smoke script exists (`scripts/load/`).
+- No `develop` branch trigger (it does not exist).
+- No real execution history: with no git remote, CI is defined but unproven.
 
 Do not paste the stale pipeline from the old DevOps spec: it used Node 20,
 pnpm 9, a `develop` branch, an `ankane/pgvector:...postgres16` service and
@@ -140,6 +142,6 @@ Never point CI at a shared database. Each job gets its own throwaway instance.
 ## Related
 
 - [testing.md](../testing.md) — current suite and planned levels.
-- [runbook-dev.md](../runbook-dev.md) — local equivalents of the CI commands.
-- [runbook-ops.md](../runbook-ops.md) — current operational limits.
+- [runbook-dev.md](../ops/runbook-dev.md) — local equivalents of the CI commands.
+- [runbook-ops.md](../ops/runbook-ops.md) — current operational limits.
 - [conventions.md](../conventions.md) — build/type-check layout.

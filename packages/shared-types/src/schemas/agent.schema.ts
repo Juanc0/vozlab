@@ -12,7 +12,7 @@ import { z } from 'zod';
  * Any `type` value outside this enum is NOT treated as a human: `AuthGuard`
  * rejects the token with `401 ERR_INVALID_TOKEN`.
  *
- * Keep in sync with `docs/modules/modules_02_backend_fastify_guide.md` §3.
+ * Keep in sync with `docs/archive/spec-v1/modules/modules_02_backend_fastify_guide.md` §3.
  */
 export const AgentTypeSchema = z.enum([
   'AGENT_EXTRACTOR',

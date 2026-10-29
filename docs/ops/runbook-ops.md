@@ -187,5 +187,34 @@ these alerts **cannot** be implemented with the current code:
   entries > 100, and Redis memory pressure.
 - Dashboards for API, Postgres/AGE/pgvector, Redis and worker throughput.
 
-See [architecture.md](architecture.md) and [testing.md](testing.md) for the
+See [architecture.md](../architecture.md) and [testing.md](../testing.md) for the
 surrounding roadmap.
+
+
+---
+
+# Appendix — operational readiness before the first institution
+
+> Lifted 2026-10-29 from `docs/archive/knowledge-transfer/14-process-communication-quality.md` §8.
+
+## Operations: what must exist before the first institution uses the platform
+
+Nothing below exists today. Each item is a document or a small procedure, and most are a half-day to write.
+
+| Process | Minimum content | Owner |
+| --- | --- | --- |
+| Incident response | Severity levels; who is paged; the first fifteen minutes; how to communicate with the institution; the post-incident template | Engineer on duty |
+| On-call | A rota (even if it is one person and a named backup); the alert routes | Engineering lead |
+| Change management | How a change is approved for production; freeze windows around events and demonstrations; rollback procedure | Product owner and engineer |
+| Backup and restore drill | Schedule; the restore steps per tenant (`05` §8); the measured time | Engineer |
+| Access management | Who holds production credentials; how they are granted, reviewed and removed; the audit of access | Product owner |
+| Vulnerability management | How advisories are triaged; timelines by severity; who decides on acceptance (`10` §6) | Engineer |
+| Data subject requests | Intake, verification, response times, what can and cannot be erased (`05` §9) | Data steward |
+| Breach response | Assessment, notification duties and timelines under the applicable law, contacts | Data protection officer |
+| Supplier review | A short review of each external processor (cloud, model host, identity provider, email) | Product owner |
+| Records of processing and impact assessment | One entry per data source and one for the AI pipeline (`09` §5) | Data steward |
+
+**Jurisdiction.** The author's commit metadata and the development tenant name suggest a Colombian institutional context
+[supuesto]. If so, the relevant framework is likely to include Ley 1581 de 2012 on personal data protection and its decrees,
+with the national data protection authority as supervisor. Confirm with counsel. The obligations above are needed in any
+jurisdiction, but the wording and the timelines depend on the law.

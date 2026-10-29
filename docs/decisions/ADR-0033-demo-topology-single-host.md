@@ -44,4 +44,4 @@ Ollama also needs a persistent process with a warm model and (ideally) a GPU.
 
 - `docker-compose.yml`
 - `AGENTS.md` (dev servers are host processes)
-- `docs/spec/consolidator.md` (not built)
+- `docs/components/consolidator.md` (not built)

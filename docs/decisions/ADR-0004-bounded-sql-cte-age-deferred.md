@@ -41,5 +41,5 @@ The subgraph read path remains a recursive SQL CTE over the relational tables.
 - `packages/database/src/schema/tenant.public.schema.ts` (edge indexes)
 - `packages/database/migrations/tenant/0001_*.sql`
 - `docs/archive/spec-v1/modules/modules_01_data_model_and_metamodel.md` §4
-- `.claude/tasks/TASK-29_subgraph-bounding-and-age-decision.md`
+- `docs/archive/tasks/TASK-29_subgraph-bounding-and-age-decision.md`
 - `docs/archive/history/TODO-phase-1T.md` — TASK-29 result note

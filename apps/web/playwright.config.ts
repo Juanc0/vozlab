@@ -17,7 +17,7 @@ import {
  * (`test:integration`): a package script, no task in `turbo.json`.
  *
  * Two servers are started here — the API on `:3100` and the PWA on `:5174`,
- * **next to** the local stack of `docs/runbook-dev.md` (`:3000` / `:5173`),
+ * **next to** the local stack of `docs/ops/runbook-dev.md` (`:3000` / `:5173`),
  * which a developer can keep running:
  *
  * - the suite owns its pair, so it never borrows a server it did not

@@ -10,7 +10,7 @@ in its workspace before it can propose a relationship. The algorithm is a
 pgvector cosine search (`<=>`) over `public.nodes.embedding`, scoped to the
 workspace, top 5.
 
-The Relator spec ([spec/relator.md](../spec/relator.md)) describes the worker
+The Relator spec ([spec/relator.md](../components/relator.md)) describes the worker
 loading the node and running the query **directly against the tenant
 database**, read-only. That contradicts two decisions already in force:
 
@@ -106,5 +106,5 @@ The Relator keeps its own consumer group (`relator`) on
   embedder that produces the vectors this query searches.
 - [ADR-0021 worker runtime](ADR-0021-python-worker-runtime.md) — the consumer
   and retry model that turns `409` into "leave it pending".
-- [Relator spec](../spec/relator.md) — the algorithm this endpoint serves.
+- [Relator spec](../components/relator.md) — the algorithm this endpoint serves.
 - [ADR-0008 cross-workspace 404](ADR-0008-cross-workspace-404.md).

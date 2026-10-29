@@ -36,5 +36,5 @@ A thin **read-only** GraphQL facade may be added later if query flexibility beco
 - `docs/archive/spec-v1/modules/modules_02_backend_fastify_guide.md` §5
 - `apps/api/src/infrastructure/http/routes.ts`
 - `packages/shared-types/src/schemas/`
-- `.claude/reviews/REVIEW-2026-10-17_phase-1r.md` concern #2
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1r.md` concern #2
 - `docs/archive/history/EXECUTION_PLAN-2026-10-19.md` -> Deferred (GraphQL)

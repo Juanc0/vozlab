@@ -36,4 +36,4 @@ This rule applies to nodes, edges, proposals, discussion threads and posts, onto
 - `apps/api/src/application/use_cases/CreateEdgeUseCase.ts`
 - `apps/api/src/application/use_cases/CloseThreadUseCase.ts`
 - `apps/api/src/application/use_cases/CastVoteUseCase.ts`
-- `.claude/tasks/TASK-22_cross-workspace-isolation.md`, `TASK-35_proposal-authorization-workspace-scoping.md`
+- `docs/archive/tasks/TASK-22_cross-workspace-isolation.md`, `TASK-35_proposal-authorization-workspace-scoping.md`

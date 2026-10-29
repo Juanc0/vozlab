@@ -1,5 +1,7 @@
 # Extractor Worker (`worker-extractor`)
 
+> **STATUS: BUILT — living component doc** (migrated from `docs/spec/` 2026-10-29; one documented gap: the `stream:source_raw` producer). Details below.
+
 > **Implemented (milestone 2.3), with one documented gap.** The worker lives in
 > `apps/worker-extractor/`: it consumes `stream:source_raw` with its own group
 > `extractor`, masks the PII locally, asks the local LLM for a draft node and

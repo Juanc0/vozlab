@@ -105,7 +105,7 @@ The API `start` script runs `tsx` against `src/index.ts`; `build` is type-check-
 | [docs/architecture.md](docs/architecture.md) | Context, request path, two-DB topology, runtime facts |
 | [docs/auth-and-tenancy.md](docs/auth-and-tenancy.md) | OIDC flow, access/refresh sessions, guards, workspace isolation, pseudonymity |
 | [docs/api-reference.md](docs/api-reference.md) | Endpoints, headers, payloads |
-| [docs/runbook-dev.md](docs/runbook-dev.md) | Local setup and troubleshooting |
+| [docs/ops/runbook-dev.md](docs/ops/runbook-dev.md) | Local setup and troubleshooting |
 | [ROADMAP.md](ROADMAP.md) | Phases, deferred work, known gaps |
 
 ## License

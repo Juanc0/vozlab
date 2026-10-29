@@ -42,4 +42,4 @@ The **adapter is the single writer of `deleted_at`**. Use cases authorize and ca
 - `docs/archive/spec-v1/modules/modules_01_data_model_and_metamodel.md` §2
 - `apps/api/src/application/use_cases/` (`DeleteNodeUseCase.ts`, `DeleteEdgeUseCase.ts`, `DeletePostUseCase.ts`)
 - `apps/api/src/infrastructure/persistence/repositories/DrizzleDiscussionRepository.ts`
-- `.claude/tasks/TASK-24_keyset-and-softdelete-deduplication.md`, `TASK-25_soft-delete-policy.md`
+- `docs/archive/tasks/TASK-24_keyset-and-softdelete-deduplication.md`, `TASK-25_soft-delete-policy.md`

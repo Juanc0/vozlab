@@ -43,5 +43,5 @@ University systems need a controlled way to feed data into a workspace.
 ## Links
 
 - `apps/api/src/infrastructure/http/routes.ts` (`/ingestion/resolve-source`)
-- `docs/spec/extractor.md` (PII masking)
+- `docs/components/extractor.md` (PII masking)
 - `apps/worker-extractor/src/worker_extractor/pii.py`

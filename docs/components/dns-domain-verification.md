@@ -1,5 +1,7 @@
 # D4 — Verificación de dominio por DNS (diseño)
 
+> **STATUS: NOT BUILT — design only** (task D4 of the identity guide; carried from `docs/` root 2026-10-29).
+
 > Diseño documentado. No implementado todavía.
 
 ## Problema

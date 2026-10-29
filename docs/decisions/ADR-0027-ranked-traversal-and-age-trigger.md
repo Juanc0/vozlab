@@ -79,7 +79,7 @@ AGE is **not** adopted. The reasons, in the order of their weight:
 1. **AGE is a query language, not a concurrency mechanism.** Its
    concurrency behaviour is PostgreSQL's MVCC: two simultaneous writes are
    last-write-wins. The product's concurrency problem is solved elsewhere
-   ([ADR-0028](ADR-0028-optimistic-concurrency.md)), in the layer the code
+   (the optimistic-concurrency ADR planned as 0028 but never written — 0028 was later taken by multi-institution identity), in the layer the code
    already has.
 2. **The evidence does not show Cypher beating the bounded CTE for this
    shape.** The AGE Forge benchmark (2025-01) reports AGE **21× slower** on

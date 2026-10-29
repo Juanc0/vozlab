@@ -25,7 +25,7 @@
  * `--as` resolves one of the fixed dev identities, which is the usual local
  * case. Re-running is a no-op and prints the current state.
  *
- * See docs/operations.md and ADR-0041.
+ * See docs/ops/runbook-ops.md and ADR-0041.
  */
 import { Pool } from 'pg';
 import { DEV_IDENTITIES, type DevIdentityName } from './dev-identities.js';

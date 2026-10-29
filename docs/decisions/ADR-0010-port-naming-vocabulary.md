@@ -43,5 +43,5 @@ Repository ports use one grammar, documented in `modules_02` §6.8:
 
 - `docs/archive/spec-v1/modules/modules_02_backend_fastify_guide.md` §6.8
 - `apps/api/src/domain/ports/`
-- `.claude/reviews/REVIEW-2026-10-17_phase-1s.md` M-14, concern C6
-- `.claude/tasks/TASK-39_port-naming-convention.md`
+- `docs/archive/reviews/REVIEW-2026-10-17_phase-1s.md` M-14, concern C6
+- `docs/archive/tasks/TASK-39_port-naming-convention.md`

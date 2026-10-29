@@ -4,7 +4,7 @@
  * `vite-plugin-pwa` runs with `registerType: 'prompt'`, so a new worker stays
  * in the `waiting` state until the user accepts the reload. Nothing in this
  * module activates the update by itself — assets are never swapped silently
- * in the middle of a session (see `docs/spec/web-pwa.md`).
+ * in the middle of a session (see `docs/components/web-pwa.md`).
  */
 
 import { browser } from '$app/environment';

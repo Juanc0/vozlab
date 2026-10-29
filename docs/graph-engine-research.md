@@ -38,7 +38,7 @@ an **offline-first PWA**. It is not, and it was never asked to be: **the
 product is online-first**. Everything that is shown or edited comes from the
 API, there is **no local state and no synchronisation**, and the shell is
 cached only so that the app opens instantly and can say clearly when the
-connection is gone (`docs/spec/web-pwa.md` §PWA).
+connection is gone (`docs/components/web-pwa.md` §PWA).
 
 What that changes:
 
