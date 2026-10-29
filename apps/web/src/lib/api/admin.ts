@@ -82,6 +82,23 @@ export async function listAdminWorkspaces(client: ApiClient): Promise<AdminWorks
   return body.workspaces;
 }
 
+/**
+ * Tenant hygiene sweep (v6/TASK-09, B7): expire pending invitations and,
+ * only when a window is given, remove the anonymous guests inactive for
+ * that many days. Tenant-scoped — the workspace header is not an input.
+ */
+export async function runCleanup(
+  client: ApiClient,
+  inactiveGuestDays?: number
+): Promise<{ expiredInvitations: number; removedGuests: number }> {
+  return client.request<{ expiredInvitations: number; removedGuests: number }>({
+    method: 'POST',
+    path: '/admin/cleanup',
+    workspace: false,
+    body: inactiveGuestDays === undefined ? {} : { inactiveGuestDays }
+  });
+}
+
 export async function createAdminWorkspace(
   client: ApiClient,
   input: CreateWorkspaceInput

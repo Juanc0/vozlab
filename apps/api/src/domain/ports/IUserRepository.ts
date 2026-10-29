@@ -88,4 +88,13 @@ export interface IUserRepository {
     tx?: DbTransaction
   ): Promise<AuthUser>;
   listWorkspaces(userId: string, tid: string): Promise<UserWorkspace[]>;
+  /**
+   * v6/TASK-09 (B7): delete the anonymous event guests with no activity
+   * signal since `cutoff` — the account itself, its memberships, its audit
+   * trail and its refresh-token rotations are all older than the cutoff.
+   * Cascade removes memberships and tokens; `membership_events` (no FK) and
+   * graph authorship (`author_hash`, opaque) survive by design.
+   * Returns the number of guests removed.
+   */
+  removeInactiveGuests(tid: string, cutoff: Date, tx?: DbTransaction): Promise<number>;
 }

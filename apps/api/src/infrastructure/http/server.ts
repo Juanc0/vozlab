@@ -288,7 +288,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     oidcStateStore
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
-  const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo);
+  const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo, userRepo);
   const createGlobalInvitationUseCase = new CreateGlobalInvitationUseCase(routerDb);
   const redeemGlobalInvitationUseCase = new RedeemGlobalInvitationUseCase(
     routerDb,

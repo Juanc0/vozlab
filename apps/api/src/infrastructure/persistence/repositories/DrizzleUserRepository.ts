@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, lt, sql } from 'drizzle-orm';
 import { users, workspaceMemberships, workspaces, externalIdentities } from '@vozlab/database';
 import { WorkspaceRole } from '@vozlab/shared-types';
 import {
@@ -359,6 +359,51 @@ export class DrizzleUserRepository implements IUserRepository {
       }));
     } catch (error) {
       log.error({ err: error, userId }, 'failed to list user workspaces');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
+   * v6/TASK-09 (B7): delete anonymous event guests inactive since `cutoff`.
+   *
+   * Inactivity is the absence of **every** signal the tenant DB carries:
+   * the account creation, any membership row, any `membership_events` row
+   * for the user, and any refresh-token issuance (rotation is the only
+   * record of a guest actually using the session). The account-level
+   * `created_at` alone is not enough: a guest re-joining an event later
+   * leaves a fresh membership or token behind.
+   *
+   * `membership_events` has no FK to `users`, so the audit trail survives
+   * the delete by design; graph authorship is an opaque `author_hash` and
+   * is not touched either.
+   */
+  async removeInactiveGuests(tid: string, cutoff: Date, tx?: DbTransaction): Promise<number> {
+    try {
+      const db = (tx as Tx | undefined) ?? (await this.poolManager.getDb(tid));
+      const removed = await db
+        .delete(users)
+        .where(
+          and(
+            eq(users.isAnonymous, true),
+            lt(users.createdAt, cutoff),
+            sql`not exists (
+                   select 1 from ${workspaceMemberships} m
+                   where m.user_id = ${users.id} and m.created_at >= ${cutoff}
+                 )`,
+            sql`not exists (
+                   select 1 from auth.membership_events e
+                   where e.user_id = ${users.id} and e.created_at >= ${cutoff}
+                 )`,
+            sql`not exists (
+                   select 1 from auth.refresh_tokens r
+                   where r.user_id = ${users.id} and r.created_at >= ${cutoff}
+                 )`
+          )
+        )
+        .returning({ id: users.id });
+      return removed.length;
+    } catch (error) {
+      log.error({ err: error, tid }, 'failed to remove inactive guests');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

@@ -43,6 +43,10 @@
   let addMemberHandle = $state('');
   let addMemberRole = $state('MEMBER');
   let addingMember = $state(false);
+  // v6/TASK-09 (B7): the tenant hygiene sweep.
+  let cleanupDays = $state('30');
+  let runningCleanup = $state(false);
+  let cleanupResult = $state<string | null>(null);
 
   async function loadWorkspaces() {
     loading = true; error = null;
@@ -172,6 +176,23 @@
       error = describeFailure(e);
     } finally {
       addingMember = false;
+    }
+  }
+
+  async function runTenantCleanup() {
+    runningCleanup = true;
+    cleanupResult = null;
+    try {
+      const days = cleanupDays.trim() === '' ? undefined : Number(cleanupDays);
+      const res = await admin.runCleanup(api, days);
+      cleanupResult = t('admin.cleanupResult', {
+        invitations: res.expiredInvitations,
+        guests: res.removedGuests
+      });
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      runningCleanup = false;
     }
   }
 </script>
@@ -368,6 +389,22 @@
             </li>
           {/each}
         </ul>
+
+        <div class="border-t border-rule pt-3 space-y-2">
+          <h3>{t('admin.cleanup') ?? 'Tenant hygiene'}</h3>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1 text-small">
+              {t('admin.cleanupDays') ?? 'Guest inactivity window (days)'}
+              <input class="field w-20" type="number" min="1" max="3650" bind:value={cleanupDays} />
+            </label>
+            <button type="button" class="btn btn-primary text-small" disabled={runningCleanup} onclick={runTenantCleanup}>
+              {t('admin.runCleanup') ?? 'Run cleanup'}
+            </button>
+          </div>
+          {#if cleanupResult}
+            <p class="text-small text-muted">{cleanupResult}</p>
+          {/if}
+        </div>
       {:else}
         <p>{t('admin.noWorkspaces')}</p>
       {/if}

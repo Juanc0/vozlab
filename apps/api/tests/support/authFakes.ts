@@ -268,11 +268,14 @@ export function makeUserRepository(
   options: {
     user?: AuthUser | null;
     workspaces?: UserWorkspace[];
+    /** Value returned by `removeInactiveGuests`. */
+    removedGuests?: number;
   } = {}
 ): {
   userRepo: IUserRepository;
   oidcUpserts: Array<{ input: unknown; tid: string }>;
   anonymousCreates: Array<{ input: NewAnonymousUser; tid: string; tx?: DbTransaction }>;
+  guestSweeps: Array<{ tid: string; cutoff: Date }>;
 } {
   const user = options.user === undefined ? AUTH_USER : options.user;
   const workspaces = options.workspaces ?? [];
@@ -282,6 +285,7 @@ export function makeUserRepository(
     tid: string;
     tx?: DbTransaction;
   }> = [];
+  const guestSweeps: Array<{ tid: string; cutoff: Date }> = [];
 
   const userRepo: IUserRepository = {
     async findById() {
@@ -314,9 +318,13 @@ export function makeUserRepository(
     async listWorkspaces() {
       return workspaces;
     },
+    async removeInactiveGuests(tid, cutoff) {
+      guestSweeps.push({ tid, cutoff });
+      return options.removedGuests ?? 0;
+    },
   };
 
-  return { userRepo, oidcUpserts, anonymousCreates };
+  return { userRepo, oidcUpserts, anonymousCreates, guestSweeps };
 }
 
 export function makeRefreshTokenRepository(
