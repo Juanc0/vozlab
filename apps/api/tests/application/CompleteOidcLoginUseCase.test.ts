@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
+import { deriveHandle } from '../../src/shared/auth/deriveHandle.js';
 import { RedeemGlobalInvitationUseCase } from '../../src/application/use_cases/RedeemGlobalInvitationUseCase.js';
 import {
   hashOpaqueToken,
@@ -116,6 +117,9 @@ describe('CompleteOidcLoginUseCase', () => {
       subject: 'idp-sub-1',
       email: 'ada@example.edu',
       fullName: 'Ada Lovelace',
+      // B14: with no `preferred_username` asserted, the email local-part
+      // is the derived search alias.
+      handle: 'ada',
     });
     expect((input as { authorHash?: string }).authorHash).toMatch(/^[a-f0-9]{64}$/);
 
@@ -282,5 +286,45 @@ describe('CompleteOidcLoginUseCase', () => {
       );
       expect(refresh.creates).toEqual([]);
     });
+  });
+});
+
+describe('deriveHandle (v6/TASK-03, B14)', () => {
+  it('prefers the IdP preferred_username over the email', () => {
+    expect(
+      deriveHandle({ preferredUsername: 'Ada-L', email: 'ada@example.edu', subject: 'sub-1' })
+    ).toBe('ada-l');
+  });
+
+  it('falls back to the email local-part, normalized', () => {
+    // uppercase lowered, dots/spaces become dashes, edges trimmed.
+    expect(deriveHandle({ email: 'Test.User @x.co', subject: 'sub-1' })).toBe('test-user');
+  });
+
+  it('falls back to the prefixed subject when no username or email exists', () => {
+    expect(deriveHandle({ email: null, subject: 'ABC-123' })).toBe('u-abc-123');
+  });
+
+  it('truncates to the varchar(64) column width', () => {
+    const long = 'a'.repeat(100);
+    expect(deriveHandle({ email: `${long}@example.edu`, subject: 's' })).toHaveLength(64);
+    expect(deriveHandle({ preferredUsername: long, email: null, subject: 's' })).toHaveLength(64);
+  });
+
+  it('is deterministic: the same profile always yields the same alias', () => {
+    const profile = { preferredUsername: 'Juán', email: 'j@example.edu', subject: 'sub-7' };
+    expect(deriveHandle(profile)).toBe(deriveHandle(profile));
+    // non-[a-z0-9_-] runs collapse to a single dash
+    expect(deriveHandle(profile)).toBe('ju-n');
+  });
+
+  it('never returns an empty string for a degenerate profile', () => {
+    // email local-part is only separators, subject is only punctuation:
+    // the subject fallback normalizes to something non-empty and stable.
+    const handle = deriveHandle({ email: '@@example.edu', subject: '...' });
+    expect(handle).toBe('u');
+    expect(handle.length).toBeGreaterThan(0);
+    // A normal subject still yields the readable prefix form.
+    expect(deriveHandle({ email: null, subject: 'x-9' })).toBe('u-x-9');
   });
 });

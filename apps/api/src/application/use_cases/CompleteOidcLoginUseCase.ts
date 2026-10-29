@@ -19,6 +19,7 @@ import {
   generateRefreshToken,
   hashOpaqueToken,
 } from '../../shared/auth/refreshToken.js';
+import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 
 export interface CompleteOidcLoginInput {
   code: string;
@@ -168,6 +169,10 @@ export class CompleteOidcLoginUseCase {
         emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
+        // v6/TASK-03 (B14): the admin finds people by handle; the login is
+        // the only place that knows the IdP profile, so the handle is
+        // derived here and the adapter persists it (insert + repair).
+        handle: deriveHandle(identity),
         globalIdentityId: globalUser.id,
       },
       tenant.id

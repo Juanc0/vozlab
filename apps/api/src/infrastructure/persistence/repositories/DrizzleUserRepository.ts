@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, lt, ne, sql } from 'drizzle-orm';
 import { users, workspaceMemberships, workspaces, externalIdentities } from '@vozlab/database';
 import { WorkspaceRole } from '@vozlab/shared-types';
 import {
@@ -197,6 +197,30 @@ export class DrizzleUserRepository implements IUserRepository {
     }
   }
 
+  /**
+   * B14: the handle is a lookup alias, not a credential. If the derived
+   * handle is already claimed by a different account (two users sharing an
+   * email local-part across IdPs), the row is created/repaired without one
+   * — login must never fail over an alias collision.
+   */
+  private async freeHandle(
+    tx: Tx,
+    handle: string | null | undefined,
+    selfId?: string
+  ): Promise<string | null> {
+    if (!handle) return null;
+    const [taken] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        selfId
+          ? and(eq(users.handle, handle), ne(users.id, selfId))
+          : eq(users.handle, handle)
+      )
+      .limit(1);
+    return taken ? null : handle;
+  }
+
   async findOrCreateByExternalIdentity(
     input: NewExternalIdentityInput,
     tid: string
@@ -218,12 +242,18 @@ export class DrizzleUserRepository implements IUserRepository {
           .limit(1);
 
         if (existingExt) {
-          // Update profile and last login.
+          // Update profile and last login. B14 repair: a JIT user created
+          // before the handle derivation existed gets its alias now — but a
+          // handle already set is never overwritten, and one taken by
+          // another account is dropped (alias collision must not break the
+          // login: the handle is a lookup key, not a credential).
+          const freeHandle = await this.freeHandle(tx, input.handle, existingExt.userId);
           const [updated] = await tx
             .update(users)
             .set({
               email: input.email ?? undefined,
               fullName: input.fullName ?? undefined,
+              handle: sql`COALESCE(${users.handle}, ${freeHandle})`,
             })
             .where(eq(users.id, existingExt.userId))
             .returning();
@@ -257,7 +287,11 @@ export class DrizzleUserRepository implements IUserRepository {
           }
         }
 
-        // 3. Create new user + external_identity row.
+        // 3. Create new user + external_identity row. The handle is the
+        // admin's direct-add alias (B14); a collision with another account's
+        // handle is tolerated by leaving the row NULL rather than failing
+        // the login — the identity key is (provider, providerUserId).
+        const freeHandle = await this.freeHandle(tx, input.handle);
         const [created] = await tx
           .insert(users)
           .values({
@@ -265,6 +299,7 @@ export class DrizzleUserRepository implements IUserRepository {
             providerUserId: input.subject,
             email: input.email,
             fullName: input.fullName,
+            handle: freeHandle,
             authorHash: input.authorHash,
             systemRole: 'USER',
             globalIdentityId: input.globalIdentityId ?? null,

@@ -131,6 +131,8 @@ describe('OidcProviderClient', () => {
       email: 'ada@example.edu',
       emailVerified: true,
       fullName: 'Ada Lovelace',
+      // B14: asserted only when the IdP sends it; absent here → null.
+      preferredUsername: null,
       tenantKey: 'entra-tenant-guid',
       providerKind: 'OIDC_INSTITUTIONAL',
     });

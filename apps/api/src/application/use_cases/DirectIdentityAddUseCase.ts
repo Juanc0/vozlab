@@ -6,6 +6,7 @@ import { IUserRepository, NewExternalIdentityInput } from '../../domain/ports/IU
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { generateAuthorHash } from '../../shared/auth/refreshToken.js';
+import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 
 export interface DirectIdentityAddInput {
   globalIdentityId: string;
@@ -47,6 +48,12 @@ export class DirectIdentityAddUseCase {
         emailVerified: null,
         fullName: null,
         authorHash: generateAuthorHash(),
+        // B14: the alias is the deterministic subject fallback; the router
+        // profile has no asserted email for this path.
+        handle: deriveHandle({
+          email: globalUser.email,
+          subject: globalUser.subject,
+        }),
         globalIdentityId: globalUser.id,
       },
       input.tid

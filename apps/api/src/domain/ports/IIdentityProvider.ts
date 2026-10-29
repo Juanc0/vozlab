@@ -22,6 +22,13 @@ export interface ExternalIdentity {
   emailVerified: boolean | null;
   fullName: string | null;
   /**
+   * IdP username claim (`preferred_username`), when the provider asserts it.
+   * The login use case prefers it over the email local-part to derive the
+   * user's `auth.users.handle` (v6/TASK-03, B14). Optional: providers that
+   * omit it behave as before.
+   */
+  preferredUsername?: string | null;
+  /**
    * Tenant discriminator from the validated ID token:
    *   - Entra ID: `tid` (directory/tenant GUID)
    *   - Google Workspace: `hd` (hosted domain)

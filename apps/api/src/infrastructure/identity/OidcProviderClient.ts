@@ -31,6 +31,7 @@ interface IdTokenClaims {
   email?: string;
   email_verified?: boolean;
   name?: string;
+  preferred_username?: string;
   nonce?: string;
   /** Entra ID tenant/directory id. */
   tid?: string;
@@ -52,6 +53,7 @@ interface UserinfoResponse {
   email?: string;
   email_verified?: boolean;
   name?: string;
+  preferred_username?: string;
 }
 
 export interface OidcProviderOptions {
@@ -145,6 +147,9 @@ export class OidcProviderClient implements IIdentityProvider {
 
     let email = claims.email ?? null;
     let fullName = claims.name ?? null;
+    // The username the user knows themselves by; the login use case prefers
+    // it over the email local-part when deriving `auth.users.handle` (B14).
+    let preferredUsername: string | null = claims.preferred_username ?? null;
     // Distinguish "verified", "not verified" and "not asserted".
     // Absent claim → null (provider did not assert either way).
     let emailVerified: boolean | null =
@@ -167,6 +172,7 @@ export class OidcProviderClient implements IIdentityProvider {
         } else {
           email = email ?? profile.email ?? null;
           fullName = fullName ?? profile.name ?? null;
+          preferredUsername = preferredUsername ?? profile.preferred_username ?? null;
           if (emailVerified === null && profile.email_verified !== undefined) {
             emailVerified = profile.email_verified === true;
           }
@@ -185,6 +191,7 @@ export class OidcProviderClient implements IIdentityProvider {
       email,
       emailVerified,
       fullName,
+      preferredUsername,
       tenantKey,
       providerKind: 'OIDC_INSTITUTIONAL',
     };

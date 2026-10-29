@@ -40,6 +40,12 @@ export interface NewExternalIdentityInput {
   emailVerified: boolean | null;
   fullName: string | null;
   authorHash: string;
+  /**
+   * Pseudonymous username for the admin's direct-add lookup (v6/TASK-03,
+   * B14), derived from the IdP profile by the login use case. Optional:
+   * a null handle keeps the user unfindable by handle, never blocks login.
+   */
+  handle?: string | null;
   /** Global identity ID from the router DB (D8). */
   globalIdentityId?: string | null;
 }

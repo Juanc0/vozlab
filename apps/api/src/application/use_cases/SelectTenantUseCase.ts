@@ -5,7 +5,12 @@ import { IGlobalUserRepository, GlobalUser } from '../../domain/ports/IGlobalUse
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
-import { generateAuthorHash, generateRefreshToken, hashOpaqueToken } from '../../shared/auth/refreshToken.js';
+import {
+  generateAuthorHash,
+  generateRefreshToken,
+  hashOpaqueToken,
+} from '../../shared/auth/refreshToken.js';
+import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 import { AuthUser } from '../../domain/ports/IUserRepository.js';
 
 export interface SelectTenantInput {
@@ -54,6 +59,12 @@ export class SelectTenantUseCase {
         emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
+        // B14: this is where a multi-tenant login finally touches the
+        // tenant DB — the handle repair of the JIT row (rows created before
+        // the rule existed, or created through the selector path) happens
+        // here. The router profile has no `preferred_username`, so the
+        // email's local-part is the deterministic source.
+        handle: deriveHandle({ email: identity.email, subject: identity.subject }),
         globalIdentityId: identity.id,
       },
       tenant.id

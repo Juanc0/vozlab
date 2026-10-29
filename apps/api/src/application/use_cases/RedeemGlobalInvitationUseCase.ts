@@ -6,6 +6,7 @@ import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { hashOpaqueToken, generateAuthorHash } from '../../shared/auth/refreshToken.js';
+import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import type { AuthUser } from '../../domain/ports/IUserRepository.js';
 import type { WorkspaceRole } from '@vozlab/shared-types';
@@ -86,6 +87,12 @@ export class RedeemGlobalInvitationUseCase {
         emailVerified: input.identityEmailVerified,
         fullName: input.fullName,
         authorHash: generateAuthorHash(),
+        // B14: the redeemed account gets its lookup alias from the identity
+        // email asserted by the IdP.
+        handle: deriveHandle({
+          email: input.identityEmail,
+          subject: input.subject,
+        }),
         globalIdentityId: input.globalUserId,
       },
       tenant.id
