@@ -67,6 +67,21 @@ export type DevIdentityName =
   | 'agent'
   | 'embedder';
 
+/**
+ * v6/TASK-03: human-readable lookup key for the admin's direct-add panel.
+ * Only the human identities carry one — the agents have no membership to
+ * find. The admin seeds these; the JIT login path still leaves `handle`
+ * null (the IdP username claim is not mapped yet — tracked in the committee
+ * review, it does not affect the seeded demo).
+ */
+export const DEV_HANDLES: Readonly<
+  Partial<Record<DevIdentityName, string>>
+> = Object.freeze({
+  maintainer: 'dev-maintainer',
+  moderator: 'dev-moderator',
+  member: 'dev-member',
+});
+
 export interface DevMembershipFixture {
   /** Fixed `auth.workspace_memberships.id`. */
   readonly id: string;

@@ -25,9 +25,22 @@
  *     - tenants            : slug `sabana`, oidc_tenant_id `sabana`
  *     - tenant_connections : physical config of the dev tenant DB
  *   Tenant DB  (`vozlab_tenant_dev`)
- *     - auth.workspaces            : slug `general`
- *     - auth.users                 : 5 dev identities (stable authorHash each)
- *     - auth.workspace_memberships : 3 of them (the two agents have none)
+ *     - auth.workspaces            : `general` (PUBLIC), `community` (PUBLIC),
+ *                                    `paper-lab` (PRIVATE, join requests),
+ *                                    `evento-demo` (EVENT, auto-approve)
+ *     - auth.users                 : 5 dev identities (stable authorHash each;
+ *                                    the three humans also carry a `handle`
+ *                                    for the admin's direct-add demo)
+ *     - auth.workspace_memberships : multiple roles per user (member is
+ *                                    MODERATOR+MEMBER in `general`), three
+ *                                    workspaces with real members, `paper-lab`
+ *                                    intentionally without any
+ *     - auth.workspace_join_codes  : one ephemeral code per non-EVENT
+ *                                    workspace (the raw values are printed by
+ *                                    this script)
+ *     - auth.invitations           : two samples in `community` — PENDING
+ *                                    (accept it at /invite?token=…) and
+ *                                    EXPIRED (for the hygiene sweep)
  *     - meta.ontology_classes      : Problem, Idea, Resource (ACTIVE)
  *     - meta.datatype_properties   : title, description + sector, alcance,
  *                                    horizonte, costoEstimado, enlace,
@@ -70,6 +83,7 @@ import {
   tenantConnections,
   workspaces,
   workspaceJoinCodes,
+  invitations,
   users,
   workspaceMemberships,
   ontologyClasses,
@@ -85,6 +99,7 @@ import {
 } from '../src/index.js';
 import {
   authorHashFor,
+  DEV_HANDLES,
   DEV_IDENTITIES,
   DEV_IDENTITY_NAMES,
   OIDC_TENANT_ID,
@@ -132,6 +147,134 @@ const OP_ADDRESSES_ID = '88888888-8888-4888-8888-888888888882';
 const OP_BUILDS_ON_ID = '88888888-8888-4888-8888-888888888883';
 const OP_EVIDENCED_BY_ID = '88888888-8888-4888-8888-888888888884';
 const DATA_SOURCE_ID = '99999999-9999-4999-8999-999999999991';
+
+/** SHA-256 hex — mirrors the token/code hashing of the API use cases. */
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+// v6/TASK-12 (B10): the onboarding demo fixtures. Fixed ids keep the seed
+// idempotent; the raw join codes and invitation tokens are deterministic too
+// so the printed hand-off survives a re-seed.
+const COMMUNITY_WORKSPACE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+const PAPER_LAB_WORKSPACE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccc12';
+const COMMUNITY_CODE = '7A2C4E6F8B1D3A5C';
+const PAPER_LAB_CODE = '5B7D9F1A3C5E7B9D';
+const EVENT_WORKSPACE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const EVENT_CODE = 'EVENTDEMO1234';
+
+/**
+ * Ephemeral join codes (v6/TASK-04), one per workspace, with the attributes
+ * that make the admin CRUD demo meaningful — a cap, an expiry, auto-approve
+ * on and off. Only the SHA-256 lives in the DB; `seed-dev` prints the raw
+ * values so the operator can paste them into the join flow.
+ */
+const DEMO_JOIN_CODES = [
+  {
+    workspaceId: WORKSPACE_ID,
+    raw: 'GENERALDEMO000000000001',
+    label: 'Demo general code',
+    maxUses: 50,
+    expiresAt: null,
+    autoApprove: false,
+  },
+  {
+    workspaceId: COMMUNITY_WORKSPACE_ID,
+    raw: COMMUNITY_CODE,
+    label: 'Community open house',
+    maxUses: null,
+    expiresAt: null,
+    autoApprove: true,
+  },
+  {
+    workspaceId: PAPER_LAB_WORKSPACE_ID,
+    raw: PAPER_LAB_CODE,
+    label: 'Paper lab invite round',
+    maxUses: 5,
+    // Far future: the demo must not expire itself between re-seeds.
+    expiresAt: new Date('2099-12-31T00:00:00Z'),
+    autoApprove: false,
+  },
+  {
+    workspaceId: EVENT_WORKSPACE_ID,
+    raw: EVENT_CODE,
+    label: 'Dev event code',
+    maxUses: null,
+    expiresAt: null,
+    autoApprove: true,
+  },
+] as const;
+
+/**
+ * Sample invitations (B10) for `community` and `general`: one PENDING — its
+ * raw token opens `/login?invitation=…` — and one EXPIRED so the hygiene
+ * sweep (v6/TASK-09) has something real to report. The hashes mirror
+ * `CreateInvitationUseCase`: sha256 of the token and of the normalized email.
+ */
+const INVITE_PENDING_RAW = 'dev-community-invite-openhouse-2026';
+const DEMO_INVITATIONS = [
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd01',
+    workspaceId: COMMUNITY_WORKSPACE_ID,
+    email: 'invited.demo@example.edu',
+    role: 'MEMBER',
+    tokenRaw: INVITE_PENDING_RAW,
+    expiresAt: new Date('2099-12-31T00:00:00Z'),
+    status: 'PENDING',
+  },
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd02',
+    workspaceId: WORKSPACE_ID,
+    email: 'expired.demo@example.edu',
+    role: 'MEMBER',
+    tokenRaw: 'dev-general-invite-expired-2026',
+    expiresAt: new Date('2020-01-01T00:00:00Z'),
+    status: 'EXPIRED',
+  },
+] as const;
+
+/**
+ * Extra memberships beyond the base one per identity — the multiple-role and
+ * per-workspace demo of B10. `dev-member` also holds MODERATOR in `general`
+ * (the v5 union-of-roles rule), and the two extra workspaces get real
+ * members so their admin and discovery flows are demonstrable.
+ */
+const DEMO_MEMBERSHIPS = [
+  {
+    id: '55555555-5555-4555-8555-555555555571',
+    workspaceId: WORKSPACE_ID,
+    user: 'member',
+    role: 'MODERATOR',
+  },
+  // The PUBLIC community workspace: the maintainer administers it, the
+  // member and the moderator participate.
+  {
+    id: '55555555-5555-4555-8555-555555555572',
+    workspaceId: COMMUNITY_WORKSPACE_ID,
+    user: 'maintainer',
+    role: 'ADMIN',
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555573',
+    workspaceId: COMMUNITY_WORKSPACE_ID,
+    user: 'member',
+    role: 'MEMBER',
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555574',
+    workspaceId: COMMUNITY_WORKSPACE_ID,
+    user: 'moderator',
+    role: 'MEMBER',
+  },
+  // The second ADMIN (dev-member) so the "remove the last admin is refused"
+  // rule is testable without locking the seed out of the workspace.
+  {
+    id: '55555555-5555-4555-8555-555555555575',
+    workspaceId: PAPER_LAB_WORKSPACE_ID,
+    user: 'member',
+    role: 'ADMIN',
+  },
+] as const;
 
 /** Valid 64-char hex SHA-256 required by the `AuthorHash` value object. */
 const AUTHOR_HASH = authorHashFor('maintainer');
@@ -238,23 +381,65 @@ async function seed(): Promise<void> {
         .onConflictDoNothing();
     }
 
-    // --- Tenant DB: workspace, users, memberships -------------------------
-    await tenantDb
-      .insert(workspaces)
-      .values({
+    // --- Tenant DB: workspaces, users, memberships ------------------------
+    // Three non-EVENT workspaces demonstrating each `kind` the admin badge
+    // and the discovery flow know: `general` (PUBLIC, the demo graph lives
+    // here), `community` (PUBLIC, populated), `paper-lab` (PRIVATE, join
+    // requests gated by the routing hint). The canonical fields are upserted
+    // on the fixed ids so a re-run restores the demo to its pristine shape —
+    // the drift this fixes is real: the pre-`kind` seed wrote `general` with
+    // kind 'PRIVATE' while its `is_public` is true.
+    const demoWorkspaces = [
+      {
         id: WORKSPACE_ID,
         slug: WORKSPACE_SLUG,
         name: 'General Campus',
         description: 'Dev workspace',
         isPublic: true,
+        kind: 'PUBLIC',
+        autoApproveJoinCode: false,
         // Routing hint only: it identifies the workspace to a user who was
         // told the code; it never grants access (US-00).
         joinCode: '7532D05897A9D6C5',
-      })
-      .onConflictDoNothing();
+      },
+      {
+        id: COMMUNITY_WORKSPACE_ID,
+        slug: 'community',
+        name: 'Open Community',
+        description: 'PUBLIC sample: discoverable without any code (B10)',
+        isPublic: true,
+        kind: 'PUBLIC',
+        autoApproveJoinCode: false,
+        joinCode: 'C0MMUNITYHINT000000000',
+      },
+      {
+        id: PAPER_LAB_WORKSPACE_ID,
+        slug: 'paper-lab',
+        name: 'Paper Lab',
+        description: 'PRIVATE sample: hint + approved join request (B10)',
+        isPublic: false,
+        kind: 'PRIVATE',
+        autoApproveJoinCode: false,
+        joinCode: 'P4PERL4BHINT0000000000',
+      },
+    ];
+    for (const w of demoWorkspaces) {
+      await tenantDb
+        .insert(workspaces)
+        .values(w)
+        .onConflictDoUpdate({
+          target: workspaces.id,
+          set: {
+            name: w.name,
+            description: w.description,
+            isPublic: w.isPublic,
+            kind: w.kind,
+            autoApproveJoinCode: w.autoApproveJoinCode,
+          },
+        });
+    }
 
     // Dev EVENT workspace for guest/event-join testing.
-    const EVENT_WORKSPACE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     await tenantDb
       .insert(workspaces)
       .values({
@@ -265,24 +450,31 @@ async function seed(): Promise<void> {
         isPublic: false,
         kind: 'EVENT',
         autoApproveJoinCode: true,
-        joinCode: 'EVENTDEMO1234',
+        joinCode: EVENT_CODE,
       })
       .onConflictDoNothing();
 
-    // Ephemeral join code for the EVENT workspace (dev only).
-    const EVENT_CODE = 'EVENTDEMO1234';
+    // Ephemeral join codes (v6/TASK-04): the DEMO_JOIN_CODES fixtures, one
+    // per workspace (the EVENT one included). Only the SHA-256 is stored;
+    // the raw values are printed by the report.
     await tenantDb
       .insert(workspaceJoinCodes)
-      .values({
-        workspaceId: EVENT_WORKSPACE_ID,
-        codeHash: createHash('sha256').update(EVENT_CODE).digest('hex'),
-        label: 'Dev event code',
-        autoApprove: true,
-        createdBy: null,
-      })
+      .values(
+        DEMO_JOIN_CODES.map((code) => ({
+          workspaceId: code.workspaceId,
+          codeHash: sha256Hex(code.raw),
+          label: code.label,
+          maxUses: code.maxUses,
+          expiresAt: code.expiresAt,
+          autoApprove: code.autoApprove,
+          createdBy: DEV_IDENTITIES.maintainer.id,
+        })),
+      )
       .onConflictDoNothing();
 
     // One row per dev identity (fixed ids + stable authorHash -> idempotent).
+    // The three human identities also carry the `handle` the admin panel of
+    // v6/TASK-03 uses for direct add; agents act by token, never by handle.
     await tenantDb
       .insert(users)
       .values(
@@ -295,17 +487,30 @@ async function seed(): Promise<void> {
             authorHash: identity.authorHash,
             fullName: identity.fullName,
             email: identity.email,
+            handle: DEV_HANDLES[name] ?? null,
             systemRole: identity.systemRole,
           };
         }),
       )
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: users.id,
+        // The base fields of a dev identity are canonical: re-seeding heals
+        // a half-updated row (e.g. an identity seeded before `handle`).
+        set: {
+          email: sql`excluded.email`,
+          fullName: sql`excluded.full_name`,
+          handle: sql`excluded.handle`,
+          systemRole: sql`excluded.system_role`,
+        },
+      });
 
-    // Memberships — the system agent acts platform-wide and has none.
+    // Memberships — the system agent acts platform-wide and has none. The
+    // base fixture plus the extra rows of DEMO_MEMBERSHIPS give dev-member
+    // two roles in `general` (union rule) and populate the B10 workspaces.
     await tenantDb
       .insert(workspaceMemberships)
-      .values(
-        DEV_IDENTITY_NAMES.flatMap((name) => {
+      .values([
+        ...DEV_IDENTITY_NAMES.flatMap((name) => {
           const identity = DEV_IDENTITIES[name];
           if (identity.membership === null) return [];
           return {
@@ -315,6 +520,35 @@ async function seed(): Promise<void> {
             role: identity.membership.role,
           };
         }),
+        ...DEMO_MEMBERSHIPS.map((row) => ({
+          id: row.id,
+          workspaceId: row.workspaceId,
+          userId: DEV_IDENTITIES[row.user].id,
+          role: row.role,
+        })),
+      ])
+      .onConflictDoNothing();
+
+    // Sample invitations (B10) for `community` and `general`: one PENDING —
+    // its raw token opens `/login?invitation=…` — and one EXPIRED so the
+    // hygiene sweep (v6/TASK-09) has something real to report. The hashes
+    // mirror `CreateInvitationUseCase`: sha256 of the token and of the
+    // normalized email.
+    await tenantDb
+      .insert(invitations)
+      .values(
+        DEMO_INVITATIONS.map((invite) => ({
+          id: invite.id,
+          workspaceId: invite.workspaceId,
+          email: invite.email,
+          emailHash: sha256Hex(invite.email),
+          role: invite.role,
+          tokenHash: sha256Hex(invite.tokenRaw),
+          expiresAt: invite.expiresAt,
+          maxUses: 1,
+          status: invite.status,
+          createdBy: DEV_IDENTITIES.maintainer.authorHash,
+        })),
       )
       .onConflictDoNothing();
 
@@ -1059,6 +1293,26 @@ function printReport(graph: ResolvedDemoGraph, removed: RemovedContent): void {
     '\n  Entra como maintainer (es quien puede aprobar las propuestas):\n' +
       '    pnpm --filter @vozlab/database db:mint-token -- --as maintainer\n' +
       `    X-Workspace-ID: ${WORKSPACE_ID}\n`
+  );
+
+  // --- v6/TASK-12 (B10): the onboarding fixtures --------------------------
+  console.log(
+    '\n  ONBOARDING (v6) — workspaces de ejemplo:\n' +
+      `    PUBLIC  general (${WORKSPACE_ID}) · community (${COMMUNITY_WORKSPACE_ID})\n` +
+      `    PRIVATE paper-lab (${PAPER_LAB_WORKSPACE_ID}) — requiere el join code\n` +
+      `    EVENT   evento-demo — join code: ${EVENT_CODE}\n`
+  );
+  console.log(
+    '  Join codes efímeros (se muestran una vez; solo el hash vive en la BD):\n' +
+      DEMO_JOIN_CODES.map((c) => `    ${c.label}: ${c.raw}`).join('\n') +
+      `\n  Handles de alta directa (admin → Miembros): ${Object.values(DEV_HANDLES).join(', ')}\n`
+  );
+  console.log(
+    `  Invitación de ejemplo (aceptarla tras un login institutional):\n` +
+      `    /login?invitation=${INVITE_PENDING_RAW}\n` +
+      `    email: ${DEMO_INVITATIONS[0].email} → rol MEMBER en community\n` +
+      `  Invitación EXPIRED de ejemplo (${DEMO_INVITATIONS[1].email}) — el ` +
+      'cleanup (v6/TASK-09) debe contarla.\n'
   );
 }
 
