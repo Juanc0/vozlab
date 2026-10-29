@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { SelectTenantUseCase } from '../../src/application/use_cases/SelectTenantUseCase.js';
+import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
+import type { IUserRepository } from '../../src/domain/ports/IUserRepository.js';
+import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
+import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
+import type { GlobalUser } from '../../src/domain/ports/IGlobalUserRepository.js';
 import { makeAuditLog, makeGlobalUserRepository, makeRefreshTokenRepository } from '../support/authFakes.js';
 import { TENANT_ID, TENANT_KEY, TENANT_SLUG, USER_ID } from '../support/authFakes.js';
 
@@ -16,32 +21,57 @@ function makeRouterDb(tenants: Array<{ id: string; slug: string; oidcTenantId: s
     async findTenantById(tenantId: string) {
       return tenants.find((t) => t.id === tenantId) ?? null;
     },
-  } as any;
+  } as unknown as IRouterDatabase;
   return { routerDb };
+}
+
+/** The tenant rows SelectTenant touches only need the local id. */
+function makeUserRepo(): IUserRepository {
+  return {
+    async findOrCreateByExternalIdentity() {
+      return { id: USER_ID };
+    },
+  } as unknown as IUserRepository;
+}
+
+function makeUnitOfWork(): IUnitOfWork {
+  return {
+    async runInTransaction<T>(_tid: string, work: (tx: DbTransaction) => Promise<T>): Promise<T> {
+      return work({} as DbTransaction);
+    },
+  };
+}
+
+/** Full wiring with the collaborators exposed so tests can inspect them. */
+function wire(
+  linked: Array<{ id: string; slug: string; oidcTenantId: string; status: string }>,
+  opts: {
+    findByIdOverride?: (id: string) => Promise<GlobalUser | null>;
+    audit?: ReturnType<typeof makeAuditLog>['audit'];
+  } = {}
+) {
+  const globalIdentity = makeGlobalUserRepository();
+  if (opts.findByIdOverride) {
+    globalIdentity.repo.findById = opts.findByIdOverride;
+  }
+  const refresh = makeRefreshTokenRepository();
+  const router = makeRouterDb(linked);
+  const uc = new SelectTenantUseCase(
+    globalIdentity.repo,
+    router.routerDb,
+    makeUserRepo(),
+    makeUnitOfWork(),
+    refresh.refreshRepo,
+    opts.audit
+  );
+  return { uc, refresh };
 }
 
 function buildUseCase(
   linked: Array<{ id: string; slug: string; oidcTenantId: string; status: string }>,
-  findByIdOverride: ((id: string) => Promise<any>) | null = null
+  findByIdOverride: ((id: string) => Promise<GlobalUser | null>) | null = null
 ) {
-  const globalIdentity = makeGlobalUserRepository();
-  if (findByIdOverride) {
-    (globalIdentity.repo as any).findById = findByIdOverride;
-  }
-  const refresh = makeRefreshTokenRepository();
-  const router = makeRouterDb(linked);
-  const userRepo = {
-    async findOrCreateByExternalIdentity() {
-      return { id: USER_ID } as any;
-    },
-  } as any;
-  return new SelectTenantUseCase(
-    globalIdentity.repo,
-    router.routerDb,
-    userRepo,
-    { runInTransaction: async (_tid: string, cb: any) => cb({}) } as any,
-    refresh.refreshRepo
-  );
+  return wire(linked, { findByIdOverride: findByIdOverride ?? undefined }).uc;
 }
 
 describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
@@ -51,21 +81,16 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
   ];
 
   it('cambia a un tenant vinculado y ACTIVE emitiendo refresh token', async () => {
-    const useCase = buildUseCase(linked);
     const refresh = makeRefreshTokenRepository();
-    // Rebuild wiring so refresh captures creates
+    // Wire the use case against THIS refresh repo so the created family is
+    // observable.
     const globalIdentity = makeGlobalUserRepository();
     const router = makeRouterDb(linked);
-    const userRepo = {
-      async findOrCreateByExternalIdentity() {
-        return { id: USER_ID } as any;
-      },
-    } as any;
     const uc = new SelectTenantUseCase(
       globalIdentity.repo,
       router.routerDb,
-      userRepo,
-      { runInTransaction: async (_tid: string, cb: any) => cb({}) } as any,
+      makeUserRepo(),
+      makeUnitOfWork(),
       refresh.refreshRepo
     );
 
@@ -111,23 +136,8 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
   });
 
   it('registra TENANT_SELECTED en la trail de la identidad global (B12)', async () => {
-    const globalIdentity = makeGlobalUserRepository();
-    const router = makeRouterDb(linked);
-    const refresh = makeRefreshTokenRepository();
     const { audit, events } = makeAuditLog();
-    const userRepo = {
-      async findOrCreateByExternalIdentity() {
-        return { id: USER_ID } as any;
-      },
-    } as any;
-    const uc = new SelectTenantUseCase(
-      globalIdentity.repo,
-      router.routerDb,
-      userRepo,
-      { runInTransaction: async (_tid: string, cb: any) => cb({}) } as any,
-      refresh.refreshRepo,
-      audit
-    );
+    const { uc } = wire(linked, { audit });
 
     await uc.execute({
       globalIdentityId: GLOBAL_ID,

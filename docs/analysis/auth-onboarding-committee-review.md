@@ -208,7 +208,7 @@ Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev`
 - Tasks v6: `docs/tasks/auth-onboarding-v6/TASK-01..12` (sin subtasks 11.x/12.x activos; el trabajo real está en TASK-01..09 de v6 + v5).
 - ADRs: ADR-0041 (admin model), ADR-0042 (cross-tenant/identity), ADR-0013 (authorHash pseudónimo), ADR-0025 (resolve-source), ADR-0026 (propuesta union kind), ADR-0028 (external identities).
 - Análisis: este documento (estado actual).
-- Knowledge transfer: `knowledge-transfer/08-identity-tenancy-and-guests.md` y `knowledge-transfer/guia-identidad-ia/login-tasks/README.md` (status reconciliado 2026-10-29 — D13/D14 y átomos confirmados en código; brechas honestas: D3 resend/rotate, D4/D5 doc-level, F4 inventario PII no creado).
+- Knowledge transfer: `knowledge-transfer/08-identity-tenancy-and-guests.md` y `knowledge-transfer/guia-identidad-ia/login-tasks/README.md` (status reconciliado 2026-10-29 — D13/D14 y átomos confirmados en código; D4 formalizado en `docs/dns-domain-verification-design.md`; brechas honestas restantes: D3 resend/rotate, D5 sin diseño de prueba propio, F4 inventario PII no creado).
 - Requirements: `docs/requirements.md` (US-00 + matriz de decisión).
 
 ---

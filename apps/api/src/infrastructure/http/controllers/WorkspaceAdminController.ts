@@ -3,6 +3,7 @@ import {
   AddWorkspaceMemberSchema,
   ChangeWorkspaceMemberRoleSchema,
   UpdateWorkspaceSchema,
+  WorkspaceRoleSchema,
 } from '@vozlab/shared-types';
 import { GetWorkspaceUseCase } from '../../../application/use_cases/GetWorkspaceUseCase.js';
 import { UpdateWorkspaceUseCase } from '../../../application/use_cases/UpdateWorkspaceUseCase.js';
@@ -180,14 +181,17 @@ export class WorkspaceAdminController {
     const userId = params.userId;
     if (!userId) return sendError(reply, 'ERR_VALIDATION_FAILED');
     const body = (req.body ?? {}) as { role?: string };
-    if (!body.role) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    // The wire role is untrusted text: validate against the canonical enum
+    // instead of casting (unknown roles fail 400 at the boundary).
+    const role = WorkspaceRoleSchema.safeParse(body.role);
+    if (!role.success) return sendError(reply, 'ERR_VALIDATION_FAILED');
     try {
       await this.manageRole.execute({
         actorUserId: ctx.userId,
         tid: ctx.tid,
         workspaceId,
         targetUserId: userId,
-        role: body.role as any,
+        role: role.data,
         add: true,
       });
       return reply.status(204).send();
@@ -208,13 +212,15 @@ export class WorkspaceAdminController {
     const userId = params.userId;
     const role = params.role;
     if (!userId || !role) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    const parsedRole = WorkspaceRoleSchema.safeParse(role);
+    if (!parsedRole.success) return sendError(reply, 'ERR_VALIDATION_FAILED');
     try {
       await this.manageRole.execute({
         actorUserId: ctx.userId,
         tid: ctx.tid,
         workspaceId,
         targetUserId: userId,
-        role: role as any,
+        role: parsedRole.data,
         add: false,
       });
       return reply.status(204).send();

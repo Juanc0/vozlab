@@ -17,5 +17,3 @@ volumes:
 networks:
   vozlab-net:
     driver: bridge
-EOF
-echo created

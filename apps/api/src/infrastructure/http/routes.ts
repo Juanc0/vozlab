@@ -68,6 +68,7 @@ import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
+import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
 import { IngestSourceUseCase } from '../../application/use_cases/IngestSourceUseCase.js';
@@ -152,7 +153,7 @@ export interface RouteDependencies {
   createWorkspaceJoinCodeUseCase?: CreateWorkspaceJoinCodeUseCase;
   updateWorkspaceJoinCodeUseCase?: UpdateWorkspaceJoinCodeUseCase;
   createGlobalInvitationUseCase?: CreateGlobalInvitationUseCase;
-  workspaceJoinCodeRepo?: any;
+  workspaceJoinCodeRepo?: IWorkspaceJoinCodeRepository;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
   getWorkspaceUseCase: GetWorkspaceUseCase;
   updateWorkspaceUseCase: UpdateWorkspaceUseCase;
@@ -298,7 +299,7 @@ export async function registerRoutes(
     ? new CleanupController(deps.cleanupUseCase)
     : null;
   const joinCodeController = deps.createWorkspaceJoinCodeUseCase
-    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo as any, deps.updateWorkspaceJoinCodeUseCase)
+    ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo, deps.updateWorkspaceJoinCodeUseCase)
     : null;
   const globalInvitationController = deps.createGlobalInvitationUseCase
     ? new GlobalInvitationController(deps.createGlobalInvitationUseCase)

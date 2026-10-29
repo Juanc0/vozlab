@@ -198,5 +198,4 @@ Floci te permite practicar este flujo localmente.
 - TLS is terminated by Cloudflare; no certificate management needed.
 - `cloudflared` connects outbound on port 7844 (UDP/TCP) — no inbound firewall rules.
 - The API's `WEB_ORIGIN` must match the public hostname.
-EOF
-echo created
+

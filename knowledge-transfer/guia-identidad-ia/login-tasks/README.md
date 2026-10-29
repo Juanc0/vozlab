@@ -15,7 +15,7 @@ el ejecutor solo necesita leer los archivos que nombra cada tarea.
 - **D1**: `tenant_identity_providers` table + repository + management endpoints implemented. ✅
 - **D2**: login uses `kc_idp_hint` only; tenant resolved from token claims (ADR-0031). ✅
 - **D3**: create/list/revoke implemented; **resend/rotate of the token is NOT** — re-issue works via revoke + create (accepted deviation).
-- **D4**: design-only; documented in `01-explicacion-logins-y-ia.md` §11; NOT formalized in an ADR as the task asked. Open (low priority: nothing accepts institutional domains yet).
+- **D4**: design-only task; the design IS formalized — `docs/dns-domain-verification-design.md` (commit 72f0f6a, "no code" by design). ✅ closed at doc level.
 - **D5**: correlation-control rationale documented (§6.3 of `01-...`); no standalone test design. Open (doc-level).
 - **D6–D8**: global identity tables + resolution implemented; `global_identity_tenants` is now written on every institutional login and every global redemption (committee P0-2, 2026-10-28). ✅
 - **D9**: `RedeemInvitationAtomicUseCase` is the real mutation of the first login (committee B12, `f7f154b`). ✅
