@@ -74,6 +74,7 @@
  *   pnpm --filter @vozlab/database db:seed:dev
  */
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { createHash } from 'node:crypto';
@@ -151,6 +152,22 @@ const DATA_SOURCE_ID = '99999999-9999-4999-8999-999999999991';
 /** SHA-256 hex — mirrors the token/code hashing of the API use cases. */
 function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+/**
+ * Deterministic UUID (v4 shape) for a clone of a base ontology row in a
+ * specific workspace. The derivation is stable across runs, so mirroring a
+ * row into `evento-demo` stays idempotent without touching the original ids.
+ */
+function ontologyUuidFor(baseId: string, workspaceId: string): string {
+  const hex = createHash('md5').update(`${baseId}@${workspaceId}`).digest('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    `8${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
 }
 
 // v6/TASK-12 (B10): the onboarding demo fixtures. Fixed ids keep the seed
@@ -821,6 +838,56 @@ async function seed(): Promise<void> {
         },
       ])
       .onConflictDoNothing();
+
+    // --- Base ontology mirrored to `evento-demo` (P2-11) ------------------
+    // The E2E journeys sign in through the event join, and `JoinEvent` only
+    // accepts a workspace of kind `EVENT` (`evento-demo`). A workspace without
+    // the base ontology cannot open the node dialog at all (the class list
+    // and its enum fields ARE the ontology), so every journey of the suite
+    // needs the same Problem/Idea/Resource shape here.
+    //
+    // The clone keeps the `systemKey`s — they are what the API resolves — and
+    // derives the ids deterministically from the base row + workspace, so a
+    // re-seed is still idempotent. The ids in `general` never move: a dev
+    // database that already seeded keeps its rows untouched.
+    const cloneOntology = async <T extends { id: string; workspaceId: string | null }>(
+      table: PgTable,
+      rows: T[]
+    ): Promise<void> => {
+      if (rows.length === 0) return;
+      await tenantDb
+        .insert(table)
+        .values(
+          rows.map((row) => ({
+            ...row,
+            id: ontologyUuidFor(row.id, EVENT_WORKSPACE_ID),
+            workspaceId: EVENT_WORKSPACE_ID,
+          }))
+        )
+        .onConflictDoNothing();
+    };
+
+    {
+      const [classes, properties, relations] = await Promise.all([
+        tenantDb
+          .select()
+          .from(ontologyClasses)
+          .where(eq(ontologyClasses.workspaceId, WORKSPACE_ID)),
+        tenantDb
+          .select()
+          .from(datatypeProperties)
+          .where(eq(datatypeProperties.workspaceId, WORKSPACE_ID)),
+        tenantDb
+          .select()
+          .from(objectProperties)
+          .where(eq(objectProperties.workspaceId, WORKSPACE_ID)),
+      ]);
+      await Promise.all([
+        cloneOntology(ontologyClasses, classes),
+        cloneOntology(datatypeProperties, properties),
+        cloneOntology(objectProperties, relations),
+      ]);
+    }
 
     // --- Data sources (ADR-0009, ADR-0025) -------------------------------
     // One example source so the resolution route can be exercised locally.
