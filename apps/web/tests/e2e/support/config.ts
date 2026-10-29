@@ -41,6 +41,16 @@ export const WEB_PORT_NUMBER = WEB_PORT;
  */
 export const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
 
+/**
+ * The EVENT workspace the session of the run joins.
+ *
+ * `JoinEvent` only accepts a workspace of kind `EVENT` (v6/TASK-02), so the
+ * event code of the run targets the seeded `evento-demo` — not `general`.
+ * The base ontology is mirrored there by the seed so the node dialog has
+ * its classes (P2-11).
+ */
+export const EVENT_WORKSPACE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 /** The name of the refresh cookie (`apps/api/.../authCookies.ts`). */
 export const REFRESH_COOKIE_NAME = 'vozlab_refresh';
 

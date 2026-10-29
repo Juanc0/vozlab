@@ -61,9 +61,10 @@ export async function openList(page: Page): Promise<void> {
 /**
  * Opens the panel of the **root picker**.
  *
- * The panel is folded by default: the toolbar holds the control that opens
- * it, and the walk through the graph happens without a list of nodes over
- * the picture.
+ * @deprecated retired with the toolbar redesign (roadmap 3.57–3.64). There
+ * is no control that opens the root picker anymore; the search of the
+ * toolbar is the current way to reach a node by name. The specs that still
+ * call this wait on a button that no longer renders.
  */
 export async function openRootPicker(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Raíz', exact: true }).click();

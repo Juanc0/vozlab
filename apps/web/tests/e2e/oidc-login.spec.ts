@@ -10,7 +10,14 @@
  */
 import { expect, test } from './support/fixtures';
 
+/**
+ * The gate of the journey: it needs a live Zitadel on `:8081` and a human
+ * account the broker holds (`testuser3`). The default suite runs against the
+ * two servers Playwright owns and cannot start the broker's dependency, so
+ * this journey is opt-in: `E2E_OIDC=1 pnpm --filter @vozlab/web test:e2e`.
+ */
 test.describe('institutional login via OIDC', () => {
+  test.skip(process.env['E2E_OIDC'] !== '1', 'needs a live Zitadel broker — run it with E2E_OIDC=1');
   test('logs in through Zitadel with local provider and restores the session', async ({ page }) => {
     // Start at the login page.
     await page.goto('/login');
