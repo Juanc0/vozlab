@@ -11,19 +11,28 @@
  *
  * Claims minted (see `AuthGuard`):
  *   sub        identity UUID (`auth.users.id`) — membership is keyed by it
- *   tid        `sabana` — must match `tenants.oidc_tenant_id`
+ *   tid        the tenant's LIVE `oidc_tenant_id` from the router DB — the
+ *              value the reconcile script may have moved (Zitadel asserts a
+ *              numeric resource-owner id, not the seed's placeholder), so
+ *              the script reads it instead of using the fixture constant
  *   jti        fresh UUID — Redis blacklist key
  *   authorHash identity SHA-256 — pseudonymous author (FR-12)
  *   type       only for the `agent` identity (e.g. `AGENT_EXTRACTOR`)
  *
  * Usage:
  *   pnpm --filter @vozlab/database db:mint-token -- --as maintainer
+ *   pnpm --filter @vozlab/database db:mint-token -- --as member --tenant sabana
  */
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import {
+  createRouterDrizzle,
+  tenants,
+} from '../src/index.js';
 import {
   DEV_IDENTITIES,
   DEV_IDENTITY_NAMES,
-  OIDC_TENANT_ID,
+  TENANT_SLUG,
   WORKSPACE_ID,
   type DevIdentityName,
 } from './dev-identities.js';
@@ -43,35 +52,48 @@ function isIdentityName(value: string): value is DevIdentityName {
   return Object.prototype.hasOwnProperty.call(DEV_IDENTITIES, value);
 }
 
-/** Parse `--as <name>` / `--as=<name>`; defaults to `maintainer`. */
-function resolveIdentityName(argv: readonly string[]): DevIdentityName {
+/**
+ * Parse `--as <name>` / `--as=<name>` and `--tenant <slug>` /
+ * `--tenant=<slug>`. Defaults: `maintainer`, the seeded `sabana` tenant.
+ */
+function parseArgs(argv: readonly string[]): {
+  name: DevIdentityName;
+  tenant: string;
+} {
   let name: string | undefined;
+  let tenant: string | undefined;
+
+  const takeValue = (flag: string, i: number): [string, number] => {
+    if (flag.startsWith('--as=')) return [flag.slice('--as='.length), i];
+    if (flag.startsWith('--tenant=')) return [flag.slice('--tenant='.length), i];
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith('--')) {
+      fail(`${flag} requires a value.`);
+    }
+    return [value, i + 1];
+  };
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     // pnpm forwards the `--` separator verbatim (`... tsx <script> -- --as x`).
     if (arg === undefined || arg === '--') continue;
 
-    if (arg === '--as') {
-      name = argv[i + 1];
-      if (name === undefined || name === '--') {
-        fail(`--as requires a value. Valid identities: ${VALID_NAMES}`);
-      }
-      i += 1;
-    } else if (arg.startsWith('--as=')) {
-      name = arg.slice('--as='.length);
+    if (arg === '--as' || arg.startsWith('--as=')) {
+      [name, i] = takeValue(arg, i);
+    } else if (arg === '--tenant' || arg.startsWith('--tenant=')) {
+      [tenant, i] = takeValue(arg, i);
     } else {
       fail(
-        `Unknown argument "${arg}". Usage: db:mint-token -- --as <${VALID_NAMES}>`,
+        `Unknown argument "${arg}". Usage: db:mint-token -- --as <${VALID_NAMES}> [--tenant <slug>]`,
       );
     }
   }
 
-  if (name === undefined) return 'maintainer';
-  if (!isIdentityName(name)) {
-    fail(`Unknown identity "${name}". Valid identities: ${VALID_NAMES}`);
+  const resolvedName = name ?? 'maintainer';
+  if (!isIdentityName(resolvedName)) {
+    fail(`Unknown identity "${resolvedName}". Valid identities: ${VALID_NAMES}`);
   }
-  return name;
+  return { name: resolvedName, tenant: tenant ?? TENANT_SLUG };
 }
 
 /** Load `jsonwebtoken`, or exit non-zero with install guidance. */
@@ -91,7 +113,7 @@ async function loadJwt(): Promise<typeof import('jsonwebtoken')> {
 }
 
 async function main(): Promise<void> {
-  const name = resolveIdentityName(process.argv.slice(2));
+  const { name, tenant: tenantSlug } = parseArgs(process.argv.slice(2));
   const identity = DEV_IDENTITIES[name];
 
   const secret = process.env.JWT_SECRET;
@@ -103,11 +125,42 @@ async function main(): Promise<void> {
     );
   }
 
+  // The `tid` claim must equal the tenant's LIVE `oidc_tenant_id`: the
+  // reconcile script moves the seeded placeholder to the value the IdP
+  // actually asserts (Zitadel's numeric resource-owner id), and a token
+  // minted with the old constant fails TenantGuard with
+  // ERR_TENANT_NOT_PROVISIONED. Read it instead of trusting the fixture.
+  const routerClient = createRouterDrizzle({
+    host: process.env.ROUTER_DB_HOST ?? 'localhost',
+    port: Number(process.env.ROUTER_DB_PORT ?? 5432),
+    user: process.env.ROUTER_DB_USER ?? 'postgres',
+    password: process.env.ROUTER_DB_PASSWORD ?? 'postgres',
+    database: process.env.ROUTER_DB_NAME ?? 'vozlab_router',
+  });
+  let oidcTenantId: string;
+  let resolvedSlug: string;
+  try {
+    const [tenant] = await routerClient.db
+      .select({ id: tenants.id, slug: tenants.slug, oidcTenantId: tenants.oidcTenantId })
+      .from(tenants)
+      .where(eq(tenants.slug, tenantSlug))
+      .limit(1);
+    if (!tenant) {
+      fail(
+        `Tenant "${tenantSlug}" is not provisioned in the router DB. Run db:seed:dev first.`,
+      );
+    }
+    oidcTenantId = tenant.oidcTenantId;
+    resolvedSlug = tenant.slug;
+  } finally {
+    await routerClient.pool.end();
+  }
+
   const jwt = await loadJwt();
 
   const claims: Record<string, unknown> = {
     sub: identity.sub,
-    tid: OIDC_TENANT_ID,
+    tid: oidcTenantId,
     jti: randomUUID(),
     authorHash: identity.authorHash,
   };
@@ -124,7 +177,7 @@ async function main(): Promise<void> {
 
   console.log(`\n🔐 Dev JWT — identity "${name}" (expires in ${TOKEN_TTL})\n`);
   console.log(`  sub         ${identity.sub}`);
-  console.log(`  tid         ${OIDC_TENANT_ID}`);
+  console.log(`  tid         ${oidcTenantId} (live oidc_tenant_id of "${resolvedSlug}")`);
   console.log(`  authorHash  ${identity.authorHash}${typeLine}`);
   console.log(`\n${token}\n`);
   console.log('Send it as:');
