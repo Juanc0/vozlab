@@ -191,6 +191,7 @@ step 3 has completed.
 | Zitadel login page loads but the callback loops | The redirect URI is missing on the app. Re-run the setup script with the public `API_CALLBACK`; it merges URIs. |
 | `Set-Cookie` without `Secure` / `__Host-` | Restart Zitadel with `ZITADEL_EXTERNALSECURE=true` and `ZITADEL_EXTERNALPORT=443`. |
 | `zrok: TLS handshake timeout` / cannot reach `api-v1.zrok.io` | The host cannot reach the zrok API. Check DNS/proxy/firewall; the share cannot start without it. |
+| Intermittent `502`/`403` on a reserved share while `zrok share reserved` still reports "access your zrok share" | Known zrok behaviour (openziti/zrok#1259): the edge-router circuit is lost silently and the CLI keeps reporting the share as up. Kill the `zrok share reserved … --headless` process for that share and start it again; the share reconnects to a live router. |
 | `ERR_CONNECTION_REFUSED` after login | The API or web dev server is not running, or `WEB_ORIGIN` does not match the public origin. |
 | CORS / cookie not sent between web and API shares | The API enables CORS with credentials (`origin: true`). Ensure `WEB_ORIGIN` matches the web share and the API restarts after `.env` changes. |
 | Zitadel says the PAT is rejected | The PAT only exists after the first init of an empty DB. See the recovery steps printed by `scripts/setup-zitadel.sh`. |
