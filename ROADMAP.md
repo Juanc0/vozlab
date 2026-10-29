@@ -894,6 +894,12 @@ Decided, and not to be re-opened without evidence:
 
 ## Tracked, not scheduled
 
+- E2E graph-suite realignment (14 Playwright journeys): the toolbar redesign of
+  roadmap 3.57–3.64 retired the `Lista`/`Raíz`/view-switch controls the specs
+  drive (`WorkspaceToolbar` keeps the toggle props but renders no buttons;
+  `RootPicker` is unimported, `GraphListView` unreachable), and four specs also
+  assume the demo graph of `general`, where the event-code session cannot live.
+  Catalogued in `docs/analysis/auth-onboarding-committee-review.md` §5 task 13.
 - Consolidator handler (FR-20): scheduled cluster synthesis (deferred for MVP, 2026-10-26).
 - Apache AGE mirroring adapter ([ADR-0004](docs/decisions/ADR-0004-bounded-sql-cte-age-deferred.md)).
 - Redis-buffered CQRS vote scoring ([ADR-0005](docs/decisions/ADR-0005-synchronous-vote-scoring.md)).
