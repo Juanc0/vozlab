@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SelectTenantUseCase } from '../../src/application/use_cases/SelectTenantUseCase.js';
-import { makeGlobalUserRepository, makeRefreshTokenRepository } from '../support/authFakes.js';
+import { makeAuditLog, makeGlobalUserRepository, makeRefreshTokenRepository } from '../support/authFakes.js';
 import { TENANT_ID, TENANT_KEY, TENANT_SLUG, USER_ID } from '../support/authFakes.js';
 
 const OTHER_TENANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -108,5 +108,43 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
         refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
       })
     ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+  });
+
+  it('registra TENANT_SELECTED en la trail de la identidad global (B12)', async () => {
+    const globalIdentity = makeGlobalUserRepository();
+    const router = makeRouterDb(linked);
+    const refresh = makeRefreshTokenRepository();
+    const { audit, events } = makeAuditLog();
+    const userRepo = {
+      async findOrCreateByExternalIdentity() {
+        return { id: USER_ID } as any;
+      },
+    } as any;
+    const uc = new SelectTenantUseCase(
+      globalIdentity.repo,
+      router.routerDb,
+      userRepo,
+      { runInTransaction: async (_tid: string, cb: any) => cb({}) } as any,
+      refresh.refreshRepo,
+      audit
+    );
+
+    await uc.execute({
+      globalIdentityId: GLOBAL_ID,
+      tenantId: OTHER_TENANT_ID,
+      refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: 'TENANT_SELECTED',
+      actorId: USER_ID,
+      actorType: 'USER',
+      targetType: 'global_identity',
+      targetId: GLOBAL_ID,
+      tenantId: OTHER_TENANT_ID,
+      globalIdentityId: GLOBAL_ID,
+    });
+    expect(events[0]?.metadata).toMatchObject({ tenantSlug: OTHER_TENANT_SLUG });
   });
 });

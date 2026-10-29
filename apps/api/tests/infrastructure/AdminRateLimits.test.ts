@@ -8,7 +8,7 @@ import type { RedisTokenBlacklist } from '../../src/infrastructure/events/RedisT
 
 import { AddWorkspaceMemberUseCase } from '../../src/application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ApproveJoinRequestUseCase } from '../../src/application/use_cases/ApproveJoinRequestUseCase.js';
-import { AssignMemberRoleUseCase } from '../../src/application/use_cases/AssignMemberRoleUseCase.js';
+import { ManageRoleAtomicUseCase } from '../../src/application/use_cases/ManageRoleAtomicUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../src/application/use_cases/ChangeMemberRoleUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../src/application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
@@ -32,7 +32,6 @@ import { ReactivateMemberUseCase } from '../../src/application/use_cases/Reactiv
 import { RefreshSessionUseCase } from '../../src/application/use_cases/RefreshSessionUseCase.js';
 import { RejectJoinRequestUseCase } from '../../src/application/use_cases/RejectJoinRequestUseCase.js';
 import { RejectProposalUseCase } from '../../src/application/use_cases/RejectProposalUseCase.js';
-import { RemoveMemberRoleUseCase } from '../../src/application/use_cases/RemoveMemberRoleUseCase.js';
 import { RemoveMemberUseCase } from '../../src/application/use_cases/RemoveMemberUseCase.js';
 import { RequestWorkspaceAccessUseCase } from '../../src/application/use_cases/RequestWorkspaceAccessUseCase.js';
 import { ResolveSourceUseCase } from '../../src/application/use_cases/ResolveSourceUseCase.js';
@@ -181,8 +180,7 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     listMembersUseCase: unused(ListMembersUseCase.prototype),
     addWorkspaceMemberUseCase: unused(AddWorkspaceMemberUseCase.prototype),
     changeMemberRoleUseCase: unused(ChangeMemberRoleUseCase.prototype),
-    assignMemberRoleUseCase: unused(AssignMemberRoleUseCase.prototype),
-    removeMemberRoleUseCase: unused(RemoveMemberRoleUseCase.prototype),
+    manageRoleUseCase: unused(ManageRoleAtomicUseCase.prototype),
     suspendMemberUseCase: unused(SuspendMemberUseCase.prototype),
     reactivateMemberUseCase: unused(ReactivateMemberUseCase.prototype),
     removeMemberUseCase: unused(RemoveMemberUseCase.prototype),

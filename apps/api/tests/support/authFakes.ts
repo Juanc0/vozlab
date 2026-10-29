@@ -9,6 +9,7 @@ import type {
   IOidcStateStore,
   OidcStateData,
 } from '../../src/domain/ports/IOidcStateStore.js';
+import type { AuditEvent, IAuditLog } from '../../src/domain/ports/IAuditLog.js';
 import type {
   AuthUser,
   IUserRepository,
@@ -22,7 +23,10 @@ import type {
   GlobalInvitationRecord,
   IGlobalInvitationRepository,
 } from '../../src/domain/ports/IGlobalInvitationRepository.js';
-import type { IInvitationRepository } from '../../src/domain/ports/IInvitationRepository.js';
+import type {
+  Invitation,
+  IInvitationRepository,
+} from '../../src/domain/ports/IInvitationRepository.js';
 import type {
   CreateRefreshTokenInput,
   IRefreshTokenRepository,
@@ -420,7 +424,12 @@ export function makeEventCodeRepository(
   return { eventCodeRepo, consumedHashes, created };
 }
 
-export function makeInvitationRepository(): {
+export function makeInvitationRepository(seed?: {
+  /** What `findByTokenHash` answers (the D9 lookup). Default `null`. */
+  byTokenHash?: Invitation | null;
+  /** What `accept` answers — `false` simulates the concurrent-loser race. */
+  acceptResult?: boolean;
+}): {
   repo: IInvitationRepository;
   calls: string[];
 } {
@@ -428,11 +437,11 @@ export function makeInvitationRepository(): {
   const repo: IInvitationRepository = {
     async findByTokenHash(tokenHash, tid) {
       calls.push(`findByTokenHash:${tokenHash}`);
-      return null;
+      return seed?.byTokenHash ?? null;
     },
     async accept(id, tid) {
       calls.push(`accept:${id}`);
-      return true;
+      return seed?.acceptResult ?? true;
     },
     async revoke(id, tid) {
       calls.push(`revoke:${id}`);
@@ -510,4 +519,25 @@ export function makeTokenBlacklist(): {
     },
   };
   return { blacklist, revoked };
+}
+
+/**
+ * B12: in-memory audit sink. Tests assert the identity trail (`OIDC_LOGIN`,
+ * `TENANT_SELECTED`, `INVITATION_REDEEMED`) without a database: the fake
+ * keeps every event, and `DrizzleAuditLog`'s routing rules are covered by
+ * its own tests.
+ */
+export function makeAuditLog(): {
+  audit: IAuditLog;
+  events: AuditEvent[];
+} {
+  const events: AuditEvent[] = [];
+  return {
+    audit: {
+      async record(event) {
+        events.push(event);
+      },
+    },
+    events,
+  };
 }

@@ -10,8 +10,7 @@ import { RotateJoinCodeUseCase } from '../../../application/use_cases/RotateJoin
 import { ListMembersUseCase } from '../../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../../application/use_cases/ChangeMemberRoleUseCase.js';
-import { AssignMemberRoleUseCase } from '../../../application/use_cases/AssignMemberRoleUseCase.js';
-import { RemoveMemberRoleUseCase } from '../../../application/use_cases/RemoveMemberRoleUseCase.js';
+import { ManageRoleAtomicUseCase } from '../../../application/use_cases/ManageRoleAtomicUseCase.js';
 import { SuspendMemberUseCase } from '../../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../../application/use_cases/RemoveMemberUseCase.js';
@@ -36,8 +35,7 @@ export class WorkspaceAdminController {
     private readonly listMembers: ListMembersUseCase,
     private readonly addMember: AddWorkspaceMemberUseCase,
     private readonly changeRole: ChangeMemberRoleUseCase,
-    private readonly assignRole: AssignMemberRoleUseCase | null,
-    private readonly removeRoleUseCase: RemoveMemberRoleUseCase | null,
+    private readonly manageRole: ManageRoleAtomicUseCase | null,
     private readonly suspendMember: SuspendMemberUseCase,
     private readonly reactivateMember: ReactivateMemberUseCase,
     private readonly removeMember: RemoveMemberUseCase
@@ -176,7 +174,7 @@ export class WorkspaceAdminController {
   ): Promise<void> {
     const ctx = getRequestContext(req);
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
-    if (!this.assignRole) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    if (!this.manageRole) return sendError(reply, 'ERR_VALIDATION_FAILED');
     const params = req.params as { workspaceId?: string; userId?: string };
     const workspaceId = targetWorkspaceId(req, ctx.workspaceId);
     const userId = params.userId;
@@ -184,12 +182,13 @@ export class WorkspaceAdminController {
     const body = (req.body ?? {}) as { role?: string };
     if (!body.role) return sendError(reply, 'ERR_VALIDATION_FAILED');
     try {
-      await this.assignRole.execute({
+      await this.manageRole.execute({
         actorUserId: ctx.userId,
         tid: ctx.tid,
         workspaceId,
         targetUserId: userId,
         role: body.role as any,
+        add: true,
       });
       return reply.status(204).send();
     } catch (error) {
@@ -203,19 +202,20 @@ export class WorkspaceAdminController {
   ): Promise<void> {
     const ctx = getRequestContext(req);
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
-    if (!this.removeRoleUseCase) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    if (!this.manageRole) return sendError(reply, 'ERR_VALIDATION_FAILED');
     const params = req.params as { workspaceId?: string; userId?: string; role?: string };
     const workspaceId = targetWorkspaceId(req, ctx.workspaceId);
     const userId = params.userId;
     const role = params.role;
     if (!userId || !role) return sendError(reply, 'ERR_VALIDATION_FAILED');
     try {
-      await this.removeRoleUseCase.execute({
+      await this.manageRole.execute({
         actorUserId: ctx.userId,
         tid: ctx.tid,
         workspaceId,
         targetUserId: userId,
         role: role as any,
+        add: false,
       });
       return reply.status(204).send();
     } catch (error) {

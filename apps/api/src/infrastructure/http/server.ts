@@ -88,8 +88,8 @@ import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUs
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
-import { AssignMemberRoleUseCase } from '../../application/use_cases/AssignMemberRoleUseCase.js';
-import { RemoveMemberRoleUseCase } from '../../application/use_cases/RemoveMemberRoleUseCase.js';
+import { ManageRoleAtomicUseCase } from '../../application/use_cases/ManageRoleAtomicUseCase.js';
+import { RedeemInvitationAtomicUseCase } from '../../application/use_cases/RedeemInvitationAtomicUseCase.js';
 import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
@@ -299,6 +299,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     uow,
     auditLog
   );
+  const redeemInvitationAtomicUseCase = new RedeemInvitationAtomicUseCase(
+    invitationRepo,
+    membershipRepo,
+    uow,
+    auditLog
+  );
   const completeOidcLoginUseCase = new CompleteOidcLoginUseCase(
     oidcStateStore,
     identityProvider,
@@ -306,18 +312,19 @@ export async function buildServer(): Promise<FastifyInstance> {
     routerDb,
     userRepo,
     invitationRepo,
-    membershipRepo,
-    uow,
     refreshTokenRepo,
     refreshTtlMs,
-    redeemGlobalInvitationUseCase
+    redeemInvitationAtomicUseCase,
+    redeemGlobalInvitationUseCase,
+    auditLog
   );
   const selectTenantUseCase = new SelectTenantUseCase(
     routerDb,
     routerDb,
     userRepo,
     uow,
-    refreshTokenRepo
+    refreshTokenRepo,
+    auditLog
   );
   const resolveTenantsUseCase = new ResolveTenantsUseCase(routerDb, routerDb);
   const refreshSessionUseCase = new RefreshSessionUseCase(
@@ -397,13 +404,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     userRepo,
     uow
   );
-  const assignMemberRoleUseCase = new AssignMemberRoleUseCase(
-    membershipAdminRepo,
-    membershipRepo,
-    userRepo,
-    uow
-  );
-  const removeMemberRoleUseCase = new RemoveMemberRoleUseCase(
+  const manageRoleAtomicUseCase = new ManageRoleAtomicUseCase(
     membershipAdminRepo,
     membershipRepo,
     workspaceRepo,
@@ -415,7 +416,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipRepo,
     workspaceRepo,
     userRepo,
-    uow
+    uow,
+    // B12 (v5/TASK-08): suspension drops every session — the refresh family
+    // of the target is revoked inside the use case's transaction.
+    refreshTokenRepo
   );
   const reactivateMemberUseCase = new ReactivateMemberUseCase(
     membershipAdminRepo,
@@ -539,8 +543,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     listMembersUseCase,
     addWorkspaceMemberUseCase,
     changeMemberRoleUseCase,
-    assignMemberRoleUseCase,
-    removeMemberRoleUseCase,
+    manageRoleUseCase: manageRoleAtomicUseCase,
     suspendMemberUseCase,
     reactivateMemberUseCase,
     removeMemberUseCase,

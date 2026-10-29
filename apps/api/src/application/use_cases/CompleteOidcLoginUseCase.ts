@@ -10,10 +10,10 @@ import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalUserRepository } from '../../domain/ports/IGlobalUserRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
-import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
-import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
+import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import type { RedeemGlobalInvitationUseCase } from './RedeemGlobalInvitationUseCase.js';
+import { RedeemInvitationAtomicUseCase } from './RedeemInvitationAtomicUseCase.js';
 import {
   generateAuthorHash,
   generateRefreshToken,
@@ -55,17 +55,28 @@ export class CompleteOidcLoginUseCase {
     private readonly globalUserRepo: IGlobalUserRepository,
     private readonly userRepo: IUserRepository,
     private readonly invitationRepo: IInvitationRepository,
-    private readonly membershipRepo: IMembershipRepository,
-    private readonly uow: IUnitOfWork,
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly refreshTtlMs: number,
+    /**
+     * B12 (v5/TASK-08): the mutation of the tenant-local redemption is the
+     * `RedeemInvitationAtomic` use case — conditional accept + membership
+     * add in one transaction, audited after commit. This use case keeps the
+     * strict validation (token, status, expiry, email binding) because a
+     * broken invitation link must fail the login visibly, never silently.
+     */
+    private readonly redeemInvitation: RedeemInvitationAtomicUseCase,
     /**
      * v6/TASK-06: optional global-invitation redemption. When the OIDC state
      * carries a token that exists in the GLOBAL registry, redemption happens
      * before tenant resolution — the invited identity may have no tenant link
      * and no institutional claim for one.
      */
-    private readonly redeemGlobalInvitation?: RedeemGlobalInvitationUseCase
+    private readonly redeemGlobalInvitation?: RedeemGlobalInvitationUseCase,
+    /**
+     * B12: identity trail. Every session issued by the callback records an
+     * `OIDC_LOGIN` on the global identity (router DB, append-only).
+     */
+    private readonly audit?: IAuditLog
   ) {}
 
   async execute(
@@ -218,25 +229,15 @@ export class CompleteOidcLoginUseCase {
         throw new DomainError('ERR_INVITATION_INVALID');
       }
 
-      await this.uow.runInTransaction(tenant.id, async (tx) => {
-        // Conditional accept: the second concurrent callback loses the race
-        // and must not create a second membership.
-        const accepted = await this.invitationRepo.accept(
-          invitation.id,
-          tenant.id,
-          tx
-        );
-        if (!accepted) {
-          throw new DomainError('ERR_INVITATION_INVALID');
-        }
-
-        await this.membershipRepo.add(
-          user.id,
-          invitation.workspaceId,
-          invitation.role as WorkspaceRole,
-          tenant.id,
-          tx
-        );
+      // B12: the mutation is the atomic use case — conditional accept +
+      // membership add in one transaction, `INVITATION_REDEEMED` after commit.
+      await this.redeemInvitation.execute({
+        invitationId: invitation.id,
+        userId: user.id,
+        workspaceId: invitation.workspaceId,
+        role: invitation.role as WorkspaceRole,
+        tid: tenant.id,
+        actorId: user.id,
       });
     }
 
@@ -268,6 +269,20 @@ export class CompleteOidcLoginUseCase {
     );
 
     const linked = await this.routerDb.findTenantsByGlobalUser(globalUserId);
+
+    // B12: explicit identity trail. Every session the callback issues —
+    // institutional or global-invitation path — leaves one `OIDC_LOGIN` on
+    // the global identity (router DB, append-only, no PII).
+    await this.audit?.record({
+      actorId: user.id,
+      actorType: 'USER',
+      action: 'OIDC_LOGIN',
+      targetType: 'global_identity',
+      targetId: globalUserId,
+      tenantId,
+      globalIdentityId: globalUserId,
+      metadata: { redirectPath },
+    });
 
     return {
       refreshToken,

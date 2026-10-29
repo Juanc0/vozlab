@@ -5,6 +5,7 @@ import { IGlobalUserRepository, GlobalUser } from '../../domain/ports/IGlobalUse
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
+import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import {
   generateAuthorHash,
   generateRefreshToken,
@@ -31,7 +32,9 @@ export class SelectTenantUseCase {
     private readonly routerDb: IRouterDatabase,
     private readonly userRepo: IUserRepository,
     private readonly uow: IUnitOfWork,
-    private readonly refreshRepo: IRefreshTokenRepository
+    private readonly refreshRepo: IRefreshTokenRepository,
+    /** B12: identity trail for the tenant selection (see `execute`). */
+    private readonly audit?: IAuditLog
   ) {}
 
   async execute(input: SelectTenantInput): Promise<SelectTenantResult> {
@@ -82,6 +85,21 @@ export class SelectTenantUseCase {
       },
       tenant.id
     );
+
+    // B12: explicit identity trail. This use case backs both the tenant
+    // selector (`/auth/select-tenant`) and the sidebar switch (`/auth/
+    // switch-tenant`), so every entry into a tenant leaves one event on the
+    // global identity — the selection is never an anonymous hop.
+    await this.audit?.record({
+      actorId: user.id,
+      actorType: 'USER',
+      action: 'TENANT_SELECTED',
+      targetType: 'global_identity',
+      targetId: input.globalIdentityId,
+      tenantId: tenant.id,
+      globalIdentityId: input.globalIdentityId,
+      metadata: { tenantSlug: tenant.slug },
+    });
 
     return { refreshToken, refreshExpiresAt, user };
   }

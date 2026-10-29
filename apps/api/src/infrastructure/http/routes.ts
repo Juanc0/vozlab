@@ -51,8 +51,7 @@ import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUs
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
-import { AssignMemberRoleUseCase } from '../../application/use_cases/AssignMemberRoleUseCase.js';
-import { RemoveMemberRoleUseCase } from '../../application/use_cases/RemoveMemberRoleUseCase.js';
+import { ManageRoleAtomicUseCase } from '../../application/use_cases/ManageRoleAtomicUseCase.js';
 import { SuspendMemberUseCase } from '../../application/use_cases/SuspendMemberUseCase.js';
 import { ReactivateMemberUseCase } from '../../application/use_cases/ReactivateMemberUseCase.js';
 import { RemoveMemberUseCase } from '../../application/use_cases/RemoveMemberUseCase.js';
@@ -163,8 +162,7 @@ export interface RouteDependencies {
   listMembersUseCase: ListMembersUseCase;
   addWorkspaceMemberUseCase: AddWorkspaceMemberUseCase;
   changeMemberRoleUseCase: ChangeMemberRoleUseCase;
-  assignMemberRoleUseCase?: AssignMemberRoleUseCase;
-  removeMemberRoleUseCase?: RemoveMemberRoleUseCase;
+  manageRoleUseCase?: ManageRoleAtomicUseCase;
   suspendMemberUseCase: SuspendMemberUseCase;
   reactivateMemberUseCase: ReactivateMemberUseCase;
   removeMemberUseCase: RemoveMemberUseCase;
@@ -321,8 +319,7 @@ export async function registerRoutes(
     deps.listMembersUseCase,
     deps.addWorkspaceMemberUseCase,
     deps.changeMemberRoleUseCase,
-    deps.assignMemberRoleUseCase ?? null,
-    deps.removeMemberRoleUseCase ?? null,
+    deps.manageRoleUseCase ?? null,
     deps.suspendMemberUseCase,
     deps.reactivateMemberUseCase,
     deps.removeMemberUseCase

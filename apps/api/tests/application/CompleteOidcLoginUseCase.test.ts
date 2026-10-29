@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
+import { RedeemInvitationAtomicUseCase } from '../../src/application/use_cases/RedeemInvitationAtomicUseCase.js';
 import { deriveHandle } from '../../src/shared/auth/deriveHandle.js';
 import { RedeemGlobalInvitationUseCase } from '../../src/application/use_cases/RedeemGlobalInvitationUseCase.js';
 import {
@@ -7,6 +8,8 @@ import {
   parseRefreshToken,
 } from '../../src/shared/auth/refreshToken.js';
 import type { OidcStateData } from '../../src/domain/ports/IOidcStateStore.js';
+import type { AuditEvent, IAuditLog } from '../../src/domain/ports/IAuditLog.js';
+import type { Invitation } from '../../src/domain/ports/IInvitationRepository.js';
 import type { GlobalInvitationRecord } from '../../src/domain/ports/IGlobalInvitationRepository.js';
 import { makeUnitOfWork } from '../support/fakes.js';
 import {
@@ -18,6 +21,7 @@ import {
   WORKSPACE_ID,
   makeGlobalInvitationRepository,
   makeGlobalUserRepository,
+  makeAuditLog,
   makeIdentityProvider,
   makeInvitationRepository,
   makeMembershipRepository,
@@ -40,6 +44,10 @@ function setup(
     globalInvitations?: GlobalInvitationRecord[];
     /** When false, the redeem use case is NOT wired (legacy behavior). */
     withRedeem?: boolean;
+    /** B12: audit sink; when set, the login records `OIDC_LOGIN`. */
+    audit?: IAuditLog;
+    /** Seed for the tenant-local invitation fake (the D9 lookup + race). */
+    invitationSeed?: { byTokenHash?: Invitation | null; acceptResult?: boolean };
   } = {}
 ) {
   const stateData = overrides.state === undefined ? OIDC_STATE : overrides.state;
@@ -54,7 +62,7 @@ function setup(
   const globalIdentity = makeGlobalUserRepository();
   const users = makeUserRepository();
   const refresh = makeRefreshTokenRepository();
-  const invitation = makeInvitationRepository();
+  const invitation = makeInvitationRepository(overrides.invitationSeed);
   const membership = makeMembershipRepository();
   const globalInvites = makeGlobalInvitationRepository(overrides.globalInvitations ?? []);
   const { uow } = makeUnitOfWork();
@@ -66,6 +74,14 @@ function setup(
     membership.membershipRepo,
     uow
   );
+  // B12: the login composes the atomic redemption — same repos, same uow,
+  // so the `accept`/`add` assertions on the fakes keep proving the flow.
+  const redeemInvitation = new RedeemInvitationAtomicUseCase(
+    invitation.repo,
+    membership.membershipRepo,
+    uow,
+    overrides.audit
+  );
   const useCase = new CompleteOidcLoginUseCase(
     states.stateStore,
     identity.identityProvider,
@@ -73,11 +89,11 @@ function setup(
     globalIdentity.repo,
     users.userRepo,
     invitation.repo,
-    membership.membershipRepo,
-    uow,
     refresh.refreshRepo,
     REFRESH_TTL_MS,
-    overrides.withRedeem === false ? undefined : redeem
+    redeemInvitation,
+    overrides.withRedeem === false ? undefined : redeem,
+    overrides.audit
   );
 
   return {
@@ -87,6 +103,7 @@ function setup(
     router,
     users,
     refresh,
+    invitation,
     membership,
     globalInvites,
     redeem,
@@ -285,6 +302,121 @@ describe('CompleteOidcLoginUseCase', () => {
         `linkGlobalTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
       );
       expect(refresh.creates).toEqual([]);
+    });
+  });
+
+  describe('tenant-local invitation redemption (D9, composed by the B12 atom)', () => {
+    /** The tenant-local invitation the login of this file would redeem. */
+    function localInvitation(overrides: Partial<Invitation> = {}): Invitation {
+      return {
+        id: 'inv-local-1',
+        workspaceId: WORKSPACE_ID,
+        email: 'ada@example.edu',
+        emailHash: 'hash',
+        role: 'MEMBER',
+        tokenHash: 'token-hash',
+        expiresAt: new Date(Date.now() + 60_000),
+        maxUses: null,
+        usedCount: 0,
+        status: 'PENDING',
+        revokedAt: null,
+        createdBy: null,
+        createdAt: new Date(),
+        ...overrides,
+      };
+    }
+
+    it('accepts the invitation and adds the membership atomically, then audits', async () => {
+      const auditSink = makeAuditLog();
+      const { useCase, invitation, membership } = setup({
+        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+        invitationSeed: { byTokenHash: localInvitation() },
+        audit: auditSink.audit,
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).toContain('accept:inv-local-1');
+      expect(membership.added).toHaveLength(1);
+      expect(membership.added[0]).toMatchObject({
+        userId: AUTH_USER.id,
+        workspaceId: WORKSPACE_ID,
+        role: 'MEMBER',
+        tid: TENANT_ID,
+      });
+      // The atom's event carries the tenant the store routes by, and the
+      // login's `OIDC_LOGIN` still lands — two distinct actions.
+      const actions = auditSink.events.map((event) => event.action);
+      expect(actions).toContain('INVITATION_REDEEMED');
+      expect(actions).toContain('OIDC_LOGIN');
+      const redeemed = auditSink.events.find(
+        (event) => event.action === 'INVITATION_REDEEMED'
+      );
+      expect(redeemed).toMatchObject({
+        tenantId: TENANT_ID,
+        targetType: 'workspace',
+        targetId: WORKSPACE_ID,
+        actorId: AUTH_USER.id,
+      });
+      expect(redeemed?.metadata).toMatchObject({ invitationId: 'inv-local-1' });
+    });
+
+    it('fails the login when a concurrent redemption won the accept race', async () => {
+      const { useCase, invitation, membership, refresh } = setup({
+        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+        invitationSeed: { byTokenHash: localInvitation(), acceptResult: false },
+      });
+
+      await expect(
+        useCase.execute({ code: 'auth-code', state: 'state-1' })
+      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
+      expect(invitation.calls).toContain('accept:inv-local-1');
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toEqual([]);
+    });
+
+    it('refuses an invitation already past its max uses', async () => {
+      const { useCase, invitation, membership } = setup({
+        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+        invitationSeed: {
+          byTokenHash: localInvitation({ maxUses: 2, usedCount: 2 }),
+        },
+      });
+
+      await expect(
+        useCase.execute({ code: 'auth-code', state: 'state-1' })
+      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
+      expect(invitation.calls).not.toContain('accept:inv-local-1');
+      expect(membership.added).toEqual([]);
+    });
+  });
+
+  describe('identity trail (B12)', () => {
+    it('records OIDC_LOGIN on the global identity for every issued session', async () => {
+      const { audit, events } = makeAuditLog();
+      const { useCase } = setup({ audit });
+
+      await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        action: 'OIDC_LOGIN',
+        actorId: AUTH_USER.id,
+        actorType: 'USER',
+        targetType: 'global_identity',
+        targetId: 'global-id-1',
+        tenantId: TENANT_ID,
+        globalIdentityId: 'global-id-1',
+      });
+      expect(events[0]?.metadata).toMatchObject({ redirectPath: '/proposals' });
+    });
+
+    it('records nothing when no audit sink is wired', async () => {
+      const { useCase } = setup();
+      await expect(
+        useCase.execute({ code: 'auth-code', state: 'state-1' })
+      ).resolves.toMatchObject({ requiresTenantSelection: false });
     });
   });
 });
