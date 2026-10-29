@@ -189,16 +189,16 @@ Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev`
 - [x] `global_users` como SSO de identidad (router).
 - [x] Login OIDC real contra Zitadel verificado end-to-end (§6.5, 2026-10-28).
 - [x] `membership_events` append-only (miembros).
-- [ ] HTTPS/TLS real en producción.
+- [ ] HTTPS/TLS real en producción (instrumentado T2 por ADR-0043; falta hostname final + CSP de staging — B11).
 - [x] `IAuditLog` persistente (`DrizzleAuditLog`: `membership_events` + `global_identity_events`, 2026-10-28).
 - [x] Rate limit dedicado en todas las rutas admin de escritura (P0-5, 2026-10-28).
 - [x] `switch-tenant` endpoint (2026-10-28).
 - [x] Redención invitación global end-to-end (2026-10-28).
 - [x] Resolución `globalUserId` en alta directa (2026-10-28).
 - [x] Link `global_identity_tenants` escrito en login y redención (2026-10-28; antes solo el script de reconciliación lo creaba).
-- [ ] Social logins verificados en Zitadel.
-- [ ] Seed completo (PUBLIC/PRIVATE/invitaciones/roles).
-- [ ] Tests por operación atómica.
+- [ ] Social logins verificados en Zitadel (scripted en `setup-zitadel.sh` §8; faltan credenciales externas — B9).
+- [x] Seed completo (PUBLIC/PRIVATE/invitaciones/roles — B10, 2026-10-29).
+- [x] Tests por operación atómica (átomos de rol/redención con guards y eventos, B12, `f7f154b` — 12 tests).
 
 ---
 
@@ -208,7 +208,7 @@ Nota ops: el proceso API **no debe** correr bajo `pnpm --filter @vozlab/api dev`
 - Tasks v6: `docs/tasks/auth-onboarding-v6/TASK-01..12` (sin subtasks 11.x/12.x activos; el trabajo real está en TASK-01..09 de v6 + v5).
 - ADRs: ADR-0041 (admin model), ADR-0042 (cross-tenant/identity), ADR-0013 (authorHash pseudónimo), ADR-0025 (resolve-source), ADR-0026 (propuesta union kind), ADR-0028 (external identities).
 - Análisis: este documento (estado actual).
-- Knowledge transfer: `knowledge-transfer/08-identidad-tenencia-invitados.md` (verificar vigencia).
+- Knowledge transfer: `knowledge-transfer/08-identity-tenancy-and-guests.md` y `knowledge-transfer/guia-identidad-ia/login-tasks/README.md` (status reconciliado 2026-10-29 — D13/D14 y átomos confirmados en código; brechas honestas: D3 resend/rotate, D4/D5 doc-level, F4 inventario PII no creado).
 - Requirements: `docs/requirements.md` (US-00 + matriz de decisión).
 
 ---

@@ -7,16 +7,23 @@ el ejecutor solo necesita leer los archivos que nombra cada tarea.
 > Alcance: **solo login, identidad, invitaciones, índice global y auditoría**.
 > Fuera de alcance: Extractor/Relator/Consolidador (bloque E y F2 de `02-...`).
 
-## Status as of 2026-10-26
+## Status as of 2026-10-29 (reconciled with `docs/analysis/auth-onboarding-committee-review.md`)
 
-- **A1–A8**: decisions recorded (ADR-0028, ADR-0029).
-- **B1–B9**: lab migrated from Keycloak to Zitadel (ADR-0030); Keycloak retained in `docker/identity-lab/`.
+- **A1–A8**: decisions recorded (ADR-0028, ADR-0029, ADR-0030, ADR-0031). ✅
+- **B1–B9**: lab migrated from Keycloak to Zitadel (ADR-0030); Keycloak retained in `docker/identity-lab/`. B2/B3/B5/B8/B9 exist as lab assets (compose + README steps) but are NOT part of the product path or CI. The Zitadel smoke (B7) is covered by the real-login E2E (§6.5 of the committee review). B6: tenant from claims (ADR-0031) implemented.
 - **C1–C7**: implemented (contract tests, `emailVerified` null, `external_identities`, search by identity, claim-based tenant resolution, `ExternalIdentity` type, `sessions_valid_after`). **C8 deferred** (tracked, not scheduled).
-- **D1**: `tenant_identity_providers` table + repository + management endpoints implemented.
-- **D2**: login route uses `kc_idp_hint` only; tenant resolved from token claims (ADR-0031).
-- **D6–D8**: global identity tables + resolution implemented.
-- **D9–D12, D14**: scaffolding implemented; full integration pending.
-- **F1**: ADR-0028 (amended by ADR-0030). ADR-0029, ADR-0030, ADR-0031 added.
+- **D1**: `tenant_identity_providers` table + repository + management endpoints implemented. ✅
+- **D2**: login uses `kc_idp_hint` only; tenant resolved from token claims (ADR-0031). ✅
+- **D3**: create/list/revoke implemented; **resend/rotate of the token is NOT** — re-issue works via revoke + create (accepted deviation).
+- **D4**: design-only; documented in `01-explicacion-logins-y-ia.md` §11; NOT formalized in an ADR as the task asked. Open (low priority: nothing accepts institutional domains yet).
+- **D5**: correlation-control rationale documented (§6.3 of `01-...`); no standalone test design. Open (doc-level).
+- **D6–D8**: global identity tables + resolution implemented; `global_identity_tenants` is now written on every institutional login and every global redemption (committee P0-2, 2026-10-28). ✅
+- **D9**: `RedeemInvitationAtomicUseCase` is the real mutation of the first login (committee B12, `f7f154b`). ✅
+- **D10–D12**: memberships admin complete; `DrizzleAuditLog` append-only persistent (`membership_events` + `global_identity_events`); direct add by handle/globalUserId with `findGlobalTenantLink` (P0-3, 85ceb64; handle write fixed by B14). ✅
+- **D13**: `backfill-global-identities.ts` (idempotent upsert + conflict reporting without aborting). ✅
+- **D14**: `reconcile-router-tenants.ts` + `backfill-external-identities.ts`; the live `oidc_tenant_id` drift was reconciled 2026-10-29. ✅
+- **F1**: ADR-0028 (amended by ADR-0030). ADR-0029, ADR-0030, ADR-0031 added. ✅
+- **F4**: PII inventory and privacy notice are NOT created (only `knowledge-transfer/05-data-and-database.md` exists, which is technical, not the legal inventory). Open.
 
 ## Orden sugerido
 
