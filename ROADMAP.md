@@ -912,9 +912,10 @@ Decided, and not to be re-opened without evidence:
   merged with the findings of
   [docs/analysis/db-auth-router-flows-audit.md](docs/analysis/db-auth-router-flows-audit.md)
   (P1–P9): peppered email hashes with zero cleartext, `workspace_join_codes`
-  as sole credential, thin `event_code_routes` router + `purpose`, one
-  identity store (`external_identities`), dead-code + dead-table deletions,
-  coherent seed, verification reset + truth pass. db-baseline v1 CLOSED
+  as sole credential, generic `credential_routes` router directory per the
+  user-adopted DEC-9 (retires BOTH `event_codes` and `global_invitations`),
+  one identity store (`external_identities`), dead-code + dead-table
+  deletions, coherent seed, verification reset + truth pass. db-baseline v1 CLOSED
   2026-10-30 (ADR-0044; archived plan
   [docs/archive/plans/db-baseline/v1.md](docs/archive/plans/db-baseline/v1.md)).
 

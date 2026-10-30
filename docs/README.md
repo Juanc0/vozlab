@@ -91,7 +91,7 @@ task 13.
 | [knowledge/](knowledge/) | Deep material awaiting realization (see each file's graduation path) |
 | [analysis/auth-onboarding-committee-review.md](analysis/auth-onboarding-committee-review.md) | **Live record** of the identity/auth intervention (B1–B14 + task 13); archived when it closes |
 | [analysis/db-identity-normalization.md](analysis/db-identity-normalization.md) | Approved design record for the identity DB work (DEC-1..8); Plan 1 executed (ADR-0044), DEC-3/4/5 feed identity-consolidation |
-| [analysis/db-auth-router-flows-audit.md](analysis/db-auth-router-flows-audit.md) | **Live audit** (2026-10-30): router + tenant `auth` flow↔table↔column map, findings P1–P9, reset/seed ruling, open decisions D-1..5 |
+| [analysis/db-auth-router-flows-audit.md](analysis/db-auth-router-flows-audit.md) | **Live audit** (2026-10-30): router + tenant `auth` flow↔table↔column map, findings P1–P9, §8 architecture diagrams (blocks, personas, per-flow sequences), §9 alternatives → DEC-9 adopted; reset/seed ruling |
 | [analysis/production-topology-b11.md](analysis/production-topology-b11.md) | Live analysis feeding ADR-0043; archived after first go-live |
 | [decisions/](decisions/) | Architecture Decision Records (`ADR-*.md`) |
 | [../ROADMAP.md](../ROADMAP.md) | The single task board: open work, deferred items, known debt |

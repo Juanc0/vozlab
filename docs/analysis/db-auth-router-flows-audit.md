@@ -1,8 +1,9 @@
 # Database audit — router DB + tenant `auth` schema: flows, columns, health
 
-- Status: OPEN (findings accepted 2026-10-30; remediation merged into
-  [plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md)
-  per ruling D-1)
+- Status: ANSWERED (findings accepted 2026-10-30; rulings D-1..D-5 chosen by
+  the user; remediation merged into
+  [plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md);
+  the §8 diagrams + §9 alternatives led to **DEC-9 adopted 2026-10-30**)
 - Date: 2026-10-30
 - Method: schema read (`router.schema.ts`, `tenant.auth.schema.ts`) + live SQL
   inventory of both databases (`vozlab_router`, `vozlab_tenant_dev.auth`) +
@@ -337,6 +338,13 @@ recreates the *same* P5 seed defect — pointless. The correct sequence:
 
 ## 7. Open decisions for the plan (clarification protocol)
 
+**All five answered by the user 2026-10-30** — D-1 merge into
+identity-consolidation v1 · D-2 delete `tenant_identity_providers` ·
+D-3 seed coherent with the login path · D-4 drop `is_anonymous` (filter by
+`provider`) · D-5 complete `event_codes.revoked_at` with CLI `--revoke`.
+The §8/§9 walkthrough then produced **D-6/DEC-9** (adopted): invitations
+unify under tenant authority + `credential_routes`.
+
 - **D-1**: Scope merger. Fold P2/P3/P4-verify/P6/P7/P8 fixes into
   `identity-consolidation v1` (one DB-shaped plan) vs a separate preceding
   `db-auth-hardening` plan. Merger pros: one seed rewrite, one fold series, one
@@ -393,8 +401,12 @@ flowchart TB
       TSW["workspaces: general · investigación-clínica ·<br>evento-congreso (EVENT)"]
       TSD["users · external_identities · memberships ·<br>workspace_join_codes (purpose WORKSPACE|EVENT) ·<br>invitations (authority) · refresh_tokens · membership_events"]
     end
-    subgraph TA["Andes DB"] TAD["…same shape, own users & workspaces…"] end
-    subgraph TN["Nacional / UIS DBs"] TND["…same shape…"] end
+    subgraph TA["Andes DB"]
+      TAD["…same shape, own users & workspaces…"]
+    end
+    subgraph TN["Nacional / UIS DBs"]
+      TND["…same shape…"]
+    end
   end
   W -->|"login / API calls (Bearer + X-Workspace-ID)"| A
   QR -->|"POST /auth/event-join"| A
@@ -495,7 +507,8 @@ sequenceDiagram
     A-->>W: 302 /select-tenant?guid=…
     U->>W: picks tenant (may pick "other…" = no tenant yet)
     W->>A: POST /auth/select-tenant
-    A->>T: JIT (profile copied as HASHED-never: only name/handle; email does not travel) + link + family
+    %%A->>T: JIT profile copy + link + family
+    A->>T: JIT (profile copied as HASHED-never: only name/handle, email does not travel) + link + family
     A->>R: append TENANT_SELECTED
   end
 ```
@@ -514,7 +527,7 @@ sequenceDiagram
   A->>T: TX: revoke prior PENDING same email+ws → INSERT invitations:<br>email_hash=HMAC(pepper,email), token_hash=SHA256(opaque), role,<br>expires=72h, max_uses=1, created_by_hash | membership_events INVITED
   A->>R: INSERT credential_routes(token_hash, 'INVITATION', tenant_id)
   A-->>Ad: raw token ONE time → the admin delivers the link (email itself is out-of-band: VozLab never sends mail)
-  G->>A: /login?invitation=TOK → F1 with state (same-org: institutional IdP; outsider: personal Google/Outlook)
+  G->>A: /login?invitation=TOK → F1 with state (same-org: institutional IdP, outsider: personal Google/Outlook)
   A->>R: callback: vault UPSERT (new humans are born here) → route: hash(TOK) → tenant_id
   A->>T: invitations.findByTokenHash → guards (PENDING, expiry, uses) + hashEmail(verified email)=email_hash
   A->>T: atomic UPDATE … WHERE status='PENDING' RETURNING → membership (role from invite) → JIT user if absent → TX commit
@@ -570,7 +583,7 @@ flowchart TD
 | Option | Shape | Pros | Cons | Verdict |
 |---|---|---|---|---|
 | **A — today: full row in router `global_invitations`** | router stores token_hash + plaintext email + tenant + **workspace + role + expiry** | redeem without touching a tenant DB first | router crosses its own L0/L1 boundary (knows workspaces and roles — L3 data); PII in the vault table; **two parallel invitation systems** with different guards (global = caller-set expiry + unlimited uses default vs tenant = 72h single-use); creator/status semantics diverge; admin UI must choose "which invitation am I making"; out-of-scope item in v1 exists *because* of this split (no REVOKED/EXPIRED writers) | ❌ |
-| **B — DEC-9 proposal: tenant authority + router directory** (the exact DEC-3 pattern applied to invitations) | `invitations` (tenant) holds everything; router gets one generic `credential_routes(credential_hash UNIQUE, kind 'EVENT'\|'INVITATION', tenant_id, created_at)` | one mechanism for **all** pre-tenant credentials; authority + enforcement in the tenant that creates the membership (no cross-DB consistency question: the redemption TX is single-DB); external invitee's JIT already happens in the same callback flow, so zero new machinery; stricter semantics (72h/single-use/revoke-resend) apply to ALL invitations; workspace assignment is naturally delegated to the tenant row (which also holds the role and emits `membership_events` INVITED) | one more step in redemption (route → tenant) — already the shape of event-join since DEC-3; directory can drift (stale route = harmless 404, documented invariant) | ✅ **recommended** |
+| **B — DEC-9: tenant authority + router directory** (the exact DEC-3 pattern applied to invitations) | `invitations` (tenant) holds everything; router gets one generic `credential_routes(credential_hash UNIQUE, kind 'EVENT'\|'INVITATION', tenant_id, created_at)` | one mechanism for **all** pre-tenant credentials; authority + enforcement in the tenant that creates the membership (no cross-DB consistency question: the redemption TX is single-DB); external invitee's JIT already happens in the same callback flow, so zero new machinery; stricter semantics (72h/single-use/revoke-resend) apply to ALL invitations; workspace assignment is naturally delegated to the tenant row (which also holds the role and emits `membership_events` INVITED) | one more step in redemption (route → tenant) — already the shape of event-join since DEC-3; directory can drift (stale route = harmless 404, documented invariant) | ✅ **ADOPTED (user, 2026-10-30) — now DEC-9 of the design record** |
 | C — no directory: tenant slug inside the invitation link | link `/invite/{tenantSlug}/{token}` | no router table | breaks ADR-0019 opacity for invitations (tenant enumeration in URLs/emails), duplicates what the code hash already avoids | ❌ |
 
 Answers to the sub-questions: *can workspace assignment be delegated to the

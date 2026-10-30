@@ -5,8 +5,13 @@
 > `03adb33`, `ba3514b`); the decision is recorded in
 > [ADR-0044](../decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md).
 > The audit table below keeps the old names on purpose — it IS the old→new
-> map. Plan 2 (`identity-consolidation`, DEC-3/4/5) has not opened. This
-> record archives when its plans close.
+> map. **Plan 2 (`identity-consolidation` v1) OPENED 2026-10-30**
+> ([../plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md))
+> executing DEC-3/4/5 merged with the findings of
+> [db-auth-router-flows-audit.md](db-auth-router-flows-audit.md); **DEC-9**
+> (invitations: tenant authority + generic router `credential_routes`) was
+> adopted by the user the same day. This record archives when its plans
+> close.
 > Opened: 2026-10-30. Record of an active intervention (same class as
 > `auth-onboarding-committee-review.md`). Design gate passed 2026-10-30: every
 > DEC below is **approved** — DEC-1/2/3
@@ -222,6 +227,24 @@ Recorded as mine, not the user's:
   `pgvector/pgvector:pg18` without the `age` extension while the compose
   image has it; that asymmetry is noted, not chased.
 
+### DEC-9 — Invitations: tenant authority + generic router directory (user, 2026-10-30)
+
+Adopted after the flows audit's alternatives review
+([db-auth-router-flows-audit.md](db-auth-router-flows-audit.md) §8.5/§9.1):
+the DEC-3 pattern generalizes to **all** pre-tenant credentials. The router
+keeps one directory `credential_routes(credential_hash UNIQUE, kind
+'EVENT'|'INVITATION', tenant_id, created_at)` — routing, never authority —
+while `global_invitations` is **retired** and every invitation (same-org or
+external) becomes a tenant `invitations` row with the strict profile already
+proven there (72 h TTL, single-use, revoke-on-resend, atomic accept).
+Workspace/role assignment therefore lives ONLY in the tenant row (the audit
+answer to "can it be delegated? — it should be"). Sequencing invariant: mint
+writes tenant authority first, route second; revoke deletes route first,
+then revokes the authority; a stale route is inert, a missing route
+re-pushes. Consequence accepted: the lax global twin's caller-set expiry +
+unlimited default uses disappear, and the "no REVOKED/EXPIRED writers on
+global_invitations" gap disappears WITH the table.
+
 ## Plan shape
 
 **Plan 1 — `db-baseline`** (renames + collapse + reset + orphans; every task
@@ -249,6 +272,10 @@ T4 drop `users.provider_user_id`; one upsert path (DEC-5 D4) · T5
 `JoinEventUseCase` re-orchestration; ADR amending 0019/0002 and fixing the
 MEMBER→GUEST stale text (DEC-3) · each: requirements-matrix + component docs
 updated with the task.
+
+> The OPENED plan superseded this sketch: 9 tasks with T5/T6 split per DEC-9
+> — the authoritative task text is
+> [../plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md).
 
 ## Open items — all answered by the user (2026-10-30)
 
