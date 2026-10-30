@@ -37,7 +37,6 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
-*No open plan.* The backlog of verified slivers lives in
-[../../ROADMAP.md](../../ROADMAP.md) ("Tracked, not scheduled" and the auth
-survivor block); opening one of them as `plans/<area>/v1.md` is the first act
-of any deep session.
+- [db-baseline/v1](db-baseline/v1.md) — identity vocabulary coherence +
+  migration baseline collapse + dev-volume reset. Design record:
+  [../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md).

@@ -903,6 +903,18 @@ Decided, and not to be re-opened without evidence:
       validation replaced the casts, and the heredoc-corrupted `deploy.yml` /
       `e2e.yml` / floci compose were repaired. 0 errors / ~35 warnings.)
 
+## Active plans
+
+- **db-baseline v1** — identity vocabulary coherence (finish the
+  `global_users` rename), collapse 28 migration folds into one baseline per
+  DB, purge dev-cluster orphans, reset the dev volume so local
+  `test:integration` equals CI. Plan:
+  [docs/plans/db-baseline/v1.md](docs/plans/db-baseline/v1.md); approved
+  design: [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md).
+  Its closure opens `identity-consolidation` v1 carrying DEC-3/4/5 (thin
+  router for event codes, `purpose`-separated join codes, peppered email
+  hashes with zero cleartext, one mechanism per credential/identity concept).
+
 ## Tracked, not scheduled
 
 Identity/auth survivors (promoted from the archived v5/v6 task trees and
