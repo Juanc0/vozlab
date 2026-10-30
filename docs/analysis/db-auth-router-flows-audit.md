@@ -354,7 +354,274 @@ recreates the *same* P5 seed defect — pointless. The correct sequence:
 - **D-5**: `event_codes.revoked_at` half-life (P7.5): finish (CLI `--revoke`)
   vs drop until the QR-management route exists.
 
-## 8. Evidence index
+## 8. Architecture map — diagrams (target = post identity-consolidation v1 + DEC-9)
+
+### 8.1 Blocks: clients, broker, API, router, tenants
+
+```mermaid
+flowchart TB
+  subgraph Clients["Clients"]
+    W["VozLab Web PWA"]
+    QR["QR scan (mobile browser, anon)"]
+    WRK["Python workers (agent JWT)"]
+  end
+  subgraph Z["Zitadel broker — ONE issuer; the API never trusts any other IdP directly"]
+    direction LR
+    subgraph MI["Microsoft institucional (Entra)"]
+      SAB_P["sabana.edu.co"]
+    end
+    subgraph GI["Google institucional (Workspace)"]
+      AND_P["andes.edu.co"]; UIS_P["uis.edu.co"]; NAL_P["nacional.edu.co"]
+    end
+    subgraph PS["Personal"]
+      GP["Google personal"]; OP["Outlook personal"]
+    end
+    ZU["Zitadel user = the person<br/>(stable subject; linked social+inst IdPs<br/>are the broker's job, one row per human)"]
+    MI --> ZU; GI --> ZU; PS --> ZU
+  end
+  A["VozLab API (Fastify) — resource server:<br/>validates only the broker's VozLab token"]
+  subgraph R["vozlab_router — L0 routing + L1 global identity ONLY"]
+    R1["global_users — vault (issuer, subject, email_hash, profile)"]
+    R2["global_user_tenants — person↔tenant links"]
+    R3["tenants + tenant_connections — where is each tenant's DB"]
+    R4["credential_routes (NEW, DEC-9) — hash→tenant directory<br/>kind = EVENT | INVITATION. Routing, never authority"]
+    R5["global_user_events — append-only trail"]
+    R6["RETIRED: global_invitations, event_codes,<br/>tenant_identity_providers"]
+  end
+  subgraph T["Tenant DBs — physical isolation (one per university)"]
+    subgraph TS["Sabana DB"]
+      TSW["workspaces: general · investigación-clínica ·<br>evento-congreso (EVENT)"]
+      TSD["users · external_identities · memberships ·<br>workspace_join_codes (purpose WORKSPACE|EVENT) ·<br>invitations (authority) · refresh_tokens · membership_events"]
+    end
+    subgraph TA["Andes DB"] TAD["…same shape, own users & workspaces…"] end
+    subgraph TN["Nacional / UIS DBs"] TND["…same shape…"] end
+  end
+  W -->|"login / API calls (Bearer + X-Workspace-ID)"| A
+  QR -->|"POST /auth/event-join"| A
+  WRK -->|"agent JWT → node routes"| A
+  A <-->|"OIDC code exchange"| Z
+  A --> R
+  A -->|"ConnectionPoolManager per tid"| T
+  R4 -.->|"which tenant owns this credential?"| T
+  R2 -.->|"tenant_user_id (no cross-DB FK)"| T
+```
+
+### 8.2 Layer ownership: who answers which question
+
+| Layer | Question it owns | Owner DB | Tables (post-plan) |
+|---|---|---|---|
+| L0 routing | "what tenant does this presented code/token belong to? which DB do I open for this tenant?" | router | `tenants`, `tenant_connections`, `credential_routes` |
+| L1 global identity | "have we ever seen this human, what is their verified profile?" | router | `global_users` (peppered `email_hash`), `global_user_tenants`, `global_user_events` |
+| L2 institutional identity | "who am I INSIDE this institution?" | tenant | `users` (handle, author_hash), `external_identities` |
+| L3 membership & credentials | "what may I do here, and how do I get in?" | tenant | `workspaces`, `workspace_memberships`, `workspace_join_codes(+purpose)`, `workspace_join_requests`, `invitations`, `refresh_tokens`, `membership_events` |
+| L-external | "who is this person, with what IdPs?" | Zitadel | (out of VozLab SQL entirely) |
+
+Router holds **no credential semantics, no PII beyond the hashed vault, no
+workspace/role knowledge**. Every authority that grants access lives in the
+tenant that enforces it.
+
+### 8.3 Personas — one vault row per human, many local identities
+
+```mermaid
+flowchart LR
+  subgraph VAULT["global_users (router) — ONE row per human"]
+    V1["V-martinez — entra subject<br>email_hash(sabana.edu.co)"]
+    V2["V-gomez — Google-inst subject<br>email_hash(andes.edu.co)"]
+    V3["V-laura — Google-personal subject<br>email_hash(gmail)"]
+    V4["V-auditor — Outlook-personal subject"]
+  end
+  subgraph SAB["Sabana tenant DB"]
+    S1["user martinez — INVESTIGACIÓN admin,<br>GENERAL member; congreso GUEST (QR)"]
+    S2["user laura — INVESTIGACIÓN member<br>(JIT at invite redemption)"]
+    S3["user anon-alias 'Invitado 7c3' —<br>CONGRESO GUEST (QR; Martínez anónima,<br>otro usuario, otro author_hash)"]
+  end
+  subgraph AND["Andes tenant DB"]
+    A1["user gomez — GENERAL member,<br>CÁTEDRA admin"]
+    A2["user anonymous-alias —<br>CONGRESO GUEST (QR, no vault touch)"]
+  end
+  subgraph NAL["Nacional tenant DB"]
+    N1["user gomez — MEDICINA-VET member<br>(2nd LOCAL user, 1st is Andes)"]
+    N2["user auditor — AUDITORÍA member<br>(Outlook invite JIT)"]
+  end
+  V1 -->|link| S1
+  V3 -->|link| S2
+  V2 -->|link| A1
+  V2 -.->|"Nacional invited his andes.edu.co email:<br>F1 login recognizes vault row → JIT 2nd local user"| N1
+  V4 -->|link| N2
+  V1 -.->|"same human scans the congress QR →<br>separate anonymous row, NO vault link"| S3
+```
+
+| Case | Person | Identity source | Path in | What the DBs show |
+|---|---|---|---|---|
+| C1 | Dra. Martínez (Prof. Sabana) | Entra institucional | F1 login → auto tenant (1 link) | vault row; `global_user_tenants` 1 row; memberships: ADMIN investigación, MEMBER general; QR congress → **GUEST** + `author_hash` own pseudonym |
+| C2 | Prof. Gómez (Prof. Andes) | Google institucional | F1 → andes picker | vault row; andes memberships; **co-teaches at Nacional**: Nacional admin invites `l.gomez@andes.edu.co` → he logs in (vault already known — no new vault row), Nacional JIT creates a **separate** `auth.users` row with its own `author_hash`, linked by the same `global_user_id` |
+| C3 | Ing. Laura Pérez (external collaborator) | Google personal (gmail) | invited by Sabana → F1 → redemption JIT | zero tenants at first; invite redemption creates vault row + tenant user + link; she also scans an Andes event QR → anonymous user (no vault touch, purpose=EVENT) |
+| C4 | Auditor (Outlook personal) | invited by Nacional | same as C3 | shows external invites need no institution account |
+| C5 | Student at UIS wanting the Nacional research group | Google institucional | workspace code → PENDING → approval | `workspace_join_requests` + admin approve creates membership; code only routes, never grants |
+
+Key property: **authorship is per-institution** (ADR-0013): the same human has
+different `author_hash` values per tenant DB; cross-tenant linkage exists
+only in `global_user_tenants` and is used for routing/login, never for
+permissions.
+
+### 8.4 F1 institutional login — atomic decisions
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as Person
+  participant W as Web PWA
+  participant A as API
+  participant Z as Zitadel
+  participant R as Router
+  participant T as Tenant DB
+  U->>W: "Log in" (+ optional ?invitation=TOK folded into state)
+  W->>A: GET /auth/login?redirect
+  A->>A: Redis state (nonce, returnPath, TOK?) — zero SQL
+  A-->>W: 302 → Zitadel
+  U->>Z: authenticates at any federated IdP
+  Z-->>A: GET /auth/callback (code)
+  A->>Z: code→tokens (server side) — verified email + name + picture
+  A->>R: UPSERT global_users by (issuer,subject): email_hash=HMAC(pepper,email), profile, last_login
+  opt state carried TOK (DEC-9 target)
+    A->>R: SELECT credential_routes WHERE hash(TOK) → tenant_id (route only, no authority)
+    A->>T: JIT user (if absent) + atomic invitation accept + membership + link
+  end
+  A->>R: SELECT global_user_tenants (status=ACTIVE) → tenant list
+  alt exactly 1 tenant
+    A->>T: (JIT if needed) + refresh family insert
+    A-->>W: 302 app, HttpOnly cookie
+  else N tenants
+    A-->>W: 302 /select-tenant?guid=…
+    U->>W: picks tenant (may pick "other…" = no tenant yet)
+    W->>A: POST /auth/select-tenant
+    A->>T: JIT (profile copied as HASHED-never: only name/handle; email does not travel) + link + family
+    A->>R: append TENANT_SELECTED
+  end
+```
+
+### 8.5 Invitations — the two directions, ONE mechanism (DEC-9)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Ad as Admin (any tenant)
+  actor G as Invitee (same-org OR total outsider)
+  participant A as API
+  participant T as Tenant DB (authority)
+  participant R as Router (directory only)
+  Ad->>A: POST /workspaces/:id/invitations {email, role}
+  A->>T: TX: revoke prior PENDING same email+ws → INSERT invitations:<br>email_hash=HMAC(pepper,email), token_hash=SHA256(opaque), role,<br>expires=72h, max_uses=1, created_by_hash | membership_events INVITED
+  A->>R: INSERT credential_routes(token_hash, 'INVITATION', tenant_id)
+  A-->>Ad: raw token ONE time → the admin delivers the link (email itself is out-of-band: VozLab never sends mail)
+  G->>A: /login?invitation=TOK → F1 with state (same-org: institutional IdP; outsider: personal Google/Outlook)
+  A->>R: callback: vault UPSERT (new humans are born here) → route: hash(TOK) → tenant_id
+  A->>T: invitations.findByTokenHash → guards (PENDING, expiry, uses) + hashEmail(verified email)=email_hash
+  A->>T: atomic UPDATE … WHERE status='PENDING' RETURNING → membership (role from invite) → JIT user if absent → TX commit
+  A->>R: global_user_tenants link + GLOBAL_INVITATION… trail
+  A-->>G: session cookie
+  Note over T: Revocation/expiry/cleanup run ONLY on the tenant row (72h TTL,<br>single-use, re-send invalidates). Directory rows are inert if the authority revokes.
+```
+
+### 8.6 Join paths — workspace codes and event QRs (mirrors, one table)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor M as Authenticated member of the tenant
+  actor Adm as Workspace admin
+  actor X as Anonymous attendee (QR)
+  participant A as API
+  participant R as Router
+  participant T as Tenant DB
+  M->>A: POST /workspace-join-requests {code}
+  A->>T: conditional UPDATE workspace_join_codes SET used_count=used_count+1<br>WHERE code_hash AND purpose='WORKSPACE' AND not revoked AND not expired<br>AND under max_uses RETURNING (one statement — no race)
+  alt row.auto_approve = true (public-ish)
+    A->>T: membership upsert ACTIVE (audit MEMBERSHIP_AUTO_APPROVED_BY_CODE)
+    A-->>M: granted
+  else auto_approve = false (private)
+    A->>T: INSERT workspace_join_requests PENDING (the code only ROUTED here)
+    A-->>M: "pending" — nothing granted
+    Adm->>A: POST /join-requests/:rid/approve
+    A->>T: decide + upsertMember + membership_events JOIN_APPROVED
+  end
+  X->>A: POST /auth/event-join {QR raw code}
+  A->>R: SELECT credential_routes WHERE hash(code) AND kind='EVENT' → tenant_id
+  A->>T: same-shape conditional UPDATE with purpose='EVENT' (auto_approve MUST be true on these rows) → INSERT anonymous user (provider ANONYMOUS_EVENT) + GUEST membership + refresh family — one tenant TX
+```
+
+### 8.7 Decision map: "presented a credential — where is the authority?"
+
+```mermaid
+flowchart TD
+  C{"What did the client present?"}
+  C -->|"IdP token (post-broker)"| LV["Authority: ROUTER vault — global_users(issuer,subject)"]
+  C -->|"Event QR code"| EV["Router = DIRECTORY only (credential_routes EVENT → tenant).<br>AUTHORITY: tenant workspace_join_codes purpose=EVENT (expiry, cap, revoke)"]
+  C -->|"Invitation token"| IN["Router = DIRECTORY only (INVITATION → tenant).<br>AUTHORITY: tenant invitations (72h, single-use, email_hash match)"]
+  C -->|"Workspace join code"| WS["NO router step at all — the client is already inside a tenant.<br>AUTHORITY: workspace_join_codes purpose=WORKSPACE → request/approval or auto"]
+  C -->|"Session cookie (refresh)"| SE["AUTHORITY: tenant refresh_tokens (family rotation)"]
+  C -->|"API request (Bearer)"| API2["AUTHORITY: tenant memberships/system_role (+router only for tenant routing)"]
+```
+
+## 9. Alternatives reviewed for responsibility split (the "are we sure?" check)
+
+### 9.1 Where should an EXTERNAL invitation live? (user's question 2)
+
+| Option | Shape | Pros | Cons | Verdict |
+|---|---|---|---|---|
+| **A — today: full row in router `global_invitations`** | router stores token_hash + plaintext email + tenant + **workspace + role + expiry** | redeem without touching a tenant DB first | router crosses its own L0/L1 boundary (knows workspaces and roles — L3 data); PII in the vault table; **two parallel invitation systems** with different guards (global = caller-set expiry + unlimited uses default vs tenant = 72h single-use); creator/status semantics diverge; admin UI must choose "which invitation am I making"; out-of-scope item in v1 exists *because* of this split (no REVOKED/EXPIRED writers) | ❌ |
+| **B — DEC-9 proposal: tenant authority + router directory** (the exact DEC-3 pattern applied to invitations) | `invitations` (tenant) holds everything; router gets one generic `credential_routes(credential_hash UNIQUE, kind 'EVENT'\|'INVITATION', tenant_id, created_at)` | one mechanism for **all** pre-tenant credentials; authority + enforcement in the tenant that creates the membership (no cross-DB consistency question: the redemption TX is single-DB); external invitee's JIT already happens in the same callback flow, so zero new machinery; stricter semantics (72h/single-use/revoke-resend) apply to ALL invitations; workspace assignment is naturally delegated to the tenant row (which also holds the role and emits `membership_events` INVITED) | one more step in redemption (route → tenant) — already the shape of event-join since DEC-3; directory can drift (stale route = harmless 404, documented invariant) | ✅ **recommended** |
+| C — no directory: tenant slug inside the invitation link | link `/invite/{tenantSlug}/{token}` | no router table | breaks ADR-0019 opacity for invitations (tenant enumeration in URLs/emails), duplicates what the code hash already avoids | ❌ |
+
+Answers to the sub-questions: *can workspace assignment be delegated to the
+tenant table?* **Yes — and it should**: the tenant row already carries
+`workspace_id, role, email_hash, token_hash, status, expiry, used_count`. The
+router needs nothing of that to do its L0 job (token→which tenant). *Is it a
+bad idea?* The opposite — today's non-delegation is the anomaly. *How is the
+token managed?* Exactly as tenant invitations do today: random 32 bytes, raw
+shown once, SHA-256 stored (opaque, high-entropy — DEC-4), re-send rotates.
+*Worth it vs. added complexity?* Fewer moving parts than today (one table, one
+use-case pair, one admin route replaces two systems). Cost: retire
+`global_invitations` + `Create/RedeemGlobalInvitationUseCase` +
+`POST /invitations/global`; web admin already points at the workspace
+invitation route.
+
+### 9.2 Are admin invitations ephemeral? (question 3) — and are they enough?
+
+**Verified in code**: tenant invitations are 72 h TTL, `max_uses = 1`,
+re-send atomically revokes the previous PENDING for the same email+workspace,
+raw token exists only in the create response, cleanup job flips EXPIRED, admin
+can REVOKED. That is the correct ephemeral profile — and under DEC-9 it becomes
+the **only** profile (the lax global twin with caller-set expiry and unlimited
+default uses disappears).
+
+### 9.3 Is data-access atomicity/responsibility clean? (question 1)
+
+After Plan-2 + DEC-9, per §8.2: every write touches ONE physical DB per
+transaction; the only cross-DB sequences are (a) vault upsert → tenant JIT
+(login — order enforced, router-first is idempotent) and (b) mint = tenant
+authority first → route second, revoke = route first → authority second. The
+audit's P7.7 deletions remove the last ports that reached across layers.
+Remaining accepted non-atomicities: post-commit event publishing (by design,
+AGENTS), and the directory's "stale route harmless / missing route re-push"
+invariant — routing is never authority, so no consistency window can grant
+access.
+
+### 9.4 Other splits re-examined while we were at it (kept as-is, with reasons)
+
+- `external_identities` per tenant (not router): broker subject is stable and
+  the tenant index answers the *tenant-local* question; moving it would break
+  tenant self-sufficiency (login when the router is down still JITs/links
+  inside the tenant). §4.
+- `tenants` + `tenant_connections` in router: correct (config, L0).
+- `global_user_events` write-only trail: correct; add a reader only with an
+  admin UI story (tracked, not scheduled).
+- Zitadel as sole issuer (one vault subject per person regardless of IdP): the
+  multi-persona cases C2–C4 depend on it; broker-side IdP linking is Zitadel's
+  job — recorded here so nobody re-implements it in SQL.
+
+
+## 10. Evidence index
 
 - Live inventory queries: this session (2026-10-30), both DBs, `pg_dump`s of
   the same era in `local-backups/` (gitignored).
