@@ -1,36 +1,49 @@
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import {
-  IWorkspaceRepository,
-  WorkspaceRecord,
-} from '../../domain/ports/IWorkspaceRepository.js';
+  IWorkspaceJoinCodeRepository,
+  WorkspaceJoinCodeRecord,
+} from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
 import { IAuditLog } from '../../domain/ports/IAuditLog.js';
-import { generateJoinCode } from './CreateWorkspaceUseCase.js';
+import { generateJoinCodeSecret } from './joinCodeSecret.js';
 
 export interface RotateJoinCodeInput {
   actorUserId: string;
+  /** ADR-0013 pseudonym of the actor — recorded as the new code's creator. */
+  actorAuthorHash: string;
   tid: string;
   workspaceId: string;
 }
 
+/** The rotation answer: the new row plus its raw code, shown once. */
+export interface RotateJoinCodeResult {
+  id: string;
+  code: string;
+}
+
 /**
- * Use Case: rotate the routing hint of a workspace.
+ * Use Case: rotate the workspace's join credential (DEC-5 D3, ADR-0045).
  *
- * The code identifies a private workspace to a user who was told it; it
- * never grants access. Rotating it invalidates the previous hint without
- * touching any membership.
+ * There is exactly one join-code mechanism now: the rotating, hashed
+ * `auth.workspace_join_codes` row. Rotation revokes the workspace's most
+ * recent non-revoked row and inserts a new one in the same transaction —
+ * the old secret dies the instant the new one exists. A legacy workspace
+ * without any live row simply gets one. The raw code appears only in this
+ * answer: the stored hash is never readable back.
  */
 export class RotateJoinCodeUseCase {
   constructor(
-    private readonly workspaceRepo: IWorkspaceRepository,
+    private readonly codeRepo: IWorkspaceJoinCodeRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly userRepo: IUserRepository,
+    private readonly uow: IUnitOfWork,
     private readonly audit?: IAuditLog
   ) {}
 
-  async execute(input: RotateJoinCodeInput): Promise<WorkspaceRecord> {
+  async execute(input: RotateJoinCodeInput): Promise<RotateJoinCodeResult> {
     await assertWorkspaceAdmin(
       input.actorUserId,
       input.workspaceId,
@@ -39,22 +52,59 @@ export class RotateJoinCodeUseCase {
       this.membershipRepo
     );
 
-    const workspace = await this.workspaceRepo.update(
-      input.workspaceId,
-      { joinCode: generateJoinCode() },
-      input.tid
-    );
-    if (!workspace) {
-      throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
-    }
+    const secret = generateJoinCodeSecret();
+
+    const created = await this.uow.runInTransaction(input.tid, async (tx) => {
+      const rows = await this.codeRepo.list(input.workspaceId, input.tid);
+      const current = mostRecentActive(rows);
+      if (current) {
+        await this.codeRepo.revoke(current.id, input.tid, tx);
+      }
+
+      const fresh = await this.codeRepo.create(
+        {
+          workspaceId: input.workspaceId,
+          codeHash: secret.codeHash,
+          // The rotation inherits the attributes of the code it replaces;
+          // a bare rotation must not silently change who gets auto-joined
+          // or how many people the code admits. A past expiry would birth
+          // a dead code, so only a live one carries over.
+          label: current?.label ?? 'default',
+          expiresAt:
+            current?.expiresAt && current.expiresAt > new Date()
+              ? current.expiresAt
+              : null,
+          maxUses: current?.maxUses ?? null,
+          autoApprove: current?.autoApprove ?? false,
+          createdByHash: input.actorAuthorHash,
+        },
+        input.tid,
+        tx
+      );
+      return fresh;
+    });
+
     await this.audit?.record({
       actorId: input.actorUserId,
       actorType: 'ADMIN',
       action: 'JOIN_CODE_ROTATED',
-      targetType: 'workspace',
-      targetId: input.workspaceId,
+      targetType: 'join_code',
+      targetId: created.id,
       tenantId: input.tid,
+      metadata: { workspaceId: input.workspaceId },
     });
-    return workspace;
+    return { id: created.id, code: secret.raw };
   }
+}
+
+/** The workspace's most recent non-revoked row, or null when it has none. */
+function mostRecentActive(
+  rows: WorkspaceJoinCodeRecord[]
+): WorkspaceJoinCodeRecord | null {
+  let best: WorkspaceJoinCodeRecord | null = null;
+  for (const row of rows) {
+    if (row.revokedAt !== null) continue;
+    if (!best || row.createdAt > best.createdAt) best = row;
+  }
+  return best;
 }

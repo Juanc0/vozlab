@@ -196,9 +196,8 @@ describe('neighbour lookup integration', () => {
     const otherNodeId = randomUUID();
 
     await tenantPool.query(
-      // join_code is NOT NULL + unique (the tenant baseline).
-      "insert into auth.workspaces (id, slug, name, join_code) values ($1, 'neighbour-probe', 'Neighbour probe', $2) on conflict (id) do nothing",
-      [otherWorkspaceId, randomUUID().replace(/-/g, '').slice(0, 24)]
+      "insert into auth.workspaces (id, slug, name) values ($1, 'neighbour-probe', 'Neighbour probe') on conflict (id) do nothing",
+      [otherWorkspaceId]
     );
     await tenantPool.query(
       `insert into auth.workspace_memberships (id, workspace_id, user_id, role)

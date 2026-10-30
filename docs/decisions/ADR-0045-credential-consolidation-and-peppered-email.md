@@ -100,3 +100,61 @@ and every one of them can ride on a comparison instead of the value.
 - Side fix found by that test: `RedisOidcStateStore.consume` was rebuilding
   the state without `invitationToken`, silently killing OIDC-carried
   invitation redemption on the real store.
+
+## Join-code consolidation (T4, 2026-10-30)
+
+### Decision
+
+1. **`workspace_join_codes` is the sole workspace join credential.** The
+   static cleartext `workspaces.join_code` (routing hint, unique, revealable)
+   and the unread `workspaces.auto_approve_join_code` are dropped (tenant
+   fold `0002_late_masked_marvel.sql`). One mechanism, one table: every code
+   is a random 24-hex secret, stored only as its SHA-256, with its own label,
+   expiry, cap, revocation and auto-approve flag.
+2. **Redemption is atomic (audit P4).** The read-check-increment triple
+   (`findByCodeHash` → app-side validity checks → unconditional
+   `incrementUse`) is replaced by ONE conditional
+   `UPDATE workspace_join_codes SET used_count = used_count + 1 WHERE
+   code_hash = … AND revoked_at IS NULL AND (expires_at IS NULL OR
+   expires_at > now) AND (max_uses IS NULL OR used_count < max_uses)
+   RETURNING` (`DrizzleWorkspaceJoinCodeRepository.consume`, modelled on
+   `RouterDatabaseClient.consume`). `RequestWorkspaceAccessUseCase` claims
+   the use first and then branches on the row's `auto_approve` — membership
+   insert or PENDING request — inside the same transaction: a flow that
+   throws rolls the claim back, so no use is ever burned for a failed join.
+   Concurrent redemptions can never overbook `max_uses`.
+3. **The creator is a pseudonym (audit P8.4).**
+   `workspace_join_codes.created_by uuid` becomes `created_by_hash
+   varchar(64)` carrying the ADR-0013 authorHash of whoever minted the code;
+   `CreateInvitationUseCase` now writes the same semantics into
+   `invitations.created_by` (the column was always varchar(64)). Every
+   "who created this credential" column means one thing.
+4. **Reveal-once everywhere.** `CreateWorkspaceUseCase` mints the workspace's
+   default code row inside its creation transaction and returns the raw
+   value exactly once in the answer; `RotateJoinCodeUseCase` rotates the
+   workspace's most recent non-revoked row (revoke + insert in one
+   transaction, inheriting its label/expiry/cap/auto-approve; a legacy
+   workspace without a live row simply gets one). No API response or list
+   ever carries a stored code again — the admin panel shows only metadata,
+   and the UI says so honestly.
+
+### Consequences accepted
+
+- A leaked `workspaces` dump contains no join codes at all; a leaked
+  `workspace_join_codes` dump yields only SHA-256 of 96-bit randoms.
+- Rotating a code no longer touches the workspace row: the audit trail is
+  the row history (revoke + create), not an overwritten column.
+- A presentation of an exhausted-but-valid code to a PENDING workspace
+  consumes a use even when the request is a duplicate: one secret
+  presentation, one use. The alternative (a read before the claim) is the
+  race this decision deletes.
+- The web admin page can no longer display the workspace's current code on
+  load. It never could be recovered from the hash — the old UI was showing
+  a *different*, static secret; that comfort is gone by design.
+
+### Evidence (T4)
+
+- Fold: `packages/database/migrations/tenant/0002_late_masked_marvel.sql`.
+- P4 proof: the integration test "exactly 3 of 10 parallel redemptions
+  succeed" (`apps/api/tests/integration/joinCodeConsume.integration.test.ts`)
+  against the migrated volume.

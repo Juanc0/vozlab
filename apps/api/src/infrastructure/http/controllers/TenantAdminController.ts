@@ -60,7 +60,7 @@ export class TenantAdminController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const workspace = await this.createWorkspace.execute({
+      const result = await this.createWorkspace.execute({
         actorUserId: ctx.userId,
         actorAuthorHash: ctx.authorHash,
         tid: ctx.tid,
@@ -70,7 +70,10 @@ export class TenantAdminController {
         isPublic: parsed.data.isPublic,
         reqId: ctx.reqId,
       });
-      return reply.status(201).send(toAdminWorkspaceDto(workspace));
+      // The raw default join code is revealed exactly here, once (ADR-0045).
+      return reply
+        .status(201)
+        .send({ ...toAdminWorkspaceDto(result.workspace), joinCode: result.joinCode });
     } catch (error) {
       return sendError(reply, mapDomainError(error));
     }

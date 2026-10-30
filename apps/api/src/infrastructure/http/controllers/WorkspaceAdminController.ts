@@ -103,12 +103,15 @@ export class WorkspaceAdminController {
     if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
 
     try {
-      const workspace = await this.rotateJoinCode.execute({
+      const rotated = await this.rotateJoinCode.execute({
         actorUserId: ctx.userId,
+        actorAuthorHash: ctx.authorHash,
         tid: ctx.tid,
         workspaceId: targetWorkspaceId(req, ctx.workspaceId),
       });
-      return reply.status(200).send({ joinCode: workspace.joinCode });
+      // The raw code is revealed here and only here (ADR-0045): nothing in
+      // the stored rows can ever be read back as a code.
+      return reply.status(200).send({ joinCode: rotated.code });
     } catch (error) {
       return sendError(reply, mapDomainError(error));
     }

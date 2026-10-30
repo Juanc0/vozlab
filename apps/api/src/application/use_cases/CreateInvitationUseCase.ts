@@ -19,6 +19,12 @@ export const INVITATION_MAX_USES = 1;
 
 export interface CreateInvitationInput {
   actorUserId: string;
+  /**
+   * ADR-0013 pseudonym of the actor. DEC-5 D3: `invitations.created_by`
+   * (varchar(64)) carries the creator pseudonym everywhere — the seed and
+   * the API now agree (audit P8.4).
+   */
+  actorAuthorHash: string;
   tid: string;
   workspaceId: string;
   email: string;
@@ -87,7 +93,9 @@ export class CreateInvitationUseCase {
           tokenHash,
           expiresAt,
           maxUses: INVITATION_MAX_USES,
-          createdBy: input.actorUserId,
+          // P8.4: the creator is recorded as the ADR-0013 pseudonym, the
+          // same semantics the seed already wrote.
+          createdBy: input.actorAuthorHash,
         },
         input.tid,
         tx

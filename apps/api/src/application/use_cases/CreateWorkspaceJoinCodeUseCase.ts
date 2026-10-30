@@ -1,14 +1,14 @@
-import { randomBytes } from 'node:crypto';
-import { DomainError } from '../../domain/errors/DomainError.js';
 import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IAuditLog } from '../../domain/ports/IAuditLog.js';
-import { hashOpaqueToken } from '../../shared/auth/refreshToken.js';
+import { generateJoinCodeSecret } from './joinCodeSecret.js';
 
 export interface CreateWorkspaceJoinCodeInput {
   actorUserId: string;
+  /** ADR-0013 pseudonym of the actor — recorded as the code's creator. */
+  actorAuthorHash: string;
   tid: string;
   workspaceId: string;
   label?: string | null;
@@ -32,17 +32,16 @@ export class CreateWorkspaceJoinCodeUseCase {
 
   async execute(input: CreateWorkspaceJoinCodeInput): Promise<CreateWorkspaceJoinCodeResult> {
     await assertWorkspaceAdmin(input.actorUserId, input.workspaceId, input.tid, this.userRepo, this.membershipRepo);
-    const raw = randomBytes(12).toString('hex').toUpperCase();
-    const codeHash = hashOpaqueToken(raw);
+    const secret = generateJoinCodeSecret();
     const record = await this.codeRepo.create(
       {
         workspaceId: input.workspaceId,
-        codeHash,
+        codeHash: secret.codeHash,
         label: input.label ?? null,
         expiresAt: input.expiresAt ?? null,
         maxUses: input.maxUses ?? null,
         autoApprove: input.autoApprove ?? false,
-        createdBy: input.actorUserId,
+        createdByHash: input.actorAuthorHash,
       },
       input.tid
     );
@@ -62,6 +61,6 @@ export class CreateWorkspaceJoinCodeUseCase {
         expiresAt: record.expiresAt?.toISOString() ?? null,
       },
     });
-    return { id: record.id, code: raw };
+    return { id: record.id, code: secret.raw };
   }
 }

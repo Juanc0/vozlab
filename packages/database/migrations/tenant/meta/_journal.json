@@ -15,6 +15,13 @@
       "when": 1793396070013,
       "tag": "0001_rich_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793399016300,
+      "tag": "0002_late_masked_marvel",
+      "breakpoints": true
     }
   ]
 }

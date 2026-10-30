@@ -32,6 +32,9 @@
   let inviteRole = $state('MEMBER');
   let createdInviteToken = $state<string | null>(null);
   let creatingInvite = $state(false);
+  // ADR-0045 reveal-once: the raw workspace join code exists only right
+  // after create or rotate — the stored hash is never fetched back.
+  let revealedJoinCode = $state<string | null>(null);
   let joinCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
   // v6/TASK-04 (B6): inline patch of a code's mutable attributes.
   let editingCodeId = $state<string | null>(null);
@@ -81,7 +84,7 @@
   async function createWorkspace() {
     creating = true; error = null;
     try {
-      const ws = await admin.createAdminWorkspace(api, {
+      const { joinCode, ...ws } = await admin.createAdminWorkspace(api, {
         name: newName,
         slug: newSlug,
         description: newDesc || null,
@@ -89,6 +92,8 @@
       });
       workspaces = [...workspaces, ws];
       selectedId = ws.id;
+      // The default code is revealed exactly here, once (ADR-0045).
+      revealedJoinCode = joinCode;
       newName = ''; newSlug = ''; newDesc = '';
     } catch (e) {
       error = describeFailure(e);
@@ -226,7 +231,7 @@
               <button
                 type="button"
                 class="w-full text-left rounded-control px-2 py-1 hover:bg-raised {selectedId === w.id ? 'bg-accent-soft' : ''}"
-                onclick={() => (selectedId = w.id)}
+                onclick={() => { selectedId = w.id; revealedJoinCode = null; createdCode = null; }}
               >
                 {w.name} <span class="text-muted text-small">({w.memberCount})</span> <span class="text-small text-accent">{w.kind}</span>
               </button>
@@ -253,19 +258,51 @@
     <div class="rounded-card bg-brand-100 p-4 space-y-3">
       {#if selected}
         <h2>{selected.name}</h2>
-        <p class="text-small text-muted">{t('admin.joinCode')}: <code>{selected.joinCode}</code></p>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          onclick={async () => {
-            if (!selectedId) return;
-            const code = await admin.rotateJoinCode(api, selectedId);
-            const idx = workspaces.findIndex((w) => w.id === selectedId);
-            if (idx >= 0) workspaces[idx] = { ...workspaces[idx], joinCode: code };
-          }}
-        >
-          {t('admin.rotateJoinCode')}
-        </button>
+        <div class="border-t border-rule pt-3 space-y-2">
+          <h3>{t('admin.joinCode') ?? 'Join code'}</h3>
+          <!-- ADR-0045: the stored code is a hash and is never fetched. The
+               raw value exists only right after create or rotate. -->
+          {#if revealedJoinCode}
+            <div class="rounded-control bg-surface-2 p-2 space-y-1">
+              <p class="text-small">
+                {t('admin.joinCodeShownOnce') ?? 'Join code (shown once)'}: <code class="break-all">{revealedJoinCode}</code>
+              </p>
+              <div class="flex gap-1">
+                <button
+                  type="button"
+                  class="btn btn-quiet text-small"
+                  onclick={async () => {
+                    try { await navigator.clipboard.writeText(revealedJoinCode ?? ''); } catch { /* clipboard denied */ }
+                  }}
+                >
+                  {t('admin.copyCode') ?? 'Copy'}
+                </button>
+                <button type="button" class="btn btn-quiet text-small" onclick={() => (revealedJoinCode = null)}>
+                  {t('common.hide') ?? 'Hide'}
+                </button>
+              </div>
+            </div>
+          {:else}
+            <p class="text-small text-muted">
+              {t('admin.joinCodeHidden') ?? 'Only the hash is stored — the code is shown once. Rotate to get a new one.'}
+            </p>
+          {/if}
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={async () => {
+              if (!selectedId) return;
+              try {
+                revealedJoinCode = await admin.rotateJoinCode(api, selectedId);
+                await loadMembers();
+              } catch (e) {
+                error = describeFailure(e);
+              }
+            }}
+          >
+            {t('admin.rotateJoinCode')}
+          </button>
+        </div>
 
         <div class="border-t border-rule pt-3 space-y-2">
           <h3>{t('admin.createJoinCode') ?? 'Create ephemeral join code'}</h3>

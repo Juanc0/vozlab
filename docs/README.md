@@ -172,6 +172,6 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 - **No load/availability proof.** NFR-01/02/03/09 unverified.
 - **No Apache AGE adapter.** Bounded SQL CTE is the read path.
 - **Security open items** (verified 2026-10-29, full table in [knowledge/security-baseline.md](knowledge/security-baseline.md)): committed credential in `opencode.json` (S-02), plaintext router password in envs (S-03), dev DB ports unbound (S-05), unpinned images (S-12), unattended agent approvals (S-15).
-- **Identity slivers** from the closed intervention, tracked in ROADMAP: external social-login credentials (B9), production hostname + staging CSP (B11), cleanup cron (optional), invitation QR, `workspaces.kind` DB CHECK, workspace-level `auto_approve_join_code` dead flag, F4 PII inventory.
+- **Identity slivers** from the closed intervention, tracked in ROADMAP: external social-login credentials (B9), production hostname + staging CSP (B11), cleanup cron (optional), invitation QR, `workspaces.kind` DB CHECK, F4 PII inventory. (The `auto_approve_join_code` dead flag was dropped by identity-consolidation T4, ADR-0045.)
 
 When changing a requirement's status, update this matrix and the corresponding doc in the same change.

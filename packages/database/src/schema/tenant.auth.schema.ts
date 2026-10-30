@@ -24,13 +24,6 @@ export const workspaces = authSchema.table('workspaces', {
   description: varchar('description', { length: 500 }),
   isPublic: boolean('is_public').default(true).notNull(),
   kind: varchar('kind', { length: 20 }).default('PRIVATE').notNull(),
-  autoApproveJoinCode: boolean('auto_approve_join_code').default(false).notNull(),
-  /**
-   * Routing hint for private workspaces (US-00). It identifies the workspace
-   * but grants nothing: a valid code only lets an authenticated tenant user
-   * create a join request that an admin still has to approve.
-   */
-  joinCode: varchar('join_code', { length: 24 }).notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -263,7 +256,8 @@ export const workspaceJoinCodes = authSchema.table(
     usedCount: integer('used_count').default(0).notNull(),
     autoApprove: boolean('auto_approve').default(false).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    createdBy: uuid('created_by'),
+    /** ADR-0013 pseudonym of the creator (fold 0002 carries the DB comment). */
+    createdByHash: varchar('created_by_hash', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('idx_workspace_join_codes_workspace').on(table.workspaceId)]

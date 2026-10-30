@@ -4,12 +4,15 @@ import { RejectJoinRequestUseCase } from '../../src/application/use_cases/Reject
 import { RequestWorkspaceAccessUseCase } from '../../src/application/use_cases/RequestWorkspaceAccessUseCase.js';
 import { AUTH_USER, TENANT_ID, USER_ID } from '../support/authFakes.js';
 import { makeUnitOfWork } from '../support/fakes.js';
+import { hashOpaqueToken } from '../../src/shared/auth/refreshToken.js';
 import {
+  makeJoinCodeRepository,
   makeJoinRequestRepository,
   makeMembershipAdminRepository,
   makeWorkspaceRepository,
   membershipRecord,
   workspaceRecord,
+  joinCodeRecord,
 } from '../support/adminFakes.js';
 
 function setup(
@@ -117,19 +120,57 @@ describe('RequestWorkspaceAccessUseCase', () => {
 
   it('accepts a private workspace by join code, still as a request', async () => {
     const ctx = setup(
-      makeWorkspaceRepository([
-        workspaceRecord({ isPublic: false, joinCode: 'ABCDEF0123456789' }),
-      ])
+      makeWorkspaceRepository([workspaceRecord({ isPublic: false })])
+    );
+    // ADR-0045: the code lives ONLY as a workspace_join_codes row. The
+    // redemption is a single consume; a private code only ROUTES a request.
+    const raw = 'ABCDEF0123456789ABCDEF';
+    const joinCodes = makeJoinCodeRepository([
+      joinCodeRecord({ codeHash: hashOpaqueToken(raw) }),
+    ]);
+    const requestAccess = new RequestWorkspaceAccessUseCase(
+      ctx.workspaces.repo,
+      ctx.joinRequests.repo,
+      { async getRole() { return null; } } as never,
+      undefined,
+      joinCodes.repo,
+      undefined,
+      undefined
     );
 
-    const request = await ctx.requestAccess.execute({
+    const request = await requestAccess.execute({
       userId: USER_ID,
       tid: TENANT_ID,
-      code: 'ABCDEF0123456789',
+      code: raw,
     });
 
     expect(request.status).toBe('PENDING');
     expect(ctx.membershipAdmin.members.size).toBe(0);
+    expect(joinCodes.consumes).toEqual([{ codeHash: hashOpaqueToken(raw), ok: true }]);
+  });
+
+  it('an exhausted code never reaches the request stage', async () => {
+    const ctx = setup(makeWorkspaceRepository([workspaceRecord({ isPublic: false })]));
+    const raw = 'FEEDFACEFEEDFACEFEEDFACE';
+    const joinCodes = makeJoinCodeRepository([
+      joinCodeRecord({
+        codeHash: hashOpaqueToken(raw),
+        maxUses: 1,
+        usedCount: 1,
+      }),
+    ]);
+    const requestAccess = new RequestWorkspaceAccessUseCase(
+      ctx.workspaces.repo,
+      ctx.joinRequests.repo,
+      { async getRole() { return null; } } as never,
+      undefined,
+      joinCodes.repo
+    );
+
+    await expect(
+      requestAccess.execute({ userId: USER_ID, tid: TENANT_ID, code: raw })
+    ).rejects.toMatchObject({ code: 'ERR_WORKSPACE_NOT_FOUND' });
+    expect(ctx.joinRequests.rows.size).toBe(0);
   });
 
   it('reuses the pending request instead of duplicating it', async () => {

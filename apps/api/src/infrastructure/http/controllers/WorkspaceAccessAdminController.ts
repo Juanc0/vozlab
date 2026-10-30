@@ -169,6 +169,7 @@ export class WorkspaceAccessAdminController {
     try {
       const { invitation, token } = await this.createInvitation.execute({
         actorUserId: ctx.userId,
+        actorAuthorHash: ctx.authorHash,
         tid: ctx.tid,
         workspaceId: targetWorkspaceId(req, ctx.workspaceId),
         email: parsed.data.email,

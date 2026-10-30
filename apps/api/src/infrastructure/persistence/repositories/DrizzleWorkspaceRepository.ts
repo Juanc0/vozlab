@@ -25,8 +25,6 @@ function toWorkspace(row: WorkspaceRow): WorkspaceRecord {
     description: row.description,
     isPublic: row.isPublic,
     kind: row.kind,
-    autoApproveJoinCode: row.autoApproveJoinCode,
-    joinCode: row.joinCode,
     createdAt: row.createdAt,
   };
 }
@@ -74,8 +72,6 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
         description: input.description,
         isPublic: input.isPublic,
         kind: input.kind ?? 'PRIVATE',
-        autoApproveJoinCode: input.autoApproveJoinCode ?? false,
-        joinCode: input.joinCode,
       })
       .returning();
     return toWorkspace(row);
@@ -92,7 +88,6 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
     if (patch.name !== undefined) values.name = patch.name;
     if (patch.description !== undefined) values.description = patch.description;
     if (patch.isPublic !== undefined) values.isPublic = patch.isPublic;
-    if (patch.joinCode !== undefined) values.joinCode = patch.joinCode;
     if (Object.keys(values).length === 0) {
       const existing = await this.findById(workspaceId, tid);
       return existing;
@@ -137,16 +132,6 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
       .select()
       .from(workspaces)
       .where(eq(workspaces.slug, slug))
-      .limit(1);
-    return row ? toWorkspace(row) : null;
-  }
-
-  async findByJoinCode(joinCode: string, tid: string): Promise<WorkspaceRecord | null> {
-    const db = await this.client(tid);
-    const [row] = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.joinCode, joinCode.trim().toUpperCase()))
       .limit(1);
     return row ? toWorkspace(row) : null;
   }
@@ -228,8 +213,6 @@ export class DrizzleWorkspaceRepository implements IWorkspaceRepository {
       description: workspaces.description,
       isPublic: workspaces.isPublic,
       kind: workspaces.kind,
-      autoApproveJoinCode: workspaces.autoApproveJoinCode,
-      joinCode: workspaces.joinCode,
       createdAt: workspaces.createdAt,
     };
   }

@@ -93,6 +93,7 @@ describe('CreateInvitationUseCase', () => {
 
     const { invitation, token } = await ctx.create.execute({
       actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       email: '  Invitee@Example.EDU ',
@@ -121,6 +122,7 @@ describe('CreateInvitationUseCase', () => {
 
     await ctx.create.execute({
       actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       email: 'invitee@example.edu',
@@ -136,6 +138,7 @@ describe('CreateInvitationUseCase', () => {
 
     const { invitation } = await ctx.create.execute({
       actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       email: 'Invitee@Example.EDU',

@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
@@ -8,11 +7,13 @@ import {
   WorkspaceWithStats,
 } from '../../domain/ports/IWorkspaceRepository.js';
 import { IMembershipAdminRepository } from '../../domain/ports/IMembershipAdminRepository.js';
+import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { assertTenantAdmin } from '../policies/workspaceAdminPolicy.js';
 import {
   baseOntologyClasses,
   baseOntologyRelations,
 } from './BaseOntology.js';
+import { generateJoinCodeSecret } from './joinCodeSecret.js';
 
 export interface CreateWorkspaceInput {
   actorUserId: string;
@@ -23,21 +24,26 @@ export interface CreateWorkspaceInput {
   description: string | null;
   isPublic: boolean;
   kind?: string;
-  autoApproveJoinCode?: boolean;
   reqId?: string;
 }
 
-/** A random, rotatable routing hint (never an access grant). */
-export function generateJoinCode(): string {
-  return randomBytes(8).toString('hex').toUpperCase();
+/**
+ * The creation answer: the workspace with its stats plus the raw value of
+ * the default join code. The raw code is revealed **once** here and never
+ * read back — only its hash is stored (DEC-5 D3, ADR-0045).
+ */
+export interface CreateWorkspaceResult {
+  workspace: WorkspaceWithStats;
+  joinCode: string;
 }
 
 /**
  * Use Case: create a workspace in the caller's tenant (US-00).
  *
- * One transaction provisions the row, its base ontology and the creator's
- * ADMIN membership: a workspace can never exist without an administrator or
- * without the metamodel that makes it usable.
+ * One transaction provisions the row, its default join code, the base
+ * ontology and the creator's ADMIN membership: a workspace can never exist
+ * without an administrator, without the metamodel that makes it usable, or
+ * without the single credential (ADR-0045) that lets others ask to enter.
  */
 export class CreateWorkspaceUseCase {
   constructor(
@@ -45,10 +51,11 @@ export class CreateWorkspaceUseCase {
     private readonly membershipAdminRepo: IMembershipAdminRepository,
     private readonly ontologyRepo: IOntologyRepository,
     private readonly userRepo: IUserRepository,
-    private readonly uow: IUnitOfWork
+    private readonly uow: IUnitOfWork,
+    private readonly joinCodeRepo: IWorkspaceJoinCodeRepository
   ) {}
 
-  async execute(input: CreateWorkspaceInput): Promise<WorkspaceWithStats> {
+  async execute(input: CreateWorkspaceInput): Promise<CreateWorkspaceResult> {
     const actor = await this.userRepo.findById(input.actorUserId, input.tid);
     if (!actor || actor.provider === 'ANONYMOUS_EVENT') {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
@@ -60,6 +67,8 @@ export class CreateWorkspaceUseCase {
       throw new DomainError('ERR_WORKSPACE_SLUG_TAKEN');
     }
 
+    const secret = generateJoinCodeSecret();
+
     const workspace = await this.uow.runInTransaction(input.tid, async (tx) => {
       const created = await this.workspaceRepo.create(
         {
@@ -68,8 +77,18 @@ export class CreateWorkspaceUseCase {
           description: input.description,
           isPublic: input.isPublic,
           kind: input.kind ?? 'PRIVATE',
-          autoApproveJoinCode: input.autoApproveJoinCode ?? false,
-          joinCode: generateJoinCode(),
+        },
+        input.tid,
+        tx
+      );
+
+      await this.joinCodeRepo.create(
+        {
+          workspaceId: created.id,
+          codeHash: secret.codeHash,
+          label: 'default',
+          autoApprove: false,
+          createdByHash: input.actorAuthorHash,
         },
         input.tid,
         tx
@@ -113,6 +132,9 @@ export class CreateWorkspaceUseCase {
     });
 
     const stats = await this.workspaceRepo.getStats(workspace.id, input.tid);
-    return stats ?? { ...workspace, memberCount: 1, pendingRequestCount: 0 };
+    return {
+      workspace: stats ?? { ...workspace, memberCount: 1, pendingRequestCount: 0 },
+      joinCode: secret.raw,
+    };
   }
 }

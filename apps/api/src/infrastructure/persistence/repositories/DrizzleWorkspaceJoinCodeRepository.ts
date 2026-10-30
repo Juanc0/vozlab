@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { workspaceJoinCodes } from '@vozlab/database';
 import {
   IWorkspaceJoinCodeRepository,
@@ -30,7 +30,7 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
       usedCount: row.usedCount,
       autoApprove: row.autoApprove,
       revokedAt: row.revokedAt,
-      createdBy: row.createdBy,
+      createdByHash: row.createdByHash,
       createdAt: row.createdAt,
     };
   }
@@ -46,7 +46,7 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
         expiresAt: input.expiresAt ?? null,
         maxUses: input.maxUses ?? null,
         autoApprove: input.autoApprove ?? false,
-        createdBy: input.createdBy ?? null,
+        createdByHash: input.createdByHash ?? null,
       })
       .returning();
     return this.toRecord(row);
@@ -71,13 +71,37 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
     return row ? this.toRecord(row) : null;
   }
 
-  async findByCodeHash(codeHash: string, tid: string): Promise<WorkspaceJoinCodeRecord | null> {
-    const db = await this.client(tid);
+  /**
+   * P4 (ADR-0045): one conditional UPDATE claims the use — revocation,
+   * expiry and capacity are enforced by the database itself, so concurrent
+   * redemptions can never overbook `max_uses`. Modelled on
+   * `RouterDatabaseClient.consume`, the proven template.
+   */
+  async consume(
+    codeHash: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<WorkspaceJoinCodeRecord | null> {
+    const db = await this.client(tid, tx);
+    const now = new Date();
     const [row] = await db
-      .select()
-      .from(workspaceJoinCodes)
-      .where(eq(workspaceJoinCodes.codeHash, codeHash))
-      .limit(1);
+      .update(workspaceJoinCodes)
+      .set({ usedCount: sql`${workspaceJoinCodes.usedCount} + 1` })
+      .where(
+        and(
+          eq(workspaceJoinCodes.codeHash, codeHash),
+          isNull(workspaceJoinCodes.revokedAt),
+          or(
+            isNull(workspaceJoinCodes.expiresAt),
+            gt(workspaceJoinCodes.expiresAt, now)
+          ),
+          or(
+            isNull(workspaceJoinCodes.maxUses),
+            sql`${workspaceJoinCodes.usedCount} < ${workspaceJoinCodes.maxUses}`
+          )
+        )
+      )
+      .returning();
     return row ? this.toRecord(row) : null;
   }
 
@@ -107,14 +131,6 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
     await db
       .update(workspaceJoinCodes)
       .set({ revokedAt: new Date() })
-      .where(eq(workspaceJoinCodes.id, id));
-  }
-
-  async incrementUse(id: string, tid: string, tx?: DbTransaction): Promise<void> {
-    const db = await this.client(tid, tx);
-    await db
-      .update(workspaceJoinCodes)
-      .set({ usedCount: sql`${workspaceJoinCodes.usedCount} + 1` })
       .where(eq(workspaceJoinCodes.id, id));
   }
 }

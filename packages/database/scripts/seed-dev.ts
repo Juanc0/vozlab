@@ -408,6 +408,9 @@ async function seed(): Promise<void> {
     // on the fixed ids so a re-run restores the demo to its pristine shape —
     // the drift this fixes is real: the pre-`kind` seed wrote `general` with
     // kind 'PRIVATE' while its `is_public` is true.
+    // ADR-0045: the workspace row carries no join code. Every demo code is
+    // a `workspace_join_codes` row (see DEMO_JOIN_CODES below); the routing
+    // hints of the pre-T4 seed are gone for good.
     const demoWorkspaces = [
       {
         id: WORKSPACE_ID,
@@ -416,10 +419,6 @@ async function seed(): Promise<void> {
         description: 'Dev workspace',
         isPublic: true,
         kind: 'PUBLIC',
-        autoApproveJoinCode: false,
-        // Routing hint only: it identifies the workspace to a user who was
-        // told the code; it never grants access (US-00).
-        joinCode: '7532D05897A9D6C5',
       },
       {
         id: COMMUNITY_WORKSPACE_ID,
@@ -428,18 +427,14 @@ async function seed(): Promise<void> {
         description: 'PUBLIC sample: discoverable without any code (B10)',
         isPublic: true,
         kind: 'PUBLIC',
-        autoApproveJoinCode: false,
-        joinCode: 'C0MMUNITYHINT000000000',
       },
       {
         id: PAPER_LAB_WORKSPACE_ID,
         slug: 'paper-lab',
         name: 'Paper Lab',
-        description: 'PRIVATE sample: hint + approved join request (B10)',
+        description: 'PRIVATE sample: join request approved by an admin (B10)',
         isPublic: false,
         kind: 'PRIVATE',
-        autoApproveJoinCode: false,
-        joinCode: 'P4PERL4BHINT0000000000',
       },
     ];
     for (const w of demoWorkspaces) {
@@ -453,12 +448,14 @@ async function seed(): Promise<void> {
             description: w.description,
             isPublic: w.isPublic,
             kind: w.kind,
-            autoApproveJoinCode: w.autoApproveJoinCode,
           },
         });
     }
 
-    // Dev EVENT workspace for guest/event-join testing.
+    // Dev EVENT workspace for guest/event-join testing. Its join credential
+    // is the DEMO_JOIN_CODES row for EVENT_WORKSPACE_ID (auto_approve true —
+    // the intent of the retired `auto_approve_join_code` column lives there
+    // now, ADR-0045).
     await tenantDb
       .insert(workspaces)
       .values({
@@ -468,8 +465,6 @@ async function seed(): Promise<void> {
         description: 'Dev event workspace',
         isPublic: false,
         kind: 'EVENT',
-        autoApproveJoinCode: true,
-        joinCode: EVENT_CODE,
       })
       .onConflictDoNothing();
 
@@ -486,7 +481,7 @@ async function seed(): Promise<void> {
           maxUses: code.maxUses,
           expiresAt: code.expiresAt,
           autoApprove: code.autoApprove,
-          createdBy: DEV_IDENTITIES.maintainer.id,
+          createdByHash: DEV_IDENTITIES.maintainer.authorHash,
         })),
       )
       .onConflictDoNothing();

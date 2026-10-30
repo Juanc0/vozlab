@@ -124,6 +124,7 @@ export const es = {
   common: {
     cancel: 'Cancelar',
     close: 'Cerrar',
+    hide: 'Ocultar',
     loading: 'Cargando…',
     all: 'Todos',
     required: '(obligatorio)',
@@ -850,6 +851,9 @@ export const es = {
     joinRequests: 'Solicitudes de acceso',
     invitations: 'Invitaciones',
     joinCode: 'Código de acceso',
+    joinCodeShownOnce: 'Código de acceso (se muestra una vez)',
+    joinCodeHidden: 'Solo se guarda el hash — el código se muestra una vez. Rótalo para obtener uno nuevo.',
+    copyCode: 'Copiar',
     rotateJoinCode: 'Rotar código',
     selectTenantTitle: 'Seleccionar inquilino',
     selectTenantNone: 'Sin inquilinos vinculados',

@@ -23,6 +23,7 @@ export class JoinCodeController {
     try {
       const result = await this.createCode.execute({
         actorUserId: ctx.userId,
+        actorAuthorHash: ctx.authorHash,
         tid: ctx.tid,
         workspaceId,
         label: body.label ?? null,

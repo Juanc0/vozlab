@@ -9,9 +9,6 @@ export interface WorkspaceRecord {
   isPublic: boolean;
   /** 'EVENT' | 'PUBLIC' | 'PRIVATE' */
   kind: string;
-  autoApproveJoinCode: boolean;
-  /** Routing hint; it identifies a private workspace and grants nothing. */
-  joinCode: string;
   createdAt: Date;
 }
 
@@ -35,22 +32,21 @@ export interface CreateWorkspaceRecordInput {
   description: string | null;
   isPublic: boolean;
   kind?: string;
-  autoApproveJoinCode?: boolean;
-  joinCode: string;
 }
 
 export interface UpdateWorkspacePatch {
   name?: string;
   description?: string | null;
   isPublic?: boolean;
-  joinCode?: string;
 }
 
 /**
  * Port: `auth.workspaces` (tenant DB).
  *
  * Reads used by the administration screens and by workspace discovery, plus
- * the writes that create, configure and rotate the join code of a workspace.
+ * the writes that create and configure a workspace. The workspace's join
+ * credential lives exclusively in `auth.workspace_join_codes` (DEC-5 D3,
+ * ADR-0045): the row itself stores no code.
  */
 export interface IWorkspaceRepository {
   create(
@@ -78,7 +74,6 @@ export interface IWorkspaceRepository {
 
   findById(workspaceId: string, tid: string): Promise<WorkspaceRecord | null>;
   findBySlug(slug: string, tid: string): Promise<WorkspaceRecord | null>;
-  findByJoinCode(joinCode: string, tid: string): Promise<WorkspaceRecord | null>;
 
   listWithStats(tid: string): Promise<WorkspaceWithStats[]>;
   getStats(workspaceId: string, tid: string): Promise<WorkspaceWithStats | null>;

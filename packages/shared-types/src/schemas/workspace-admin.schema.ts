@@ -126,7 +126,13 @@ export interface AdminUserDto {
   memberships: AdminUserMembershipDto[];
 }
 
-/** A workspace and the counters of the administration screen. */
+/**
+ * A workspace and the counters of the administration screen.
+ *
+ * DEC-5 D3 (ADR-0045): the workspace row carries no join code — the sole
+ * credential is `workspace_join_codes`, whose raw value is revealed only
+ * when it is created or rotated.
+ */
 export interface AdminWorkspaceDto {
   id: string;
   slug: string;
@@ -134,12 +140,18 @@ export interface AdminWorkspaceDto {
   description: string | null;
   isPublic: boolean;
   kind: string;
-  autoApproveJoinCode: boolean;
-  joinCode: string;
   createdAt: string;
   memberCount: number;
   pendingRequestCount: number;
 }
+
+/**
+ * `POST /api/v1/admin/workspaces` answer: the workspace plus the raw value
+ * of its default join code, shown exactly once (rotate to get a new one).
+ */
+export type CreateWorkspaceResponseDto = AdminWorkspaceDto & {
+  joinCode: string;
+};
 
 /** A member of a workspace. */
 export interface AdminMemberDto {

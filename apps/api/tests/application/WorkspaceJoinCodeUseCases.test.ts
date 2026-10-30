@@ -8,7 +8,7 @@ import type {
   WorkspaceJoinCodeRecord,
 } from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
 import { AUTH_USER, TENANT_ID, USER_ID, WORKSPACE_ID } from '../support/authFakes.js';
-import { workspaceRecord } from '../support/adminFakes.js';
+import { makeUnitOfWork } from '../support/fakes.js';
 
 function makeAudit(): { events: AuditEvent[]; record: (e: AuditEvent) => Promise<void> } {
   const events: AuditEvent[] = [];
@@ -43,7 +43,9 @@ const membershipRepo = {
   },
 };
 
-function codeRecord(): WorkspaceJoinCodeRecord {
+function codeRecord(
+  overrides: Partial<WorkspaceJoinCodeRecord> = {}
+): WorkspaceJoinCodeRecord {
   return {
     id: 'code-1',
     workspaceId: WORKSPACE_ID,
@@ -54,8 +56,9 @@ function codeRecord(): WorkspaceJoinCodeRecord {
     usedCount: 0,
     autoApprove: false,
     revokedAt: null,
-    createdBy: USER_ID,
+    createdByHash: USER_ID,
     createdAt: new Date(),
+    ...overrides,
   };
 }
 
@@ -79,6 +82,7 @@ describe('CreateWorkspaceJoinCodeUseCase', () => {
 
     const result = await useCase.execute({
       actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
       tid: TENANT_ID,
       workspaceId: WORKSPACE_ID,
       label: 'meetup',
@@ -87,6 +91,9 @@ describe('CreateWorkspaceJoinCodeUseCase', () => {
     });
 
     expect(created).toHaveLength(1);
+    // ADR-0045 / P8.4: the creator is recorded as the pseudonym, never the
+    // user id.
+    expect(created[0].createdByHash).toBe(AUTH_USER.authorHash);
     expect(audit.events).toHaveLength(1);
     expect(audit.events[0]).toMatchObject({
       actorId: USER_ID,
@@ -242,36 +249,137 @@ describe('UpdateWorkspaceJoinCodeUseCase (v6/TASK-04, B6)', () => {
 });
 
 describe('RotateJoinCodeUseCase', () => {
-  it('records a JOIN_CODE_ROTATED audit event for the workspace', async () => {
-    const workspace = workspaceRecord();
-    const workspaceRepo = {
-      async update(_id: string, patch: Record<string, unknown>) {
-        expect(patch).toHaveProperty('joinCode');
-        return { ...workspace, ...patch };
-      },
+  /** Fake join-code table: list/revoke/create with call recording. */
+  function makeRotateRepo(initial: WorkspaceJoinCodeRecord[]) {
+    const rows = new Map(initial.map((r) => [r.id, r]));
+    const revokes: string[] = [];
+    const creates: Array<{
+      workspaceId: string;
+      codeHash: string;
+      label: string | null;
+      autoApprove: boolean | undefined;
+      maxUses: number | null | undefined;
+      expiresAt: Date | null | undefined;
+      createdByHash: string | null | undefined;
+    }> = [];
+    let seq = rows.size;
+    return {
+      repo: {
+        async list(workspaceId: string) {
+          return [...rows.values()].filter((r) => r.workspaceId === workspaceId);
+        },
+        async revoke(id: string) {
+          revokes.push(id);
+          const row = rows.get(id);
+          if (row) row.revokedAt = new Date();
+        },
+        async create(input: (typeof creates)[number]) {
+          creates.push(input);
+          const row: WorkspaceJoinCodeRecord = {
+            ...codeRecord(),
+            id: `code-${++seq}`,
+            workspaceId: input.workspaceId,
+            label: input.label,
+            autoApprove: input.autoApprove ?? false,
+            maxUses: input.maxUses ?? null,
+            expiresAt: input.expiresAt ?? null,
+            revokedAt: null,
+            usedCount: 0,
+            createdByHash: input.createdByHash ?? null,
+            createdAt: new Date(),
+          };
+          rows.set(row.id, row);
+          return row;
+        },
+      } as never,
+      rows,
+      revokes,
+      creates,
     };
+  }
+
+  const { uow } = makeUnitOfWork();
+
+  it('revokes the most recent live row and inserts the new code in one transaction', async () => {
+    const old = codeRecord({ id: 'code-old', createdAt: new Date('2026-01-01') });
+    const newest = {
+      ...codeRecord({
+        id: 'code-newest',
+        createdAt: new Date('2026-06-01'),
+        label: 'summer round',
+        autoApprove: true,
+        maxUses: 10,
+      }),
+    };
+    const revokedOld = { ...codeRecord({ id: 'code-dead', revokedAt: new Date('2026-02-01') }) };
+    const fake = makeRotateRepo([old, newest, revokedOld]);
     const audit = makeAudit();
     const useCase = new RotateJoinCodeUseCase(
-      workspaceRepo as never,
+      fake.repo,
       membershipRepo as never,
       adminUserRepo as never,
+      uow,
       audit
     );
 
-    await useCase.execute({
+    const result = await useCase.execute({
       actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
       tid: TENANT_ID,
-      workspaceId: workspace.id,
+      workspaceId: WORKSPACE_ID,
     });
+
+    // Only the most recent NON-revoked row dies; already-revoked history
+    // is left alone.
+    expect(fake.revokes).toEqual(['code-newest']);
+    expect(fake.rows.get('code-old')?.revokedAt).toBeNull();
+    expect(fake.rows.get('code-dead')?.revokedAt).not.toBeNull();
+
+    // The new row inherits the live policy of the code it replaces and is
+    // attributed to the actor's pseudonym.
+    expect(fake.creates).toHaveLength(1);
+    expect(fake.creates[0]).toMatchObject({
+      workspaceId: WORKSPACE_ID,
+      label: 'summer round',
+      autoApprove: true,
+      maxUses: 10,
+      createdByHash: AUTH_USER.authorHash,
+    });
+    // The raw code appears only in the answer; only the hash reached the row.
+    expect(result.code).toMatch(/^[0-9A-F]{24}$/);
+    expect(fake.creates[0].codeHash ?? '').not.toBe(result.code);
 
     expect(audit.events).toHaveLength(1);
     expect(audit.events[0]).toMatchObject({
       actorId: USER_ID,
       actorType: 'ADMIN',
       action: 'JOIN_CODE_ROTATED',
-      targetType: 'workspace',
-      targetId: workspace.id,
+      targetType: 'join_code',
+      targetId: result.id,
       tenantId: TENANT_ID,
+      metadata: { workspaceId: WORKSPACE_ID },
     });
+  });
+
+  it('a legacy workspace without a live row simply gets one', async () => {
+    const fake = makeRotateRepo([]);
+    const useCase = new RotateJoinCodeUseCase(
+      fake.repo,
+      membershipRepo as never,
+      adminUserRepo as never,
+      uow
+    );
+
+    const result = await useCase.execute({
+      actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
+      tid: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+
+    expect(fake.revokes).toHaveLength(0);
+    expect(fake.creates).toHaveLength(1);
+    expect(fake.creates[0]).toMatchObject({ label: 'default', autoApprove: false });
+    expect(result.code).toMatch(/^[0-9A-F]{24}$/);
   });
 });

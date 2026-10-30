@@ -363,7 +363,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipAdminRepo,
     ontologyRepo,
     userRepo,
-    uow
+    uow,
+    workspaceJoinCodeRepo
   );
   const getWorkspaceUseCase = new GetWorkspaceUseCase(
     workspaceRepo,
@@ -376,9 +377,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     userRepo
   );
   const rotateJoinCodeUseCase = new RotateJoinCodeUseCase(
-    workspaceRepo,
+    workspaceJoinCodeRepo,
     membershipRepo,
     userRepo,
+    uow,
     auditLog
   );
   const listWorkspacesUseCase = new ListWorkspacesUseCase(
@@ -464,7 +466,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipRepo,
     userRepo,
     workspaceJoinCodeRepo,
-    auditLog
+    auditLog,
+    uow
   );
   const discoverWorkspacesUseCase = new DiscoverWorkspacesUseCase(
     workspaceRepo

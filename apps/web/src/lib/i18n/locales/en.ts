@@ -114,6 +114,7 @@ export const en: Dictionary<typeof es> = {
   common: {
     cancel: 'Cancel',
     close: 'Close',
+    hide: 'Hide',
     loading: 'Loading…',
     all: 'All',
     required: '(required)',
@@ -785,6 +786,9 @@ export const en: Dictionary<typeof es> = {
     joinRequests: 'Join requests',
     invitations: 'Invitations',
     joinCode: 'Join code',
+    joinCodeShownOnce: 'Join code (shown once)',
+    joinCodeHidden: 'Only the hash is stored — the code is shown once. Rotate to get a new one.',
+    copyCode: 'Copy',
     rotateJoinCode: 'Rotate code',
     selectTenantTitle: 'Select tenant',
     selectTenantNone: 'No tenants linked',

@@ -67,6 +67,7 @@ import type {
   CreateWorkspaceInput,
   CreateWorkspaceInvitationInput,
   CreateWorkspaceInvitationResultDto,
+  CreateWorkspaceResponseDto,
   DiscoveredWorkspaceDto,
   JoinRequestDto,
   MyJoinRequestDto,
@@ -99,11 +100,15 @@ export async function runCleanup(
   });
 }
 
+/**
+ * Creates a workspace AND returns the raw value of its default join code,
+ * revealed exactly once (ADR-0045): the stored row holds only the hash.
+ */
 export async function createAdminWorkspace(
   client: ApiClient,
   input: CreateWorkspaceInput
-): Promise<AdminWorkspaceDto> {
-  return client.request<AdminWorkspaceDto>({
+): Promise<CreateWorkspaceResponseDto> {
+  return client.request<CreateWorkspaceResponseDto>({
     method: 'POST',
     path: '/admin/workspaces',
     workspace: false,
@@ -207,6 +212,10 @@ export async function revokeJoinCode(
   });
 }
 
+/**
+ * Revokes the workspace's current join code and returns the raw value of
+ * the new one — shown once, never fetched again (ADR-0045).
+ */
 export async function rotateJoinCode(
   client: ApiClient,
   workspaceId: string

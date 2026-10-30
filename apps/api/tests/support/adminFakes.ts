@@ -27,6 +27,11 @@ import type {
   WorkspaceRecord,
   WorkspaceWithStats,
 } from '../../src/domain/ports/IWorkspaceRepository.js';
+import type {
+  CreateWorkspaceJoinCodeInput,
+  IWorkspaceJoinCodeRepository,
+  WorkspaceJoinCodeRecord,
+} from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 
 const NOW = new Date('2026-10-01T12:00:00.000Z');
@@ -46,8 +51,6 @@ export function workspaceRecord(
     description: null,
     isPublic: true,
     kind: 'PRIVATE',
-    autoApproveJoinCode: false,
-    joinCode: 'JOINCODE00000001',
     createdAt: NOW,
     ...overrides,
   };
@@ -95,8 +98,6 @@ export function makeWorkspaceRepository(initial: WorkspaceRecord[] = []): {
         description: input.description,
         isPublic: input.isPublic,
         kind: input.kind ?? 'PRIVATE',
-        autoApproveJoinCode: input.autoApproveJoinCode ?? false,
-        joinCode: input.joinCode,
         createdAt: NOW,
       };
       rows.set(row.id, row);
@@ -119,9 +120,6 @@ export function makeWorkspaceRepository(initial: WorkspaceRecord[] = []): {
     },
     async findBySlug(slug: string) {
       return [...rows.values()].find((row) => row.slug === slug) ?? null;
-    },
-    async findByJoinCode(joinCode: string) {
-      return [...rows.values()].find((row) => row.joinCode === joinCode) ?? null;
     },
     async listWithStats() {
       return [...rows.values()].map(withStats);
@@ -388,5 +386,99 @@ export function makeRoleLookup(adminOf: string | null = null): {
     async getRole(_userId, workspaceId) {
       return adminOf !== null && workspaceId === adminOf ? 'ADMIN' : null;
     },
+  };
+}
+
+/**
+ * Fake `IWorkspaceJoinCodeRepository` (ADR-0045): an in-memory table of
+ * join-code rows. `consume` mirrors the conditional UPDATE of the Drizzle
+ * adapter — revocation, expiry and the use cap are all checked before the
+ * increment, and a failed match returns `null` without touching the row.
+ */
+export function makeJoinCodeRepository(
+  initial: WorkspaceJoinCodeRecord[] = []
+): {
+  repo: IWorkspaceJoinCodeRepository;
+  rows: Map<string, WorkspaceJoinCodeRecord>;
+  creates: CreateWorkspaceJoinCodeInput[];
+  consumes: Array<{ codeHash: string; ok: boolean }>;
+} {
+  const rows = new Map(initial.map((row) => [row.id, row]));
+  const creates: CreateWorkspaceJoinCodeInput[] = [];
+  const consumes: Array<{ codeHash: string; ok: boolean }> = [];
+
+  const repo: IWorkspaceJoinCodeRepository = {
+    async create(input) {
+      creates.push(input);
+      const row: WorkspaceJoinCodeRecord = {
+        id: `code-${rows.size + 1}`,
+        workspaceId: input.workspaceId,
+        codeHash: input.codeHash,
+        label: input.label ?? null,
+        expiresAt: input.expiresAt ?? null,
+        maxUses: input.maxUses ?? null,
+        usedCount: 0,
+        autoApprove: input.autoApprove ?? false,
+        revokedAt: null,
+        createdByHash: input.createdByHash ?? null,
+        createdAt: NOW,
+      };
+      rows.set(row.id, row);
+      return row;
+    },
+    async list(workspaceId) {
+      return [...rows.values()].filter((row) => row.workspaceId === workspaceId);
+    },
+    async findById(id) {
+      return rows.get(id) ?? null;
+    },
+    async consume(codeHash) {
+      const row = [...rows.values()].find((r) => r.codeHash === codeHash);
+      const live =
+        row !== undefined &&
+        row.revokedAt === null &&
+        (row.expiresAt === null || row.expiresAt > NOW) &&
+        (row.maxUses === null || row.usedCount < row.maxUses);
+      if (!row || !live) {
+        consumes.push({ codeHash, ok: false });
+        return null;
+      }
+      row.usedCount += 1;
+      consumes.push({ codeHash, ok: true });
+      return row;
+    },
+    async update(id, patch) {
+      const row = rows.get(id);
+      if (!row) return null;
+      const next = { ...row, ...patch };
+      rows.set(id, next);
+      return next;
+    },
+    async revoke(id) {
+      const row = rows.get(id);
+      if (row) row.revokedAt = NOW;
+    },
+  };
+
+  return { repo, rows, creates, consumes };
+}
+
+/** Factory for a join-code row with sane defaults. */
+export function joinCodeRecord(
+  overrides: Partial<WorkspaceJoinCodeRecord> = {}
+): WorkspaceJoinCodeRecord {
+  return {
+    id: 'code-1',
+    workspaceId: '11111111-1111-4111-8111-111111111111',
+    codeHash: 'hash-1',
+    label: 'default',
+    expiresAt: null,
+    maxUses: null,
+    usedCount: 0,
+    autoApprove: false,
+    revokedAt: null,
+    createdByHash: 'a'.repeat(64),
+    createdAt: NOW,
+    ...overrides,
   };
 }

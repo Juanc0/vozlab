@@ -36,8 +36,6 @@ export function toAdminWorkspaceDto(
     description: workspace.description,
     isPublic: workspace.isPublic,
     kind: workspace.kind,
-    autoApproveJoinCode: workspace.autoApproveJoinCode,
-    joinCode: workspace.joinCode,
     createdAt: workspace.createdAt.toISOString(),
     memberCount: workspace.memberCount,
     pendingRequestCount: workspace.pendingRequestCount,

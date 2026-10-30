@@ -322,10 +322,10 @@ describe('auth integration', () => {
     // hide it (and its stale role) exactly like the workspace vanished. The
     // ACTIVE row goes to the seeded 'general' workspace.
     const removedWorkspace = await tenantPool.query(
-      `insert into auth.workspaces (slug, name, kind, join_code)
-       values ($1, 'Integration removed ws', 'PRIVATE', $2)
+      `insert into auth.workspaces (slug, name, kind)
+       values ($1, 'Integration removed ws', 'PRIVATE')
        returning id`,
-      [`rmv_it_${randomUUID()}`, randomUUID().replace(/-/g, '').slice(0, 24)]
+      [`rmv_it_${randomUUID()}`]
     );
     const removedWorkspaceId = removedWorkspace.rows[0].id as string;
     createdEventWorkspaceIds.add(removedWorkspaceId);
@@ -460,16 +460,15 @@ describe('auth integration', () => {
     const codeHash = createHash('sha256').update(code).digest('hex');
     createdCodeHashes.add(codeHash);
 
-    // JoinEventUseCase only resolves codes for kind='EVENT' workspaces, and
-    // join_code is NOT NULL + unique since the tenant baseline. The seeded
-    // 'general' workspace is PRIVATE on a fresh migration fold (the dev
-    // volume drifted it long ago), so this test creates its own event
+    // JoinEventUseCase only resolves codes for kind='EVENT' workspaces. The
+    // seeded 'general' workspace is PRIVATE on a fresh migration fold (the
+    // dev volume drifted it long ago), so this test creates its own event
     // workspace instead of reusing it.
     const eventWorkspace = await tenantPool.query(
-      `insert into auth.workspaces (slug, name, kind, join_code)
-       values ($1, 'Integration event', 'EVENT', $2)
+      `insert into auth.workspaces (slug, name, kind)
+       values ($1, 'Integration event', 'EVENT')
        returning id`,
-      [`evt_it_${randomUUID()}`, randomUUID().replace(/-/g, '').slice(0, 24)]
+      [`evt_it_${randomUUID()}`]
     );
     const eventWorkspaceId = eventWorkspace.rows[0].id as string;
     createdEventWorkspaceIds.add(eventWorkspaceId);
