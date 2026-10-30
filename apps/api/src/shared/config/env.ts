@@ -42,6 +42,9 @@ const EnvSchema = z
         'JWT_REFRESH_EXPIRES_IN must look like 15m, 12h or 30d'
       )
       .default('30d'),
+    // HMAC key for every email-derived hash (DEC-4,
+    // docs/analysis/db-identity-normalization.md). Required like JWT_SECRET.
+    EMAIL_PEPPER: z.string().min(32, 'EMAIL_PEPPER must be at least 32 chars'),
 
     // --- OIDC (delegated identity) ---
     OIDC_CLIENT_ID: z.string().min(1, 'OIDC_CLIENT_ID is required'),

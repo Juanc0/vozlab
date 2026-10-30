@@ -16,6 +16,7 @@ process.env.ROUTER_DB_NAME ??= 'vozlab_router';
 process.env.REDIS_HOST ??= 'localhost';
 process.env.REDIS_PORT ??= '6379';
 process.env.JWT_SECRET ??= 'test-secret-at-least-32-characters-long';
+process.env.EMAIL_PEPPER ??= 'test-pepper-secret-at-least-32-characters-x';
 process.env.JWT_EXPIRES_IN ??= '15m';
 process.env.JWT_REFRESH_EXPIRES_IN ??= '30d';
 process.env.OIDC_CLIENT_ID ??= 'vozlab-test';

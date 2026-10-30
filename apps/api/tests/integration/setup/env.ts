@@ -39,6 +39,7 @@ process.env.REDIS_PORT = '6379';
 process.env.REDIS_PASSWORD = '';
 
 process.env.JWT_SECRET = 'integration-test-secret-at-least-32-chars';
+process.env.EMAIL_PEPPER = 'integration-test-pepper-at-least-32-chars-xx';
 process.env.JWT_EXPIRES_IN = '15m';
 process.env.JWT_REFRESH_EXPIRES_IN = '30d';
 

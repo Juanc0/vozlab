@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { createHmac } from 'node:crypto';
 import {
   generateAuthorHash,
   generateRefreshToken,
+  hashEmail,
   hashOpaqueToken,
   parseRefreshToken,
 } from '../../src/shared/auth/refreshToken.js';
@@ -47,6 +49,47 @@ describe('refresh token utilities', () => {
     expect(first).toMatch(/^[a-f0-9]{64}$/);
     expect(second).toMatch(/^[a-f0-9]{64}$/);
     expect(first).not.toBe(second);
+  });
+});
+
+describe('hashEmail (DEC-4 peppered email hash)', () => {
+  const PEPPER = 'pepper-secret-value-with-at-least-32-chars';
+  const OTHER_PEPPER = 'a-different-pepper-also-at-least-32-chars!!';
+
+  it('is deterministic for the same input', () => {
+    const first = hashEmail('foo@bar.com', PEPPER);
+    const second = hashEmail('foo@bar.com', PEPPER);
+
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(first).toBe(second);
+  });
+
+  it('normalizes with trim + lowercase before hashing', () => {
+    expect(hashEmail('  Foo@Bar.COM ', PEPPER)).toBe(
+      hashEmail('foo@bar.com', PEPPER)
+    );
+  });
+
+  it('hashes UTF-8 mailboxes safely and keeps them distinct', () => {
+    const utf = hashEmail('üser@exämple.de', PEPPER);
+
+    expect(utf).toMatch(/^[a-f0-9]{64}$/);
+    expect(utf).toBe(hashEmail('ÜSER@EXÄMPLE.DE', PEPPER));
+    expect(utf).not.toBe(hashEmail('user@example.de', PEPPER));
+  });
+
+  it('produces a different digest for a different pepper', () => {
+    expect(hashEmail('foo@bar.com', PEPPER)).not.toBe(
+      hashEmail('foo@bar.com', OTHER_PEPPER)
+    );
+  });
+
+  it('matches the documented HMAC-SHA-256 construction', () => {
+    const expected = createHmac('sha256', PEPPER)
+      .update('foo@bar.com', 'utf8')
+      .digest('hex');
+
+    expect(hashEmail('foo@bar.com', PEPPER)).toBe(expected);
   });
 });
 

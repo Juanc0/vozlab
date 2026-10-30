@@ -102,6 +102,9 @@ matriz de 7 URLs en [`deploy/README.md`](../../deploy/README.md):
 - API: `NODE_ENV=production` (activa `Secure` en el cookie de refresh),
   `WEB_ORIGIN=https://app.example.com`, `OIDC_*=https://auth.example.com/…`,
   `OIDC_REDIRECT_URI=https://api.example.com/api/v1/auth/callback`.
+- **Pendiente T9**: `EMAIL_PEPPER` (≥ 32 chars, obligatorio en `env.ts` desde
+  el pepper de hashes de email — DEC-4) se añade al secret set de producción;
+  valor aleatorio nuevo, distinto de `JWT_SECRET`.
 - Web: `PUBLIC_API_BASE_URL=https://api.example.com/api/v1` (runtime: se
   cambia sin rebuild).
 - `trustProxy` ya está configurado (`apps/api/src/infrastructure/http/proxyTrust.ts` = loopback + RFC1918/ULA en CIDRs literales; los nombres `loopback`/`private` de Express **no** los acepta proxy-addr): Caddy conecta vía el puerto publicado en 127.0.0.1 y, dentro del contenedor, el peer resulta ser el gateway del bridge Docker (172.16/12 — rango privado), con lo que la IP real del cliente llega en `X-Forwarded-For` y los buckets de rate limit anónimos son correctos. **Ninguna IP privada es enrutable desde internet**, así que no hay spoofing posible. Si el proxy alguna vez vive fuera del host (T1), estrechar el valor al CIDR real del proxy.

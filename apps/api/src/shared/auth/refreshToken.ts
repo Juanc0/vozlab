@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 const VERSION = 'v1';
 const TENANT_UUID_RE =
@@ -33,9 +33,30 @@ export function parseRefreshToken(
   return { tenantId };
 }
 
-/** Store only the hash: a leaked table does not yield usable credentials. */
+/**
+ * Store only the hash: a leaked table does not yield usable credentials.
+ *
+ * Plain (unpeppered) SHA-256 is deliberate here: refresh tokens, event/join
+ * codes and invitation tokens are high-entropy random values, so a dump is
+ * not dictionary-attackable and a pepper would buy nothing. Email-derived
+ * hashes are the opposite case and MUST use `hashEmail` instead (DEC-4,
+ * docs/analysis/db-identity-normalization.md).
+ */
 export function hashOpaqueToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Canonical email hash: HMAC-SHA-256 over `lower(trim(email))` keyed with
+ * the `EMAIL_PEPPER` secret (DEC-4). Emails ARE dictionary-attackable as
+ * plain hashes; the pepper keeps equality search (cross-IdP linking,
+ * invitation matching) possible while a leaked table cannot be reversed
+ * or enumerated offline. The caller supplies the pepper — this stays a
+ * pure function; nothing here reads the environment.
+ */
+export function hashEmail(email: string, pepper: string): string {
+  const normalized = email.trim().toLowerCase();
+  return createHmac('sha256', pepper).update(normalized, 'utf8').digest('hex');
 }
 
 /** Random 64-hex pseudonym for a new account (ADR-0013). */

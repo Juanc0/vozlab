@@ -41,6 +41,7 @@ pseudonym stored in `auth.users` and carried as the JWT `authorHash` claim.
 | `ROUTER_DB_HOST/PORT/USER/PASSWORD/NAME` | Yes | Router registry DB. |
 | `REDIS_HOST` | Yes | `localhost` with Compose. |
 | `JWT_SECRET` | Yes | At least 32 characters; must match the minting script. |
+| `EMAIL_PEPPER` | Yes | At least 32 characters; HMAC key for email hashes (DEC-4). Dev value shape in `.env.example`; rotate invalidates stored email-hash lookups. |
 | `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN` | No | `15m` / `30d`; compact durations (`s`, `m`, `h`, `d`, `w`). |
 | `OIDC_CLIENT_ID/SECRET/REDIRECT_URI` | Yes | Client credentials and the exact `/api/v1/auth/callback` URL. |
 | `OIDC_ISSUER`, `OIDC_JWKS_URL`, `OIDC_AUTH_URL/TOKEN_URL/USERINFO_URL` | Yes | Explicit endpoints; there is no discovery request. |
