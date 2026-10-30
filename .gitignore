@@ -42,3 +42,4 @@ test-results/
 .ruff_cache/
 .mypy_cache/
 *.egg-info/
+local-backups/
