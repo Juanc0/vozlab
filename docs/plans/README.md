@@ -37,7 +37,9 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
-*No open plan.* [db-baseline v1](../archive/plans/db-baseline/v1.md) closed
-2026-10-30 (ADR-0044; design record
-[../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md)).
-The next act is `identity-consolidation` v1 (DEC-3/4/5 of that record).
+- [identity-consolidation/v1](identity-consolidation/v1.md) — DEC-3/4/5 +
+  audit P1–P9 merged (one mechanism per credential, zero cleartext email).
+  Design record: [../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md);
+  audit: [../analysis/db-auth-router-flows-audit.md](../analysis/db-auth-router-flows-audit.md).
+  Previous act: [db-baseline v1](../archive/plans/db-baseline/v1.md) closed
+  2026-10-30 (ADR-0044).

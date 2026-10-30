@@ -81,7 +81,7 @@ task 13.
 | [testing.md](testing.md) | Test layering, current coverage, CI, known gaps |
 | [agent-tooling.md](agent-tooling.md) | Skills, subagents, slash commands and MCP servers used to work on VozLab |
 | [components/](components/) | Per component/flow docs with STATUS banners: extractor, relator, web-pwa (BUILT); ci-cd (PARTIAL); consolidator, dns-domain-verification (NOT BUILT) |
-| [plans/](plans/README.md) | Active work plans — none open: [db-baseline/v1](archive/plans/db-baseline/v1.md) closed 2026-10-30 (ADR-0044); the backlog otherwise lives in ROADMAP |
+| [plans/](plans/README.md) | Active work plans — today [identity-consolidation/v1](plans/identity-consolidation/v1.md); the backlog otherwise lives in ROADMAP |
 | [ops/runbook-dev.md](ops/runbook-dev.md) | Local bootstrap, migrations, seed, tokens, troubleshooting |
 | [ops/runbook-ops.md](ops/runbook-ops.md) | Runtime topology, health checks, shutdown, operational readiness checklist |
 | [ops/runbook-demo-zrok.md](ops/runbook-demo-zrok.md) | Local demo through three reserved zrok shares + presenter script/checklist + parity rules |

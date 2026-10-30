@@ -905,12 +905,17 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
-- **identity-consolidation v1** — to be opened from DEC-3/4/5 of
-  [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md):
-  thin router `event_code_routes` + `purpose`-separated join codes, peppered
-  email hashes with zero cleartext, one mechanism per credential/identity
-  concept, reveal-on-rotation admin UI. db-baseline v1 CLOSED 2026-10-30
-  (ADR-0044; archived plan
+- **identity-consolidation v1** — OPEN 2026-10-30:
+  [docs/plans/identity-consolidation/v1.md](docs/plans/identity-consolidation/v1.md)
+  — executes DEC-3/4/5 of
+  [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md)
+  merged with the findings of
+  [docs/analysis/db-auth-router-flows-audit.md](docs/analysis/db-auth-router-flows-audit.md)
+  (P1–P9): peppered email hashes with zero cleartext, `workspace_join_codes`
+  as sole credential, thin `event_code_routes` router + `purpose`, one
+  identity store (`external_identities`), dead-code + dead-table deletions,
+  coherent seed, verification reset + truth pass. db-baseline v1 CLOSED
+  2026-10-30 (ADR-0044; archived plan
   [docs/archive/plans/db-baseline/v1.md](docs/archive/plans/db-baseline/v1.md)).
 
 ## Tracked, not scheduled

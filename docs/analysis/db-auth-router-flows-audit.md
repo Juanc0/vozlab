@@ -1,6 +1,8 @@
 # Database audit — router DB + tenant `auth` schema: flows, columns, health
 
-- Status: OPEN (findings accepted 2026-10-30; remediation plan TBD)
+- Status: OPEN (findings accepted 2026-10-30; remediation merged into
+  [plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md)
+  per ruling D-1)
 - Date: 2026-10-30
 - Method: schema read (`router.schema.ts`, `tenant.auth.schema.ts`) + live SQL
   inventory of both databases (`vozlab_router`, `vozlab_tenant_dev.auth`) +
