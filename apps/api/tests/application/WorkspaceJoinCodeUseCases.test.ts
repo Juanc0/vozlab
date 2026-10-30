@@ -8,7 +8,7 @@ import type {
   WorkspaceJoinCodeRecord,
 } from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
 import { AUTH_USER, TENANT_ID, USER_ID, WORKSPACE_ID } from '../support/authFakes.js';
-import { makeUnitOfWork } from '../support/fakes.js';
+import { TX_SENTINEL, makeUnitOfWork } from '../support/fakes.js';
 
 function makeAudit(): { events: AuditEvent[]; record: (e: AuditEvent) => Promise<void> } {
   const events: AuditEvent[] = [];
@@ -50,6 +50,7 @@ function codeRecord(
     id: 'code-1',
     workspaceId: WORKSPACE_ID,
     codeHash: 'hash-1',
+    purpose: 'WORKSPACE',
     label: 'meetup',
     expiresAt: new Date('2030-01-01'),
     maxUses: 5,
@@ -253,9 +254,11 @@ describe('RotateJoinCodeUseCase', () => {
   function makeRotateRepo(initial: WorkspaceJoinCodeRecord[]) {
     const rows = new Map(initial.map((r) => [r.id, r]));
     const revokes: string[] = [];
+    const listCalls: Array<{ workspaceId: string; tx?: unknown }> = [];
     const creates: Array<{
       workspaceId: string;
       codeHash: string;
+      purpose?: string;
       label: string | null;
       autoApprove: boolean | undefined;
       maxUses: number | null | undefined;
@@ -265,7 +268,8 @@ describe('RotateJoinCodeUseCase', () => {
     let seq = rows.size;
     return {
       repo: {
-        async list(workspaceId: string) {
+        async list(workspaceId: string, _tid: string, tx?: unknown) {
+          listCalls.push({ workspaceId, tx });
           return [...rows.values()].filter((r) => r.workspaceId === workspaceId);
         },
         async revoke(id: string) {
@@ -277,8 +281,11 @@ describe('RotateJoinCodeUseCase', () => {
           creates.push(input);
           const row: WorkspaceJoinCodeRecord = {
             ...codeRecord(),
+            purpose:
+              (input.purpose as WorkspaceJoinCodeRecord['purpose']) ?? 'WORKSPACE',
             id: `code-${++seq}`,
             workspaceId: input.workspaceId,
+            codeHash: input.codeHash,
             label: input.label,
             autoApprove: input.autoApprove ?? false,
             maxUses: input.maxUses ?? null,
@@ -294,6 +301,7 @@ describe('RotateJoinCodeUseCase', () => {
       } as never,
       rows,
       revokes,
+      listCalls,
       creates,
     };
   }
@@ -329,6 +337,13 @@ describe('RotateJoinCodeUseCase', () => {
       workspaceId: WORKSPACE_ID,
     });
 
+    // T4-M2: the current-row read happened INSIDE the transaction.
+    expect(fake.listCalls).toHaveLength(1);
+    expect(fake.listCalls[0]).toMatchObject({
+      workspaceId: WORKSPACE_ID,
+      tx: TX_SENTINEL,
+    });
+
     // Only the most recent NON-revoked row dies; already-revoked history
     // is left alone.
     expect(fake.revokes).toEqual(['code-newest']);
@@ -340,6 +355,7 @@ describe('RotateJoinCodeUseCase', () => {
     expect(fake.creates).toHaveLength(1);
     expect(fake.creates[0]).toMatchObject({
       workspaceId: WORKSPACE_ID,
+      purpose: 'WORKSPACE',
       label: 'summer round',
       autoApprove: true,
       maxUses: 10,
@@ -359,6 +375,39 @@ describe('RotateJoinCodeUseCase', () => {
       tenantId: TENANT_ID,
       metadata: { workspaceId: WORKSPACE_ID },
     });
+  });
+
+  it('rotation never touches a live EVENT row of the same workspace (DEC-3)', async () => {
+    // The event QR credential is a different class: rotating the workspace
+    // code must not revoke the EVENT row nor inherit its attributes.
+    const eventRow = codeRecord({
+      id: 'code-event',
+      purpose: 'EVENT',
+      autoApprove: true,
+      createdAt: new Date('2026-06-01'),
+    });
+    const workspaceRow = codeRecord({
+      id: 'code-ws',
+      createdAt: new Date('2026-01-01'),
+    });
+    const fake = makeRotateRepo([eventRow, workspaceRow]);
+    const useCase = new RotateJoinCodeUseCase(
+      fake.repo,
+      membershipRepo as never,
+      adminUserRepo as never,
+      uow
+    );
+
+    await useCase.execute({
+      actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
+      tid: TENANT_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+
+    // Only the WORKSPACE row dies; the EVENT row survives untouched.
+    expect(fake.revokes).toEqual(['code-ws']);
+    expect(fake.rows.get('code-event')?.revokedAt).toBeNull();
   });
 
   it('a legacy workspace without a live row simply gets one', async () => {

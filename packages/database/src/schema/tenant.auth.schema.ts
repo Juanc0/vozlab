@@ -8,6 +8,7 @@ import {
   text,
   index,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -250,6 +251,16 @@ export const workspaceJoinCodes = authSchema.table(
       .notNull()
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     codeHash: varchar('code_hash', { length: 64 }).notNull().unique(),
+    /**
+     * Credential class (DEC-3, ADR-0046): 'WORKSPACE' rows are redeemable
+     * only by the authenticated join path; 'EVENT' rows only by the
+     * anonymous QR join path (always `auto_approve = true`). The two flows
+     * each guard their purpose inside the redemption statement, so one
+     * table never lets a QR grant an authenticated membership.
+     */
+    purpose: varchar('purpose', { length: 12 })
+      .notNull()
+      .default('WORKSPACE'),
     label: varchar('label', { length: 255 }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     maxUses: integer('max_uses'),
@@ -260,8 +271,16 @@ export const workspaceJoinCodes = authSchema.table(
     createdByHash: varchar('created_by_hash', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index('idx_workspace_join_codes_workspace').on(table.workspaceId)]
+  (table) => [
+    index('idx_workspace_join_codes_workspace').on(table.workspaceId),
+    check(
+      'workspace_join_codes_purpose_check',
+      sql`${table.purpose} IN ('WORKSPACE', 'EVENT')`
+    ),
+  ]
 );
+
+export type WorkspaceJoinCodePurpose = 'WORKSPACE' | 'EVENT';
 
 export type WorkspaceJoinCode = typeof workspaceJoinCodes.$inferSelect;
 export type NewWorkspaceJoinCode = typeof workspaceJoinCodes.$inferInsert;

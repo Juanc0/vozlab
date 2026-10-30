@@ -2,6 +2,7 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { workspaceJoinCodes } from '@vozlab/database';
 import {
   IWorkspaceJoinCodeRepository,
+  JoinCodePurpose,
   WorkspaceJoinCodeRecord,
   CreateWorkspaceJoinCodeInput,
   UpdateWorkspaceJoinCodeInput,
@@ -24,6 +25,7 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
       id: row.id,
       workspaceId: row.workspaceId,
       codeHash: row.codeHash,
+      purpose: row.purpose as WorkspaceJoinCodeRecord['purpose'],
       label: row.label,
       expiresAt: row.expiresAt,
       maxUses: row.maxUses,
@@ -42,6 +44,7 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
       .values({
         workspaceId: input.workspaceId,
         codeHash: input.codeHash,
+        purpose: input.purpose ?? 'WORKSPACE',
         label: input.label ?? null,
         expiresAt: input.expiresAt ?? null,
         maxUses: input.maxUses ?? null,
@@ -52,8 +55,12 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
     return this.toRecord(row);
   }
 
-  async list(workspaceId: string, tid: string): Promise<WorkspaceJoinCodeRecord[]> {
-    const db = await this.client(tid);
+  async list(
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<WorkspaceJoinCodeRecord[]> {
+    const db = await this.client(tid, tx);
     const rows = await db
       .select()
       .from(workspaceJoinCodes)
@@ -72,13 +79,17 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
   }
 
   /**
-   * P4 (ADR-0045): one conditional UPDATE claims the use — revocation,
-   * expiry and capacity are enforced by the database itself, so concurrent
-   * redemptions can never overbook `max_uses`. Modelled on
-   * `RouterDatabaseClient.consume`, the proven template.
+   * P4 (ADR-0045) + DEC-3/ADR-0046: one conditional UPDATE claims the use —
+   * purpose, revocation, expiry and capacity are enforced by the database
+   * itself, so concurrent redemptions can never overbook `max_uses` and a
+   * code of the other credential class can never match. The EVENT class
+   * additionally requires `auto_approve = true` in the statement (an EVENT
+   * credential that does not auto-approve is a misconfiguration, and the
+   * anonymous path has no approval flow to fall back to).
    */
   async consume(
     codeHash: string,
+    purpose: JoinCodePurpose,
     tid: string,
     tx?: DbTransaction
   ): Promise<WorkspaceJoinCodeRecord | null> {
@@ -90,6 +101,10 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
       .where(
         and(
           eq(workspaceJoinCodes.codeHash, codeHash),
+          eq(workspaceJoinCodes.purpose, purpose),
+          ...(purpose === 'EVENT'
+            ? [eq(workspaceJoinCodes.autoApprove, true)]
+            : []),
           isNull(workspaceJoinCodes.revokedAt),
           or(
             isNull(workspaceJoinCodes.expiresAt),

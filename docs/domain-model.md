@@ -29,17 +29,18 @@ correct physical database. The JWT `tid` claim is an **OIDC identifier string**
 | --- | --- |
 | `public.tenants` | `id` uuid PK; `slug` varchar(100) UNIQUE; `oidc_tenant_id` varchar(255) UNIQUE (matched against the validated `tid`/`hd` claim); `name`; `description` nullable; `provisioned` boolean default `true`; `created_at`, `updated_at`. |
 | `public.tenant_connections` | `id` uuid PK; `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `host`, `database`, `user`; `port` default `5432`; `password`; timestamps. |
-| `public.event_codes` | `id` uuid PK; `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `workspace_id` uuid (no FK: workspace lives in the tenant DB); `code_hash` varchar(64) UNIQUE; `label` nullable; `expires_at`; `max_uses` nullable; `used_count` default 0; `revoked_at` nullable; `created_by_hash`; `created_at`. |
+| `public.credential_routes` | `credential_hash` varchar(64) UNIQUE; `kind` varchar(12) CHECK IN (`EVENT`,`INVITATION`); `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `created_at`. Thin L0 directory only — no capacity, expiry or workspace (ADR-0046). |
 
 `tenant_connections.tenant_id` has no UNIQUE constraint: the application reads
 the first matching row and assumes one connection per tenant. The
 `provisioned` flag is not consulted by the current code; provisioning is
 inferred from the presence of a tenant row and a connection row.
 
-`event_codes` is the **only** router table outside the tenant/connection pair
-([ADR-0019](decisions/ADR-0019-global-event-codes.md)). A QR is scanned before
-the tenant is known, so the raw code is hashed and looked up globally; the row
-points at the tenant and workspace. The CLI validates the workspace in the
+`credential_routes` is the **only** router table outside the tenant/connection pair
+([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md), amending
+ADR-0019). A QR is scanned before the tenant is known, so the raw code is
+hashed and resolved globally to a tenant id; the credential itself is a
+`auth.workspace_join_codes` row of purpose EVENT in that tenant. The CLI validates the workspace in the
 tenant DB before inserting, but there is no cross-database FK.
 
 ## 3. Tenant database
@@ -51,12 +52,13 @@ tenant DB before inserting, but there is no cross-database FK.
 | `auth.workspaces` | `id`, `slug`, `name`, `description`, `is_public`, `created_at` | `slug` UNIQUE; `is_public` defaults `true`; no `updated_at`. |
 | `auth.users` | `id`, `email`, `full_name`, `provider`, `provider_user_id`, `author_hash`, `anonymous_alias`, `system_role`, `created_at` | `email` UNIQUE and nullable; `author_hash` varchar(64) NOT NULL UNIQUE; `UNIQUE(provider, provider_user_id)` (`uniq_users_provider_provider_user`) lets concurrent OIDC callbacks upsert safely. `provider`: `OIDC_INSTITUTIONAL` or `ANONYMOUS_EVENT`. `system_role` defaults `USER` (`USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT`, not DB-constrained). |
 | `auth.workspace_memberships` | `id`, `workspace_id`, `user_id`, `role`, `created_at` | FKs to workspaces/users, ON DELETE CASCADE. `role` defaults `MEMBER` (`ADMIN`, `MODERATOR`, `MEMBER`). `UNIQUE(workspace_id, user_id)` (`uniq_memberships_workspace_user`); the role lookup returns one row. |
+| `auth.workspace_join_codes` | `id`, `workspace_id`, `code_hash`, `purpose`, `label`, `expires_at`, `max_uses`, `used_count`, `auto_approve`, `revoked_at`, `created_by_hash`, `created_at` | FK `workspace_id` ON DELETE CASCADE; `code_hash` varchar(64) UNIQUE; `purpose` CHECK IN (`WORKSPACE`,`EVENT`) default `WORKSPACE` — the credential class (DEC-3): the authenticated join path redeems only WORKSPACE, the anonymous QR path only EVENT (with `auto_approve`). One conditional `UPDATE … RETURNING` claims a use atomically ([ADR-0045](decisions/ADR-0045-credential-consolidation-and-peppered-email.md), [ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)). |
 | `auth.refresh_tokens` | `id`, `user_id`, `family_id`, `token_hash`, `expires_at`, `created_at`, `revoked_at` | FK `user_id` → `auth.users` ON DELETE CASCADE; `token_hash` varchar(64) UNIQUE (SHA-256 only); indexes on user, family and expiry. Rotation revokes the old row and inserts a sibling; reuse revokes the family ([ADR-0018](decisions/ADR-0018-oidc-jit-hybrid-sessions.md)). |
 
 OIDC login upserts `auth.users` just-in-time with a random `author_hash` but
 does **not** create a membership. Event join creates an `ANONYMOUS_EVENT` user
-and a `MEMBER` membership in the code's workspace inside one tenant
-transaction. These rules are described in
+and a `GUEST` membership in the kind-EVENT workspace inside one tenant
+transaction (the corrected claim of ADR-0019, recorded by ADR-0046). These rules are described in
 [auth-and-tenancy.md](auth-and-tenancy.md).
 
 `author_hash` is an **opaque 64-hex pseudonym assigned once per user**. It is
@@ -238,8 +240,8 @@ The read path is a **bounded recursive SQL CTE** over `public.edges` in
 - `meta.datatype_properties.system_key` and
   `meta.object_properties.system_key` are not unique; `findObjectProperty`
   returns the first match.
-- `router.event_codes.workspace_id` has no FK to the tenant DB; deleting a
-  workspace directly can leave a stale code until it is revoked.
+- `router.credential_routes` can outlive its tenant credential (no cross-DB
+  FK): a stale route is inert — routing is not authority (ADR-0046).
 - `auth.refresh_tokens` rows are cleaned opportunistically during rotation:
   expired rows and revoked rows older than seven days are deleted for that
   user. There is no global cleanup job.

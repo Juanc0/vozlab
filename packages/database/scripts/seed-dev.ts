@@ -83,6 +83,7 @@ import {
   createRouterDrizzle,
   tenants,
   tenantConnections,
+  credentialRoutes,
   workspaces,
   workspaceJoinCodes,
   invitations,
@@ -195,6 +196,7 @@ const DEMO_JOIN_CODES = [
     maxUses: 50,
     expiresAt: null,
     autoApprove: false,
+    purpose: 'WORKSPACE',
   },
   {
     workspaceId: COMMUNITY_WORKSPACE_ID,
@@ -203,6 +205,7 @@ const DEMO_JOIN_CODES = [
     maxUses: null,
     expiresAt: null,
     autoApprove: true,
+    purpose: 'WORKSPACE',
   },
   {
     workspaceId: PAPER_LAB_WORKSPACE_ID,
@@ -212,6 +215,7 @@ const DEMO_JOIN_CODES = [
     // Far future: the demo must not expire itself between re-seeds.
     expiresAt: new Date('2099-12-31T00:00:00Z'),
     autoApprove: false,
+    purpose: 'WORKSPACE',
   },
   {
     workspaceId: EVENT_WORKSPACE_ID,
@@ -220,6 +224,9 @@ const DEMO_JOIN_CODES = [
     maxUses: null,
     expiresAt: null,
     autoApprove: true,
+    // DEC-3/ADR-0046: the QR credential is an EVENT-purpose row — only the
+    // anonymous join path redeems it, and only with the router route below.
+    purpose: 'EVENT',
   },
 ] as const;
 
@@ -470,13 +477,18 @@ async function seed(): Promise<void> {
 
     // Ephemeral join codes (v6/TASK-04): the DEMO_JOIN_CODES fixtures, one
     // per workspace (the EVENT one included). Only the SHA-256 is stored;
-    // the raw values are printed by the report.
+    // the raw values are printed by the report. TENANT FIRST, then the
+    // EVENT credential's thin router route (ADR-0046, mirrors the CLI).
+    // Attributes are upserted on the code hash (not the consumed state):
+    // a re-seed restores the demo shape — including the DEC-3 purpose of
+    // the EVENT row written by older folds — without touching usage.
     await tenantDb
       .insert(workspaceJoinCodes)
       .values(
         DEMO_JOIN_CODES.map((code) => ({
           workspaceId: code.workspaceId,
           codeHash: sha256Hex(code.raw),
+          purpose: code.purpose,
           label: code.label,
           maxUses: code.maxUses,
           expiresAt: code.expiresAt,
@@ -484,6 +496,28 @@ async function seed(): Promise<void> {
           createdByHash: DEV_IDENTITIES.maintainer.authorHash,
         })),
       )
+      .onConflictDoUpdate({
+        target: workspaceJoinCodes.codeHash,
+        set: {
+          // Raw `excluded.` fragments are SQL text: they must name the
+          // physical (snake_case) columns, not the Drizzle properties.
+          purpose: sql`excluded.purpose`,
+          label: sql`excluded.label`,
+          maxUses: sql`excluded.max_uses`,
+          expiresAt: sql`excluded.expires_at`,
+          autoApprove: sql`excluded.auto_approve`,
+          createdByHash: sql`excluded.created_by_hash`,
+        },
+      });
+
+    // L0 directory entry for the EVENT code: hash → tenant, nothing else.
+    await routerDb
+      .insert(credentialRoutes)
+      .values({
+        credentialHash: sha256Hex(EVENT_CODE),
+        kind: 'EVENT',
+        tenantId: TENANT_ID,
+      })
       .onConflictDoNothing();
 
     // One row per dev identity (fixed ids + stable authorHash -> idempotent).

@@ -69,7 +69,7 @@ real. Decisions: rotating **opaque** refresh token in an `HttpOnly` cookie
 (Google Workspace); `iss`-only resolution stays unscheduled.
 Result: 114 tests green; `build` + `type-check` green.
 
-- [x] `router.event_codes` registry + migration (global exception to ADR-0002,
+- [x] global event-code registry + migration (exception to ADR-0002 since recast as thin routing by ADR-0046,
       [ADR-0019](docs/decisions/ADR-0019-global-event-codes.md)): hashed code,
       tenant/workspace, expiry, revocation, capacity, created_by.
 - [x] `GET /api/v1/auth/login` — OIDC authorization URL with state + nonce and
@@ -913,7 +913,7 @@ Decided, and not to be re-opened without evidence:
   [docs/analysis/db-auth-router-flows-audit.md](docs/analysis/db-auth-router-flows-audit.md)
   (P1–P9): peppered email hashes with zero cleartext, `workspace_join_codes`
   as sole credential, generic `credential_routes` router directory per the
-  user-adopted DEC-9 (retires BOTH `event_codes` and `global_invitations`),
+  user-adopted DEC-9 (retires BOTH the event-code registry and `global_invitations`),
   one identity store (`external_identities`), dead-code + dead-table
   deletions, coherent seed, verification reset + truth pass. db-baseline v1 CLOSED
   2026-10-30 (ADR-0044; archived plan

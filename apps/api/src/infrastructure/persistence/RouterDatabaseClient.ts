@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
@@ -6,15 +6,14 @@ import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../doma
 import { IGlobalInvitationRepository, GlobalInvitationRecord, CreateGlobalInvitationInput } from '../../domain/ports/IGlobalInvitationRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { GlobalUserEventInput, IGlobalUserEventRepository } from '../../domain/ports/IGlobalUserEventRepository.js';
-import { globalUsers } from '@vozlab/database';
 import {
-  ConsumeEventCodeResult,
-  CreateEventCodeInput,
-  IEventCodeRepository,
-} from '../../domain/ports/IEventCodeRepository.js';
+  CredentialRouteKind,
+  ICredentialRouteRepository,
+} from '../../domain/ports/ICredentialRouteRepository.js';
+import { globalUsers } from '@vozlab/database';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalUserTenants, globalInvitations, globalUserEvents } from '@vozlab/database';
+import { credentialRoutes, tenants, tenantConnections, tenantIdentityProviders, globalUserTenants, globalInvitations, globalUserEvents } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -24,7 +23,7 @@ import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, global
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalUserEventRepository
+  implements IRouterDatabase, ICredentialRouteRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalUserEventRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -268,80 +267,29 @@ export class RouterDatabaseClient
   }
 
   /**
-   * Atomically consume one use of an event code.
-   *
-   * The conditional UPDATE enforces revocation, expiry and capacity in one
-   * statement; a concurrent join cannot exceed `max_uses`.
+   * Thin credential directory lookup (ADR-0046): resolve the owning tenant
+   * for a credential hash of a given kind. Routing is NOT authority — a
+   * returned tenant id still has to answer the tenant-side conditional
+   * redemption or the caller sees a plain 404.
    */
-  async consume(codeHash: string): Promise<ConsumeEventCodeResult> {
-    const now = new Date();
+  async findTenantId(
+    credentialHash: string,
+    kind: CredentialRouteKind
+  ): Promise<string | null> {
     try {
       const [row] = await this.db
-        .update(eventCodes)
-        .set({ usedCount: sql`${eventCodes.usedCount} + 1` })
+        .select({ tenantId: credentialRoutes.tenantId })
+        .from(credentialRoutes)
         .where(
           and(
-            eq(eventCodes.codeHash, codeHash),
-            isNull(eventCodes.revokedAt),
-            gt(eventCodes.expiresAt, now),
-            or(
-              isNull(eventCodes.maxUses),
-              sql`${eventCodes.usedCount} < ${eventCodes.maxUses}`
-            )
+            eq(credentialRoutes.credentialHash, credentialHash),
+            eq(credentialRoutes.kind, kind)
           )
         )
-        .returning();
-
-      if (row) {
-        return {
-          status: 'OK',
-          code: {
-            codeId: row.id,
-            tenantId: row.tenantId,
-            workspaceId: row.workspaceId,
-            label: row.label,
-          },
-        };
-      }
-
-      const [existing] = await this.db
-        .select()
-        .from(eventCodes)
-        .where(eq(eventCodes.codeHash, codeHash))
         .limit(1);
-
-      if (!existing) return { status: 'NOT_FOUND' };
-      if (existing.revokedAt) return { status: 'REVOKED' };
-      if (existing.expiresAt <= now) return { status: 'EXPIRED' };
-      return { status: 'FULL' };
+      return row?.tenantId ?? null;
     } catch (err) {
-      log.error({ err }, 'failed to consume event code');
-      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-    }
-  }
-
-  async create(input: CreateEventCodeInput): Promise<{ id: string }> {
-    try {
-      const [row] = await this.db
-        .insert(eventCodes)
-        .values({
-          tenantId: input.tenantId,
-          workspaceId: input.workspaceId,
-          codeHash: input.codeHash,
-          label: input.label ?? null,
-          expiresAt: input.expiresAt,
-          maxUses: input.maxUses ?? null,
-          createdByHash: input.createdByHash ?? null,
-        })
-        .returning({ id: eventCodes.id });
-
-      if (!row) {
-        throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-      }
-      return row;
-    } catch (err) {
-      if (err instanceof InfrastructureError) throw err;
-      log.error({ err }, 'failed to create event code');
+      log.error({ err, kind }, 'failed to resolve credential route');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }

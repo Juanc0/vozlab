@@ -31,6 +31,7 @@ export type DomainErrorCode =
   | 'ERR_ACCOUNT_LINK_CONFLICT'
   | 'ERR_EVENT_EXPIRED'
   | 'ERR_EVENT_FULL'
+  | 'ERR_EVENT_CODE_INVALID'
   // --- Tenant and workspace administration (US-00) ---
   | 'ERR_WORKSPACE_NOT_FOUND'
   | 'ERR_WORKSPACE_SLUG_TAKEN'

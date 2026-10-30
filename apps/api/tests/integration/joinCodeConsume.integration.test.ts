@@ -12,8 +12,8 @@ import type { ConnectionPoolManager } from '../../src/infrastructure/persistence
  * P4 (audit) — the join-code redemption race, closed and proven.
  *
  * `DrizzleWorkspaceJoinCodeRepository.consume` redeems with ONE conditional
- * `UPDATE … RETURNING` (ADR-0045, modelled on `RouterDatabaseClient.consume`):
- * revocation, expiry and the use cap are enforced by the database itself.
+ * `UPDATE … RETURNING` (ADR-0045/0046): purpose, revocation, expiry and the
+ * use cap are enforced by the database itself.
  * This test fires N parallel redemptions against a `max_uses = M` code on
  * the real migrated tenant volume and asserts EXACTLY M succeed and the row
  * lands on `used_count = M` — never overbooked, whatever the interleaving.
@@ -87,7 +87,7 @@ describe('workspace_join_codes.consume — P4: no overbooking under parallel loa
     async () => {
       const results = await Promise.allSettled(
         Array.from({ length: PARALLEL_REDEMPTIONS }, () =>
-          repo.consume(codeHash, tid)
+          repo.consume(codeHash, 'WORKSPACE', tid)
         )
       );
 

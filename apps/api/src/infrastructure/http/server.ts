@@ -348,13 +348,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   const joinEventUseCase = new JoinEventUseCase(
     routerDb,
     routerDb,
+    workspaceJoinCodeRepo,
+    workspaceRepo,
     userRepo,
     membershipRepo,
     refreshTokenRepo,
     tokenIssuer,
     uow,
-    refreshTtlMs,
-    workspaceRepo
+    refreshTtlMs
   );
 
   // --- Tenant and workspace administration (US-00) ---

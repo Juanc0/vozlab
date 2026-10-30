@@ -21,7 +21,7 @@ Modern TypeScript-first ORM with zero dependencies, compile-time type safety, an
 The generic guidance below assumes a single database. VozLab does not:
 
 - **Two physical databases, never mixed.** The router DB (`vozlab_router`,
-  `public.tenants` / `tenant_connections` / `event_codes`) and the tenant DB
+  `public.tenants` / `tenant_connections` / `credential_routes`) and the tenant DB
   (`vozlab_tenant_dev`, schemas `auth` / `meta` / `public` / `social`) have
   **separate drizzle configs and separate migrations**
   (`drizzle.router.config.ts`, `drizzle.tenant.config.ts`). The schema files in

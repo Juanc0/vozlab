@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   users,
   workspaceJoinRequests,
@@ -64,6 +64,37 @@ export class DrizzleJoinRequestRepository implements IJoinRequestRepository {
     const existing = await this.findPending(input.workspaceId, input.userId, tid);
     if (existing) return existing;
     throw new Error('join request conflict without a pending request');
+  }
+
+  /**
+   * T4-M1: insert-or-probe without the idempotent fallback of `create`.
+   * `ON CONFLICT … DO NOTHING RETURNING` against the partial unique PENDING
+   * index answers `null` when a concurrent or earlier request already won,
+   * so a redemption transaction can roll its credential claim back instead
+   * of committing a use for a request that adds nothing.
+   */
+  async createIfAbsent(
+    input: CreateJoinRequestInput,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<JoinRequestRecord | null> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .insert(workspaceJoinRequests)
+      .values({
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        message: input.message,
+      })
+      .onConflictDoNothing({
+        target: [
+          workspaceJoinRequests.workspaceId,
+          workspaceJoinRequests.userId,
+        ],
+        where: sql`${workspaceJoinRequests.status} = 'PENDING'`,
+      })
+      .returning();
+    return row ? toRecord(row) : null;
   }
 
   async findPending(

@@ -62,10 +62,10 @@ Health routes are public: `/health` and `/health/live` return liveness; `/health
 
 | Store | Dev database | Tables / schemas | Purpose |
 | --- | --- | --- | --- |
-| Router (global) | `vozlab_router` | `public.tenants`, `public.tenant_connections`, `public.event_codes` | OIDC tenant id → internal `tid` → physical connection; global event-code registry |
+| Router (global) | `vozlab_router` | `public.tenants`, `public.tenant_connections`, `public.credential_routes` | OIDC tenant id → internal `tid` → physical connection; thin hash→tenant directory for pre-tenant credentials |
 | Tenant (per institution) | `vozlab_tenant_dev` | `auth`: workspaces, users, memberships, refresh tokens · `meta`: ontology · `public`: nodes, edges, proposals, interactions · `social`: threads, posts | Graph, governance and identity data |
 
-The router DB never holds tenant content, and the tenant DB never holds routing data. `event_codes` is the documented exception: a QR is scanned before the tenant is known, so the code registry is global and carries only routing metadata ([ADR-0019](decisions/ADR-0019-global-event-codes.md)). There are no cross-database joins or foreign keys: the router is queried once per request to resolve the tenant, then all work happens in the tenant DB.
+The router DB never holds tenant content, and the tenant DB never holds routing data. `credential_routes` is the documented exception shape: a QR is scanned before the tenant is known, so a hash→tenant directory row lives in the router — routing metadata only, with the credential's authority in the tenant ([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md), amending [ADR-0019](decisions/ADR-0019-global-event-codes.md)). There are no cross-database joins or foreign keys: the router is queried once per request to resolve the tenant, then all work happens in the tenant DB.
 
 ## Tenant connection pools
 

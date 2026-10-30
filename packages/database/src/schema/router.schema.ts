@@ -8,7 +8,9 @@ import {
   boolean,
   index,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Router schema: global tenant registry.
@@ -30,42 +32,42 @@ export type Tenant = typeof tenants.$inferSelect;
 export type NewTenant = typeof tenants.$inferInsert;
 
 /**
- * Global event-code registry (FR-03).
+ * Thin credential routing (ADR-0046, DEC-3).
  *
- * Explicit exception to the "router DB only holds tenants and connections"
- * rule (ADR-0002): event codes are looked up before the tenant is known, so a
- * single global registry is the only way to resolve a scanned QR without
- * putting the tenant slug in the URL. The row points at a workspace inside the
- * tenant's physical DB; there is deliberately no cross-DB foreign key.
+ * A pre-tenant credential (event QR today, external invitation later) is
+ * presented BEFORE the API knows which tenant owns it. This table is the
+ * L0 directory that answers "which institution?" — nothing more. It holds
+ * no capacity, no expiry, no workspace and no creator: the credential's
+ * AUTHORITY lives in the tenant's `auth.workspace_join_codes` (purpose
+ * discriminator, ADR-0046). A stale route is inert (routing is not
+ * authority); a missing route simply 404s until the operator re-pushes.
+ *
+ * This is the ADR-0002 exception — a pure mapping row, the same kind of row
+ * `tenants.oidc_tenant_id` already is, replacing the ADR-0019 registry
+ * which crossed the L0 boundary by carrying credential state.
  */
-export const eventCodes = pgTable(
-  'event_codes',
+export const credentialRoutes = pgTable(
+  'credential_routes',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    /** SHA-256 of the raw credential; the raw value never reaches the router. */
+    credentialHash: varchar('credential_hash', { length: 64 }).notNull().unique(),
+    /** Which credential class the hash belongs to. */
+    kind: varchar('kind', { length: 12 }).notNull(),
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    workspaceId: uuid('workspace_id').notNull(),
-    /** SHA-256 of the raw code; the raw value is only printed at creation. */
-    codeHash: varchar('code_hash', { length: 64 }).notNull().unique(),
-    label: varchar('label', { length: 255 }),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    /** `null` means unlimited joins. */
-    maxUses: integer('max_uses'),
-    usedCount: integer('used_count').default(0).notNull(),
-    revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    /** Pseudonym of the creator; the user lives in a tenant DB. */
-    createdByHash: varchar('created_by_hash', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('idx_event_codes_tenant_workspace').on(table.tenantId, table.workspaceId),
-    index('idx_event_codes_expires_at').on(table.expiresAt),
+    check(
+      'credential_routes_kind_check',
+      sql`${table.kind} IN ('EVENT', 'INVITATION')`
+    ),
   ],
 );
 
-export type EventCode = typeof eventCodes.$inferSelect;
-export type NewEventCode = typeof eventCodes.$inferInsert;
+export type CredentialRoute = typeof credentialRoutes.$inferSelect;
+export type NewCredentialRoute = typeof credentialRoutes.$inferInsert;
 
 /**
  * Physical connection configuration for each tenant's database.

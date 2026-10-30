@@ -55,9 +55,10 @@ institutional login that has no membership yet.
   `${WEB_ORIGIN}/auth/callback?error=<CODE>`; it never returns a token in the
   URL. Invalid `state` → `ERR_INVALID_OIDC_STATE`; IdP/ID-token failure →
   `ERR_OIDC_EXCHANGE_FAILED`; unverified email → `ERR_EMAIL_NOT_VERIFIED`.
-- Event join returns `ERR_EVENT_EXPIRED` for unknown/revoked/expired codes and
-  `ERR_EVENT_FULL` at capacity. The QR contains only the code; see the
-  [runbook](ops/runbook-dev.md) for `db:event-code`.
+- Event join returns `404 ERR_EVENT_CODE_INVALID` for unknown, revoked,
+  expired, exhausted or wrong-purpose codes (the redemption collapses every
+  dead state into one answer). The QR contains only the code; see the
+  [runbook](ops/runbook-dev.md) for `db:event-code` (mint and `--revoke`).
 - Refresh reuse revokes the whole family and returns
   `401 ERR_REFRESH_TOKEN_INVALID`. Agents never receive a refresh session.
 - The full contract is in [auth-and-tenancy.md](auth-and-tenancy.md).

@@ -22,7 +22,7 @@ system, not the details of a single file.
   domain entity needs a database type, the port exposes an opaque handle
   (`DbTransaction = unknown`).
 - Two physical databases, never mixed: router `vozlab_router`
-  (`public.tenants`, `tenant_connections`, `event_codes`) and one tenant DB per
+  (`public.tenants`, `tenant_connections`, `credential_routes`) and one tenant DB per
   institution (`vozlab_tenant_dev`: schemas `auth`, `meta`, `public`,
   `social`). No cross-database joins or foreign keys.
 - Tenant isolation is **physical**: every repository method takes the internal

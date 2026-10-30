@@ -15,6 +15,13 @@
       "when": 1793396129946,
       "tag": "0001_illegal_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793402210414,
+      "tag": "0002_famous_deathstrike",
+      "breakpoints": true
     }
   ]
 }

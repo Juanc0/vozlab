@@ -3,7 +3,9 @@ import { ApproveJoinRequestUseCase } from '../../src/application/use_cases/Appro
 import { RejectJoinRequestUseCase } from '../../src/application/use_cases/RejectJoinRequestUseCase.js';
 import { RequestWorkspaceAccessUseCase } from '../../src/application/use_cases/RequestWorkspaceAccessUseCase.js';
 import { AUTH_USER, TENANT_ID, USER_ID } from '../support/authFakes.js';
-import { makeUnitOfWork } from '../support/fakes.js';
+import { TX_SENTINEL, makeUnitOfWork } from '../support/fakes.js';
+import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
+import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
 import { hashOpaqueToken } from '../../src/shared/auth/refreshToken.js';
 import {
   makeJoinCodeRepository,
@@ -128,6 +130,7 @@ describe('RequestWorkspaceAccessUseCase', () => {
     const joinCodes = makeJoinCodeRepository([
       joinCodeRecord({ codeHash: hashOpaqueToken(raw) }),
     ]);
+    const { uow } = makeUnitOfWork();
     const requestAccess = new RequestWorkspaceAccessUseCase(
       ctx.workspaces.repo,
       ctx.joinRequests.repo,
@@ -135,7 +138,7 @@ describe('RequestWorkspaceAccessUseCase', () => {
       undefined,
       joinCodes.repo,
       undefined,
-      undefined
+      uow
     );
 
     const request = await requestAccess.execute({
@@ -146,7 +149,9 @@ describe('RequestWorkspaceAccessUseCase', () => {
 
     expect(request.status).toBe('PENDING');
     expect(ctx.membershipAdmin.members.size).toBe(0);
-    expect(joinCodes.consumes).toEqual([{ codeHash: hashOpaqueToken(raw), ok: true }]);
+    expect(joinCodes.consumes).toEqual([
+      { codeHash: hashOpaqueToken(raw), purpose: 'WORKSPACE', ok: true },
+    ]);
   });
 
   it('an exhausted code never reaches the request stage', async () => {
@@ -159,18 +164,143 @@ describe('RequestWorkspaceAccessUseCase', () => {
         usedCount: 1,
       }),
     ]);
+    const { uow } = makeUnitOfWork();
     const requestAccess = new RequestWorkspaceAccessUseCase(
       ctx.workspaces.repo,
       ctx.joinRequests.repo,
       { async getRole() { return null; } } as never,
       undefined,
-      joinCodes.repo
+      joinCodes.repo,
+      undefined,
+      uow
     );
 
     await expect(
       requestAccess.execute({ userId: USER_ID, tid: TENANT_ID, code: raw })
     ).rejects.toMatchObject({ code: 'ERR_WORKSPACE_NOT_FOUND' });
     expect(ctx.joinRequests.rows.size).toBe(0);
+  });
+
+  it('refuses a join-code repository without a UnitOfWork (T4-M3)', () => {
+    const ctx = setup();
+    const joinCodes = makeJoinCodeRepository();
+    expect(
+      () =>
+        new RequestWorkspaceAccessUseCase(
+          ctx.workspaces.repo,
+          ctx.joinRequests.repo,
+          { async getRole() { return null; } } as never,
+          undefined,
+          joinCodes.repo,
+          undefined,
+          undefined
+        )
+    ).toThrow(/UnitOfWork/);
+  });
+
+  it('rejects an EVENT-purpose code presented to the authenticated path (cross-purpose)', async () => {
+    // ADR-0046 P-3 guard: a QR credential can never grant an authenticated
+    // membership — the redemption statement filters by purpose.
+    const ctx = setup(
+      makeWorkspaceRepository([workspaceRecord({ isPublic: false, kind: 'EVENT' })])
+    );
+    const raw = 'EVENTQR0123456789ABCDEF';
+    const joinCodes = makeJoinCodeRepository([
+      joinCodeRecord({
+        codeHash: hashOpaqueToken(raw),
+        purpose: 'EVENT',
+        autoApprove: true,
+      }),
+    ]);
+    const { uow } = makeUnitOfWork();
+    const requestAccess = new RequestWorkspaceAccessUseCase(
+      ctx.workspaces.repo,
+      ctx.joinRequests.repo,
+      { async getRole() { return null; } } as never,
+      undefined,
+      joinCodes.repo,
+      undefined,
+      uow
+    );
+
+    await expect(
+      requestAccess.execute({ userId: USER_ID, tid: TENANT_ID, code: raw })
+    ).rejects.toMatchObject({ code: 'ERR_WORKSPACE_NOT_FOUND' });
+    expect(joinCodes.consumes).toEqual([
+      { codeHash: hashOpaqueToken(raw), purpose: 'WORKSPACE', ok: false },
+    ]);
+    expect(ctx.joinRequests.rows.size).toBe(0);
+  });
+
+  it('a duplicate pending presentation rolls the redemption back — the use is not burned (T4-M1)', async () => {
+    // Sequential double presentation of the same private code by the same
+    // user. The fake unit of work snapshots and restores the tables on
+    // throw, mirroring PostgreSQL: the second presentation must answer
+    // with the existing PENDING request and leave used_count at 1.
+    const ctx = setup(
+      makeWorkspaceRepository([workspaceRecord({ isPublic: false })])
+    );
+    const raw = 'BEEFCAFE0123456789ABCDEF';
+    const joinCodes = makeJoinCodeRepository([
+      joinCodeRecord({ codeHash: hashOpaqueToken(raw) }),
+    ]);
+
+    function makeRollbackUow(
+      maps: Array<Map<string, Record<string, unknown>>>
+    ): IUnitOfWork {
+      return {
+        async runInTransaction<T>(
+          _tid: string,
+          work: (tx: DbTransaction) => Promise<T>
+        ): Promise<T> {
+          const snaps = maps.map((map) =>
+            [...map.entries()].map(([id, row]) => [id, { ...row }] as const)
+          );
+          try {
+            return await work(TX_SENTINEL);
+          } catch (err) {
+            maps.forEach((map, i) => {
+              map.clear();
+              for (const [id, row] of snaps[i]) map.set(id, row);
+            });
+            throw err;
+          }
+        },
+      };
+    }
+    const rollingUow = makeRollbackUow([
+      joinCodes.rows as unknown as Map<string, Record<string, unknown>>,
+      ctx.joinRequests.rows as unknown as Map<string, Record<string, unknown>>,
+    ]);
+
+    const requestAccess = new RequestWorkspaceAccessUseCase(
+      ctx.workspaces.repo,
+      ctx.joinRequests.repo,
+      { async getRole() { return null; } } as never,
+      undefined,
+      joinCodes.repo,
+      undefined,
+      rollingUow
+    );
+
+    const first = await requestAccess.execute({
+      userId: USER_ID,
+      tid: TENANT_ID,
+      code: raw,
+    });
+    expect(first.status).toBe('PENDING');
+    expect([...joinCodes.rows.values()][0]?.usedCount).toBe(1);
+
+    const second = await requestAccess.execute({
+      userId: USER_ID,
+      tid: TENANT_ID,
+      code: raw,
+    });
+    // Same answer, same single request row, and the claimed use rolled back.
+    expect(second.id).toBe(first.id);
+    expect(second.status).toBe('PENDING');
+    expect(ctx.joinRequests.rows.size).toBe(1);
+    expect([...joinCodes.rows.values()][0]?.usedCount).toBe(1);
   });
 
   it('reuses the pending request instead of duplicating it', async () => {

@@ -1,6 +1,6 @@
 # ADR-0019: Global event-code registry in the router database
 
-- Status: Accepted
+- Status: Accepted — Amended by ADR-0046 (thin credential routing replaces the registry; the join-role claim corrected)
 - Date: 2026-10-19
 - Amends: ADR-0002 (explicit exception to the router/tenant table split)
 

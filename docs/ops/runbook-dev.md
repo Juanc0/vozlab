@@ -144,9 +144,12 @@ Without an IdP, keep using the minted token above.
 
 ### 7. Create an event code (optional)
 
-The FR-03 join path needs an `event_code`. The global registry lives in the
-router DB; the CLI validates the workspace in the tenant DB and prints the raw
-code exactly once (only its SHA-256 hash is stored):
+The FR-03 join path needs an EVENT credential. The CLI writes the tenant
+`auth.workspace_join_codes` row first (purpose EVENT, auto-approve) and then
+the thin `router.credential_routes` directory row; it validates the workspace
+in the tenant DB and prints the raw code exactly once (only its SHA-256 hash
+is stored). Revoke with `--revoke <code|hash>` (route first, then the tenant
+row — ADR-0046):
 
 ```bash
 pnpm --filter @vozlab/database db:event-code -- \
@@ -507,7 +510,7 @@ export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # scopes: repo, read:org
 | OIDC callback redirects with `error=ERR_OIDC_EXCHANGE_FAILED` | Wrong client secret/redirect URI, issuer/audience mismatch, nonce mismatch or bad JWKS URL. | Compare the API log with the IdP client config; the API logs the token-endpoint status without the code. |
 | `ERR_EMAIL_NOT_VERIFIED` after login | The IdP explicitly marks the email unverified. | Use an account with a verified institutional email. |
 | `/auth/refresh` returns `401 ERR_REFRESH_TOKEN_INVALID` | Cookie absent (wrong origin/credentials), token expired, or an old token was replayed after rotation. | Call `/auth/refresh` from the PWA origin; on replay the whole family is revoked, so log in again. |
-| `ERR_EVENT_EXPIRED` on a fresh code | Code expired/revoked, `ROUTER_DB_NAME` differs from the one used by `db:event-code`, or the code was mistyped. | Recreate with `db:event-code` against the API's router DB and check `expires_at`. |
+| `404 ERR_EVENT_CODE_INVALID` on a fresh code | Code expired/revoked/mistyped, the `credential_routes` row is missing (router DB mismatch), or the tenant credential is not `purpose='EVENT'`. | Re-mint with `db:event-code` against the API's router DB; check `auth.workspace_join_codes.purpose` and `router.credential_routes`. |
 | `test:integration` fails to connect or boot | Compose services are down, migrations/seed are missing, or ports `13000`/`18080` are taken. | Start Postgres/Redis, run `db:migrate` + `db:seed:dev`, free the ports or override `INTEGRATION_API_PORT`/`MOCK_OIDC_PORT`. |
 | `429 ERR_RATE_LIMIT_EXCEEDED` | Write cap is 30/min per actor, or the workspace ceiling was hit. | Wait for the window or clear `vozlab:ratelimit:*` keys in dev. |
 | Pretty logs despite JSON expectations | `LOG_PRETTY` uses `z.coerce.boolean()`, so the string `false` is truthy. | Leave `LOG_PRETTY` unset for JSON output. |

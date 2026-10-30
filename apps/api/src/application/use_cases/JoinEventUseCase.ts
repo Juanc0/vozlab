@@ -1,12 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { AuthUser, IUserRepository } from '../../domain/ports/IUserRepository.js';
-import { IEventCodeRepository } from '../../domain/ports/IEventCodeRepository.js';
+import { ICredentialRouteRepository } from '../../domain/ports/ICredentialRouteRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
 import { ITokenIssuer } from '../../domain/ports/ITokenIssuer.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
+import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository.js';
 import {
   generateAuthorHash,
@@ -28,54 +29,52 @@ export interface JoinEventResult {
 }
 
 /**
- * Redeem a global event code and create an anonymous workspace member.
+ * Redeem an EVENT join code and create an anonymous workspace guest.
  *
- * The code is consumed before the tenant transaction because capacity is a
- * router-DB concern; a tenant-DB failure can therefore burn one slot. That is
- * an accepted trade-off for a simple, race-free global registry (ADR-0019).
+ * Routing model (ADR-0046, audit §8.6): the raw code hashes to a thin
+ * router-directory row (`credential_routes`, kind EVENT) that answers only
+ * "which tenant?". The route NEVER authorizes — the AUTHORITY is the
+ * tenant's `auth.workspace_join_codes` row, redeemed by one conditional
+ * `consume(codeHash, 'EVENT')` (purpose + auto-approve + revocation +
+ * expiry + capacity in a single statement) INSIDE the same tenant
+ * transaction that creates the `ANONYMOUS_EVENT` user, the GUEST
+ * membership and the refresh family. A route whose tenant credential is
+ * missing, revoked, expired, exhausted or of the wrong purpose is a plain
+ * 404 `ERR_EVENT_CODE_INVALID` — one answer for every failure state, so a
+ * failed redemption learns nothing about the code. Because the claim and
+ * the join share one transaction, a tenant-side failure can no longer
+ * burn a use (the ADR-0019 trade-off is retired).
  */
 export class JoinEventUseCase {
   constructor(
-    private readonly eventCodeRepo: IEventCodeRepository,
+    private readonly credentialRoutes: ICredentialRouteRepository,
     private readonly routerDb: IRouterDatabase,
+    private readonly joinCodeRepo: IWorkspaceJoinCodeRepository,
+    private readonly workspaceRepo: IWorkspaceRepository,
     private readonly userRepo: IUserRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly tokenIssuer: ITokenIssuer,
     private readonly uow: IUnitOfWork,
-    private readonly refreshTtlMs: number,
-    private readonly workspaceRepo?: IWorkspaceRepository
+    private readonly refreshTtlMs: number
   ) {}
 
   async execute(input: JoinEventInput): Promise<JoinEventResult> {
-    const consumption = await this.eventCodeRepo.consume(
-      hashOpaqueToken(input.code)
-    );
+    const codeHash = hashOpaqueToken(input.code);
 
-    if (consumption.status === 'NOT_FOUND' ||
-        consumption.status === 'EXPIRED' ||
-        consumption.status === 'REVOKED') {
-      throw new DomainError('ERR_EVENT_EXPIRED');
-    }
-    if (consumption.status === 'FULL') {
-      throw new DomainError('ERR_EVENT_FULL');
+    // L0: resolve the owning tenant through the directory. Kind-filtered so
+    // a hash routed for another credential class never matches.
+    const routedTenantId = await this.credentialRoutes.findTenantId(
+      codeHash,
+      'EVENT'
+    );
+    if (!routedTenantId) {
+      throw new DomainError('ERR_EVENT_CODE_INVALID');
     }
 
-    const tenant = await this.routerDb.findTenantById(
-      consumption.code.tenantId
-    );
+    const tenant = await this.routerDb.findTenantById(routedTenantId);
     if (!tenant) {
       throw new DomainError('ERR_TENANT_NOT_PROVISIONED');
-    }
-
-    if (this.workspaceRepo) {
-      const ws = await this.workspaceRepo.findById(
-        consumption.code.workspaceId,
-        tenant.id
-      );
-      if (!ws || ws.kind !== 'EVENT') {
-        throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
-      }
     }
 
     const alias =
@@ -86,6 +85,29 @@ export class JoinEventUseCase {
     const familyId = randomUUID();
 
     const user = await this.uow.runInTransaction(tenant.id, async (tx) => {
+      // L3 authority: the conditional redemption, inside this same
+      // transaction. No row ⇒ unknown/revoked/expired/exhausted/wrong
+      // purpose — all one 404, and the rollback leaves the counter intact.
+      const consumed = await this.joinCodeRepo.consume(
+        codeHash,
+        'EVENT',
+        tenant.id,
+        tx
+      );
+      if (!consumed) {
+        throw new DomainError('ERR_EVENT_CODE_INVALID');
+      }
+
+      // Defense in depth (mirrors the retired router-side guarantee): an
+      // EVENT credential must point at an EVENT workspace.
+      const workspace = await this.workspaceRepo.findById(
+        consumed.workspaceId,
+        tenant.id
+      );
+      if (!workspace || workspace.kind !== 'EVENT') {
+        throw new DomainError('ERR_EVENT_CODE_INVALID');
+      }
+
       const created = await this.userRepo.createAnonymousUser(
         { alias, authorHash },
         tenant.id,
@@ -94,7 +116,7 @@ export class JoinEventUseCase {
 
       await this.membershipRepo.add(
         created.id,
-        consumption.code.workspaceId,
+        consumed.workspaceId,
         'GUEST',
         tenant.id,
         tx

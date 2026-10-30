@@ -43,6 +43,20 @@ export interface IJoinRequestRepository {
     tx?: DbTransaction
   ): Promise<JoinRequestRecord>;
 
+  /**
+   * Insert-or-conflict probe used inside a redemption transaction (T4-M1).
+   * Unlike `create` this never falls back to the existing row: it inserts
+   * with `ON CONFLICT … DO NOTHING RETURNING` against the partial unique
+   * PENDING index and answers `null` when a PENDING request already won —
+   * leaving the caller free to roll the surrounding transaction back (a
+   * duplicate presentation must not burn a credential use).
+   */
+  createIfAbsent(
+    input: CreateJoinRequestInput,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<JoinRequestRecord | null>;
+
   findPending(
     workspaceId: string,
     userId: string,

@@ -10,13 +10,13 @@ database architecture options with a recommendation.
 
 | Database | Dev name | Contents | Count in production | Owner today |
 | --- | --- | --- | --- | --- |
-| Router | `vozlab_router` | `tenants`, `tenant_connections` (plaintext password column), `event_codes` (hashed codes) | One | Manual SQL and CLI |
+| Router | `vozlab_router` | `tenants`, `tenant_connections` (plaintext password column), `credential_routes` (thin hash→tenant directory, ADR-0046) | One | Manual SQL and CLI |
 | Tenant | `vozlab_tenant_dev` | Schemas `auth` (4 tables), `meta` (4), `public` (4 graph and governance tables), `social` (2) | One per institution | Migrations run by an environment-driven CLI against one database at a time |
 
-Facts that shape operations: [repo] `docs/architecture.md`, ADR-0002, ADR-0019, ADR-0027 §4
+Facts that shape operations: [repo] `docs/architecture.md`, ADR-0002, ADR-0019 (amended by ADR-0046), ADR-0027 §4
 
-- The router holds no graph content; each tenant holds no routing data. `event_codes` is the one documented
-  exception (ADR-0019).
+- The router holds no graph content; each tenant holds no routing data. `credential_routes` is the one documented
+  exception (ADR-0019 as amended by ADR-0046) — routing metadata only, the credential lives in the tenant.
 - There are no cross-database foreign keys or joins. A request resolves its tenant once, then works inside one
   database.
 - Workers never connect to a tenant database. They reach it only through the API. This is a strong property:
@@ -25,8 +25,7 @@ Facts that shape operations: [repo] `docs/architecture.md`, ADR-0002, ADR-0019, 
 ## 2. Schema as built
 
 **Router.** `tenants(id, slug, oidc_tenant_id UNIQUE, name, provisioned, …)`, `tenant_connections(tenant_id,
-host, port, database, user, password, …)`, `event_codes(tenant_id, workspace_id, code_hash UNIQUE, expires_at,
-max_uses, used_count, revoked_at, …)`. [repo] `router.schema.ts`
+host, port, database, user, password, …)`, `credential_routes(credential_hash UNIQUE, kind CHECK IN ('EVENT','INVITATION'), tenant_id FK cascade, created_at)`; tenant `auth.workspace_join_codes(workspace_id, code_hash UNIQUE, purpose 'WORKSPACE'|'EVENT', expires_at, max_uses, used_count, auto_approve, revoked_at, created_by_hash, …)`. [repo] `router.schema.ts`, `tenant.auth.schema.ts`
 
 **Tenant.**
 
@@ -46,7 +45,7 @@ Integrity gaps that are known and accepted, plus two that are not written down:
 | `meta.*.workspace_id` nullable | A row can exist without a workspace, although the application always writes it. | Known. |
 | `meta.*.system_key` not unique for properties | `findObjectProperty` returns the first match. | Known (F-16). |
 | Refresh-token cleanup is opportunistic (during rotation, for the same user) | Rows of inactive users are never removed. Table growth is unbounded. | Known. |
-| `router.event_codes.workspace_id` has no foreign key | A deleted workspace leaves a live code until revoked. | Known. |
+| `router.credential_routes.credential_hash` has no cross-DB FK to the tenant credential | A stale route is inert (routing is not authority); the tenant redemption is the gate. | By design (ADR-0046). |
 
 ## 3. The read paths and their indexes
 

@@ -50,8 +50,9 @@ The identity model, guard chain and pseudonym rules are in
   ephemeral sessions for in-person events through an `event_code`, assigning a
   random pseudonym and a signed device token. After the event, new anonymous
   users are blocked, while existing users keep access to follow up on their
-  contributions. *(Implemented: global `router.event_codes` registry, atomic
-  expiry/capacity/revocation, anonymous user + membership + rotating session.
+  contributions. *(Implemented: tenant EVENT credential + thin global
+  `router.credential_routes` directory (ADR-0046), atomic expiry/capacity/
+  revocation, anonymous user + GUEST membership + rotating session.
   The QR scanner UI is part of the PWA.)*
 - **FR-04 — Multi-workspace management in a clean URL.** The PWA must keep the
   public URL clean (`app.vozlab.io/`) and keep the workspace context
@@ -340,7 +341,7 @@ implementation yet.
 | Requirement | Stories | Code (current) | Tables |
 | --- | --- | --- | --- |
 | FR-01, FR-02 | US-00, US-05 | `AuthController.ts`, `OidcProviderClient.ts`, `TenantGuard.ts`, `TenantWorkspaceGuard.ts` | router `public.tenants`; tenant `auth.users`, `auth.refresh_tokens` |
-| FR-03 | — | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts` | router `public.event_codes`; tenant `auth.users` (`ANONYMOUS_EVENT`), `auth.workspace_memberships` |
+| FR-03 | — | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts` | router `public.credential_routes` (directory); tenant `auth.workspace_join_codes` (purpose EVENT, authority), `auth.users` (`ANONYMOUS_EVENT`), `auth.workspace_memberships` |
 | FR-05 | US-01..06 | `TenantWorkspaceGuard.ts` | `auth.workspace_memberships` |
 | FR-06, FR-07 | US-01 | `CreateNodeUseCase.ts` | `public.nodes`, `meta.*` |
 | FR-08 | US-01 | `CreateEdgeUseCase.ts` | `public.edges`, `meta.object_properties` |

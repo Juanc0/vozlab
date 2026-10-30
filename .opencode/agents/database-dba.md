@@ -12,7 +12,7 @@ persistence boundary and every byte that crosses a physical database.
   migration folds (`drizzle.router.config.ts` / tenant config), `db:generate` /
   `db:migrate` / `db:push` / `db:seed:dev` / `db:mint-token` scripts.
 - The router/tenant split (ADR-0002): `vozlab_router` (`public.tenants`,
-  `tenant_connections`, `event_codes`, `global_*` tables) vs one DB per
+  `tenant_connections`, `credential_routes`, `global_*` tables) vs one DB per
   institution (`auth`, `meta`, `public`, `social` schemas). Never mix them in
   one query or one transaction.
 - Connection pooling (`ConnectionPoolManager`), `UnitOfWork.runInTransaction(tid, …)`

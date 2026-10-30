@@ -126,6 +126,10 @@ export const ERROR_CODES = {
     status: 400,
     message: 'Event has reached maximum capacity',
   },
+  ERR_EVENT_CODE_INVALID: {
+    status: 404,
+    message: 'Event code is invalid, revoked, expired or at capacity',
+  },
   ERR_PROPOSAL_NOT_FOUND: {
     status: 404,
     message: 'Proposal not found',

@@ -1,6 +1,7 @@
 import { DomainError } from '../../domain/errors/DomainError.js';
 import {
   IJoinRequestRepository,
+  JoinRequestRecord,
   JoinRequestWithWorkspace,
 } from '../../domain/ports/IJoinRequestRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
@@ -24,6 +25,20 @@ export interface RequestWorkspaceAccessInput {
 }
 
 /**
+ * Internal control flow (T4-M1): a PENDING request for this user+workspace
+ * already existed, so the credential claim this transaction made must be
+ * undone. Throwing unwinds `runInTransaction` — PostgreSQL rolls back the
+ * `used_count` increment — and the caller maps the sentinel to the
+ * today's-pending answer. Never crosses the use-case boundary.
+ */
+class PendingRequestExistsError extends Error {
+  constructor(public readonly workspace: WorkspaceRecord) {
+    super('pending join request already exists');
+    this.name = 'PendingRequestExistsError';
+  }
+}
+
+/**
  * Use Case: ask to enter a workspace (US-00).
  *
  * A public workspace can be asked for by id. A private one only through a
@@ -32,12 +47,14 @@ export interface RequestWorkspaceAccessInput {
  * is a hint, never a grant.
  *
  * The code is the only workspace credential (DEC-5 D3, ADR-0045) and it is
- * redeemed with ONE conditional `UPDATE … RETURNING` (`consume`, the
- * `RouterDatabaseClient` template): revocation, expiry and the use cap are
- * enforced by the database, so concurrent redemptions can never overbook
- * `max_uses` (audit P4). The whole redemption — claim, decision, write —
- * runs in one transaction: anything that throws afterwards rolls the claim
- * back, so a burned use never charges for a failed join.
+ * redeemed with ONE conditional `UPDATE … RETURNING` (`consume`): purpose,
+ * revocation, expiry and the use cap are enforced by the database, so
+ * concurrent redemptions can never overbook `max_uses` (audit P4) and a
+ * credential of the other class (EVENT, ADR-0046) can never redeem here.
+ * The whole redemption — claim, decision, write — runs in one transaction:
+ * anything that throws afterwards rolls the claim back, so a burned use
+ * never charges for a failed join (T4-M1 extends this to the duplicate
+ * PENDING case).
  */
 export class RequestWorkspaceAccessUseCase {
   constructor(
@@ -48,7 +65,17 @@ export class RequestWorkspaceAccessUseCase {
     private readonly codeRepo?: IWorkspaceJoinCodeRepository,
     private readonly audit?: IAuditLog,
     private readonly uow?: IUnitOfWork
-  ) {}
+  ) {
+    // T4-M3: a wired code repository without a unit of work would silently
+    // redeem OUTSIDE any transaction — a failed join would still burn a
+    // use and the M1 rollback could not exist. Inconsistent wiring is a
+    // composition-root bug: refuse it at construction, not at request time.
+    if (codeRepo && !uow) {
+      throw new Error(
+        'RequestWorkspaceAccessUseCase requires a UnitOfWork when the join-code repository is wired'
+      );
+    }
+  }
 
   async execute(
     input: RequestWorkspaceAccessInput
@@ -80,21 +107,35 @@ export class RequestWorkspaceAccessUseCase {
   }
 
   /**
-   * The code path (P4): the credential is claimed atomically, then the
-   * returned row decides the flow — auto-approve grants the membership,
-   * otherwise the code only ROUTED a PENDING request here.
+   * The code path (P4 + M1): the WORKSPACE credential is claimed
+   * atomically, then the returned row decides the flow — auto-approve
+   * grants the membership, otherwise the code only ROUTED a PENDING
+   * request here. The whole redemption runs in ONE transaction: a
+   * duplicate pending request throws `PendingRequestExistsError`, the
+   * rollback restores the claimed use, and the caller answers with the
+   * request that already exists (T4-M1: a duplicate presentation never
+   * burns a use, sequentially or under a concurrent race).
    */
   private async redeemCode(
     input: RequestWorkspaceAccessInput,
     code: string
   ): Promise<JoinRequestWithWorkspace> {
-    if (!this.codeRepo) {
+    const codeRepo = this.codeRepo;
+    const uow = this.uow;
+    if (!codeRepo || !uow) {
       throw new DomainError('ERR_WORKSPACE_NOT_FOUND');
     }
     const codeHash = hashOpaqueToken(code);
 
-    const redeem = async (tx?: DbTransaction) => {
-      const consumed = await this.codeRepo!.consume(codeHash, input.tid, tx);
+    const redeem = async (tx: DbTransaction) => {
+      // Purpose guard (ADR-0046): an EVENT-class code can never redeem
+      // here, whatever its hash — closes the P-3 leak.
+      const consumed = await codeRepo.consume(
+        codeHash,
+        'WORKSPACE',
+        input.tid,
+        tx
+      );
       if (!consumed) {
         // Unknown, revoked, expired or exhausted: one answer for all four,
         // so a failed redemption learns nothing about the code's state.
@@ -154,13 +195,25 @@ export class RequestWorkspaceAccessUseCase {
         } as JoinRequestWithWorkspace;
       }
 
-      return this.requestOrPending(input, workspace, tx);
+      return this.requestOrPending(input, workspace, tx, true);
     };
 
-    if (this.uow) {
-      return this.uow.runInTransaction(input.tid, (tx) => redeem(tx));
+    try {
+      return await uow.runInTransaction(input.tid, (tx) => redeem(tx));
+    } catch (err) {
+      if (err instanceof PendingRequestExistsError) {
+        // The claim rolled back: answer with the pending request that won.
+        const pending = await this.joinRequestRepo.findPending(
+          err.workspace.id,
+          input.userId,
+          input.tid
+        );
+        if (pending) {
+          return { ...pending, workspaceName: err.workspace.name };
+        }
+      }
+      throw err;
     }
-    return redeem();
   }
 
   /** v6: GUEST (anonymous) cannot request access to non-EVENT workspaces. */
@@ -176,11 +229,18 @@ export class RequestWorkspaceAccessUseCase {
     }
   }
 
-  /** Shared tail: an existing pending request is reused, never duplicated. */
+  /**
+   * Shared tail: an existing pending request is reused, never duplicated.
+   * In `burnGuarded` mode (inside a redemption transaction, T4-M1) the
+   * reuse decision is delegated to the partial-unique INSERT probe alone:
+   * a pre-check return would COMMIT the claimed use for a request that
+   * adds nothing, which is exactly the defect the guard forbids.
+   */
   private async requestOrPending(
     input: RequestWorkspaceAccessInput,
     workspace: WorkspaceRecord,
-    tx?: DbTransaction
+    tx?: DbTransaction,
+    burnGuarded = false
   ): Promise<JoinRequestWithWorkspace> {
     const role = await this.membershipRepo.getRole(
       input.userId,
@@ -191,24 +251,36 @@ export class RequestWorkspaceAccessUseCase {
       throw new DomainError('ERR_ALREADY_MEMBER');
     }
 
-    const pending = await this.joinRequestRepo.findPending(
-      workspace.id,
-      input.userId,
-      input.tid
-    );
-    if (pending) {
-      return { ...pending, workspaceName: workspace.name };
+    const insert = {
+      workspaceId: workspace.id,
+      userId: input.userId,
+      message: input.message ?? null,
+    };
+    let created: JoinRequestRecord;
+    if (burnGuarded) {
+      // T4-M1: inside the redemption transaction a conflict must unwind the
+      // whole transaction (the claimed use is restored), never fall back.
+      const claimed = await this.joinRequestRepo.createIfAbsent(
+        insert,
+        input.tid,
+        tx
+      );
+      if (!claimed) {
+        throw new PendingRequestExistsError(workspace);
+      }
+      created = claimed;
+    } else {
+      const pending = await this.joinRequestRepo.findPending(
+        workspace.id,
+        input.userId,
+        input.tid
+      );
+      if (pending) {
+        return { ...pending, workspaceName: workspace.name };
+      }
+      created = await this.joinRequestRepo.create(insert, input.tid, tx);
     }
 
-    const created = await this.joinRequestRepo.create(
-      {
-        workspaceId: workspace.id,
-        userId: input.userId,
-        message: input.message ?? null,
-      },
-      input.tid,
-      tx
-    );
     await this.audit?.record({
       actorId: input.userId,
       actorType: 'USER',

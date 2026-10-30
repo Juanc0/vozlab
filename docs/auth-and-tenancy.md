@@ -186,7 +186,7 @@ tenant resolution is still not implemented.
    a Drizzle pool per `tid`.
 5. Repositories receive only the internal `tid`; the OIDC string never reaches
    the tenant DB. Event joins resolve the internal UUID from
-   `router.event_codes` instead.
+   `router.credential_routes` (ADR-0046) instead.
 
 The dev seed provisions `tid = sabana`, tenant UUID
 `11111111-1111-4111-8111-111111111111`, workspace UUID
@@ -261,23 +261,33 @@ One route is narrower: `PUT /api/v1/nodes/:id/embedding` additionally requires
 
 ## 9. Event-code join (FR-03)
 
-`router.event_codes` is the documented exception to the two-database split
-([ADR-0019](decisions/ADR-0019-global-event-codes.md)): the QR is scanned before
-the tenant is known, so the registry must be global.
+The event credential is a tenant row; the router keeps only a thin directory
+([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md),
+amending [ADR-0019](decisions/ADR-0019-global-event-codes.md)): the QR is
+scanned before the tenant is known, so the hash→tenant mapping must be
+global — routing, never authority.
 
 - The QR contains only the raw code (`vle_<24 base64url chars>`); no tenant
   slug or URL prefix. The API stores and looks up only its SHA-256 hash.
-- Operators create codes with `db:event-code` (see
-  [runbook-dev](ops/runbook-dev.md)); the CLI validates the target workspace in the
-  tenant DB before inserting.
-- `POST /api/v1/auth/event-join { code, alias? }` consumes the code with one
-  conditional `UPDATE` that enforces revocation, expiry and `max_uses`
-  atomically. `NOT_FOUND`, `REVOKED` and `EXPIRED` all return `400
-  ERR_EVENT_EXPIRED`; capacity returns `400 ERR_EVENT_FULL`.
-- On success, one tenant transaction creates the `ANONYMOUS_EVENT` user with a
-  random pseudonym and alias, adds the `MEMBER` membership, and stores the
-  refresh session. The response is the same access-token + refresh-cookie
-  session as OIDC login.
+- Operators mint and revoke codes with `db:event-code` (see
+  [runbook-dev](ops/runbook-dev.md)). Mint writes the tenant EVENT credential
+  FIRST, then the idempotent `router.credential_routes` row; revoke deletes
+  the route FIRST, then revokes the tenant row. The CLI validates the target
+  workspace (`kind='EVENT'`) in the tenant DB before inserting.
+- `POST /api/v1/auth/event-join { code, alias? }` resolves
+  `credential_routes` (kind EVENT) for the tenant id, then redeems with one
+  conditional `UPDATE … RETURNING` on `auth.workspace_join_codes`
+  (`purpose='EVENT'`, auto-approve, revocation, expiry and `max_uses` in the
+  same statement) **inside** the tenant transaction that creates the user.
+  Unknown, revoked, expired, exhausted or wrong-purpose codes all return
+  `404 ERR_EVENT_CODE_INVALID` — one answer, no state disclosure.
+- A tenant-side failure rolls the claimed use back (the ADR-0019 pre-tx burn
+  is retired).
+- On success, that one tenant transaction creates the `ANONYMOUS_EVENT` user
+  with a random pseudonym and alias, adds the `GUEST` membership (corrected
+  per ADR-0046 — ADR-0019 claimed `MEMBER`), and stores the refresh session.
+  The response is the same access-token + refresh-cookie session as OIDC
+  login.
 - Expiry/revocation blocks **new** joins only; existing anonymous users keep
   their refresh sessions and can continue contributing.
 - Consumption happens before the tenant transaction, so a tenant DB failure can
@@ -441,8 +451,7 @@ redirect URL.
 | `ERR_OIDC_UNAVAILABLE` | 503 | IdP transport failure or timeout |
 | `ERR_EMAIL_NOT_VERIFIED` | 403 | IdP explicitly reports `email_verified: false` |
 | `ERR_ACCOUNT_LINK_CONFLICT` | 409 | Verified email belongs to an `ANONYMOUS_EVENT` account, or a concurrent upsert conflict |
-| `ERR_EVENT_EXPIRED` | 400 | Event code not found, revoked or past `expires_at` |
-| `ERR_EVENT_FULL` | 400 | `max_uses` reached |
+| `ERR_EVENT_CODE_INVALID` | 404 | Event code unknown, revoked, expired, at capacity or not of the EVENT purpose ([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)) |
 | `ERR_MISSING_WORKSPACE_HEADER` | 400 | No `X-Workspace-ID` on a resource route |
 | `ERR_INVALID_WORKSPACE_HEADER` | 400 | Header is not a valid UUID |
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No membership, or missing `tid` in `tenantGuard` |

@@ -38,10 +38,9 @@ import type {
 import type { ITokenIssuer } from '../../src/domain/ports/ITokenIssuer.js';
 import type { ITokenBlacklist } from '../../src/domain/ports/ITokenBlacklist.js';
 import type {
-  ConsumeEventCodeResult,
-  CreateEventCodeInput,
-  IEventCodeRepository,
-} from '../../src/domain/ports/IEventCodeRepository.js';
+  CredentialRouteKind,
+  ICredentialRouteRepository,
+} from '../../src/domain/ports/ICredentialRouteRepository.js';
 import type { IMembershipRepository } from '../../src/domain/ports/IMembershipRepository.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
 
@@ -400,28 +399,35 @@ export function makeTokenIssuer(): {
   return { tokenIssuer, issued };
 }
 
-export function makeEventCodeRepository(
-  result: ConsumeEventCodeResult
+/**
+ * Fake `ICredentialRouteRepository` (ADR-0046): a hash→tenant directory.
+ * `routes` maps `"<hash>:<kind>"` to the tenant id, so cross-kind lookups
+ * miss exactly like the kind-filtered SQL does.
+ */
+export function makeCredentialRouteRepository(
+  routes: Record<string, string> = {}
 ): {
-  eventCodeRepo: IEventCodeRepository;
-  consumedHashes: string[];
-  created: CreateEventCodeInput[];
+  credentialRoutes: ICredentialRouteRepository;
+  lookups: Array<{ hash: string; kind: CredentialRouteKind }>;
+  addRoute(hash: string, kind: CredentialRouteKind, tenantId: string): void;
 } {
-  const consumedHashes: string[] = [];
-  const created: CreateEventCodeInput[] = [];
+  const table = new Map(Object.entries(routes));
+  const lookups: Array<{ hash: string; kind: CredentialRouteKind }> = [];
 
-  const eventCodeRepo: IEventCodeRepository = {
-    async consume(codeHash) {
-      consumedHashes.push(codeHash);
-      return result;
-    },
-    async create(input) {
-      created.push(input);
-      return { id: 'code-1' };
+  const credentialRoutes: ICredentialRouteRepository = {
+    async findTenantId(credentialHash, kind) {
+      lookups.push({ hash: credentialHash, kind });
+      return table.get(`${credentialHash}:${kind}`) ?? null;
     },
   };
 
-  return { eventCodeRepo, consumedHashes, created };
+  return {
+    credentialRoutes,
+    lookups,
+    addRoute(hash, kind, tenantId) {
+      table.set(`${hash}:${kind}`, tenantId);
+    },
+  };
 }
 
 export function makeInvitationRepository(seed?: {

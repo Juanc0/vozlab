@@ -41,8 +41,7 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | --- | --- | --- |
 | `ERR_MISSING_WORKSPACE_HEADER` | 400 | `X-Workspace-ID` is absent on a protected route. |
 | `ERR_INVALID_WORKSPACE_HEADER` | 400 | `X-Workspace-ID` is not a valid UUID. |
-| `ERR_EVENT_EXPIRED` | 400 | Event code not found, revoked or past `expires_at` on `POST /auth/event-join`. |
-| `ERR_EVENT_FULL` | 400 | Event code reached `max_uses`. |
+| `ERR_EVENT_CODE_INVALID` | 404 | Event join: the code is unknown, revoked, expired, at capacity or not of the EVENT purpose on `POST /auth/event-join` (one answer, no state disclosure — ADR-0046). |
 | `ERR_INVALID_OIDC_STATE` | 400 | OIDC state is missing, expired or already consumed (callback). |
 | `ERR_INVALID_TOKEN` | 401 | Missing/malformed `Authorization: Bearer`, bad signature, missing `sub`/`authorHash`, non-64-hex `authorHash`, or an unknown agent `type`. |
 | `ERR_TOKEN_EXPIRED` | 401 | JWT verification failed with `TokenExpiredError`. |

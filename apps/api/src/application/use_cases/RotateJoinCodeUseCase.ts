@@ -55,7 +55,10 @@ export class RotateJoinCodeUseCase {
     const secret = generateJoinCodeSecret();
 
     const created = await this.uow.runInTransaction(input.tid, async (tx) => {
-      const rows = await this.codeRepo.list(input.workspaceId, input.tid);
+      // T4-M2: the current-row read runs INSIDE the transaction (same tx
+      // handle), so a concurrent rotation cannot be missed and the
+      // revoke+insert pair is serialized on the real state.
+      const rows = await this.codeRepo.list(input.workspaceId, input.tid, tx);
       const current = mostRecentActive(rows);
       if (current) {
         await this.codeRepo.revoke(current.id, input.tid, tx);
@@ -65,6 +68,10 @@ export class RotateJoinCodeUseCase {
         {
           workspaceId: input.workspaceId,
           codeHash: secret.codeHash,
+          // The admin rotation manages WORKSPACE credentials only; an EVENT
+          // row of the same workspace is a different credential class
+          // (DEC-3) and is never inherited or replaced here.
+          purpose: 'WORKSPACE',
           // The rotation inherits the attributes of the code it replaces;
           // a bare rotation must not silently change who gets auto-joined
           // or how many people the code admits. A past expiry would birth
@@ -97,13 +104,18 @@ export class RotateJoinCodeUseCase {
   }
 }
 
-/** The workspace's most recent non-revoked row, or null when it has none. */
+/**
+ * The workspace's most recent non-revoked WORKSPACE-purpose row, or null
+ * when it has none (DEC-3: EVENT-class rows are a different credential and
+ * rotation leaves them alone).
+ */
 function mostRecentActive(
   rows: WorkspaceJoinCodeRecord[]
 ): WorkspaceJoinCodeRecord | null {
   let best: WorkspaceJoinCodeRecord | null = null;
   for (const row of rows) {
     if (row.revokedAt !== null) continue;
+    if (row.purpose !== 'WORKSPACE') continue;
     if (!best || row.createdAt > best.createdAt) best = row;
   }
   return best;

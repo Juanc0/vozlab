@@ -30,6 +30,7 @@ import type {
 import type {
   CreateWorkspaceJoinCodeInput,
   IWorkspaceJoinCodeRepository,
+  JoinCodePurpose,
   WorkspaceJoinCodeRecord,
 } from '../../src/domain/ports/IWorkspaceJoinCodeRepository.js';
 import type { DbTransaction } from '../../src/domain/ports/Transaction.js';
@@ -250,20 +251,48 @@ export function makeJoinRequestRepository(
   const rows = new Map(initial.map((row) => [row.id, row]));
   const workspaceNames = new Map<string, string>();
 
+  function insert(input: {
+    workspaceId: string;
+    userId: string;
+    message: string | null;
+  }): JoinRequestRecord {
+    const row: JoinRequestRecord = {
+      id: `jr-${rows.size + 1}`,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      status: 'PENDING',
+      message: input.message,
+      decidedBy: null,
+      decidedAt: null,
+      createdAt: NOW,
+    };
+    rows.set(row.id, row);
+    return row;
+  }
+
   const repo: IJoinRequestRepository = {
     async create(input) {
-      const row: JoinRequestRecord = {
-        id: `jr-${rows.size + 1}`,
-        workspaceId: input.workspaceId,
-        userId: input.userId,
-        status: 'PENDING',
-        message: input.message,
-        decidedBy: null,
-        decidedAt: null,
-        createdAt: NOW,
-      };
-      rows.set(row.id, row);
+      const existing = [...rows.values()].find(
+        (row) =>
+          row.workspaceId === input.workspaceId &&
+          row.userId === input.userId &&
+          row.status === 'PENDING'
+      );
+      if (existing) return existing;
+      const row = insert(input);
       return row;
+    },
+    async createIfAbsent(input) {
+      // Mirrors ON CONFLICT (workspace,user) WHERE status='PENDING'
+      // DO NOTHING RETURNING: a live pending row answers `null`.
+      const existing = [...rows.values()].find(
+        (row) =>
+          row.workspaceId === input.workspaceId &&
+          row.userId === input.userId &&
+          row.status === 'PENDING'
+      );
+      if (existing) return null;
+      return insert(input);
     },
     async findPending(workspaceId, userId) {
       return (
@@ -390,10 +419,12 @@ export function makeRoleLookup(adminOf: string | null = null): {
 }
 
 /**
- * Fake `IWorkspaceJoinCodeRepository` (ADR-0045): an in-memory table of
+ * Fake `IWorkspaceJoinCodeRepository` (ADR-0045/0046): an in-memory table of
  * join-code rows. `consume` mirrors the conditional UPDATE of the Drizzle
- * adapter — revocation, expiry and the use cap are all checked before the
- * increment, and a failed match returns `null` without touching the row.
+ * adapter — purpose match, revocation, expiry and the use cap are all
+ * checked before the increment (the EVENT class additionally requires
+ * `auto_approve`), and a failed match returns `null` without touching the
+ * row.
  */
 export function makeJoinCodeRepository(
   initial: WorkspaceJoinCodeRecord[] = []
@@ -401,11 +432,15 @@ export function makeJoinCodeRepository(
   repo: IWorkspaceJoinCodeRepository;
   rows: Map<string, WorkspaceJoinCodeRecord>;
   creates: CreateWorkspaceJoinCodeInput[];
-  consumes: Array<{ codeHash: string; ok: boolean }>;
+  consumes: Array<{ codeHash: string; purpose: JoinCodePurpose; ok: boolean }>;
 } {
   const rows = new Map(initial.map((row) => [row.id, row]));
   const creates: CreateWorkspaceJoinCodeInput[] = [];
-  const consumes: Array<{ codeHash: string; ok: boolean }> = [];
+  const consumes: Array<{
+    codeHash: string;
+    purpose: JoinCodePurpose;
+    ok: boolean;
+  }> = [];
 
   const repo: IWorkspaceJoinCodeRepository = {
     async create(input) {
@@ -414,6 +449,7 @@ export function makeJoinCodeRepository(
         id: `code-${rows.size + 1}`,
         workspaceId: input.workspaceId,
         codeHash: input.codeHash,
+        purpose: input.purpose ?? 'WORKSPACE',
         label: input.label ?? null,
         expiresAt: input.expiresAt ?? null,
         maxUses: input.maxUses ?? null,
@@ -432,19 +468,21 @@ export function makeJoinCodeRepository(
     async findById(id) {
       return rows.get(id) ?? null;
     },
-    async consume(codeHash) {
+    async consume(codeHash, purpose) {
       const row = [...rows.values()].find((r) => r.codeHash === codeHash);
       const live =
         row !== undefined &&
+        row.purpose === purpose &&
+        (purpose !== 'EVENT' || row.autoApprove === true) &&
         row.revokedAt === null &&
         (row.expiresAt === null || row.expiresAt > NOW) &&
         (row.maxUses === null || row.usedCount < row.maxUses);
       if (!row || !live) {
-        consumes.push({ codeHash, ok: false });
+        consumes.push({ codeHash, purpose, ok: false });
         return null;
       }
       row.usedCount += 1;
-      consumes.push({ codeHash, ok: true });
+      consumes.push({ codeHash, purpose, ok: true });
       return row;
     },
     async update(id, patch) {
@@ -471,6 +509,7 @@ export function joinCodeRecord(
     id: 'code-1',
     workspaceId: '11111111-1111-4111-8111-111111111111',
     codeHash: 'hash-1',
+    purpose: 'WORKSPACE',
     label: 'default',
     expiresAt: null,
     maxUses: null,
