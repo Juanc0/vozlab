@@ -29,8 +29,6 @@
     "db:event-code": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/event-code.ts",
     "db:grant-mcp-reader": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/grant-mcp-reader.ts",
     "db:grant-tenant-admin": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/grant-tenant-admin.ts",
-    "db:backfill:external-identities": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/backfill-external-identities.ts",
-    "db:backfill:global-identities": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/backfill-global-identities.ts",
     "db:reconcile-router-tenants": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/reconcile-router-tenants.ts",
     "db:revoke-sessions": "NODE_OPTIONS='--import tsx' tsx --env-file-if-exists=../../.env scripts/revoke-sessions.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.tenant.config.ts"
