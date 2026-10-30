@@ -17,6 +17,7 @@ import { RedeemInvitationAtomicUseCase } from './RedeemInvitationAtomicUseCase.j
 import {
   generateAuthorHash,
   generateRefreshToken,
+  hashEmail,
   hashOpaqueToken,
 } from '../../shared/auth/refreshToken.js';
 import { deriveHandle } from '../../shared/auth/deriveHandle.js';
@@ -66,6 +67,11 @@ export class CompleteOidcLoginUseCase {
      */
     private readonly redeemInvitation: RedeemInvitationAtomicUseCase,
     /**
+     * DEC-4: the HMAC key for the peppered email hash, injected by the
+     * composition root (never read from the environment inside this layer).
+     */
+    private readonly emailPepper: string,
+    /**
      * v6/TASK-06: optional global-invitation redemption. When the OIDC state
      * carries a token that exists in the GLOBAL registry, redemption happens
      * before tenant resolution — the invited identity may have no tenant link
@@ -102,11 +108,17 @@ export class CompleteOidcLoginUseCase {
     // being hardcoded to null. `global_users.picture` is varchar(1024) —
     // truncate before storing, the same guard `deriveHandle` applies to the
     // handle column.
+    // DEC-4: the vault stores the PEPPERED HASH of the asserted email, never
+    // the cleartext — equality over the hash is all linking ever needs.
+    const emailHash =
+      identity.email !== null
+        ? hashEmail(identity.email, this.emailPepper)
+        : null;
     const globalUser = await this.globalUserRepo.findOrCreate(
       identity.issuer,
       identity.subject,
       {
-        email: identity.email,
+        emailHash,
         emailVerified: identity.emailVerified ?? false,
         fullName: identity.fullName,
         picture: identity.picture ? identity.picture.slice(0, 1024) : null,
@@ -180,8 +192,6 @@ export class CompleteOidcLoginUseCase {
       {
         issuer: identity.issuer,
         subject: identity.subject,
-        email: identity.email,
-        emailVerified: identity.emailVerified,
         fullName: identity.fullName,
         authorHash: generateAuthorHash(),
         // v6/TASK-03 (B14): the admin finds people by handle; the login is
@@ -201,8 +211,9 @@ export class CompleteOidcLoginUseCase {
     // D9: redeem the invitation carried by the OIDC state.
     //
     // Redemption is strict: the token must exist, be PENDING, unexpired and
-    // unused, and the verified identity email must match the email the
-    // invitation was bound to. A failure is an error — never a silent
+    // unused, and the peppered hash of the verified identity email must
+    // equal the hash the invitation was bound to (DEC-4 — the cleartext is
+    // never stored or compared). A failure is an error — never a silent
     // "logged in without the membership" — so a broken link is visible.
     if (state.invitationToken) {
       const { createHash } = await import('node:crypto');
@@ -221,13 +232,12 @@ export class CompleteOidcLoginUseCase {
         invitation.expiresAt > new Date() &&
         (invitation.maxUses === null ||
           invitation.usedCount < invitation.maxUses);
-      const boundEmail = invitation?.email?.trim().toLowerCase() ?? null;
-      const identityEmail = identity.email?.trim().toLowerCase() ?? null;
+      const boundEmailHash = invitation?.emailHash ?? null;
       const emailMatches =
-        boundEmail !== null &&
+        boundEmailHash !== null &&
         identity.emailVerified === true &&
-        identityEmail !== null &&
-        boundEmail === identityEmail;
+        emailHash !== null &&
+        boundEmailHash === emailHash;
 
       if (!invitation || !usable || !emailMatches) {
         throw new DomainError('ERR_INVITATION_INVALID');

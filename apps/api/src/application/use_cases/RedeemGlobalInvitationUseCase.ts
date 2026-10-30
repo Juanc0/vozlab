@@ -83,12 +83,11 @@ export class RedeemGlobalInvitationUseCase {
       {
         issuer: input.issuer,
         subject: input.subject,
-        email: input.identityEmail,
-        emailVerified: input.identityEmailVerified,
         fullName: input.fullName,
         authorHash: generateAuthorHash(),
         // B14: the redeemed account gets its lookup alias from the identity
-        // email asserted by the IdP.
+        // email asserted by the IdP (in memory only — the tenant row stores
+        // no email since DEC-5 D5).
         handle: deriveHandle({
           email: input.identityEmail,
           subject: input.subject,

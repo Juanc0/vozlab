@@ -89,6 +89,12 @@ export class RedisOidcStateStore implements IOidcStateStore {
         nonce: parsed.nonce,
         codeVerifier: parsed.codeVerifier,
         redirectPath: parsed.redirectPath,
+        // The invitation token rides the state to the callback (D9); the
+        // reconstruction must not drop it or redemption silently dies.
+        invitationToken:
+          typeof parsed.invitationToken === 'string'
+            ? parsed.invitationToken
+            : undefined,
       };
     } catch {
       return null;

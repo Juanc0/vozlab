@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import type { WorkspaceRole } from '@vozlab/shared-types';
 import { IInvitationAdminRepository } from '../../domain/ports/IInvitationAdminRepository.js';
 import {
@@ -10,16 +10,12 @@ import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
+import { hashEmail, hashOpaqueToken } from '../../shared/auth/refreshToken.js';
 
 /** Short enough that a leaked link dies quickly, long enough to be usable. */
 export const INVITATION_TTL_MS = 72 * 60 * 60 * 1000;
 /** An invitation link is single-use. */
 export const INVITATION_MAX_USES = 1;
-
-/** Normalized hash used to bind an invitation to an email without storing a lookup key. */
-export function emailHashFor(email: string): string {
-  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
-}
 
 export interface CreateInvitationInput {
   actorUserId: string;
@@ -51,7 +47,12 @@ export class CreateInvitationUseCase {
     private readonly membershipAdminRepo: IMembershipAdminRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly userRepo: IUserRepository,
-    private readonly uow: IUnitOfWork
+    private readonly uow: IUnitOfWork,
+    /**
+     * DEC-4: the HMAC key for the peppered email hash, injected by the
+     * composition root (never read from the environment inside this layer).
+     */
+    private readonly emailPepper: string
   ) {}
 
   async execute(input: CreateInvitationInput): Promise<CreateInvitationResult> {
@@ -63,15 +64,17 @@ export class CreateInvitationUseCase {
       this.membershipRepo
     );
 
-    const email = input.email.trim().toLowerCase();
     const rawToken = randomBytes(32).toString('base64url');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const tokenHash = hashOpaqueToken(rawToken);
     const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+    // DEC-4: the invited address is bound as the peppered hash only — no
+    // cleartext email is persisted anywhere.
+    const emailHash = hashEmail(input.email, this.emailPepper);
 
     const invitation = await this.uow.runInTransaction(input.tid, async (tx) => {
       await this.invitationAdminRepo.revokePendingForEmail(
         input.workspaceId,
-        email,
+        emailHash,
         input.tid,
         tx
       );
@@ -79,8 +82,7 @@ export class CreateInvitationUseCase {
       const created = await this.invitationRepo.create(
         {
           workspaceId: input.workspaceId,
-          email,
-          emailHash: emailHashFor(email),
+          emailHash,
           role: input.role,
           tokenHash,
           expiresAt,

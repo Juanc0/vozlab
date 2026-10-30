@@ -124,12 +124,15 @@ export type NewTenantIdentityProvider = typeof tenantIdentityProviders.$inferIns
  * Global user index (D6, M2a) — the router DB is the cross-tenant identity
  * vault: one row per unique (issuer, subject) pair across all institutions.
  *
- * Since v5/v6 this row carries the identity profile (`email`, `full_name`,
- * `picture`) as the single source of truth for "who is this user", and the
- * IdP `subject` is stored RAW (not hashed). Workspace/role data remain in
- * the tenant DB. Plan 2 (identity-consolidation) will turn `email` into a
- * peppered hash — until then the PII here is plaintext by decision, not an
- * oversight.
+ * Since v5/v6 this row carries the identity profile as the single source of
+ * truth for "who is this user", and the IdP `subject` is stored RAW (not
+ * hashed). Workspace/role data remain in the tenant DB.
+ *
+ * DEC-4/DEC-5 D5: the vault stores the **hash** of the verified email —
+ * `HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)` — never the cleartext.
+ * Cross-IdP linking and invitation redemption compare hashes of the email
+ * the IdP just asserted; nothing in the platform can display or contact by
+ * email from the DB. No cleartext email lives in any table.
  */
 export const globalUsers = pgTable(
   'global_users',
@@ -137,9 +140,9 @@ export const globalUsers = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     issuer: varchar('issuer', { length: 512 }).notNull(),
     subject: varchar('subject', { length: 255 }).notNull(),
-    // v5: identity profile (PII) stored in router DB as the single source
+    // v5: identity profile stored in router DB as the single source
     // of truth for "who is this user". Workspace/role data remain in tenant DB.
-    email: varchar('email', { length: 255 }),
+    emailHash: varchar('email_hash', { length: 64 }),
     emailVerified: boolean('email_verified').default(false).notNull(),
     fullName: varchar('full_name', { length: 255 }),
     picture: varchar('picture', { length: 1024 }),
@@ -149,6 +152,9 @@ export const globalUsers = pgTable(
   },
   (table) => [
     uniqueIndex('uniq_global_users_issuer_subject').on(table.issuer, table.subject),
+    // Linking lookup key (DEC-4/DEC-5 D5): hash of the verified email the IdP
+    // asserted. Non-unique — the three pre-fold vault rows carry NULL.
+    index('idx_global_users_email_hash').on(table.emailHash),
   ]
 );
 

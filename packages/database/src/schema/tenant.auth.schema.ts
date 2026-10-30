@@ -38,7 +38,6 @@ export const users = authSchema.table(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    email: varchar('email', { length: 255 }).unique(),
     handle: varchar('handle', { length: 64 }).unique(),
     fullName: varchar('full_name', { length: 255 }),
     provider: varchar('provider', { length: 50 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'ANONYMOUS_EVENT'
@@ -193,6 +192,10 @@ export const workspaceJoinRequests = authSchema.table(
  * An admin creates an invitation with a random single-use token. Only the
  * SHA-256 hash is stored; the raw token is returned once. Re-sending
  * generates a new token and rotates the hash.
+ *
+ * DEC-4: the invited address is never stored in cleartext — `email_hash` is
+ * the peppered HMAC `HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)`. The
+ * OIDC callback compares the hash of the email the IdP just asserted.
  */
 export const invitations = authSchema.table(
   'invitations',
@@ -201,7 +204,6 @@ export const invitations = authSchema.table(
     workspaceId: uuid('workspace_id')
       .notNull()
       .references(() => workspaces.id, { onDelete: 'cascade' }),
-    email: varchar('email', { length: 255 }),
     emailHash: varchar('email_hash', { length: 64 }),
     role: varchar('role', { length: 30 }).default('MEMBER').notNull(),
     tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),

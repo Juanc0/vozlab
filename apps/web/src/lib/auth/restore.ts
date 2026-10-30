@@ -122,7 +122,6 @@ export async function loadMemberships(deps: SessionRestoreDeps): Promise<Session
   if (session.user === null) {
     session.setUser({
       id: me.id,
-      email: me.email,
       fullName: me.fullName,
       anonymousAlias: me.anonymousAlias,
       provider: me.provider,

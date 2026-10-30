@@ -27,9 +27,6 @@ const adminUserRepo = {
   async findByHandle() {
     return null;
   },
-  async findOrCreateOidcUser() {
-    return AUTH_USER;
-  },
   async findOrCreateByExternalIdentity() {
     return AUTH_USER;
   },

@@ -4,7 +4,7 @@ import type { DbTransaction } from './Transaction.js';
 /** A membership joined with the user it belongs to. */
 export interface AdminMembershipRecord {
   userId: string;
-  email: string | null;
+  handle: string | null;
   fullName: string | null;
   role: WorkspaceRole;
   status: string;

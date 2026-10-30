@@ -40,7 +40,6 @@ const WS_B = '44444444-4444-4444-8444-444444444444';
 
 const USER: AuthUserDto = {
   id: '55555555-5555-4555-8555-555555555555',
-  email: 'ada@example.edu',
   fullName: 'Ada Lovelace',
   anonymousAlias: null,
   provider: 'OIDC_INSTITUTIONAL',

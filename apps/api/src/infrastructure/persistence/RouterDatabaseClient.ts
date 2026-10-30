@@ -134,7 +134,7 @@ export class RouterDatabaseClient
 
       const now = new Date();
       const values = {
-        email: profile?.email ?? null,
+        emailHash: profile?.emailHash ?? null,
         emailVerified: profile?.emailVerified ?? false,
         fullName: profile?.fullName ?? null,
         picture: profile?.picture ?? null,
@@ -151,7 +151,7 @@ export class RouterDatabaseClient
           id: existing.id,
           issuer: existing.issuer,
           subject: existing.subject,
-          email: values.email,
+          emailHash: values.emailHash,
           emailVerified: values.emailVerified,
           fullName: values.fullName,
           picture: values.picture,
@@ -172,7 +172,7 @@ export class RouterDatabaseClient
           id: created.id,
           issuer: created.issuer,
           subject: created.subject,
-          email: created.email ?? null,
+          emailHash: created.emailHash ?? null,
           emailVerified: created.emailVerified,
           fullName: created.fullName ?? null,
           picture: created.picture ?? null,
@@ -201,7 +201,7 @@ export class RouterDatabaseClient
         id: raced.id,
         issuer: raced.issuer,
         subject: raced.subject,
-        email: raced.email ?? null,
+        emailHash: raced.emailHash ?? null,
         emailVerified: raced.emailVerified,
         fullName: raced.fullName ?? null,
         picture: raced.picture ?? null,
@@ -223,7 +223,7 @@ export class RouterDatabaseClient
       await this.db
         .update(globalUsers)
         .set({
-          email: profile.email ?? undefined,
+          emailHash: profile.emailHash ?? undefined,
           emailVerified: profile.emailVerified,
           fullName: profile.fullName ?? undefined,
           picture: profile.picture ?? undefined,
@@ -253,7 +253,7 @@ export class RouterDatabaseClient
         id: row.id,
         issuer: row.issuer,
         subject: row.subject,
-        email: row.email ?? null,
+        emailHash: row.emailHash ?? null,
         emailVerified: row.emailVerified,
         fullName: row.fullName ?? null,
         picture: row.picture ?? null,

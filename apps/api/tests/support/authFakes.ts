@@ -14,7 +14,6 @@ import type {
   AuthUser,
   IUserRepository,
   NewAnonymousUser,
-  NewOidcUser,
   UserWorkspace,
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
@@ -61,7 +60,6 @@ export const TENANT = {
 
 export const AUTH_USER: AuthUser = {
   id: USER_ID,
-  email: 'ada@example.edu',
   fullName: 'Ada Lovelace',
   provider: 'OIDC_INSTITUTIONAL',
   providerUserId: 'idp-sub-1',
@@ -104,7 +102,7 @@ export function makeGlobalUserRepository(): {
         id: 'global-id-1',
         issuer,
         subject,
-        email: profile?.email ?? null,
+        emailHash: profile?.emailHash ?? null,
         emailVerified: profile?.emailVerified ?? false,
         fullName: profile?.fullName ?? null,
         picture: profile?.picture ?? null,
@@ -120,7 +118,7 @@ export function makeGlobalUserRepository(): {
         id,
         issuer: 'https://idp.test',
         subject: 'idp-sub-1',
-        email: null,
+        emailHash: null,
         emailVerified: false,
         fullName: null,
         picture: null,
@@ -305,10 +303,6 @@ export function makeUserRepository(
     async findByHandle() {
       return user;
     },
-    async findOrCreateOidcUser(input, tid) {
-      oidcUpserts.push({ input, tid });
-      return user ?? AUTH_USER;
-    },
     async findOrCreateByExternalIdentity(input, tid) {
       oidcUpserts.push({ input, tid });
       return user ?? AUTH_USER;
@@ -318,7 +312,6 @@ export function makeUserRepository(
       return {
         ...AUTH_USER,
         id: '44444444-4444-4444-8444-444444444444',
-        email: null,
         fullName: null,
         provider: 'ANONYMOUS_EVENT',
         providerUserId: null,
@@ -461,7 +454,6 @@ export function makeInvitationRepository(seed?: {
       return {
         id: 'inv-1',
         workspaceId: input.workspaceId,
-        email: input.email ?? null,
         emailHash: input.emailHash ?? null,
         role: input.role,
         tokenHash: input.tokenHash,

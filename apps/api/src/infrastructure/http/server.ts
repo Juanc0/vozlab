@@ -319,6 +319,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     refreshTokenRepo,
     refreshTtlMs,
     redeemInvitationAtomicUseCase,
+    env.EMAIL_PEPPER,
     redeemGlobalInvitationUseCase,
     auditLog
   );
@@ -477,7 +478,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipAdminRepo,
     membershipRepo,
     userRepo,
-    uow
+    uow,
+    env.EMAIL_PEPPER
   );
   const listInvitationsUseCase = new ListInvitationsUseCase(
     invitationAdminRepo,

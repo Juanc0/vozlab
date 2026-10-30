@@ -27,7 +27,6 @@ function harness(): { client: ApiClient; fetchMock: ReturnType<typeof vi.fn> } {
     expiresAt: '2026-11-01T00:00:00.000Z',
     user: {
       id: 'user-1',
-      email: 'ada@example.edu',
       fullName: 'Ada Lovelace',
       anonymousAlias: null,
       provider: 'OIDC_INSTITUTIONAL',

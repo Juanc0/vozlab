@@ -52,7 +52,7 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No `tid` claim, or the caller is not a member of the declared `X-Workspace-ID` workspace. System agents skip the membership check. |
 | `ERR_AUTHORIZATION_FAILED` | 403 | Authenticated but not allowed: not the node/edge/post author, not the thread creator, not the proposal target maintainer, or not `MODERATOR`/`ADMIN` for auto-apply or class activation. |
 | `ERR_TENANT_NOT_PROVISIONED` | 403 | The JWT `tid`/identity claim has no router tenant row, the tenant has no `tenant_connections` row, or an event code points at a vanished tenant. |
-| `ERR_ACCOUNT_LINK_CONFLICT` | 409 | A verified email belongs to an `ANONYMOUS_EVENT` account, or a concurrent OIDC upsert conflicts. |
+| `ERR_ACCOUNT_LINK_CONFLICT` | 409 | A concurrent OIDC upsert lost the identity/handle race (DEC-4 removed the email-based link; the code now only marks concurrent-creation conflicts). |
 | `ERR_NODE_NOT_FOUND` | 404 | Missing, soft-deleted or foreign-workspace node: get/delete node, subgraph root, edge endpoint, proposal/vote target. |
 | `ERR_EDGE_NOT_FOUND` | 404 | Missing, soft-deleted or foreign-workspace edge: get/update/delete edge, proposal/vote target, or a vanished target when resolving a proposal. |
 | `ERR_PROPOSAL_NOT_FOUND` | 404 | Missing or foreign-workspace proposal: get, approve, reject, auto-apply, or vote target. |

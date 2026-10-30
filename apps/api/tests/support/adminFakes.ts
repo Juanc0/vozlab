@@ -61,7 +61,7 @@ export function membershipRecord(
   return {
     workspaceId: '11111111-1111-4111-8111-111111111111',
     userId: MEMBER_USER_ID,
-    email: 'member@example.edu',
+    handle: 'member-handle',
     fullName: 'Member',
     role: 'MEMBER',
     status: 'ACTIVE',
@@ -170,7 +170,7 @@ export function makeMembershipAdminRepository(
       members.set(key, {
         workspaceId: input.workspaceId,
         userId: input.userId,
-        email: current?.email ?? null,
+        handle: current?.handle ?? null,
         fullName: current?.fullName ?? null,
         role: input.role,
         status: 'ACTIVE',
@@ -213,18 +213,11 @@ export function makeTenantAdminRepository(users: TenantUserRecord[] = []): {
       const filtered = users.filter((user) => {
         if (!search) return true;
         return (
-          user.email?.toLowerCase().includes(search) ||
+          user.handle?.toLowerCase().includes(search) ||
           user.fullName?.toLowerCase().includes(search)
         );
       });
       return { users: filtered.slice(0, input.limit), nextCursor: null };
-    },
-    async findUserByEmail(email) {
-      return (
-        users.find(
-          (user) => user.email?.toLowerCase() === email.toLowerCase()
-        ) ?? null
-      );
     },
     async findUserById(userId) {
       return users.find((user) => user.id === userId) ?? null;
@@ -238,7 +231,7 @@ export function tenantUser(
 ): TenantUserRecord {
   return {
     id: MEMBER_USER_ID,
-    email: 'member@example.edu',
+    handle: 'member-handle',
     fullName: 'Member',
     provider: 'OIDC_INSTITUTIONAL',
     systemRole: 'USER',
@@ -294,7 +287,7 @@ export function makeJoinRequestRepository(
         .filter((row) => row.workspaceId === workspaceId && row.status === status)
         .map<JoinRequestWithUser>((row) => ({
           ...row,
-          email: 'member@example.edu',
+          handle: 'member-handle',
           fullName: 'Member',
         }));
     },
@@ -327,7 +320,6 @@ export function invitationRecord(overrides: Partial<Invitation> = {}): Invitatio
   return {
     id: 'inv-1',
     workspaceId: '11111111-1111-4111-8111-111111111111',
-    email: 'invitee@example.edu',
     emailHash: 'e'.repeat(64),
     role: 'MEMBER',
     tokenHash: 't'.repeat(64),
@@ -364,12 +356,12 @@ export function makeInvitationAdminRepository(
       row.revokedAt = NOW;
       return true;
     },
-    async revokePendingForEmail(workspaceId, email) {
+    async revokePendingForEmail(workspaceId, emailHash) {
       let count = 0;
       for (const row of invitations) {
         if (
           row.workspaceId === workspaceId &&
-          row.email?.toLowerCase() === email.toLowerCase() &&
+          row.emailHash === emailHash &&
           row.status === 'PENDING'
         ) {
           row.status = 'REVOKED';

@@ -93,7 +93,6 @@
   const displayName = $derived(
     session.user?.fullName ??
       session.user?.anonymousAlias ??
-      session.user?.email ??
       t('sidebar.signedInFallback')
   );
 

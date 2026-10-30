@@ -1,12 +1,15 @@
 /**
  * Port: the global-user registry in the router DB (D6, D8).
  *
- * Maps (issuer, subject) → global_user_id and holds the IdP profile
- * (email, name, picture). The profile is PII and lives only in the router
- * DB — tenant DBs reference `global_user_id`, never the profile.
+ * Maps (issuer, subject) → global_user_id and holds the IdP profile. Since
+ * DEC-4 the email is stored ONLY as a peppered hash
+ * (`HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)`, computed by the caller
+ * — the domain never reads the pepper). The profile is PII and lives only in
+ * the router DB — tenant DBs reference `global_user_id`, never the profile.
  */
 export interface GlobalUserProfile {
-  email?: string | null;
+  /** Peppered hash of the verified email (DEC-4). Never the cleartext. */
+  emailHash?: string | null;
   emailVerified?: boolean;
   fullName?: string | null;
   picture?: string | null;
@@ -16,7 +19,8 @@ export interface GlobalUser {
   id: string;
   issuer: string;
   subject: string;
-  email: string | null;
+  /** Peppered hash of the verified email (DEC-4); `null` when never asserted. */
+  emailHash: string | null;
   emailVerified: boolean;
   fullName: string | null;
   picture: string | null;

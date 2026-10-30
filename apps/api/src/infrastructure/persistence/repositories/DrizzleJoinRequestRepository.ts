@@ -116,7 +116,7 @@ export class DrizzleJoinRequestRepository implements IJoinRequestRepository {
     const rows = await db
       .select({
         request: workspaceJoinRequests,
-        email: users.email,
+        handle: users.handle,
         fullName: users.fullName,
       })
       .from(workspaceJoinRequests)
@@ -132,7 +132,7 @@ export class DrizzleJoinRequestRepository implements IJoinRequestRepository {
 
     return rows.map((row) => ({
       ...toRecord(row.request),
-      email: row.email,
+      handle: row.handle,
       fullName: row.fullName,
     }));
   }

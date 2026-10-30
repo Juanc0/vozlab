@@ -47,7 +47,7 @@ export function toAdminWorkspaceDto(
 export function toAdminUserDto(user: TenantUserRecord): AdminUserDto {
   return {
     id: user.id,
-    email: user.email,
+    handle: user.handle,
     fullName: user.fullName,
     systemRole: user.systemRole,
     provider: user.provider,
@@ -64,7 +64,7 @@ export function toAdminUserDto(user: TenantUserRecord): AdminUserDto {
 export function toAdminMemberDto(member: AdminMembershipRecord): AdminMemberDto {
   return {
     userId: member.userId,
-    email: member.email,
+    handle: member.handle,
     fullName: member.fullName,
     role: member.role,
     status: member.status,
@@ -77,7 +77,7 @@ export function toJoinRequestDto(request: JoinRequestWithUser): JoinRequestDto {
     id: request.id,
     workspaceId: request.workspaceId,
     userId: request.userId,
-    email: request.email,
+    handle: request.handle,
     fullName: request.fullName,
     status: request.status,
     message: request.message,
@@ -119,7 +119,6 @@ export function toWorkspaceInvitationDto(
   return {
     id: invitation.id,
     workspaceId: invitation.workspaceId,
-    email: invitation.email,
     role: invitation.role,
     status: invitation.status,
     expiresAt: invitation.expiresAt.toISOString(),

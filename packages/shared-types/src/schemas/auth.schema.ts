@@ -64,7 +64,6 @@ export type EventJoinInput = z.infer<typeof EventJoinSchema>;
 /** Public identity of the authenticated caller (never includes PII of others). */
 export interface AuthUserDto {
   id: string;
-  email: string | null;
   fullName: string | null;
   /** Alias shown for event/anonymous users; `null` for institutional users. */
   anonymousAlias: string | null;

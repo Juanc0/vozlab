@@ -23,13 +23,14 @@ export interface IInvitationAdminRepository {
   ): Promise<boolean>;
 
   /**
-   * Revoke every PENDING invitation for an email in a workspace. Creating a
-   * new invitation invalidates the previous link, so a leaked old link does
-   * not survive a re-send.
+   * Revoke every PENDING invitation for an email hash in a workspace.
+   * Creating a new invitation invalidates the previous link, so a leaked old
+   * link does not survive a re-send. The caller passes the peppered hash
+   * (`hashEmail(email, EMAIL_PEPPER)`, DEC-4) — never the cleartext.
    */
   revokePendingForEmail(
     workspaceId: string,
-    email: string,
+    emailHash: string,
     tid: string,
     tx?: DbTransaction
   ): Promise<number>;

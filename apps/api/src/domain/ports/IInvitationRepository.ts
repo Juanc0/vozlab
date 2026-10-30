@@ -6,7 +6,11 @@ import type { DbTransaction } from './Transaction.js';
 export interface Invitation {
   id: string;
   workspaceId: string;
-  email: string | null;
+  /**
+   * Peppered hash of the invited address (DEC-4):
+   * `HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)`. The cleartext email is
+   * never stored.
+   */
   emailHash: string | null;
   role: string;
   tokenHash: string;
@@ -40,7 +44,6 @@ export interface IInvitationRepository {
   create(
     input: {
       workspaceId: string;
-      email?: string | null;
       emailHash?: string | null;
       role: string;
       tokenHash: string;

@@ -117,7 +117,8 @@ export interface AdminUserMembershipDto {
 /** A tenant user, with the memberships the screen needs to explain them. */
 export interface AdminUserDto {
   id: string;
-  email: string | null;
+  /** Lookup alias (DEC-4: the tenant stores no email). */
+  handle: string | null;
   fullName: string | null;
   systemRole: string;
   provider: string;
@@ -143,7 +144,8 @@ export interface AdminWorkspaceDto {
 /** A member of a workspace. */
 export interface AdminMemberDto {
   userId: string;
-  email: string | null;
+  /** Lookup alias (DEC-4: the tenant stores no email). */
+  handle: string | null;
   fullName: string | null;
   role: z.infer<typeof WorkspaceRoleSchema>;
   status: string;
@@ -155,7 +157,8 @@ export interface JoinRequestDto {
   id: string;
   workspaceId: string;
   userId: string;
-  email: string | null;
+  /** Lookup alias of the requester (DEC-4: no email bytes on the wire). */
+  handle: string | null;
   fullName: string | null;
   status: string;
   message: string | null;
@@ -189,7 +192,6 @@ export interface DiscoveredWorkspaceDto {
 export interface WorkspaceInvitationDto {
   id: string;
   workspaceId: string;
-  email: string | null;
   role: string;
   status: string;
   expiresAt: string;

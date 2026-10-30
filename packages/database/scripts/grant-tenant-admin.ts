@@ -18,17 +18,19 @@
  *
  * Usage
  * -----
- *   pnpm --filter @vozlab/database db:grant-tenant-admin -- --email dev-maintainer@example.edu
+ *   pnpm --filter @vozlab/database db:grant-tenant-admin -- --handle dev-maintainer
  *   pnpm --filter @vozlab/database db:grant-tenant-admin -- --as maintainer
- *   pnpm --filter @vozlab/database db:grant-tenant-admin -- --email x@y.z --revoke
+ *   pnpm --filter @vozlab/database db:grant-tenant-admin -- --handle x --revoke
  *
- * `--as` resolves one of the fixed dev identities, which is the usual local
- * case. Re-running is a no-op and prints the current state.
+ * DEC-4/DEC-5 D5: the tenant DB stores no email (clear or hashed) since the
+ * email-eradication fold, so the person is addressed by `auth.users.handle`.
+ * `--as` resolves one of the fixed dev identities to its handle, which is
+ * the usual local case. Re-running is a no-op and prints the current state.
  *
  * See docs/ops/runbook-ops.md and ADR-0041.
  */
 import { Pool } from 'pg';
-import { DEV_IDENTITIES, type DevIdentityName } from './dev-identities.js';
+import { DEV_HANDLES, DEV_IDENTITIES, type DevIdentityName } from './dev-identities.js';
 
 const TENANT_CONFIG = {
   host: process.env.TENANT_DB_HOST ?? 'localhost',
@@ -39,12 +41,12 @@ const TENANT_CONFIG = {
 };
 
 interface Options {
-  email: string;
+  handle: string;
   revoke: boolean;
 }
 
 function parseArgs(argv: string[]): Options {
-  let email: string | undefined;
+  let handle: string | undefined;
   let as: string | undefined;
   let revoke = false;
 
@@ -52,11 +54,11 @@ function parseArgs(argv: string[]): Options {
     const arg = argv[i];
     if (arg === '--revoke') {
       revoke = true;
-    } else if (arg === '--email') {
-      email = argv[i + 1];
+    } else if (arg === '--handle') {
+      handle = argv[i + 1];
       i += 1;
-    } else if (arg.startsWith('--email=')) {
-      email = arg.slice('--email='.length);
+    } else if (arg.startsWith('--handle=')) {
+      handle = arg.slice('--handle='.length);
     } else if (arg === '--as') {
       as = argv[i + 1];
       i += 1;
@@ -67,22 +69,27 @@ function parseArgs(argv: string[]): Options {
     }
   }
 
-  if (email === undefined && as !== undefined) {
+  if (handle === undefined && as !== undefined) {
     if (!(as in DEV_IDENTITIES)) {
       throw new Error(
         `Unknown dev identity "${as}". Known: ${Object.keys(DEV_IDENTITIES).join(', ')}`
       );
     }
-    email = DEV_IDENTITIES[as as DevIdentityName].email;
+    handle = DEV_HANDLES[as as DevIdentityName];
+    if (handle === undefined) {
+      throw new Error(
+        `Dev identity "${as}" carries no handle (agents act by token). Use --handle.`
+      );
+    }
   }
 
-  if (email === undefined || email.trim() === '') {
+  if (handle === undefined || handle.trim() === '') {
     throw new Error(
-      'Missing --email or --as. Example: --email dev-maintainer@example.edu'
+      'Missing --handle or --as. Example: --handle dev-maintainer'
     );
   }
 
-  return { email: email.trim().toLowerCase(), revoke };
+  return { handle: handle.trim().toLowerCase(), revoke };
 }
 
 async function run(): Promise<void> {
@@ -93,26 +100,27 @@ async function run(): Promise<void> {
   try {
     const { rows } = await pool.query<{
       id: string;
-      email: string;
+      handle: string | null;
+      full_name: string | null;
       system_role: string;
     }>(
       `UPDATE auth.users
           SET system_role = $1
-        WHERE lower(email) = $2
-        RETURNING id, email, system_role`,
-      [role, options.email]
+        WHERE handle = $2
+        RETURNING id, handle, full_name, system_role`,
+      [role, options.handle]
     );
 
     if (rows.length === 0) {
       throw new Error(
-        `No user with email "${options.email}" in "${TENANT_CONFIG.database}". ` +
+        `No user with handle "${options.handle}" in "${TENANT_CONFIG.database}". ` +
           'The person must sign in once before being made a tenant administrator.'
       );
     }
 
     for (const row of rows) {
       console.log(
-        `  ${row.email} -> ${row.system_role} (auth.users.id ${row.id})`
+        `  ${row.handle ?? row.id} (${row.full_name ?? '—'}) -> ${row.system_role} (auth.users.id ${row.id})`
       );
     }
     console.log(

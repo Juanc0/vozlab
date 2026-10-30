@@ -4,6 +4,7 @@ import { RedeemInvitationAtomicUseCase } from '../../src/application/use_cases/R
 import { deriveHandle } from '../../src/shared/auth/deriveHandle.js';
 import { RedeemGlobalInvitationUseCase } from '../../src/application/use_cases/RedeemGlobalInvitationUseCase.js';
 import {
+  hashEmail,
   hashOpaqueToken,
   parseRefreshToken,
 } from '../../src/shared/auth/refreshToken.js';
@@ -32,6 +33,7 @@ import {
 } from '../support/authFakes.js';
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const PEPPER = 'unit-test-pepper-at-least-32-characters!!';
 
 function setup(
   overrides: {
@@ -92,6 +94,7 @@ function setup(
     refresh.refreshRepo,
     REFRESH_TTL_MS,
     redeemInvitation,
+    PEPPER,
     overrides.withRedeem === false ? undefined : redeem,
     overrides.audit
   );
@@ -133,7 +136,6 @@ describe('CompleteOidcLoginUseCase', () => {
     expect(input).toMatchObject({
       issuer: 'https://idp.test',
       subject: 'idp-sub-1',
-      email: 'ada@example.edu',
       fullName: 'Ada Lovelace',
       // B14: with no `preferred_username` asserted, the email local-part
       // is the derived search alias.
@@ -197,6 +199,17 @@ describe('CompleteOidcLoginUseCase', () => {
       await useCase.execute({ code: 'auth-code', state: 'state-1' });
 
       expect(globalUser.profiles[0]?.picture).toHaveLength(1024);
+    });
+
+    it('carries the peppered hash of the asserted email, never the cleartext (DEC-4)', async () => {
+      const { useCase, globalUser } = setup();
+
+      await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(globalUser.profiles[0]?.emailHash).toBe(
+        hashEmail(OIDC_IDENTITY.email as string, PEPPER)
+      );
+      expect(globalUser.profiles[0]).not.toHaveProperty('email');
     });
   });
 
@@ -348,8 +361,7 @@ describe('CompleteOidcLoginUseCase', () => {
       return {
         id: 'inv-local-1',
         workspaceId: WORKSPACE_ID,
-        email: 'ada@example.edu',
-        emailHash: 'hash',
+        emailHash: hashEmail(OIDC_IDENTITY.email as string, PEPPER),
         role: 'MEMBER',
         tokenHash: 'token-hash',
         expiresAt: new Date(Date.now() + 60_000),
@@ -409,6 +421,36 @@ describe('CompleteOidcLoginUseCase', () => {
         useCase.execute({ code: 'auth-code', state: 'state-1' })
       ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
       expect(invitation.calls).toContain('accept:inv-local-1');
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toEqual([]);
+    });
+
+    it('redeems when the IdP email differs from the bound hash only in case/whitespace (DEC-4 normalization)', async () => {
+      // The invitation bound the peppered hash of `ada@example.edu`; the
+      // IdP asserts the same address with different case and padding. The
+      // hash equality must bridge the difference.
+      const { useCase, membership } = setup({
+        identity: { ...OIDC_IDENTITY, email: '  ADA@Example.EDU ' },
+        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+        invitationSeed: { byTokenHash: localInvitation() },
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(membership.added).toHaveLength(1);
+    });
+
+    it('fails the login when the identity email hashes differently than the bound invitation', async () => {
+      const { useCase, membership, refresh } = setup({
+        identity: { ...OIDC_IDENTITY, email: 'mallory@example.edu' },
+        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+        invitationSeed: { byTokenHash: localInvitation() },
+      });
+
+      await expect(
+        useCase.execute({ code: 'auth-code', state: 'state-1' })
+      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
       expect(membership.added).toEqual([]);
       expect(refresh.creates).toEqual([]);
     });

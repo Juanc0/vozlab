@@ -34,7 +34,6 @@ interface OidcCallbackQuery {
 function toAuthUserDto(user: AuthUser): AuthUserDto {
   return {
     id: user.id,
-    email: user.email,
     fullName: user.fullName,
     anonymousAlias: user.anonymousAlias,
     provider: user.provider,

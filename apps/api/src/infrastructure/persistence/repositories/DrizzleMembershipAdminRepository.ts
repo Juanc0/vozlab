@@ -20,7 +20,7 @@ type Tx = Parameters<
 
 type MemberRow = {
   userId: string;
-  email: string | null;
+  handle: string | null;
   fullName: string | null;
   role: string;
   status: string;
@@ -30,7 +30,7 @@ type MemberRow = {
 function toMember(row: MemberRow): AdminMembershipRecord {
   return {
     userId: row.userId,
-    email: row.email,
+    handle: row.handle,
     fullName: row.fullName,
     role: row.role as WorkspaceRole,
     status: row.status,
@@ -57,7 +57,7 @@ export class DrizzleMembershipAdminRepository
     const [row] = await db
       .select({
         userId: workspaceMemberships.userId,
-        email: users.email,
+        handle: users.handle,
         fullName: users.fullName,
         role: workspaceMemberships.role,
         status: workspaceMemberships.status,
@@ -83,7 +83,7 @@ export class DrizzleMembershipAdminRepository
     const rows = await db
       .select({
         userId: workspaceMemberships.userId,
-        email: users.email,
+        handle: users.handle,
         fullName: users.fullName,
         role: workspaceMemberships.role,
         status: workspaceMemberships.status,
@@ -92,7 +92,7 @@ export class DrizzleMembershipAdminRepository
       .from(workspaceMemberships)
       .innerJoin(users, eq(users.id, workspaceMemberships.userId))
       .where(eq(workspaceMemberships.workspaceId, workspaceId))
-      .orderBy(users.fullName, users.email);
+      .orderBy(users.fullName, users.handle);
     return rows.map(toMember);
   }
 

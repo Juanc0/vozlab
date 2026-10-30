@@ -4,8 +4,8 @@ import {
   CreateInvitationUseCase,
   INVITATION_MAX_USES,
   INVITATION_TTL_MS,
-  emailHashFor,
 } from '../../src/application/use_cases/CreateInvitationUseCase.js';
+import { hashEmail } from '../../src/shared/auth/refreshToken.js';
 import { ListInvitationsUseCase } from '../../src/application/use_cases/ListInvitationsUseCase.js';
 import { RevokeInvitationUseCase } from '../../src/application/use_cases/RevokeInvitationUseCase.js';
 import { AUTH_USER, TENANT_ID, USER_ID } from '../support/authFakes.js';
@@ -19,19 +19,20 @@ import {
   workspaceRecord,
 } from '../support/adminFakes.js';
 
+const PEPPER = 'unit-test-pepper-at-least-32-characters!!';
+
 function setup(initial = [invitationRecord()]) {
   const invitations = makeInvitationAdminRepository(initial);
   const membershipAdmin = makeMembershipAdminRepository();
   const workspace = workspaceRecord();
   const workspaces = makeWorkspaceRepository([workspace]);
-  const created: Array<{ workspaceId: string; tokenHash: string; email?: string | null }> = [];
+  const created: Array<{ workspaceId: string; tokenHash: string; emailHash?: string | null }> = [];
   const invitationRepo = {
     async create(input: never) {
       created.push(input as never);
       const row = input as {
         workspaceId: string;
         tokenHash: string;
-        email?: string | null;
         emailHash?: string | null;
         maxUses?: number | null;
         expiresAt: Date;
@@ -40,7 +41,6 @@ function setup(initial = [invitationRecord()]) {
         id: `inv-${created.length + 10}`,
         workspaceId: row.workspaceId,
         tokenHash: row.tokenHash,
-        email: row.email ?? null,
         emailHash: row.emailHash ?? null,
         maxUses: row.maxUses ?? null,
         expiresAt: row.expiresAt,
@@ -70,7 +70,8 @@ function setup(initial = [invitationRecord()]) {
       membershipAdmin.repo,
       membershipRepo,
       userRepo as never,
-      uow
+      uow,
+      PEPPER
     ),
     list: new ListInvitationsUseCase(
       invitations.repo,
@@ -102,17 +103,20 @@ describe('CreateInvitationUseCase', () => {
     expect(invitation.tokenHash).toBe(
       createHash('sha256').update(token).digest('hex')
     );
-    expect(invitation.email).toBe('invitee@example.edu');
     expect(invitation.maxUses).toBe(INVITATION_MAX_USES);
     const ttl = invitation.expiresAt.getTime() - Date.now();
     expect(ttl).toBeGreaterThan(INVITATION_TTL_MS - 5_000);
     expect(ttl).toBeLessThanOrEqual(INVITATION_TTL_MS);
-    expect(ctx.created[0]?.email).toBe('invitee@example.edu');
+    // DEC-4: no cleartext email anywhere in the persisted shape.
+    expect(ctx.created[0]).not.toHaveProperty('email');
   });
 
-  it('revokes the previous pending invitation for the same email', async () => {
+  it('revokes the previous pending invitation for the same email hash', async () => {
     const ctx = setup([
-      invitationRecord({ id: 'old', email: 'invitee@example.edu' }),
+      invitationRecord({
+        id: 'old',
+        emailHash: hashEmail('  Invitee@Example.EDU ', PEPPER),
+      }),
     ]);
 
     await ctx.create.execute({
@@ -127,7 +131,7 @@ describe('CreateInvitationUseCase', () => {
     expect(old?.status).toBe('REVOKED');
   });
 
-  it('binds the invitation to a normalized email hash', async () => {
+  it('binds the invitation to the peppered normalized email hash', async () => {
     const ctx = setup([]);
 
     const { invitation } = await ctx.create.execute({
@@ -138,7 +142,11 @@ describe('CreateInvitationUseCase', () => {
       role: 'MEMBER',
     });
 
-    expect(invitation.emailHash).toBe(emailHashFor('invitee@example.edu'));
+    // The hash rule is trim+lower, then HMAC with the pepper (DEC-4): the
+    // same address written differently binds to the same hash.
+    expect(invitation.emailHash).toBe(
+      hashEmail('invitee@example.edu', PEPPER)
+    );
   });
 });
 

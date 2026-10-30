@@ -57,6 +57,7 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0042](ADR-0042-cross-tenant-identity-and-explicit-tenant.md) | Cross-tenant identity and explicit tenant selection | proposed | Global identity in the router with explicit tenant selection at login. |
 | [0043](ADR-0043-production-topology-caddy-t2.md) | Production topology is T2 — Caddy on a single host, three origins | Accepted | `app.`/`api.`/`auth.` mirror the zrok demo; T3 (single origin) rejected; T1 stays a DNS swap. Supersedes 0039's tunnel exposure for production. |
 | [0044](ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md) | Identity vocabulary coherence (`global_user_*`) and migration baseline collapse | Accepted | The half-renamed identity family is fully renamed (wire bytes and the stored `'global_identity'` discriminator untouched); 28 folds collapse to one baseline per DB; old volumes are reset, not migrated. |
+| [0045](ADR-0045-credential-consolidation-and-peppered-email.md) | Credential consolidation and peppered email hashes | Accepted (email section) | No cleartext email in any table: `global_users.email_hash` (peppered HMAC), `users.email` dropped, `invitations.email` dropped; `EMAIL_PEPPER` required; admin search and DTOs ride on `handle`/`full_name`. |
 
 ## How to add an ADR
 

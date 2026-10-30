@@ -352,13 +352,13 @@
         <h3>{t('admin.members')}</h3>
         <ul class="space-y-1">
           {#each Object.values(members.reduce((acc, m) => {
-            if (!acc[m.userId]) acc[m.userId] = { userId: m.userId, email: m.email, roles: [], status: m.status };
+            if (!acc[m.userId]) acc[m.userId] = { userId: m.userId, handle: m.handle, fullName: m.fullName, roles: [], status: m.status };
             acc[m.userId].roles.push(m.role);
             return acc;
-          }, {} as Record<string, { userId: string; email: string | null; roles: string[]; status: string }>)) as g (g.userId)}
+          }, {} as Record<string, { userId: string; handle: string | null; fullName: string | null; roles: string[]; status: string }>)) as g (g.userId)}
             <li class="flex flex-col gap-1 border-b border-rule py-1">
               <div class="flex items-center justify-between gap-2">
-                <span>{g.email ?? g.userId} ({g.status})</span>
+                <span>{g.fullName ?? g.handle ?? g.userId} ({g.status})</span>
                 <span class="flex gap-1">
                   <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.suspendMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.suspend')}</button>
                   <button class="btn btn-quiet text-small" onclick={() => selectedId && admin.removeMember(api, selectedId, g.userId).then(loadMembers)}>{t('admin.remove')}</button>

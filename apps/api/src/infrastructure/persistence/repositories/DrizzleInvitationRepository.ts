@@ -12,7 +12,6 @@ function toInvitation(row: typeof invitations.$inferSelect): Invitation {
   return {
     id: row.id,
     workspaceId: row.workspaceId,
-    email: row.email,
     emailHash: row.emailHash,
     role: row.role,
     tokenHash: row.tokenHash,
@@ -77,7 +76,6 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
   async create(
     input: {
       workspaceId: string;
-      email?: string | null;
       emailHash?: string | null;
       role: string;
       tokenHash: string;
@@ -93,7 +91,6 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
       .insert(invitations)
       .values({
         workspaceId: input.workspaceId,
-        email: input.email ?? null,
         emailHash: input.emailHash ?? null,
         role: input.role,
         tokenHash: input.tokenHash,

@@ -8,6 +8,13 @@
       "when": 1793343442104,
       "tag": "0000_cynical_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793396070013,
+      "tag": "0001_rich_firestar",
+      "breakpoints": true
     }
   ]
 }

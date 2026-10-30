@@ -34,7 +34,6 @@ refresh and event join share a per-IP rate limit; logout is Bearer-protected.
   "expiresAt": "2026-10-19T12:15:00.000Z",
   "user": {
     "id": "uuid",
-    "email": "ada@example.edu",
     "fullName": "Ada Lovelace",
     "anonymousAlias": null,
     "provider": "OIDC_INSTITUTIONAL",

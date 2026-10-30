@@ -58,16 +58,16 @@ export class SelectTenantUseCase {
       {
         issuer: globalUser.issuer,
         subject: globalUser.subject,
-        email: globalUser.email,
-        emailVerified: globalUser.emailVerified,
         fullName: globalUser.fullName,
         authorHash: generateAuthorHash(),
         // B14: this is where a multi-tenant login finally touches the
         // tenant DB — the handle repair of the JIT row (rows created before
         // the rule existed, or created through the selector path) happens
-        // here. The router profile has no `preferred_username`, so the
-        // email's local-part is the deterministic source.
-        handle: deriveHandle({ email: globalUser.email, subject: globalUser.subject }),
+        // here. DEC-4/DEC-5 D5: the vault keeps no email, only its peppered
+        // hash, so the deterministic source here is the stable subject
+        // (the full login path already derived the alias from the IdP
+        // profile when it created the row).
+        handle: deriveHandle({ email: null, subject: globalUser.subject }),
         globalUserId: globalUser.id,
       },
       tenant.id

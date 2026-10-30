@@ -6,7 +6,6 @@ import {
   AuthUser,
   IUserRepository,
   NewAnonymousUser,
-  NewOidcUser,
   NewExternalIdentityInput,
   UserWorkspace,
 } from '../../../domain/ports/IUserRepository.js';
@@ -26,7 +25,6 @@ type UserRow = typeof users.$inferSelect;
 function toAuthUser(row: UserRow): AuthUser {
   return {
     id: row.id,
-    email: row.email,
     fullName: row.fullName,
     provider: row.provider as AuthProvider,
     providerUserId: row.providerUserId,
@@ -49,9 +47,10 @@ function isUniqueViolation(error: unknown): boolean {
 /**
  * Drizzle adapter for `auth.users` and the workspace list.
  *
- * The OIDC upsert links an existing row by verified email when the IdP subject
- * changes (standard account-linking behaviour). It never links an
- * `ANONYMOUS_EVENT` row: those users have no email and must not be taken over
+ * DEC-5 D5: the tenant row stores no email at all. The identity key is
+ * `external_identities(issuer, subject)`; account linking by verified email
+ * lives in the router vault (`global_users.email_hash`), never here. It
+ * never links an `ANONYMOUS_EVENT` row: those users must not be taken over
  * by an institutional login.
  */
 export class DrizzleUserRepository implements IUserRepository {
@@ -87,112 +86,6 @@ export class DrizzleUserRepository implements IUserRepository {
       return row ? toAuthUser(row) : null;
     } catch (error) {
       log.error({ err: error, handle }, 'failed to find auth user by handle');
-      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-    }
-  }
-
-  async findOrCreateOidcUser(
-    input: NewOidcUser,
-    tid: string
-  ): Promise<AuthUser> {
-    const db = await this.poolManager.getDb(tid);
-
-    try {
-      return await db.transaction(async (tx) => {
-        const [byProvider] = await tx
-          .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.provider, 'OIDC_INSTITUTIONAL'),
-              eq(users.providerUserId, input.providerUserId)
-            )
-          )
-          .limit(1);
-
-        if (byProvider) {
-          const [updated] = await tx
-            .update(users)
-            .set({
-              email: input.email ?? byProvider.email,
-              fullName: input.fullName ?? byProvider.fullName,
-            })
-            .where(eq(users.id, byProvider.id))
-            .returning();
-          return toAuthUser(updated ?? byProvider);
-        }
-
-        if (input.email && input.emailVerified === true) {
-          const [byEmail] = await tx
-            .select()
-            .from(users)
-            .where(eq(users.email, input.email))
-            .limit(1);
-
-          if (byEmail) {
-            if (byEmail.provider !== 'OIDC_INSTITUTIONAL') {
-              throw new DomainError(
-                'ERR_ACCOUNT_LINK_CONFLICT',
-                'email belongs to a non-OIDC account'
-              );
-            }
-            // Verified institutional email: link the new IdP subject.
-            const [linked] = await tx
-              .update(users)
-              .set({
-                providerUserId: input.providerUserId,
-                fullName: input.fullName ?? byEmail.fullName,
-              })
-              .where(eq(users.id, byEmail.id))
-              .returning();
-            return toAuthUser(linked ?? byEmail);
-          }
-        }
-
-        const [created] = await tx
-          .insert(users)
-          .values({
-            provider: 'OIDC_INSTITUTIONAL',
-            providerUserId: input.providerUserId,
-            email: input.email,
-            fullName: input.fullName,
-            authorHash: input.authorHash,
-            systemRole: 'USER',
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        if (created) return toAuthUser(created);
-
-        // Lost a concurrent insert race: re-read the winner.
-        const [raced] = await tx
-          .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.provider, 'OIDC_INSTITUTIONAL'),
-              eq(users.providerUserId, input.providerUserId)
-            )
-          )
-          .limit(1);
-        if (raced) return toAuthUser(raced);
-
-        throw new DomainError(
-          'ERR_ACCOUNT_LINK_CONFLICT',
-          'concurrent account creation conflict'
-        );
-      });
-    } catch (error) {
-      if (
-        error instanceof DomainError ||
-        error instanceof InfrastructureError
-      ) {
-        throw error;
-      }
-      if (isUniqueViolation(error)) {
-        throw new DomainError('ERR_ACCOUNT_LINK_CONFLICT');
-      }
-      log.error({ err: error }, 'failed to upsert OIDC user');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
@@ -251,7 +144,6 @@ export class DrizzleUserRepository implements IUserRepository {
           const [updated] = await tx
             .update(users)
             .set({
-              email: input.email ?? undefined,
               fullName: input.fullName ?? undefined,
               handle: sql`COALESCE(${users.handle}, ${freeHandle})`,
             })
@@ -271,33 +163,16 @@ export class DrizzleUserRepository implements IUserRepository {
           return toAuthUser(user!);
         }
 
-        // 2. If email belongs to another account, conflict (no reassignment).
-        if (input.email && input.emailVerified === true) {
-          const [byEmail] = await tx
-            .select()
-            .from(users)
-            .where(eq(users.email, input.email))
-            .limit(1);
-
-          if (byEmail) {
-            throw new DomainError(
-              'ERR_ACCOUNT_LINK_CONFLICT',
-              'email belongs to a different identity'
-            );
-          }
-        }
-
-        // 3. Create new user + external_identity row. The handle is the
+        // 2. Create new user + external_identity row. The handle is the
         // admin's direct-add alias (B14); a collision with another account's
         // handle is tolerated by leaving the row NULL rather than failing
-        // the login — the identity key is (provider, providerUserId).
+        // the login — the identity key is (issuer, subject).
         const freeHandle = await this.freeHandle(tx, input.handle);
         const [created] = await tx
           .insert(users)
           .values({
             provider: 'OIDC_INSTITUTIONAL',
             providerUserId: input.subject,
-            email: input.email,
             fullName: input.fullName,
             handle: freeHandle,
             authorHash: input.authorHash,
@@ -349,7 +224,6 @@ export class DrizzleUserRepository implements IUserRepository {
         .values({
           provider: 'ANONYMOUS_EVENT',
           providerUserId: null,
-          email: null,
           fullName: null,
           authorHash: input.authorHash,
           anonymousAlias: input.alias,

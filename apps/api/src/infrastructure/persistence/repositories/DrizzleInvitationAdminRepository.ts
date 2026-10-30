@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { invitations } from '@vozlab/database';
 import { IInvitationAdminRepository } from '../../../domain/ports/IInvitationAdminRepository.js';
 import { Invitation } from '../../../domain/ports/IInvitationRepository.js';
@@ -13,7 +13,6 @@ function toInvitation(row: typeof invitations.$inferSelect): Invitation {
   return {
     id: row.id,
     workspaceId: row.workspaceId,
-    email: row.email,
     emailHash: row.emailHash,
     role: row.role,
     tokenHash: row.tokenHash,
@@ -78,7 +77,7 @@ export class DrizzleInvitationAdminRepository
 
   async revokePendingForEmail(
     workspaceId: string,
-    email: string,
+    emailHash: string,
     tid: string,
     tx?: DbTransaction
   ): Promise<number> {
@@ -90,7 +89,7 @@ export class DrizzleInvitationAdminRepository
         and(
           eq(invitations.workspaceId, workspaceId),
           eq(invitations.status, 'PENDING'),
-          sql`lower(${invitations.email}) = ${email.trim().toLowerCase()}`
+          eq(invitations.emailHash, emailHash)
         )
       )
       .returning({ id: invitations.id });

@@ -15,7 +15,7 @@ export interface JoinRequestRecord {
 
 /** Inbox row: the request joined with its author. */
 export interface JoinRequestWithUser extends JoinRequestRecord {
-  email: string | null;
+  handle: string | null;
   fullName: string | null;
 }
 

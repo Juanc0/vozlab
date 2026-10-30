@@ -37,9 +37,9 @@ function setup(
   } as never;
   const membershipAdmin = makeMembershipAdminRepository(members);
   const tenantAdmin = makeTenantAdminRepository([
-    tenantUser({ id: MEMBER_USER_ID, email: 'member@example.edu' }),
-    tenantUser({ id: OTHER_ADMIN_ID, email: 'other@example.edu' }),
-    tenantUser({ id: NEW_USER_ID, email: 'newcomer@example.edu' }),
+    tenantUser({ id: MEMBER_USER_ID, handle: 'member-handle' }),
+    tenantUser({ id: OTHER_ADMIN_ID, handle: 'other-handle' }),
+    tenantUser({ id: NEW_USER_ID, handle: 'newcomer-handle' }),
   ]);
   const routerDb = {
     async findGlobalUserTenantLink(globalUserId: string, _tid: string) {

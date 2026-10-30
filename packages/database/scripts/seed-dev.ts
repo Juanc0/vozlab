@@ -78,6 +78,7 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { createHash } from 'node:crypto';
+import { emailHashPeppered, requireEmailPepper } from './email-hash.js';
 import {
   createRouterDrizzle,
   tenants,
@@ -226,7 +227,8 @@ const DEMO_JOIN_CODES = [
  * Sample invitations (B10) for `community` and `general`: one PENDING — its
  * raw token opens `/login?invitation=…` — and one EXPIRED so the hygiene
  * sweep (v6/TASK-09) has something real to report. The hashes mirror
- * `CreateInvitationUseCase`: sha256 of the token and of the normalized email.
+ * `CreateInvitationUseCase`: sha256 of the token and the PEPPERED hash of
+ * the normalized email (DEC-4 — no cleartext email row exists anymore).
  */
 const INVITE_PENDING_RAW = 'dev-community-invite-openhouse-2026';
 const DEMO_INVITATIONS = [
@@ -503,7 +505,6 @@ async function seed(): Promise<void> {
             providerUserId: identity.providerUserId,
             authorHash: identity.authorHash,
             fullName: identity.fullName,
-            email: identity.email,
             handle: DEV_HANDLES[name] ?? null,
             systemRole: identity.systemRole,
           };
@@ -514,7 +515,6 @@ async function seed(): Promise<void> {
         // The base fields of a dev identity are canonical: re-seeding heals
         // a half-updated row (e.g. an identity seeded before `handle`).
         set: {
-          email: sql`excluded.email`,
           fullName: sql`excluded.full_name`,
           handle: sql`excluded.handle`,
           systemRole: sql`excluded.system_role`,
@@ -549,16 +549,15 @@ async function seed(): Promise<void> {
     // Sample invitations (B10) for `community` and `general`: one PENDING —
     // its raw token opens `/login?invitation=…` — and one EXPIRED so the
     // hygiene sweep (v6/TASK-09) has something real to report. The hashes
-    // mirror `CreateInvitationUseCase`: sha256 of the token and of the
-    // normalized email.
+    // mirror `CreateInvitationUseCase`: sha256 of the token and the peppered
+    // hash of the normalized email (DEC-4).
     await tenantDb
       .insert(invitations)
       .values(
         DEMO_INVITATIONS.map((invite) => ({
           id: invite.id,
           workspaceId: invite.workspaceId,
-          email: invite.email,
-          emailHash: sha256Hex(invite.email),
+          emailHash: emailHashPeppered(invite.email, requireEmailPepper()),
           role: invite.role,
           tokenHash: sha256Hex(invite.tokenRaw),
           expiresAt: invite.expiresAt,

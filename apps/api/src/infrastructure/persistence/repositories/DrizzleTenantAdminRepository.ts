@@ -31,8 +31,10 @@ export class DrizzleTenantAdminRepository implements ITenantAdminRepository {
     const filters = [];
     if (input.search !== undefined && input.search !== '') {
       const pattern = `%${input.search}%`;
+      // DEC-4/DEC-5 D5: the tenant stores no email — the admin finds
+      // people by handle or full name (B14).
       filters.push(
-        or(ilike(users.email, pattern), ilike(users.fullName, pattern)) ??
+        or(ilike(users.handle, pattern), ilike(users.fullName, pattern)) ??
           sql`false`
       );
     }
@@ -66,21 +68,6 @@ export class DrizzleTenantAdminRepository implements ITenantAdminRepository {
           ? encodeCursor(last.createdAt, last.id)
           : null,
     };
-  }
-
-  async findUserByEmail(
-    email: string,
-    tid: string
-  ): Promise<TenantUserRecord | null> {
-    const db = await this.poolManager.getDb(tid);
-    const [row] = await db
-      .select()
-      .from(users)
-      .where(sql`lower(${users.email}) = ${email.trim().toLowerCase()}`)
-      .limit(1);
-    if (!row) return null;
-    const memberships = await this.membershipsOf([row.id], tid);
-    return this.toRecord(row, memberships);
   }
 
   async findUserById(
@@ -134,7 +121,7 @@ export class DrizzleTenantAdminRepository implements ITenantAdminRepository {
   ): TenantUserRecord {
     return {
       id: row.id,
-      email: row.email,
+      handle: row.handle,
       fullName: row.fullName,
       provider: row.provider,
       systemRole: row.systemRole,

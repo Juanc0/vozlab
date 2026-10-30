@@ -1,9 +1,10 @@
 /**
  * Read model of the tenant administration screens (US-00).
  *
- * It is a read-only port: it lists and searches users, and resolves an email
- * to a user so an admin can add them directly. Membership writes stay in the
- * membership ports.
+ * It is a read-only port: it lists and searches users so an admin can find
+ * them. Membership writes stay in the membership ports. DEC-4/DEC-5 D5: the
+ * tenant stores no email, so the record and the search ride on `handle` and
+ * `full_name` only.
  */
 export interface TenantUserMembershipRecord {
   workspaceId: string;
@@ -14,7 +15,7 @@ export interface TenantUserMembershipRecord {
 
 export interface TenantUserRecord {
   id: string;
-  email: string | null;
+  handle: string | null;
   fullName: string | null;
   provider: string;
   systemRole: string;
@@ -40,8 +41,6 @@ export interface ITenantAdminRepository {
     input: ListTenantUsersInput,
     tid: string
   ): Promise<ListTenantUsersResult>;
-
-  findUserByEmail(email: string, tid: string): Promise<TenantUserRecord | null>;
 
   findUserById(userId: string, tid: string): Promise<TenantUserRecord | null>;
 }

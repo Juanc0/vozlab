@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Pool } from 'pg';
 import {
@@ -9,6 +9,7 @@ import {
   expect,
   it,
 } from 'vitest';
+import { hashEmail } from '../../src/shared/auth/refreshToken.js';
 import {
   startMockOidcProvider,
   type MockOidcIdentity,
@@ -43,9 +44,10 @@ let oidc: MockOidcProvider | undefined;
 let tenantId = '';
 let workspaceId = '';
 
-const createdEmails = new Set<string>();
+const createdSubjects = new Set<string>();
 const createdUserIds = new Set<string>();
 const createdCodeHashes = new Set<string>();
+const createdInvitationIds = new Set<string>();
 const createdEventWorkspaceIds = new Set<string>();
 
 function uniqueIdentity(label: string): MockOidcIdentity {
@@ -70,11 +72,16 @@ function refreshCookie(response: Response): string {
   return match[1];
 }
 
-async function beginLogin(redirectPath = '/'): Promise<string> {
-  const response = await fetch(
-    `${API}/api/v1/auth/login?redirect=${encodeURIComponent(redirectPath)}`,
-    { redirect: 'manual' }
-  );
+async function beginLogin(
+  redirectPath = '/',
+  extraParams: Record<string, string> = {}
+): Promise<string> {
+  const url = new URL(`${API}/api/v1/auth/login`);
+  url.searchParams.set('redirect', redirectPath);
+  for (const [key, value] of Object.entries(extraParams)) {
+    url.searchParams.set(key, value);
+  }
+  const response = await fetch(url.toString(), { redirect: 'manual' });
   expect(response.status).toBe(302);
   const location = response.headers.get('location');
   if (!location) throw new Error('login did not redirect to the IdP');
@@ -83,12 +90,13 @@ async function beginLogin(redirectPath = '/'): Promise<string> {
 
 async function completeLogin(
   identity: MockOidcIdentity,
-  redirectPath = '/'
+  redirectPath = '/',
+  extraParams: Record<string, string> = {}
 ): Promise<Response> {
   if (!oidc) throw new Error('mock OIDC provider not started');
   oidc.setIdentity(identity);
 
-  const authorizationUrl = await beginLogin(redirectPath);
+  const authorizationUrl = await beginLogin(redirectPath, extraParams);
   const idpResponse = await fetch(authorizationUrl, { redirect: 'manual' });
   expect(idpResponse.status).toBe(302);
   const callbackUrl = idpResponse.headers.get('location');
@@ -149,10 +157,10 @@ afterEach(async () => {
       [Array.from(createdUserIds)]
     );
   }
-  if (createdEmails.size > 0) {
+  if (createdInvitationIds.size > 0) {
     await tenantPool.query(
-      'delete from auth.users where email = any($1::text[])',
-      [Array.from(createdEmails)]
+      'delete from auth.invitations where id = any($1::uuid[])',
+      [Array.from(createdInvitationIds)]
     );
   }
   if (createdCodeHashes.size > 0) {
@@ -176,6 +184,11 @@ afterEach(async () => {
   // invariant means the dev router must be clean after every run.
   const testIssuer = process.env.OIDC_ISSUER as string;
   const residue = `subject like 'it-%' and issuer = $1`;
+  await tenantPool.query(
+    `delete from auth.users where id in (
+       select user_id from auth.external_identities where ${residue})`,
+    [testIssuer]
+  );
   await routerPool.query(
     `delete from global_user_events where global_user_id in
        (select id from global_users where ${residue})`,
@@ -189,8 +202,9 @@ afterEach(async () => {
   await routerPool.query(`delete from global_users where ${residue}`, [
     testIssuer,
   ]);
-  createdEmails.clear();
+  createdSubjects.clear();
   createdUserIds.clear();
+  createdInvitationIds.clear();
   createdCodeHashes.clear();
   createdEventWorkspaceIds.clear();
 });
@@ -205,7 +219,7 @@ afterAll(async () => {
 describe('auth integration', () => {
   it('logs in through OIDC, stores only a hashed refresh token, and logs out', async () => {
     const identity = uniqueIdentity('login');
-    createdEmails.add(identity.email as string);
+    createdSubjects.add(identity.sub);
 
     // Audit P7.4: the IdP `picture` claim must reach the router vault.
     const callback = await completeLogin(
@@ -220,8 +234,11 @@ describe('auth integration', () => {
     );
 
     const users = await tenantPool.query(
-      'select id, provider, author_hash from auth.users where email = $1',
-      [identity.email]
+      `select u.id, u.provider, u.author_hash
+         from auth.users u
+         join auth.external_identities e on e.user_id = u.id
+        where e.issuer = $1 and e.subject = $2`,
+      [process.env.OIDC_ISSUER, identity.sub]
     );
     expect(users.rowCount).toBe(1);
     const user = users.rows[0] as {
@@ -290,7 +307,7 @@ describe('auth integration', () => {
 
   it('lists only ACTIVE memberships on /auth/me (audit P3)', async () => {
     const identity = uniqueIdentity('picker');
-    createdEmails.add(identity.email as string);
+    createdSubjects.add(identity.sub);
 
     const callback = await completeLogin(identity, '/');
     const refresh = await refreshSession(refreshCookie(callback));
@@ -329,7 +346,7 @@ describe('auth integration', () => {
 
   it('detects refresh-token reuse and revokes the family', async () => {
     const identity = uniqueIdentity('reuse');
-    createdEmails.add(identity.email as string);
+    createdSubjects.add(identity.sub);
 
     const callback = await completeLogin(identity, '/');
     const firstCookie = refreshCookie(callback);
@@ -349,7 +366,7 @@ describe('auth integration', () => {
 
   it('rejects an unknown OIDC tenant without creating a user', async () => {
     const identity = uniqueIdentity('unknown');
-    createdEmails.add(identity.email as string);
+    createdSubjects.add(identity.sub);
 
     const callback = await completeLogin({
       ...identity,
@@ -366,15 +383,15 @@ describe('auth integration', () => {
     expect(callback.headers.get('set-cookie')).toBeNull();
 
     const users = await tenantPool.query(
-      'select count(*)::int as count from auth.users where email = $1',
-      [identity.email]
+      'select count(*)::int as count from auth.external_identities where subject = $1',
+      [identity.sub]
     );
     expect(users.rows[0].count).toBe(0);
   });
 
   it('rejects an explicitly unverified email', async () => {
     const identity = uniqueIdentity('unverified');
-    createdEmails.add(identity.email as string);
+    createdSubjects.add(identity.sub);
 
     const callback = await completeLogin({
       ...identity,
@@ -386,10 +403,56 @@ describe('auth integration', () => {
     expect(callback.headers.get('set-cookie')).toBeNull();
 
     const users = await tenantPool.query(
-      'select count(*)::int as count from auth.users where email = $1',
-      [identity.email]
+      'select count(*)::int as count from auth.external_identities where subject = $1',
+      [identity.sub]
     );
     expect(users.rows[0].count).toBe(0);
+  });
+
+  it('redeems a tenant-local invitation when the IdP email differs only in case/whitespace (DEC-4 end-to-end)', async () => {
+    // The invitation bound only the peppered hash of the canonical address;
+    // the mock IdP asserts the SAME address with different case and padding.
+    // The equality of hashes (trim+lower, then HMAC) must bridge it — this
+    // is the normalization proof against the migrated dev volume.
+    const invitedEmail = `it-redeem-${randomUUID()}@example.edu`;
+    const rawToken = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+    const inserted = await tenantPool.query(
+      `insert into auth.invitations
+         (workspace_id, email_hash, role, token_hash, expires_at, max_uses, status)
+       values ($1, $2, 'MEMBER', $3, now() + interval '1 hour', 1, 'PENDING')
+       returning id`,
+      [workspaceId, hashEmail(invitedEmail, process.env.EMAIL_PEPPER as string), tokenHash]
+    );
+    createdInvitationIds.add(inserted.rows[0].id as string);
+
+    const identity: MockOidcIdentity = {
+      sub: `it-redeem-${randomUUID()}`,
+      email: `  ${invitedEmail.toUpperCase()}  `,
+      emailVerified: true,
+      name: 'Integration Redeem',
+      tenantKey: 'sabana',
+    };
+    createdSubjects.add(identity.sub);
+
+    const callback = await completeLogin(identity, '/', { invitation: rawToken });
+    expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/`);
+
+    const membership = await tenantPool.query(
+      `select count(*)::int as count
+         from auth.workspace_memberships m
+         join auth.external_identities e on e.user_id = m.user_id
+        where m.workspace_id = $1 and e.subject = $2 and m.status = 'ACTIVE'`,
+      [workspaceId, identity.sub]
+    );
+    expect(membership.rows[0].count).toBe(1);
+
+    const inviteRow = await tenantPool.query(
+      `select status, used_count from auth.invitations where id = $1`,
+      [inserted.rows[0].id]
+    );
+    expect(inviteRow.rows[0]).toMatchObject({ status: 'ACCEPTED', used_count: 1 });
   });
 
   it('joins with an event code, creates a member, and enforces capacity', async () => {

@@ -26,7 +26,6 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 
 const USER: AuthUserDto = {
   id: '44444444-4444-4444-8444-444444444444',
-  email: null,
   fullName: null,
   anonymousAlias: 'Curious Otter',
   provider: 'ANONYMOUS_EVENT',
