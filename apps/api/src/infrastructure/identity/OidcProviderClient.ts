@@ -32,6 +32,8 @@ interface IdTokenClaims {
   email_verified?: boolean;
   name?: string;
   preferred_username?: string;
+  /** Avatar URL (standard OIDC claim); copied into the router vault (P7.4). */
+  picture?: string;
   nonce?: string;
   /** Entra ID tenant/directory id. */
   tid?: string;
@@ -54,6 +56,7 @@ interface UserinfoResponse {
   email_verified?: boolean;
   name?: string;
   preferred_username?: string;
+  picture?: string;
 }
 
 export interface OidcProviderOptions {
@@ -150,6 +153,9 @@ export class OidcProviderClient implements IIdentityProvider {
     // The username the user knows themselves by; the login use case prefers
     // it over the email local-part when deriving `auth.users.handle` (B14).
     let preferredUsername: string | null = claims.preferred_username ?? null;
+    // Audit P7.4: the avatar URL the IdP asserts (if any); the login use case
+    // stores it in the router vault.
+    let picture: string | null = claims.picture ?? null;
     // Distinguish "verified", "not verified" and "not asserted".
     // Absent claim → null (provider did not assert either way).
     let emailVerified: boolean | null =
@@ -173,6 +179,7 @@ export class OidcProviderClient implements IIdentityProvider {
           email = email ?? profile.email ?? null;
           fullName = fullName ?? profile.name ?? null;
           preferredUsername = preferredUsername ?? profile.preferred_username ?? null;
+          picture = picture ?? profile.picture ?? null;
           if (emailVerified === null && profile.email_verified !== undefined) {
             emailVerified = profile.email_verified === true;
           }
@@ -192,6 +199,7 @@ export class OidcProviderClient implements IIdentityProvider {
       emailVerified,
       fullName,
       preferredUsername,
+      picture,
       tenantKey,
       providerKind: 'OIDC_INSTITUTIONAL',
     };

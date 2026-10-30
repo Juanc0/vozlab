@@ -12,6 +12,8 @@ export interface MockOidcIdentity {
   tenantKey: string;
   /** Optional Google Workspace hosted-domain claim. */
   hostedDomain?: string;
+  /** Optional avatar URL claim (audit P7.4 passthrough). */
+  picture?: string | null;
 }
 
 export interface MockOidcOptions {
@@ -198,6 +200,9 @@ export async function startMockOidcProvider(
       };
       if (stored.identity.hostedDomain) {
         claims.hd = stored.identity.hostedDomain;
+      }
+      if (stored.identity.picture) {
+        claims.picture = stored.identity.picture;
       }
 
       const idToken = await new SignJWT(claims)

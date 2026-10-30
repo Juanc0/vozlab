@@ -169,6 +169,26 @@ afterEach(async () => {
     );
     await tenantPool.query('delete from auth.workspaces where id = any($1::uuid[])', [ids]);
   }
+  // Audit P6: the suite's logins leave rows in the router vault
+  // (`global_users` + tenant links + `OIDC_LOGIN` events). Delete order:
+  // events (no FK) → links → users. Bounded by the `it-` subject prefix and
+  // the mock issuer so only this suite's residue is removed — the local==CI
+  // invariant means the dev router must be clean after every run.
+  const testIssuer = process.env.OIDC_ISSUER as string;
+  const residue = `subject like 'it-%' and issuer = $1`;
+  await routerPool.query(
+    `delete from global_user_events where global_user_id in
+       (select id from global_users where ${residue})`,
+    [testIssuer]
+  );
+  await routerPool.query(
+    `delete from global_user_tenants where global_user_id in
+       (select id from global_users where ${residue})`,
+    [testIssuer]
+  );
+  await routerPool.query(`delete from global_users where ${residue}`, [
+    testIssuer,
+  ]);
   createdEmails.clear();
   createdUserIds.clear();
   createdCodeHashes.clear();
@@ -187,7 +207,11 @@ describe('auth integration', () => {
     const identity = uniqueIdentity('login');
     createdEmails.add(identity.email as string);
 
-    const callback = await completeLogin(identity, '/proposals');
+    // Audit P7.4: the IdP `picture` claim must reach the router vault.
+    const callback = await completeLogin(
+      { ...identity, picture: `${OIDC_ORIGIN}/avatar/login.png` },
+      '/proposals'
+    );
     expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/proposals`);
 
     const firstCookie = refreshCookie(callback);
@@ -255,6 +279,52 @@ describe('auth integration', () => {
     });
 
     expect((await refreshSession(secondCookie)).status).toBe(401);
+
+    // Audit P7.4: the vault column now carries the IdP claim.
+    const vault = await routerPool.query(
+      'select picture from global_users where issuer = $1 and subject = $2',
+      [process.env.OIDC_ISSUER, identity.sub]
+    );
+    expect(vault.rows[0]?.picture).toBe(`${OIDC_ORIGIN}/avatar/login.png`);
+  });
+
+  it('lists only ACTIVE memberships on /auth/me (audit P3)', async () => {
+    const identity = uniqueIdentity('picker');
+    createdEmails.add(identity.email as string);
+
+    const callback = await completeLogin(identity, '/');
+    const refresh = await refreshSession(refreshCookie(callback));
+    expect(refresh.status).toBe(200);
+    const { accessToken, user } = (await refresh.json()) as {
+      accessToken: string;
+      user: { id: string };
+    };
+    createdUserIds.add(user.id);
+
+    // A second workspace carrying ONLY a REMOVED membership: the picker must
+    // hide it (and its stale role) exactly like the workspace vanished. The
+    // ACTIVE row goes to the seeded 'general' workspace.
+    const removedWorkspace = await tenantPool.query(
+      `insert into auth.workspaces (slug, name, kind, join_code)
+       values ($1, 'Integration removed ws', 'PRIVATE', $2)
+       returning id`,
+      [`rmv_it_${randomUUID()}`, randomUUID().replace(/-/g, '').slice(0, 24)]
+    );
+    const removedWorkspaceId = removedWorkspace.rows[0].id as string;
+    createdEventWorkspaceIds.add(removedWorkspaceId);
+
+    await tenantPool.query(
+      `insert into auth.workspace_memberships (workspace_id, user_id, role, status)
+       values ($1, $2, 'MEMBER', 'ACTIVE'), ($3, $2, 'MEMBER', 'REMOVED')`,
+      [workspaceId, user.id, removedWorkspaceId]
+    );
+
+    const meResponse = await me(accessToken);
+    expect(meResponse.status).toBe(200);
+    const meBody = (await meResponse.json()) as {
+      workspaces: Array<{ id: string; role: string }>;
+    };
+    expect(meBody.workspaces.map((ws) => ws.id)).toEqual([workspaceId]);
   });
 
   it('detects refresh-token reuse and revokes the family', async () => {

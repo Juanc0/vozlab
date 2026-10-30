@@ -98,6 +98,10 @@ export class CompleteOidcLoginUseCase {
     }
 
     // D8: resolve or create global user, upserting profile.
+    // Audit P7.4: the IdP `picture` claim flows into the vault instead of
+    // being hardcoded to null. `global_users.picture` is varchar(1024) —
+    // truncate before storing, the same guard `deriveHandle` applies to the
+    // handle column.
     const globalUser = await this.globalUserRepo.findOrCreate(
       identity.issuer,
       identity.subject,
@@ -105,7 +109,7 @@ export class CompleteOidcLoginUseCase {
         email: identity.email,
         emailVerified: identity.emailVerified ?? false,
         fullName: identity.fullName,
-        picture: null,
+        picture: identity.picture ? identity.picture.slice(0, 1024) : null,
       }
     );
 

@@ -101,6 +101,7 @@ function setup(
     states,
     identity,
     router,
+    globalUser,
     users,
     refresh,
     invitation,
@@ -161,6 +162,42 @@ describe('CompleteOidcLoginUseCase', () => {
     });
     expect(result.redirectPath).toBe('/proposals');
     expect(result.user).toEqual(AUTH_USER);
+  });
+
+  describe('vault profile (audit P7.4)', () => {
+    it('passes the IdP picture claim through to the global-user upsert', async () => {
+      const { useCase, globalUser } = setup({
+        identity: {
+          ...OIDC_IDENTITY,
+          picture: 'https://idp.test/avatar/ada.png',
+        },
+      });
+
+      await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(globalUser.profiles).toHaveLength(1);
+      expect(globalUser.profiles[0]).toMatchObject({
+        picture: 'https://idp.test/avatar/ada.png',
+      });
+    });
+
+    it('stores null when the provider asserts no picture', async () => {
+      const { useCase, globalUser } = setup();
+
+      await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(globalUser.profiles[0]).toMatchObject({ picture: null });
+    });
+
+    it('truncates an oversized claim to the varchar(1024) vault column', async () => {
+      const { useCase, globalUser } = setup({
+        identity: { ...OIDC_IDENTITY, picture: 'x'.repeat(1500) },
+      });
+
+      await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(globalUser.profiles[0]?.picture).toHaveLength(1024);
+    });
   });
 
   it('rejects an unknown or already-used state before contacting the IdP', async () => {

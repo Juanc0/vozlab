@@ -18,7 +18,10 @@ import type {
   UserWorkspace,
 } from '../../src/domain/ports/IUserRepository.js';
 import type { IRouterDatabase } from '../../src/domain/ports/IRouterDatabase.js';
-import type { IGlobalUserRepository } from '../../src/domain/ports/IGlobalUserRepository.js';
+import type {
+  GlobalUserProfile,
+  IGlobalUserRepository,
+} from '../../src/domain/ports/IGlobalUserRepository.js';
 import type {
   GlobalInvitationRecord,
   IGlobalInvitationRepository,
@@ -88,11 +91,15 @@ export const OIDC_STATE: OidcStateData = {
 export function makeGlobalUserRepository(): {
   repo: IGlobalUserRepository;
   calls: string[];
+  /** Profile argument of every `findOrCreate` (audit P7.4 assertions). */
+  profiles: Array<GlobalUserProfile | undefined>;
 } {
   const calls: string[] = [];
+  const profiles: Array<GlobalUserProfile | undefined> = [];
   const repo: IGlobalUserRepository = {
     async findOrCreate(issuer, subject, profile) {
       calls.push(`findOrCreate:${issuer}:${subject}`);
+      profiles.push(profile);
       return {
         id: 'global-id-1',
         issuer,
@@ -123,7 +130,7 @@ export function makeGlobalUserRepository(): {
       };
     },
   };
-  return { repo, calls };
+  return { repo, calls, profiles };
 }
 
 export function makeRouterDb(

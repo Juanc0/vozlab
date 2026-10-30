@@ -12,7 +12,6 @@ export interface AddWorkspaceMemberInput {
   actorUserId: string;
   tid: string;
   workspaceId: string;
-  email?: string; // informational únicamente; ya no es clave de búsqueda
   handle?: string;
   globalUserId?: string;
   role: WorkspaceRole;

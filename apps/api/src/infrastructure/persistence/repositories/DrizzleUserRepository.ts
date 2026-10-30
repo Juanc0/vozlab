@@ -383,7 +383,16 @@ export class DrizzleUserRepository implements IUserRepository {
           workspaces,
           eq(workspaceMemberships.workspaceId, workspaces.id)
         )
-        .where(eq(workspaceMemberships.userId, userId))
+        // Audit P3: the picker is a security surface — a REMOVED or SUSPENDED
+        // membership must disappear from `/auth/me` together with its stale
+        // role. (The admin screen's `listByWorkspace` deliberately shows all
+        // statuses; see audit §3.)
+        .where(
+          and(
+            eq(workspaceMemberships.userId, userId),
+            eq(workspaceMemberships.status, 'ACTIVE')
+          )
+        )
         .orderBy(asc(workspaces.name));
 
       return rows.map((row) => ({

@@ -133,6 +133,8 @@ describe('OidcProviderClient', () => {
       fullName: 'Ada Lovelace',
       // B14: asserted only when the IdP sends it; absent here → null.
       preferredUsername: null,
+      // Audit P7.4: same rule for the avatar claim.
+      picture: null,
       tenantKey: 'entra-tenant-guid',
       providerKind: 'OIDC_INSTITUTIONAL',
     });
@@ -142,6 +144,25 @@ describe('OidcProviderClient', () => {
     expect(form).toContain('grant_type=authorization_code');
     expect(form).toContain('code_verifier=verifier-1');
     expect(form).toContain('client_secret=client-secret');
+  });
+
+  it('extracts the picture claim when the IdP asserts it (audit P7.4)', async () => {
+    const token = await signIdToken({
+      email: 'ada@example.edu',
+      email_verified: true,
+      name: 'Ada Lovelace',
+      tid: 'entra-tenant-guid',
+      picture: 'https://idp.test/avatar/ada.png',
+    });
+    const { fetchImpl } = fetchWith({ id_token: token, access_token: 'access-1' });
+
+    const identity = await makeClient(fetchImpl).exchangeCode({
+      code: 'auth-code',
+      codeVerifier: 'verifier-1',
+      nonce: 'nonce-1',
+    });
+
+    expect(identity.picture).toBe('https://idp.test/avatar/ada.png');
   });
 
   it('falls back to the Google hd claim for the tenant key', async () => {

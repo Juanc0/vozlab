@@ -29,6 +29,13 @@ export interface ExternalIdentity {
    */
   preferredUsername?: string | null;
   /**
+   * IdP avatar URL claim (`picture`), when the provider asserts it. The
+   * login use case copies it into the router vault
+   * (`global_users.picture`, truncated to the column width). Optional:
+   * providers that omit it leave the column untouched (audit P7.4).
+   */
+  picture?: string | null;
+  /**
    * Tenant discriminator from the validated ID token:
    *   - Entra ID: `tid` (directory/tenant GUID)
    *   - Google Workspace: `hd` (hosted domain)
