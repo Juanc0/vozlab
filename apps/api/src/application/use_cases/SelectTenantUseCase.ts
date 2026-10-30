@@ -15,7 +15,7 @@ import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 import { AuthUser } from '../../domain/ports/IUserRepository.js';
 
 export interface SelectTenantInput {
-  globalIdentityId: string;
+  globalUserId: string;
   tenantId: string;
   refreshTtlMs: number;
 }
@@ -38,12 +38,12 @@ export class SelectTenantUseCase {
   ) {}
 
   async execute(input: SelectTenantInput): Promise<SelectTenantResult> {
-    const identity = await this.globalUserRepo.findById(input.globalIdentityId);
-    if (!identity) {
+    const globalUser = await this.globalUserRepo.findById(input.globalUserId);
+    if (!globalUser) {
       throw new DomainError('ERR_VALIDATION_FAILED', 'global identity not found');
     }
 
-    const tenants = await this.routerDb.findTenantsByGlobalUser(input.globalIdentityId);
+    const tenants = await this.routerDb.findTenantsByGlobalUser(input.globalUserId);
     const link = tenants.find((t) => t.id === input.tenantId);
     if (!link || link.status !== 'ACTIVE') {
       throw new DomainError('ERR_TENANT_NOT_PROVISIONED');
@@ -56,19 +56,19 @@ export class SelectTenantUseCase {
 
     const user = await this.userRepo.findOrCreateByExternalIdentity(
       {
-        issuer: identity.issuer,
-        subject: identity.subject,
-        email: identity.email,
-        emailVerified: identity.emailVerified,
-        fullName: identity.fullName,
+        issuer: globalUser.issuer,
+        subject: globalUser.subject,
+        email: globalUser.email,
+        emailVerified: globalUser.emailVerified,
+        fullName: globalUser.fullName,
         authorHash: generateAuthorHash(),
         // B14: this is where a multi-tenant login finally touches the
         // tenant DB — the handle repair of the JIT row (rows created before
         // the rule existed, or created through the selector path) happens
         // here. The router profile has no `preferred_username`, so the
         // email's local-part is the deterministic source.
-        handle: deriveHandle({ email: identity.email, subject: identity.subject }),
-        globalIdentityId: identity.id,
+        handle: deriveHandle({ email: globalUser.email, subject: globalUser.subject }),
+        globalUserId: globalUser.id,
       },
       tenant.id
     );
@@ -89,15 +89,15 @@ export class SelectTenantUseCase {
     // B12: explicit identity trail. This use case backs both the tenant
     // selector (`/auth/select-tenant`) and the sidebar switch (`/auth/
     // switch-tenant`), so every entry into a tenant leaves one event on the
-    // global identity — the selection is never an anonymous hop.
+    // global user — the selection is never an anonymous hop.
     await this.audit?.record({
       actorId: user.id,
       actorType: 'USER',
       action: 'TENANT_SELECTED',
       targetType: 'global_identity',
-      targetId: input.globalIdentityId,
+      targetId: input.globalUserId,
       tenantId: tenant.id,
-      globalIdentityId: input.globalIdentityId,
+      globalUserId: input.globalUserId,
       metadata: { tenantSlug: tenant.slug },
     });
 

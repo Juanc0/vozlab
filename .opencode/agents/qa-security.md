@@ -85,4 +85,4 @@ prove it.
   images), S-15 (agent approvals). Findings you confirm move to ROADMAP with
   severity; accepted risks get written down with the reason (14 §9.4 rule).
 - Tenant-isolation probes and the identity event trail
-  (`global_identity_events` / `membership_events`) are part of your pass.
+  (`global_user_events` / `membership_events`) are part of your pass.

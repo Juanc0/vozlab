@@ -48,13 +48,13 @@ export const users = authSchema.table(
     isAnonymous: boolean('is_anonymous').default(false).notNull(),
     systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT'
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
-    globalIdentityId: uuid('global_user_id'),
+    globalUserId: uuid('global_user_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     // Partial unique index: only one local user per global user.
     uniqueIndex('uniq_users_global_user')
-      .on(table.globalIdentityId)
+      .on(table.globalUserId)
       .where(sql`global_user_id IS NOT NULL`),
     // One account per IdP subject; prevents duplicate JIT rows under
     // concurrent callbacks. NULL provider_user_id is allowed for event users.

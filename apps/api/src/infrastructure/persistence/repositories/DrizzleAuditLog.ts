@@ -1,7 +1,7 @@
 import { membershipEvents } from '@vozlab/database';
 import { DomainError } from '../../../domain/errors/DomainError.js';
 import { AuditEvent, IAuditLog } from '../../../domain/ports/IAuditLog.js';
-import { IGlobalIdentityEventRepository } from '../../../domain/ports/IGlobalIdentityEventRepository.js';
+import { IGlobalUserEventRepository } from '../../../domain/ports/IGlobalUserEventRepository.js';
 import type { ConnectionPoolManager } from '../ConnectionPoolManager.js';
 
 /** Keys of `metadata` that map to dedicated columns of `membership_events`. */
@@ -25,7 +25,7 @@ function asString(value: unknown): string | null {
  *
  * Routes each event to the physical store that owns its subject:
  * - `targetType: 'global_identity'` (or events with only a
- *   `globalIdentityId`) → router DB `global_identity_events` (cross-tenant).
+ *   `globalUserId`) → router DB `global_user_events` (cross-tenant).
  * - Everything else → that tenant's `auth.membership_events` (append-only).
  *
  * Tenant events require a `workspaceId`: taken from `metadata.workspaceId`
@@ -38,21 +38,21 @@ function asString(value: unknown): string | null {
 export class DrizzleAuditLog implements IAuditLog {
   constructor(
     private readonly poolManager: ConnectionPoolManager,
-    private readonly globalEvents: IGlobalIdentityEventRepository
+    private readonly globalEvents: IGlobalUserEventRepository
   ) {}
 
   async record(event: AuditEvent): Promise<void> {
     const actorType = event.actorType ?? (event.actorId ? 'USER' : 'SYSTEM');
 
-    if (event.targetType === 'global_identity' || (!event.tenantId && event.globalIdentityId)) {
-      if (!event.globalIdentityId) {
+    if (event.targetType === 'global_identity' || (!event.tenantId && event.globalUserId)) {
+      if (!event.globalUserId) {
         throw new DomainError(
           'ERR_VALIDATION_FAILED',
-          'audit: global event without globalIdentityId'
+          'audit: global event without globalUserId'
         );
       }
-      await this.globalEvents.recordIdentityEvent({
-        globalIdentityId: event.globalIdentityId,
+      await this.globalEvents.recordUserEvent({
+        globalUserId: event.globalUserId,
         tenantId: event.tenantId ?? null,
         actorType,
         actorId: event.actorId,

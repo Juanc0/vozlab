@@ -139,7 +139,7 @@ export class AuthController {
     }
     try {
       const result = await this.selectTenantUseCase.execute({
-        globalIdentityId: body.globalUserId,
+        globalUserId: body.globalUserId,
         tenantId: body.tenantId,
         refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
       });
@@ -160,7 +160,7 @@ export class AuthController {
     }
     try {
       const result = await this.selectTenantUseCase.execute({
-        globalIdentityId: body.globalUserId,
+        globalUserId: body.globalUserId,
         tenantId: body.tenantId,
         refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
       });
@@ -176,7 +176,7 @@ export class AuthController {
     const query = req.query as { globalUserId?: string };
     if (!query.globalUserId) return sendError(reply, 'ERR_VALIDATION_FAILED');
     try {
-      const tenants = await this.resolveTenantsUseCase.execute({ globalIdentityId: query.globalUserId });
+      const tenants = await this.resolveTenantsUseCase.execute({ globalUserId: query.globalUserId });
       return reply.send({ tenants });
     } catch (error) {
       return sendError(reply, mapDomainError(error));

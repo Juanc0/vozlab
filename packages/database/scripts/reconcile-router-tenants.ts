@@ -12,7 +12,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { sql, eq } from 'drizzle-orm';
-import { tenants, tenantConnections, globalUsers, globalIdentityTenants } from '../src/schema/router.schema.js';
+import { tenants, tenantConnections, globalUsers, globalUserTenants } from '../src/schema/router.schema.js';
 
 const routerConfig = {
   host: process.env.ROUTER_DB_HOST ?? 'localhost',
@@ -70,16 +70,16 @@ async function main(): Promise<void> {
         membership_status: string | null;
       }>;
 
-      console.log(`  Found ${users.length} user(s) with global identity.`);
+      console.log(`  Found ${users.length} user(s) linked to a global user.`);
 
       // Get existing links for this tenant.
       const existingLinks = await routerDb
         .select()
-        .from(globalIdentityTenants)
-        .where(eq(globalIdentityTenants.tenantId, tenant.id));
+        .from(globalUserTenants)
+        .where(eq(globalUserTenants.tenantId, tenant.id));
 
       const existingMap = new Map(
-        existingLinks.map((l) => [l.globalIdentityId, l])
+        existingLinks.map((l) => [l.globalUserId, l])
       );
 
       for (const u of users) {
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
           // Update status if changed.
           if (existing.status !== linkStatus) {
             await routerDb
-              .update(globalIdentityTenants)
+              .update(globalUserTenants)
               .set({ status: linkStatus, lastSeenAt: new Date() })
               .where(
                 sql`global_user_id = ${globalId}::uuid AND tenant_id = ${tenant.id}::uuid`
@@ -106,8 +106,8 @@ async function main(): Promise<void> {
           }
         } else {
           // Create missing link.
-          await routerDb.insert(globalIdentityTenants).values({
-            globalIdentityId: globalId,
+          await routerDb.insert(globalUserTenants).values({
+            globalUserId: globalId,
             tenantId: tenant.id,
             tenantUserId: u.user_id,
             status: linkStatus,
@@ -120,8 +120,8 @@ async function main(): Promise<void> {
       // Check for orphaned links (in router but not in tenant).
       const localGlobalIds = new Set(users.map((u) => u.global_user_id));
       for (const link of existingLinks) {
-        if (!localGlobalIds.has(link.globalIdentityId)) {
-          console.log(`  ORPHAN: global identity ${link.globalIdentityId} has no local user.`);
+        if (!localGlobalIds.has(link.globalUserId)) {
+          console.log(`  ORPHAN: global user ${link.globalUserId} has no local user.`);
           totalOrphans++;
         }
       }

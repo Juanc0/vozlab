@@ -328,7 +328,7 @@ describe('auth integration', () => {
     createdCodeHashes.add(codeHash);
 
     // JoinEventUseCase only resolves codes for kind='EVENT' workspaces, and
-    // join_code is NOT NULL + unique since tenant migration 0013. The seeded
+    // join_code is NOT NULL + unique since the tenant baseline. The seeded
     // 'general' workspace is PRIVATE on a fresh migration fold (the dev
     // volume drifted it long ago), so this test creates its own event
     // workspace instead of reusing it.

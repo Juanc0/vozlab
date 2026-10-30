@@ -74,7 +74,7 @@ export class CompleteOidcLoginUseCase {
     private readonly redeemGlobalInvitation?: RedeemGlobalInvitationUseCase,
     /**
      * B12: identity trail. Every session issued by the callback records an
-     * `OIDC_LOGIN` on the global identity (router DB, append-only).
+     * `OIDC_LOGIN` on the global user (router DB, append-only).
      */
     private readonly audit?: IAuditLog
   ) {}
@@ -97,7 +97,7 @@ export class CompleteOidcLoginUseCase {
       throw new DomainError('ERR_EMAIL_NOT_VERIFIED');
     }
 
-    // D8: resolve or create global identity, upserting profile.
+    // D8: resolve or create global user, upserting profile.
     const globalUser = await this.globalUserRepo.findOrCreate(
       identity.issuer,
       identity.subject,
@@ -184,7 +184,7 @@ export class CompleteOidcLoginUseCase {
         // the only place that knows the IdP profile, so the handle is
         // derived here and the adapter persists it (insert + repair).
         handle: deriveHandle(identity),
-        globalIdentityId: globalUser.id,
+        globalUserId: globalUser.id,
       },
       tenant.id
     );
@@ -192,7 +192,7 @@ export class CompleteOidcLoginUseCase {
     // Keep the router link fresh for every institutional login, not just the
     // reconcile script: without it `findTenantsByGlobalUser` (the tenant
     // selector and `switch-tenant`) only ever sees manually reconciled rows.
-    await this.routerDb.linkGlobalTenant(globalUser.id, tenant.id, user.id, 'ACTIVE');
+    await this.routerDb.linkGlobalUserTenant(globalUser.id, tenant.id, user.id, 'ACTIVE');
 
     // D9: redeem the invitation carried by the OIDC state.
     //
@@ -272,7 +272,7 @@ export class CompleteOidcLoginUseCase {
 
     // B12: explicit identity trail. Every session the callback issues —
     // institutional or global-invitation path — leaves one `OIDC_LOGIN` on
-    // the global identity (router DB, append-only, no PII).
+    // the global user (router DB, append-only, no PII).
     await this.audit?.record({
       actorId: user.id,
       actorType: 'USER',
@@ -280,7 +280,7 @@ export class CompleteOidcLoginUseCase {
       targetType: 'global_identity',
       targetId: globalUserId,
       tenantId,
-      globalIdentityId: globalUserId,
+      globalUserId: globalUserId,
       metadata: { redirectPath },
     });
 

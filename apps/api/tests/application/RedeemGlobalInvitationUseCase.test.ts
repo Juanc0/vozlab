@@ -72,7 +72,7 @@ describe('RedeemGlobalInvitationUseCase', () => {
     await expect(useCase.isGlobalToken('a'.repeat(64))).resolves.toBe(false);
   });
 
-  it('redeems: creates the tenant user, links the global identity, accepts and adds the membership', async () => {
+  it('redeems: creates the tenant user, links the global user, accepts and adds the membership', async () => {
     const { useCase, globalInvitations, router, users, membership, ran } = setup();
 
     const result = await useCase.execute(input());
@@ -90,13 +90,13 @@ describe('RedeemGlobalInvitationUseCase', () => {
     expect(users.oidcUpserts[0].input).toMatchObject({
       issuer: 'https://other-idp.test',
       subject: 'other-sub-1',
-      globalIdentityId: 'global-id-1',
+      globalUserId: 'global-id-1',
     });
     expect(users.oidcUpserts[0].tid).toBe(TENANT_ID);
 
     // Router link written so the tenant shows up in future logins (P0-2).
     expect(router.calls).toContain(
-      `linkGlobalTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
+      `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
     );
 
     // Single-use accept + membership inside one transaction.
@@ -142,7 +142,7 @@ describe('RedeemGlobalInvitationUseCase', () => {
     expect(events[0]).toMatchObject({
       action: 'GLOBAL_INVITATION_REDEEMED',
       targetType: 'global_identity',
-      globalIdentityId: 'global-id-1',
+      globalUserId: 'global-id-1',
       tenantId: TENANT_ID,
       actorType: 'USER',
       metadata: { invitationId: created.id, workspaceId: WORKSPACE_ID },

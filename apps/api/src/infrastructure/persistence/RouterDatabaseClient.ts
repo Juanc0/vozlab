@@ -5,7 +5,7 @@ import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRou
 import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../domain/ports/IGlobalUserRepository.js';
 import { IGlobalInvitationRepository, GlobalInvitationRecord, CreateGlobalInvitationInput } from '../../domain/ports/IGlobalInvitationRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
-import { GlobalIdentityEventInput, IGlobalIdentityEventRepository } from '../../domain/ports/IGlobalIdentityEventRepository.js';
+import { GlobalUserEventInput, IGlobalUserEventRepository } from '../../domain/ports/IGlobalUserEventRepository.js';
 import { globalUsers } from '@vozlab/database';
 import {
   ConsumeEventCodeResult,
@@ -14,7 +14,7 @@ import {
 } from '../../domain/ports/IEventCodeRepository.js';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalIdentityTenants, globalInvitations, globalIdentityEvents } from '@vozlab/database';
+import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, globalUserTenants, globalInvitations, globalUserEvents } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -24,7 +24,7 @@ import { eventCodes, tenants, tenantConnections, tenantIdentityProviders, global
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalIdentityEventRepository
+  implements IRouterDatabase, IEventCodeRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalUserEventRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -113,7 +113,7 @@ export class RouterDatabaseClient
   }
 
   /**
-   * Find or create a global identity by (issuer, subject), upserting profile.
+   * Find or create a global user by (issuer, subject), upserting profile.
    */
   async findOrCreate(
     issuer: string,
@@ -210,7 +210,7 @@ export class RouterDatabaseClient
         lastSeenAt: raced.lastSeenAt,
       };
     } catch (err) {
-      log.error({ err, issuer, subject }, 'failed to find or create global identity');
+      log.error({ err, issuer, subject }, 'failed to find or create global user');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
@@ -232,13 +232,13 @@ export class RouterDatabaseClient
         })
         .where(eq(globalUsers.id, id));
     } catch (err) {
-      log.error({ err, id }, 'failed to update global identity profile');
+      log.error({ err, id }, 'failed to update global user profile');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 
   /**
-   * Find a global identity by its ID.
+   * Find a global user by its ID.
    */
   async findById(id: string): Promise<GlobalUser | null> {
     try {
@@ -262,7 +262,7 @@ export class RouterDatabaseClient
         lastSeenAt: row.lastSeenAt,
       };
     } catch (err) {
-      log.error({ err, id }, 'failed to find global identity by id');
+      log.error({ err, id }, 'failed to find global user by id');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
@@ -376,7 +376,7 @@ export class RouterDatabaseClient
   }
 
   /**
-   * List tenants linked to a global identity (v5 explicit tenant selection).
+   * List tenants linked to a global user (v5 explicit tenant selection).
    */
   async findTenantsByGlobalUser(
     globalUserId: string
@@ -387,11 +387,11 @@ export class RouterDatabaseClient
           id: tenants.id,
           slug: tenants.slug,
           oidcTenantId: tenants.oidcTenantId,
-          status: globalIdentityTenants.status,
+          status: globalUserTenants.status,
         })
-        .from(globalIdentityTenants)
-        .innerJoin(tenants, eq(globalIdentityTenants.tenantId, tenants.id))
-        .where(eq(globalIdentityTenants.globalIdentityId, globalUserId));
+        .from(globalUserTenants)
+        .innerJoin(tenants, eq(globalUserTenants.tenantId, tenants.id))
+        .where(eq(globalUserTenants.globalUserId, globalUserId));
 
       return rows.map((r) => ({
         id: r.id,
@@ -400,30 +400,30 @@ export class RouterDatabaseClient
         status: r.status,
       }));
     } catch (err) {
-      log.error({ err, globalUserId }, 'failed to find tenants by global identity');
+      log.error({ err, globalUserId }, 'failed to find tenants by global user');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 
   /**
-   * Resuelve el usuario interno del tenant vinculado a una identidad global.
-   * (v6/TASK-03: alta directa por identidad global.)
+   * Resolve the tenant-internal user linked to a global user
+   * (v6/TASK-03: admin's direct add by global user.)
    */
-  async findGlobalTenantLink(
+  async findGlobalUserTenantLink(
     globalUserId: string,
     tenantId: string
   ): Promise<{ tenantUserId: string; status: string } | null> {
     try {
       const [row] = await this.db
         .select({
-          tenantUserId: globalIdentityTenants.tenantUserId,
-          status: globalIdentityTenants.status,
+          tenantUserId: globalUserTenants.tenantUserId,
+          status: globalUserTenants.status,
         })
-        .from(globalIdentityTenants)
+        .from(globalUserTenants)
         .where(
           and(
-            eq(globalIdentityTenants.globalIdentityId, globalUserId),
-            eq(globalIdentityTenants.tenantId, tenantId)
+            eq(globalUserTenants.globalUserId, globalUserId),
+            eq(globalUserTenants.tenantId, tenantId)
           )
         )
         .limit(1);
@@ -435,11 +435,11 @@ export class RouterDatabaseClient
   }
 
   /**
-   * Upsert the global identity ↔ tenant user link (v6/TASK-06).
-   * Idempotent on `(global_identity_id, tenant_id)`; refreshes
+   * Upsert the global user ↔ tenant user link (v6/TASK-06).
+   * Idempotent on `(global_user_id, tenant_id)`; refreshes
    * `tenant_user_id`, `status` and `last_seen_at` on conflict.
    */
-  async linkGlobalTenant(
+  async linkGlobalUserTenant(
     globalUserId: string,
     tenantId: string,
     tenantUserId: string,
@@ -447,62 +447,62 @@ export class RouterDatabaseClient
   ): Promise<void> {
     try {
       await this.db
-        .insert(globalIdentityTenants)
+        .insert(globalUserTenants)
         .values({
-          globalIdentityId: globalUserId,
+          globalUserId: globalUserId,
           tenantId,
           tenantUserId,
           status,
         })
         .onConflictDoUpdate({
-          target: [globalIdentityTenants.globalIdentityId, globalIdentityTenants.tenantId],
+          target: [globalUserTenants.globalUserId, globalUserTenants.tenantId],
           set: { tenantUserId, status, lastSeenAt: new Date() },
         });
     } catch (err) {
       log.error(
         { err, globalUserId, tenantId, tenantUserId },
-        'failed to link global identity to tenant'
+        'failed to link global user to tenant'
       );
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 
   /**
-   * Resolve the global identity linked to a tenant user (v6/TASK-01: the PWA
+   * Resolve the global user linked to a tenant user (v6/TASK-01: the PWA
    * needs its `globalUserId` to render the tenant switcher).
    */
-  async findGlobalIdentityForTenantUser(
+  async findGlobalUserIdForTenantUser(
     tenantId: string,
     tenantUserId: string
   ): Promise<string | null> {
     try {
       const [row] = await this.db
-        .select({ globalIdentityId: globalIdentityTenants.globalIdentityId })
-        .from(globalIdentityTenants)
+        .select({ globalUserId: globalUserTenants.globalUserId })
+        .from(globalUserTenants)
         .where(
           and(
-            eq(globalIdentityTenants.tenantId, tenantId),
-            eq(globalIdentityTenants.tenantUserId, tenantUserId)
+            eq(globalUserTenants.tenantId, tenantId),
+            eq(globalUserTenants.tenantUserId, tenantUserId)
           )
         )
         .limit(1);
-      return row?.globalIdentityId ?? null;
+      return row?.globalUserId ?? null;
     } catch (err) {
       log.error(
         { err, tenantId, tenantUserId },
-        'failed to resolve global identity for tenant user'
+        'failed to resolve global user for tenant user'
       );
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
 
-  // --- IGlobalIdentityEventRepository ---
+  // --- IGlobalUserEventRepository ---
 
   /** Append a cross-tenant identity event. Never update/delete from code. */
-  async recordIdentityEvent(input: GlobalIdentityEventInput): Promise<void> {
+  async recordUserEvent(input: GlobalUserEventInput): Promise<void> {
     try {
-      await this.db.insert(globalIdentityEvents).values({
-        globalIdentityId: input.globalIdentityId,
+      await this.db.insert(globalUserEvents).values({
+        globalUserId: input.globalUserId,
         tenantId: input.tenantId,
         actorType: input.actorType,
         actorId: input.actorId,
@@ -515,8 +515,8 @@ export class RouterDatabaseClient
       });
     } catch (err) {
       log.error(
-        { err, globalIdentityId: input.globalIdentityId, action: input.action },
-        'failed to record global identity event'
+        { err, globalUserId: input.globalUserId, action: input.action },
+        'failed to record global user event'
       );
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }

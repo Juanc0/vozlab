@@ -18,10 +18,10 @@ export interface AuditEvent {
    */
   tenantId?: string;
   /**
-   * Router-DB events (`global_identity_events`) are used for cross-tenant
+   * Router-DB events (`global_user_events`) are used for cross-tenant
    * identity actions (`targetType: 'global_identity'`) and require this id.
    */
-  globalIdentityId?: string;
+  globalUserId?: string;
   /**
    * Who acted, for the append-only tables. Defaults to `'USER'` when an
    * `actorId` is present and `'SYSTEM'` otherwise.

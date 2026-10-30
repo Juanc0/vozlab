@@ -130,7 +130,7 @@ export function makeRouterDb(
   options: {
     tenant?: typeof TENANT | null;
     byId?: typeof TENANT | null;
-    /** Value returned by `findGlobalIdentityForTenantUser`. */
+    /** Value returned by `findGlobalUserIdForTenantUser`. */
     globalUserId?: string;
   } = {}
 ): { routerDb: IRouterDatabase; calls: string[] } {
@@ -159,14 +159,14 @@ export function makeRouterDb(
       calls.push(`findTenantsByGlobalUser:${globalUserId}`);
       return tenant ? [{ id: tenant.id, slug: tenant.slug, oidcTenantId: tenant.oidcTenantId ?? 'oidc-1', status: 'ACTIVE' }] : [];
     },
-    async findGlobalTenantLink() {
+    async findGlobalUserTenantLink() {
       return null;
     },
-    async linkGlobalTenant(globalUserId, tenantId, tenantUserId, status) {
-      calls.push(`linkGlobalTenant:${globalUserId}:${tenantId}:${tenantUserId}:${status}`);
+    async linkGlobalUserTenant(globalUserId, tenantId, tenantUserId, status) {
+      calls.push(`linkGlobalUserTenant:${globalUserId}:${tenantId}:${tenantUserId}:${status}`);
     },
-    async findGlobalIdentityForTenantUser(tenantId, tenantUserId) {
-      calls.push(`findGlobalIdentityForTenantUser:${tenantId}:${tenantUserId}`);
+    async findGlobalUserIdForTenantUser(tenantId, tenantUserId) {
+      calls.push(`findGlobalUserIdForTenantUser:${tenantId}:${tenantUserId}`);
       return options.globalUserId ?? null;
     },
   };

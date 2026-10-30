@@ -23,11 +23,11 @@ describe('GetMeUseCase', () => {
 
     expect(result.user).toEqual(AUTH_USER);
     expect(result.workspaces).toEqual(workspaces);
-    // No router injected: no global identity claim, but the field is present.
+    // No router injected: no global user claim, but the field is present.
     expect(result.globalUserId).toBeNull();
   });
 
-  it('resolves the global identity through the router link (v6/TASK-01)', async () => {
+  it('resolves the global user through the router link (v6/TASK-01)', async () => {
     const { userRepo } = makeUserRepository({ workspaces });
     const router = makeRouterDb({ globalUserId: 'global-id-7' });
     const useCase = new GetMeUseCase(userRepo, router.routerDb);
@@ -36,7 +36,7 @@ describe('GetMeUseCase', () => {
 
     expect(result.globalUserId).toBe('global-id-7');
     expect(router.calls).toContain(
-      `findGlobalIdentityForTenantUser:${TENANT_ID}:${AUTH_USER.id}`
+      `findGlobalUserIdForTenantUser:${TENANT_ID}:${AUTH_USER.id}`
     );
   });
 

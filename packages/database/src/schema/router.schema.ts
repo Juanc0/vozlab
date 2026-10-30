@@ -161,10 +161,10 @@ export type NewGlobalUser = typeof globalUsers.$inferInsert;
  * Links a global user to a tenant user. No FK between DBs (router
  * and tenant are separate physical databases).
  */
-export const globalIdentityTenants = pgTable(
+export const globalUserTenants = pgTable(
   'global_user_tenants',
   {
-    globalIdentityId: uuid('global_user_id')
+    globalUserId: uuid('global_user_id')
       .notNull()
       .references(() => globalUsers.id, { onDelete: 'cascade' }),
     tenantId: uuid('tenant_id')
@@ -176,24 +176,24 @@ export const globalIdentityTenants = pgTable(
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('uniq_global_user_tenant').on(table.globalIdentityId, table.tenantId),
+    uniqueIndex('uniq_global_user_tenant').on(table.globalUserId, table.tenantId),
     uniqueIndex('uniq_tenant_user').on(table.tenantId, table.tenantUserId),
   ]
 );
 
-export type GlobalIdentityTenant = typeof globalIdentityTenants.$inferSelect;
-export type NewGlobalIdentityTenant = typeof globalIdentityTenants.$inferInsert;
+export type GlobalUserTenant = typeof globalUserTenants.$inferSelect;
+export type NewGlobalUserTenant = typeof globalUserTenants.$inferInsert;
 
 /**
  * Global user audit events (D11, append-only, router DB).
  *
  * No PII: only IDs, roles and states.
  */
-export const globalIdentityEvents = pgTable(
+export const globalUserEvents = pgTable(
   'global_user_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    globalIdentityId: uuid('global_user_id').notNull(),
+    globalUserId: uuid('global_user_id').notNull(),
     tenantId: uuid('tenant_id'),
     actorType: varchar('actor_type', { length: 30 }).notNull(),
     actorId: varchar('actor_id', { length: 255 }),
@@ -203,7 +203,7 @@ export const globalIdentityEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('idx_global_user_events_identity').on(table.globalIdentityId),
+    index('idx_global_user_events_identity').on(table.globalUserId),
     index('idx_global_user_events_tenant').on(table.tenantId),
     index('idx_global_user_events_created').on(table.createdAt),
   ]
@@ -235,5 +235,5 @@ export const globalInvitations = pgTable(
 export type GlobalInvitation = typeof globalInvitations.$inferSelect;
 export type NewGlobalInvitation = typeof globalInvitations.$inferInsert;
 
-export type GlobalIdentityEvent = typeof globalIdentityEvents.$inferSelect;
-export type NewGlobalIdentityEvent = typeof globalIdentityEvents.$inferInsert;
+export type GlobalUserEvent = typeof globalUserEvents.$inferSelect;
+export type NewGlobalUserEvent = typeof globalUserEvents.$inferInsert;

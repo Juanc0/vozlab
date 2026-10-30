@@ -9,7 +9,7 @@ import { generateAuthorHash } from '../../shared/auth/refreshToken.js';
 import { deriveHandle } from '../../shared/auth/deriveHandle.js';
 
 export interface DirectIdentityAddInput {
-  globalIdentityId: string;
+  globalUserId: string;
   workspaceId: string;
   role: string;
   tid: string;
@@ -17,7 +17,7 @@ export interface DirectIdentityAddInput {
 
 export interface DirectIdentityAddResult {
   userId: string;
-  globalIdentityId: string;
+  globalUserId: string;
   workspaceId: string;
   role: string;
 }
@@ -31,9 +31,9 @@ export class DirectIdentityAddUseCase {
   ) {}
 
   async execute(input: DirectIdentityAddInput): Promise<DirectIdentityAddResult> {
-    // 1. Verify the global identity exists.
+    // 1. Verify the global user exists.
     const globalUser = await this.globalUserRepo.findById(
-      input.globalIdentityId
+      input.globalUserId
     );
     if (!globalUser) {
       throw new DomainError('ERR_VALIDATION_FAILED', 'global identity not found');
@@ -54,7 +54,7 @@ export class DirectIdentityAddUseCase {
           email: globalUser.email,
           subject: globalUser.subject,
         }),
-        globalIdentityId: globalUser.id,
+        globalUserId: globalUser.id,
       },
       input.tid
     );
@@ -74,7 +74,7 @@ export class DirectIdentityAddUseCase {
 
     return {
       userId: user.id,
-      globalIdentityId: globalUser.id,
+      globalUserId: globalUser.id,
       workspaceId: input.workspaceId,
       role: input.role,
     };

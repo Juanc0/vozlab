@@ -1,7 +1,9 @@
 /**
- * Port: global identity registry in the router DB (D6, D8).
+ * Port: the global-user registry in the router DB (D6, D8).
  *
- * Maps (issuer, subject) → global_identity_id. Contains no PII.
+ * Maps (issuer, subject) → global_user_id and holds the IdP profile
+ * (email, name, picture). The profile is PII and lives only in the router
+ * DB — tenant DBs reference `global_user_id`, never the profile.
  */
 export interface GlobalUserProfile {
   email?: string | null;
@@ -24,14 +26,14 @@ export interface GlobalUser {
 }
 
 export interface IGlobalUserRepository {
-  /** Find or create a global identity by (issuer, subject), upserting profile. */
+  /** Find or create a global user by (issuer, subject), upserting profile. */
   findOrCreate(
     issuer: string,
     subject: string,
     profile?: GlobalUserProfile
   ): Promise<GlobalUser>;
 
-  /** Find a global identity by its ID. */
+  /** Find a global user by its ID. */
   findById(id: string): Promise<GlobalUser | null>;
 
   /** Update profile fields for an existing identity. */

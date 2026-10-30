@@ -59,7 +59,7 @@ function setup(
     tenant: overrides.tenant === undefined ? TENANT : overrides.tenant,
     byId: overrides.byId === undefined ? TENANT : overrides.byId,
   });
-  const globalIdentity = makeGlobalUserRepository();
+  const globalUser = makeGlobalUserRepository();
   const users = makeUserRepository();
   const refresh = makeRefreshTokenRepository();
   const invitation = makeInvitationRepository(overrides.invitationSeed);
@@ -68,7 +68,7 @@ function setup(
   const { uow } = makeUnitOfWork();
   const redeem = new RedeemGlobalInvitationUseCase(
     globalInvites.repo,
-    globalIdentity.repo,
+    globalUser.repo,
     router.routerDb,
     users.userRepo,
     membership.membershipRepo,
@@ -86,7 +86,7 @@ function setup(
     states.stateStore,
     identity.identityProvider,
     router.routerDb,
-    globalIdentity.repo,
+    globalUser.repo,
     users.userRepo,
     invitation.repo,
     refresh.refreshRepo,
@@ -123,7 +123,7 @@ describe('CompleteOidcLoginUseCase', () => {
     expect(router.calls).toContain('findTenantsByGlobalUser:global-id-1');
     // P0-2: every institutional login refreshes the router global↔tenant link.
     expect(router.calls).toContain(
-      `linkGlobalTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
+      `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
     );
 
     expect(users.oidcUpserts).toHaveLength(1);
@@ -246,7 +246,7 @@ describe('CompleteOidcLoginUseCase', () => {
         role: 'CONTRIBUTOR',
       });
       expect(router.calls).toContain(
-        `linkGlobalTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
+        `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
       );
       expect(globalInvites.records[0].status).toBe('ACCEPTED');
       // The tenant-local invitation path must NOT have been consulted.
@@ -299,7 +299,7 @@ describe('CompleteOidcLoginUseCase', () => {
       ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
       expect(users.oidcUpserts).toHaveLength(1);
       expect(router.calls).toContain(
-        `linkGlobalTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
+        `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
       );
       expect(refresh.creates).toEqual([]);
     });
@@ -393,7 +393,7 @@ describe('CompleteOidcLoginUseCase', () => {
   });
 
   describe('identity trail (B12)', () => {
-    it('records OIDC_LOGIN on the global identity for every issued session', async () => {
+    it('records OIDC_LOGIN on the global user for every issued session', async () => {
       const { audit, events } = makeAuditLog();
       const { useCase } = setup({ audit });
 
@@ -407,7 +407,7 @@ describe('CompleteOidcLoginUseCase', () => {
         targetType: 'global_identity',
         targetId: 'global-id-1',
         tenantId: TENANT_ID,
-        globalIdentityId: 'global-id-1',
+        globalUserId: 'global-id-1',
       });
       expect(events[0]?.metadata).toMatchObject({ redirectPath: '/proposals' });
     });

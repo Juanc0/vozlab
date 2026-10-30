@@ -15,7 +15,7 @@ export interface GetMeResult {
   user: AuthUser;
   workspaces: UserWorkspace[];
   /**
-   * Router-DB global identity linked to this tenant user (v6/TASK-01).
+   * Router-DB global user linked to this tenant user (v6/TASK-01).
    * `null` when no link exists (legacy rows predating the login-time link).
    * The PWA needs it to render the tenant switcher (`switch-tenant`).
    */
@@ -46,7 +46,7 @@ export class GetMeUseCase {
     );
 
     const globalUserId = this.routerDb
-      ? await this.routerDb.findGlobalIdentityForTenantUser(input.tid, user.id)
+      ? await this.routerDb.findGlobalUserIdForTenantUser(input.tid, user.id)
       : null;
 
     return { user, workspaces, globalUserId };

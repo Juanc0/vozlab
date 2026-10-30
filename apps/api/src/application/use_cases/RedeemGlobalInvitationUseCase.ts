@@ -93,14 +93,14 @@ export class RedeemGlobalInvitationUseCase {
           email: input.identityEmail,
           subject: input.subject,
         }),
-        globalIdentityId: input.globalUserId,
+        globalUserId: input.globalUserId,
       },
       tenant.id
     );
 
-    // Link the global identity to the tenant in the router DB so the tenant
+    // Link the global user to the tenant in the router DB so the tenant
     // appears in `findTenantsByGlobalUser` on subsequent logins (v6/TASK-06).
-    await this.routerDb.linkGlobalTenant(
+    await this.routerDb.linkGlobalUserTenant(
       input.globalUserId,
       tenant.id,
       user.id,
@@ -130,7 +130,7 @@ export class RedeemGlobalInvitationUseCase {
       targetType: 'global_identity',
       targetId: input.globalUserId,
       tenantId: tenant.id,
-      globalIdentityId: input.globalUserId,
+      globalUserId: input.globalUserId,
       metadata: {
         invitationId: invitation.id,
         workspaceId: invitation.workspaceId,

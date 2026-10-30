@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { DrizzleAuditLog } from '../../src/infrastructure/persistence/repositories/DrizzleAuditLog.js';
 import type { AuditEvent } from '../../src/domain/ports/IAuditLog.js';
-import type { GlobalIdentityEventInput } from '../../src/domain/ports/IGlobalIdentityEventRepository.js';
+import type { GlobalUserEventInput } from '../../src/domain/ports/IGlobalUserEventRepository.js';
 
 interface Captured {
   tenantId: string | null;
   membershipValues: Record<string, unknown> | null;
-  identityEvent: GlobalIdentityEventInput | null;
+  userEvent: GlobalUserEventInput | null;
 }
 
 function makeFakes(): {
   state: Captured;
   poolManager: { getDb(tid: string): Promise<{ insert: (table: unknown) => { values: (v: Record<string, unknown>) => Promise<void> } }> };
-  globalEvents: { recordIdentityEvent(input: GlobalIdentityEventInput): Promise<void> };
+  globalEvents: { recordUserEvent(input: GlobalUserEventInput): Promise<void> };
 } {
-  const state: Captured = { tenantId: null, membershipValues: null, identityEvent: null };
+  const state: Captured = { tenantId: null, membershipValues: null, userEvent: null };
   const poolManager = {
     async getDb(tid: string) {
       state.tenantId = tid;
@@ -30,8 +30,8 @@ function makeFakes(): {
     },
   };
   const globalEvents = {
-    async recordIdentityEvent(input: GlobalIdentityEventInput) {
-      state.identityEvent = input;
+    async recordUserEvent(input: GlobalUserEventInput) {
+      state.userEvent = input;
     },
   };
   return { state, poolManager, globalEvents };
@@ -65,7 +65,7 @@ describe('DrizzleAuditLog', () => {
     });
 
     expect(state.tenantId).toBe('tenant-1');
-    expect(state.identityEvent).toBeNull();
+    expect(state.userEvent).toBeNull();
     expect(state.membershipValues).toMatchObject({
       workspaceId: 'ws-1',
       userId: 'user-2',
@@ -123,15 +123,15 @@ describe('DrizzleAuditLog', () => {
       targetType: 'global_identity',
       targetId: 'global-1',
       tenantId: 'tenant-9',
-      globalIdentityId: 'global-1',
+      globalUserId: 'global-1',
       metadata: { invitationId: 'gi-1' },
       actorType: 'USER',
     });
 
     expect(state.tenantId).toBeNull();
     expect(state.membershipValues).toBeNull();
-    expect(state.identityEvent).toMatchObject({
-      globalIdentityId: 'global-1',
+    expect(state.userEvent).toMatchObject({
+      globalUserId: 'global-1',
       tenantId: 'tenant-9',
       actorType: 'USER',
       action: 'GLOBAL_INVITATION_REDEEMED',

@@ -50,14 +50,14 @@ function wire(
     audit?: ReturnType<typeof makeAuditLog>['audit'];
   } = {}
 ) {
-  const globalIdentity = makeGlobalUserRepository();
+  const globalUser = makeGlobalUserRepository();
   if (opts.findByIdOverride) {
-    globalIdentity.repo.findById = opts.findByIdOverride;
+    globalUser.repo.findById = opts.findByIdOverride;
   }
   const refresh = makeRefreshTokenRepository();
   const router = makeRouterDb(linked);
   const uc = new SelectTenantUseCase(
-    globalIdentity.repo,
+    globalUser.repo,
     router.routerDb,
     makeUserRepo(),
     makeUnitOfWork(),
@@ -84,10 +84,10 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
     const refresh = makeRefreshTokenRepository();
     // Wire the use case against THIS refresh repo so the created family is
     // observable.
-    const globalIdentity = makeGlobalUserRepository();
+    const globalUser = makeGlobalUserRepository();
     const router = makeRouterDb(linked);
     const uc = new SelectTenantUseCase(
-      globalIdentity.repo,
+      globalUser.repo,
       router.routerDb,
       makeUserRepo(),
       makeUnitOfWork(),
@@ -95,7 +95,7 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
     );
 
     const result = await uc.execute({
-      globalIdentityId: GLOBAL_ID,
+      globalUserId: GLOBAL_ID,
       tenantId: OTHER_TENANT_ID,
       refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
     });
@@ -116,7 +116,7 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
 
     await expect(
       useCase.execute({
-        globalIdentityId: GLOBAL_ID,
+        globalUserId: GLOBAL_ID,
         tenantId: OTHER_TENANT_ID,
         refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
       })
@@ -128,7 +128,7 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
 
     await expect(
       useCase.execute({
-        globalIdentityId: 'missing-global',
+        globalUserId: 'missing-global',
         tenantId: TENANT_ID,
         refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
       })
@@ -140,7 +140,7 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
     const { uc } = wire(linked, { audit });
 
     await uc.execute({
-      globalIdentityId: GLOBAL_ID,
+      globalUserId: GLOBAL_ID,
       tenantId: OTHER_TENANT_ID,
       refreshTtlMs: 30 * 24 * 60 * 60 * 1000,
     });
@@ -153,7 +153,7 @@ describe('SelectTenantUseCase (switch-tenant / select-tenant)', () => {
       targetType: 'global_identity',
       targetId: GLOBAL_ID,
       tenantId: OTHER_TENANT_ID,
-      globalIdentityId: GLOBAL_ID,
+      globalUserId: GLOBAL_ID,
     });
     expect(events[0]?.metadata).toMatchObject({ tenantSlug: OTHER_TENANT_SLUG });
   });

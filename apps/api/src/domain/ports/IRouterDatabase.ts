@@ -48,29 +48,29 @@ export interface IRouterDatabase {
   ping(): Promise<void>;
 
   /**
-   * List tenants linked to a global identity (v5 explicit tenant selection).
+   * List tenants linked to a global user (v5 explicit tenant selection).
    */
   findTenantsByGlobalUser(
     globalUserId: string
   ): Promise<Array<{ id: string; slug: string; oidcTenantId: string; status: string }>>;
 
   /**
-   * Resuelve el usuario interno del tenant (`tenant_user_id`) vinculado a una
-   * identidad global dentro de un tenant. Devuelve `null` cuando no hay
-   * vínculo. Usado por la alta directa por identidad global (v6/TASK-03).
+   * Resolve the tenant-internal user (`tenant_user_id`) linked to a global
+   * user inside a tenant. Returns `null` when there is no link. Used by the
+   * admin's direct add-by-global-user lookup (v6/TASK-03).
    */
-  findGlobalTenantLink(
+  findGlobalUserTenantLink(
     globalUserId: string,
     tenantId: string
   ): Promise<{ tenantUserId: string; status: string } | null>;
 
   /**
-   * Upsert the link between a global identity and a tenant user
-   * (`global_identity_tenants`). Used when an external identity is created
+   * Upsert the link between a global user and a tenant user
+   * (`global_user_tenants`). Used when an external identity is created
    * or redeemed into a tenant (v6/TASK-06: global invitation redemption).
    * Idempotent: on conflict updates `tenantUserId`/`status`/`lastSeenAt`.
    */
-  linkGlobalTenant(
+  linkGlobalUserTenant(
     globalUserId: string,
     tenantId: string,
     tenantUserId: string,
@@ -78,11 +78,11 @@ export interface IRouterDatabase {
   ): Promise<void>;
 
   /**
-   * Reverse of `findGlobalTenantLink`: the global identity bound to a tenant
+   * Reverse of `findGlobalUserTenantLink`: the global user bound to a tenant
    * user. Used by `GET /auth/me` to expose the `globalUserId` the PWA needs
    * for the tenant selector (`switch-tenant`). `null` when there is no link.
    */
-  findGlobalIdentityForTenantUser(
+  findGlobalUserIdForTenantUser(
     tenantId: string,
     tenantUserId: string
   ): Promise<string | null>;

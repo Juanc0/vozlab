@@ -302,7 +302,7 @@ export class DrizzleUserRepository implements IUserRepository {
             handle: freeHandle,
             authorHash: input.authorHash,
             systemRole: 'USER',
-            globalIdentityId: input.globalIdentityId ?? null,
+            globalUserId: input.globalUserId ?? null,
           })
           .returning();
 

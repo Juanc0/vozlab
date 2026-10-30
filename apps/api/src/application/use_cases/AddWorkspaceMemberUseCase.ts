@@ -54,7 +54,7 @@ export class AddWorkspaceMemberUseCase {
       const found = await this.userRepo.findByHandle(input.handle, input.tid);
       user = found ? { id: found.id } : null;
     } else if (input.globalUserId) {
-      const link = await this.routerDb.findGlobalTenantLink(
+      const link = await this.routerDb.findGlobalUserTenantLink(
         input.globalUserId,
         input.tid
       );

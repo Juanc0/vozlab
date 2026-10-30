@@ -171,7 +171,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const rateLimiter = new RateLimitingMiddleware();
   const userRepo = new DrizzleUserRepository(poolManager);
   // P0-4: persistent audit trail — tenant `membership_events` + router
-  // `global_identity_events`. Wired into every onboarding write use case.
+  // `global_user_events`. Wired into every onboarding write use case.
   const auditLog = new DrizzleAuditLog(poolManager, routerDb);
   const createWorkspaceJoinCodeUseCase = new CreateWorkspaceJoinCodeUseCase(
     workspaceJoinCodeRepo,

@@ -42,7 +42,7 @@ function setup(
     tenantUser({ id: NEW_USER_ID, email: 'newcomer@example.edu' }),
   ]);
   const routerDb = {
-    async findGlobalTenantLink(globalUserId: string, _tid: string) {
+    async findGlobalUserTenantLink(globalUserId: string, _tid: string) {
       if (globalUserId === 'global-new-user') {
         return { tenantUserId: NEW_USER_ID, status: 'ACTIVE' };
       }
@@ -255,7 +255,7 @@ describe('AddWorkspaceMemberUseCase', () => {
     expect(ctx.membershipAdmin.events[0]?.action).toBe('ADDED');
   });
 
-  it('adds an existing tenant user by global identity (globalUserId)', async () => {
+  it('adds an existing tenant user by global user (globalUserId)', async () => {
     const ctx = setup();
 
     await ctx.add.execute({

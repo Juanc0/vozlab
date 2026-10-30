@@ -46,8 +46,8 @@ export interface NewExternalIdentityInput {
    * a null handle keeps the user unfindable by handle, never blocks login.
    */
   handle?: string | null;
-  /** Global identity ID from the router DB (D8). */
-  globalIdentityId?: string | null;
+  /** Global user ID from the router DB (D8). */
+  globalUserId?: string | null;
 }
 
 export interface NewAnonymousUser {
