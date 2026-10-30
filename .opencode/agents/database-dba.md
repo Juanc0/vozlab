@@ -28,11 +28,14 @@ persistence boundary and every byte that crosses a physical database.
   way). When a column "doesn't exist", run
   `docker exec vozlab-postgres psql -U postgres -d <db> -c "\d <schema>.<table>"`
   before touching code.
-- The dev volume also lags the **data semantics** of the identity intervention:
-  `pnpm --filter @vozlab/api test:integration` runs green on a fresh
-  migrate+seed fold but shows 403s locally against the drifted dev DB (stale
-  agent membership in `general`). CI's `integration` job is the authority for
-  that suite; do not chase a local 403 as a code bug.
+- The dev volume was RESET to the collapsed baseline on 2026-10-30
+  (`docs/plans/db-baseline/v1.md`): `test:integration` runs green against
+  the local cluster exactly as CI's fresh migrate+seed fold does. That
+  parity is the INVARIANT — if the local suite goes red while CI is green,
+  the local volume drifted again (stale data or a half-applied fold):
+  re-run `db:seed:dev`, inspect `drizzle.__drizzle_migrations`, and only
+  then consider a code bug. A reset requires fresh `pg_dump`s of both DBs
+  first; the pre-2026-10-30 dumps live in `local-backups/` (gitignored).
 - `db:push` is dev-only and asks the user; never on anything resembling prod.
   Compose `down -v` destroys data; the initdb scripts run only on fresh
   volumes.
