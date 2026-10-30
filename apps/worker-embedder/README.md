@@ -5,8 +5,9 @@ through the API, asks the local Ollama model for the 768-dimensional
 `nomic-embed-text` vector and writes it back through the agent-only
 `PUT /api/v1/nodes/:id/embedding`; it never writes tenant PostgreSQL.
 
-**Status: implemented (milestone 2.4).** Not in Compose/CI yet (milestone
-2.7), and there is no backfill for nodes created before the worker ran.
+**Status: implemented (milestone 2.4).** Runs in Compose under the `workers`
+profile and its image is built in CI (`images` job); milestone 2.7 closed on
+that part. There is no backfill yet for nodes created before the worker ran.
 
 ```bash
 # from the repository root, with uv installed

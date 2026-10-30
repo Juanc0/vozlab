@@ -13,9 +13,10 @@ tenant PostgreSQL.
   candidates, or `409 ERR_NODE_NOT_EMBEDDED` while the embedder has not
   written the vector yet.
 - An `EDGE` verdict creates a `PENDING` edge through `POST /api/v1/edges`
-  with a relation key taken from the workspace ontology. A `MERGE` verdict is
-  **logged, not applied** — there is no merge contract yet
-  ([ADR-0023](../../docs/decisions/ADR-0023-relator-edge-and-merge-semantics.md)).
+  with a relation key taken from the workspace ontology. A `MERGE` verdict
+  creates a **merge proposal** (`kind='MERGE'`, naming the survivor in
+  `proposedChanges.mergeIntoNodeId`); approving it applies the merge
+  ([ADR-0026](../../docs/decisions/ADR-0026-merge-contract.md)).
 
 ```bash
 # from the repository root, with uv installed
@@ -44,7 +45,7 @@ NEIGHBORS_LIMIT=5
 | The node has no vector yet (`409`) | Retryable — the entry stays pending and is recovered with `XAUTOCLAIM` |
 | No neighbours | No action; the entry is acknowledged |
 | The model answers `INDEPENDENT` | No action; the verdict is logged |
-| The model answers `MERGE` | Logged only — no merge contract exists |
+| The model answers `MERGE` | A merge proposal is submitted (`kind='MERGE'`); the API applies the merge only on approval |
 | The model answers `EDGE` but the ontology has no matching relation | No action; the reason is logged |
 | An edge between the two nodes already exists | No action (best-effort duplicate guard) |
 | The model answers an unknown action or a hallucinated target | Retryable model failure — the entry stays pending |

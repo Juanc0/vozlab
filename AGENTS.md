@@ -135,8 +135,10 @@ they disagree with the code, **the code wins** — fix the doc.
   `tsconfig.tests.json` / `tsconfig.scripts.json`.
 - CI: `ci.yml` has four jobs (verify + coverage + lint, integration with
   Postgres/Redis services, python, image builds incl. api/web); manual
-  `e2e.yml` + `deploy.yml`. **No git remote is configured**, so Actions have
-  never executed on a runner — the local gate is the effective discipline.
+  `e2e.yml` + `deploy.yml`. The remote is `github.com/Juanc0/vozlab` (SSH for
+  push/pull); **CI has been green since run 5 (2026-10-30, `176731a`)** — the
+  first-ever Actions executions (runs 1-4) surfaced and fixed real defects
+  (setup-uv pin, fixture drift vs the fresh fold, ruff format).
   Production topology T2 (Caddy, three origins) is instrumented per ADR-0043:
   `docker-compose.prod.yml`, `deploy/caddy/Caddyfile`,
   `docs/ops/production-deployment.md`. The API trusts `X-Forwarded-*` from

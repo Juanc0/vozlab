@@ -121,9 +121,10 @@ boolean predicate is `existsInWorkspace`, not `find…`. See
   `stream:<lowercase event>` (`NODE_CREATED` → `stream:node_created`). Payloads
   are flat strings; the adapter JSON-encodes nested values.
 - The shared Python worker runtime (`packages/worker-shared`, ADR-0021) has
-  consumer groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream. No
-  worker handler is running yet, so `NODE_CREATED` is still unconsumed and
-  nothing computes `nodes.embedding`.
+  consumer groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream.
+  The embedder and the Relator run via the `workers` compose profile (or host
+  processes); the Consolidator handler and the `stream:source_raw` producer
+  are still missing.
 
 ## 9. Type safety
 
@@ -134,8 +135,8 @@ boolean predicate is `existsInWorkspace`, not `find…`. See
   compiler cannot prove the handle belongs to the same tenant/database as
   `tid`; a wrong handle fails at runtime. Do not fix this by widening to `any`.
 - Residual `any` in attribute maps and legacy ports is known debt: `pnpm lint`
-  currently fails with pre-existing `no-explicit-any` errors. Do not add more;
-  `pnpm turbo run build` is the green gate.
+  reports ~36 warnings (0 errors since 2026-10-29; errors fail CI). Do not add
+  more; `pnpm turbo run build` is the green gate.
 
 ## 10. Python workers
 

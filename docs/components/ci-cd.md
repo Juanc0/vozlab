@@ -1,10 +1,11 @@
 # CI/CD
 
 > STATUS: **PARTIAL — living doc** (migrated from `docs/spec/` 2026-10-29).
-> The "current" section describes `.github/workflows/` as committed; note the
-> repo currently has **no git remote**, so GitHub Actions have never actually
-> executed against a hosted runner — the workflows are local truth pending a
-> first push.
+> The "current" section describes `.github/workflows/` as committed; the remote
+> is `github.com/Juanc0/vozlab` and Actions have been green on `main` since
+> run 5 (2026-10-30, `176731a`) — runs 1–4 were the first-ever executions and
+> fixed real defects (setup-uv full-tag pin, fixtures that drifted against
+> the fresh fold, `ruff format`).
 
 ## Current pipeline (as committed, 2026-10-29)
 
@@ -37,7 +38,8 @@ What it does **not** do:
   Dockerfiles build.
 - No nightly/load (k6) trigger; the k6 smoke script exists (`scripts/load/`).
 - No `develop` branch trigger (it does not exist).
-- No real execution history: with no git remote, CI is defined but unproven.
+- Execution history lives on GitHub Actions: CI green on `main` since run 5
+  (2026-10-30). E2E remains `workflow_dispatch`-only until task 13.
 
 Do not paste the stale pipeline from the old DevOps spec: it used Node 20,
 pnpm 9, a `develop` branch, an `ankane/pgvector:...postgres16` service and

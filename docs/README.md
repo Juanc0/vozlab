@@ -18,8 +18,9 @@ deployment is instrumented ([ADR-0043](decisions/ADR-0043-production-topology-ca
 pending a real hostname. Gates: `pnpm turbo run build type-check test` green
 (≈352 API unit tests, ≈521 web tests, Python suite `uv run pytest`), lint 0
 errors / ≈35 warnings. E2E Playwright: 17 green, 1 opt-in (`E2E_OIDC=1`), 14
-red pending the graph-suite realignment (task 13). **CI has never executed
-against a hosted runner: the repo has no git remote.**
+red pending the graph-suite realignment (task 13). **CI green on GitHub
+Actions since run 5 (2026-10-30, `176731a`)**; E2E is manual-dispatch until
+task 13.
 
 ## Structure and lifecycle
 
@@ -158,7 +159,6 @@ Legend: **Implemented** = end-to-end path exists and is tested or verified; **Pa
 
 ## Known gaps and debt
 
-- **CI is defined but unproven**: no git remote → Actions (4 jobs + manual e2e/deploy) have never executed on a runner. The local gates are the effective discipline.
 - **Task 13**: 14 graph E2E journeys are red — toolbar redesign drift (3.57–3.64); the `graph.intro` copy still promises the «Lista» toggle (a11y gap). Options recorded in the committee doc §5.
 - **The async pipeline covers two of the three agents** (plus extractor without producer): the Consolidator has no handler, nothing publishes `stream:source_raw`, pre-existing nodes are not backfilled ([ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md), [ADR-0022](decisions/ADR-0022-relator-neighbour-lookup.md), [ADR-0023](decisions/ADR-0023-relator-edge-and-merge-semantics.md), [ADR-0026](decisions/ADR-0026-merge-contract.md)).
 - **M-12:** `public.edit_proposals.target_id` is polymorphic with no FK — accepted interim decision.
