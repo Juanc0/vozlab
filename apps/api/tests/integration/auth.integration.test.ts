@@ -371,8 +371,11 @@ describe('auth integration', () => {
     const meBody = (await meResponse.json()) as {
       workspaces: Array<{ id: string; role: string }>;
     };
+    // v6 semantics: the anonymous event participant joins as GUEST
+    // (JoinEventUseCase grants WorkspaceRole 'GUEST'; only institutional
+    // users can be MEMBER+).
     expect(meBody.workspaces).toContainEqual(
-      expect.objectContaining({ id: eventWorkspaceId, role: 'MEMBER' })
+      expect.objectContaining({ id: eventWorkspaceId, role: 'GUEST' })
     );
 
     expect((await refreshSession(refreshCookie(join))).status).toBe(200);
