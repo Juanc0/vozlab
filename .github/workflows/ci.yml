@@ -72,6 +72,8 @@ jobs:
 
       # Provision router + tenant databases and seed.
       - name: Provision databases
+        env:
+          EMAIL_PEPPER: integration-test-pepper-at-least-32-chars-xx # dev-only; seed hashes emails (DEC-4)
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vozlab_router;" || true
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vozlab_tenant_dev;" || true

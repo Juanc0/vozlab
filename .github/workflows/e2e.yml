@@ -40,6 +40,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Provision databases
+        env:
+          EMAIL_PEPPER: integration-test-pepper-at-least-32-chars-xx # dev-only; seed hashes emails (DEC-4)
         run: |
           pnpm --filter @vozlab/database db:migrate:router
           pnpm --filter @vozlab/database db:migrate:tenant
