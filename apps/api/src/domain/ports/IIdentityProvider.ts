@@ -32,7 +32,9 @@ export interface ExternalIdentity {
    * IdP avatar URL claim (`picture`), when the provider asserts it. The
    * login use case copies it into the router vault
    * (`global_users.picture`, truncated to the column width). Optional:
-   * providers that omit it leave the column untouched (audit P7.4).
+   * the stored column mirrors the IdP — a provider that stops asserting
+   * the claim nulls it on the next login, like the rest of the profile
+   * upsert (audit P7.4).
    */
   picture?: string | null;
   /**
