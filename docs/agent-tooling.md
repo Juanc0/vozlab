@@ -36,14 +36,17 @@ subagent cannot drift from the conventions in `docs/conventions.md`.
 | `frontend-svelte` | `all` | Principal Frontend Engineer: SvelteKit 5 PWA, Cytoscape canvas, offline shell |
 | `qa-security` | `subagent` | Staff QA & Security Engineer: read-only security/PII/tenant review (edit is denied) |
 | `reviewer` | `subagent` | Generic read-only diff review (edit is denied) |
-| `database-dba` | `subagent` | Database & migrations: Drizzle folds (router/tenant), `_journal.json`, pooling, seeds, AGE/pgvector |
-| `devops-deploy` | `subagent` | DevOps & deployment: compose profiles, T2/Caddy production, zrok demo, images, CI/Actions |
-| `docs-governance` | `subagent` | Documentation lifecycle: plan open/close, archive purity, knowledge graduation, link/truth audits |
-| `e2e-qa` | `subagent` | E2E & browser journeys: Playwright harness, task-13 graph realignment, k6 smoke |
+| `database-dba` | `all` | Database & migrations: Drizzle folds (router/tenant), `_journal.json`, pooling, seeds, AGE/pgvector |
+| `devops-deploy` | `all` | DevOps & deployment: compose profiles, T2/Caddy production, zrok demo, images, CI/Actions |
+| `docs-governance` | `all` | Documentation lifecycle: plan open/close, archive purity, knowledge graduation, link/truth audits |
+| `e2e-qa` | `all` | E2E & browser journeys: Playwright harness, task-13 graph realignment, k6 smoke |
 
-`mode: all` means the agent can be selected as the session's main agent or
-launched as a subagent. The two reviewers are `subagent` only: a read-only
-role must never drive a session.
+`mode: all` means the agent can be selected as the session's main agent
+(it appears in `/agents`) or launched as a subagent. `qa-security` and
+`reviewer` are `subagent`-only by design — a read-only role must never drive
+a session — so they do not appear in `/agents`; launch them with
+"use the reviewer subagent …" and the parent's `subagent` permission selects
+them.
 
 Launch one explicitly, for example:
 
@@ -194,16 +197,25 @@ When an agent calls the MCP from code mode, the tools live under
 It is a remote server using a personal access token. The token is read from
 the environment, so it is never committed:
 
-Add it to the repo `.env` (gitignored) or export it, then restart OpenCode:
+**The token does not go in the repo `.env`.** OpenCode V2 substitutes
+`{env:VAR}` only from the service process environment and never loads `.env`
+for it (an unset variable becomes an empty string, which surfaces as
+"Authorization header is badly formatted"). The working pattern is the
+`{file:}` substitution documented for config variables:
 
 ```bash
-GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # classic PAT with repo scope, or a
-                                        # fine-grained PAT: Contents + Actions +
-                                        # Pull requests + Issues (read/write)
+printf '%s' 'github_pat_…' > ~/.config/opencode/github-pat   # no trailing newline
+chmod 600 ~/.config/opencode/github-pat
 ```
 
-The VozLab remote is `github.com/Juanc0/vozlab` (SSH for push/pull); the MCP
-uses HTTPS with this token for the Actions/PR/issues APIs.
+and in `opencode.json`:
+`"Authorization": "Bearer {file:~/.config/opencode/github-pat}"`.
+Config is watched — `opencode mcp list` goes from `failed` to `connected`
+without a restart. Rotate by rewriting the file. The PAT is a fine-grained
+token scoped to `Juanc0/vozlab` with Contents + Actions + Pull requests +
+Issues (read/write). The VozLab remote is `github.com/Juanc0/vozlab`
+(SSH for push/pull); the MCP uses HTTPS with this token for the
+Actions/PR/issues APIs.
 
 Without the variable the server cannot authenticate and `opencode mcp list`
 reports it as failed. The `X-MCP-Toolsets` header keeps the registered tool

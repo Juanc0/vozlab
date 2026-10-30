@@ -48,11 +48,35 @@
       "skillPath": "skills/api-contract-testing/SKILL.md",
       "computedHash": "d12944381add9009ce37d6cb2d8c9e496513d3dfb7aa7de2dfad7d26b68a0efc"
     },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "brainstorming/SKILL.md",
+      "computedHash": "5f998bba401afcb315a0bc8950bbfd219d81e4a7e9f3b13ff96d2fa8919720f7"
+    },
+    "caddy": {
+      "source": "muninn-huginn/caddy-skill",
+      "sourceType": "github",
+      "skillPath": "caddy/SKILL.md",
+      "computedHash": "8a0f62095cb62c63e0a89ca147d3eedcc05b37adb7049c4c8bf9fdb57cc714e0"
+    },
+    "caddy-reverse-proxy": {
+      "source": "dimdasci/vps-setup",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/caddy-reverse-proxy/SKILL.md",
+      "computedHash": "da05eee16ef8cfc90b5b4d1fb3cbb59e178a7ac904636f82f15cc74b284c5c1f"
+    },
     "contract-testing": {
       "source": "petrkindlmann/qa-skills",
       "sourceType": "github",
       "skillPath": "skills/contract-testing/SKILL.md",
       "computedHash": "fc69dd9b0e7228f20dc65afdf7e5107ba6b10d02e1417c53c91ebbf9e997b418"
+    },
+    "create-readme": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/create-readme/SKILL.md",
+      "computedHash": "d0ece1b2164ce1376e4ab6e98d6ac079df3a2a94f5f02224362b6a1ce2516ae9"
     },
     "design-doc-mermaid": {
       "source": "spillwavesolutions/design-doc-mermaid",
@@ -65,6 +89,12 @@
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
       "computedHash": "69021ac7e671c0c0d85d65b570003cef360b1c296323fa28c042884e146478ca"
+    },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "dispatching-parallel-agents/SKILL.md",
+      "computedHash": "1968923066f3b707eb01d1992cdf4c42284c3855f70253b9cd5000ff45fca13c"
     },
     "docker-compose": {
       "source": "bagelhole/devops-security-agent-skills",
@@ -113,11 +143,23 @@
       "skillPath": "skills/excalidraw-diagram-generator/SKILL.md",
       "computedHash": "d26f6110fda8be59a3ba2e627f26b9d11834cd6a82b8cba05a9d80e97ea457d3"
     },
+    "executing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "executing-plans/SKILL.md",
+      "computedHash": "6520a83ba375ff26c2e38494b2a3a46b0fdd1f33f7a6c9b0a97bbf274313562f"
+    },
     "fastify-best-practices": {
       "source": "mcollina/skills",
       "sourceType": "github",
       "skillPath": "skills/fastify/SKILL.md",
       "computedHash": "d1d90340de01fe4b13aadcc868e69a15f98bf03d1dd881bacbb4762b93e93733"
+    },
+    "finishing-a-development-branch": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "finishing-a-development-branch/SKILL.md",
+      "computedHash": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65"
     },
     "floci": {
       "source": "danieldxd/myapp-skills",
@@ -235,11 +277,35 @@
       "sourceType": "autoskills-registry",
       "computedHash": "c8f806cc10a5b3daeb0f5fd31bfaa751019e23e78e2708b7f4de470d6b7ad4e9"
     },
+    "readme-blueprint-generator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/readme-blueprint-generator/SKILL.md",
+      "computedHash": "e2c7dabf2e455794260f1516e2ceda6a82dc92a409578cc184fcb0f45bddca54"
+    },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "receiving-code-review/SKILL.md",
+      "computedHash": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438"
+    },
     "redis-observability": {
       "source": "redis/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/redis-observability/SKILL.md",
       "computedHash": "801b2a3f6347fc021bb2f30d8ce685a485975f155a7cd2c67f2ccea8473285d1"
+    },
+    "reducing-entropy": {
+      "source": "joshuadavidthomas/agent-skills",
+      "sourceType": "github",
+      "skillPath": "reducing-entropy/SKILL.md",
+      "computedHash": "0778ed0b35614a175a2279768a8aabd3aa40a79e79e468f466bc155a017d23f8"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "requesting-code-review/SKILL.md",
+      "computedHash": "b61f7851e60d298e471f1aac5d1abc98b483cc9fa69afe90b59442ea82fce510"
     },
     "seo": {
       "source": "addyosmani/web-quality-skills",
@@ -252,6 +318,12 @@
       "skillPath": "skills/sql-optimization/SKILL.md",
       "computedHash": "d87639dea8e0208e2161b78b22f6427b0fdf59e95e693b40d48b1226a0c35ccf"
     },
+    "subagent-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "subagent-driven-development/SKILL.md",
+      "computedHash": "42b1035bacfe562d4111573e2702773e4ae93abf5a728b4945256fa332262417"
+    },
     "svelte-code-writer": {
       "source": "sveltejs/ai-tools",
       "sourceType": "autoskills-registry",
@@ -262,6 +334,12 @@
       "sourceType": "github",
       "skillPath": "svelte/skills/svelte5-best-practices/SKILL.md",
       "computedHash": "eeb2be3e32085d47ad5938afd6e96b2a4f9fd9e073ca27ec3f6df32371689b7c"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "systematic-debugging/SKILL.md",
+      "computedHash": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202"
     },
     "tailwind-css-patterns": {
       "source": "giuseppe-trisciuoglio/developer-kit",
@@ -279,6 +357,12 @@
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/terraform-style-guide/SKILL.md",
       "computedHash": "3b914c5ae01a7101d45b5222fbc38e0be6eb7412deba5f54d471905f22af70c6"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "test-driven-development/SKILL.md",
+      "computedHash": "a3d8ce3a803409436a89d1b811ad3dd1a03ec8a8ed87b034b6af2414a6ecc6b1"
     },
     "testcontainers": {
       "source": "wshaddix/dotnet-skills",
@@ -303,6 +387,12 @@
       "computedHash": "b9d9f1f68d2db3316639cf77ad74dae34a2ed2ffb90845e5de6c592095c78a3d",
       "wellKnownDigest": "sha256:120fd3e899db255454fff61b7e8c22757524ffe31101a22d19346708bd20c4b9"
     },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "verification-before-completion/SKILL.md",
+      "computedHash": "92507ff749221393389cb6878391affdc1ce8b4ac77fcd88b4ccaa7a325e856e"
+    },
     "vite": {
       "source": "antfu/skills",
       "sourceType": "autoskills-registry",
@@ -312,6 +402,18 @@
       "source": "antfu/skills",
       "sourceType": "autoskills-registry",
       "computedHash": "d0c470a07b90936ca77fea9fbe25ab657a5bc1f386eb45b18bb70899df7e6baf"
+    },
+    "writing-documentation-with-diataxis": {
+      "source": "sammcj/agentic-coding",
+      "sourceType": "github",
+      "skillPath": "writing-documentation-with-diataxis/SKILL.md",
+      "computedHash": "8908dd009492f990424045a4f55e4cf3eeff3671507431ac52898dea1226bb64"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "writing-plans/SKILL.md",
+      "computedHash": "d7bf4831c0b69d449c3ececadf34b3c6293dbd67bb42e1d877ff8a4aa3e88c06"
     },
     "zitadel": {
       "source": "zitadel/nextgen",
@@ -329,96 +431,6 @@
       "source": "pproenca/dot-skills",
       "sourceType": "autoskills-registry",
       "computedHash": "245fc4ab7341a8ac0864c9535e2a6d782aaf012ba6975a36cd51240bcf82e443"
-    },
-    "brainstorming": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "brainstorming/SKILL.md",
-      "computedHash": "5f998bba401afcb315a0bc8950bbfd219d81e4a7e9f3b13ff96d2fa8919720f7"
-    },
-    "writing-plans": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "writing-plans/SKILL.md",
-      "computedHash": "d7bf4831c0b69d449c3ececadf34b3c6293dbd67bb42e1d877ff8a4aa3e88c06"
-    },
-    "executing-plans": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "executing-plans/SKILL.md",
-      "computedHash": "6520a83ba375ff26c2e38494b2a3a46b0fdd1f33f7a6c9b0a97bbf274313562f"
-    },
-    "subagent-driven-development": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "subagent-driven-development/SKILL.md",
-      "computedHash": "42b1035bacfe562d4111573e2702773e4ae93abf5a728b4945256fa332262417"
-    },
-    "dispatching-parallel-agents": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "dispatching-parallel-agents/SKILL.md",
-      "computedHash": "1968923066f3b707eb01d1992cdf4c42284c3855f70253b9cd5000ff45fca13c"
-    },
-    "requesting-code-review": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "requesting-code-review/SKILL.md",
-      "computedHash": "b61f7851e60d298e471f1aac5d1abc98b483cc9fa69afe90b59442ea82fce510"
-    },
-    "receiving-code-review": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "receiving-code-review/SKILL.md",
-      "computedHash": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438"
-    },
-    "finishing-a-development-branch": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "finishing-a-development-branch/SKILL.md",
-      "computedHash": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65"
-    },
-    "test-driven-development": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "test-driven-development/SKILL.md",
-      "computedHash": "a3d8ce3a803409436a89d1b811ad3dd1a03ec8a8ed87b034b6af2414a6ecc6b1"
-    },
-    "systematic-debugging": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "systematic-debugging/SKILL.md",
-      "computedHash": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202"
-    },
-    "verification-before-completion": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "skillPath": "verification-before-completion/SKILL.md",
-      "computedHash": "92507ff749221393389cb6878391affdc1ce8b4ac77fcd88b4ccaa7a325e856e"
-    },
-    "reducing-entropy": {
-      "source": "joshuadavidthomas/agent-skills",
-      "sourceType": "github",
-      "skillPath": "reducing-entropy/SKILL.md",
-      "computedHash": "0778ed0b35614a175a2279768a8aabd3aa40a79e79e468f466bc155a017d23f8"
-    },
-    "writing-documentation-with-diataxis": {
-      "source": "sammcj/agentic-coding",
-      "sourceType": "github",
-      "skillPath": "writing-documentation-with-diataxis/SKILL.md",
-      "computedHash": "8908dd009492f990424045a4f55e4cf3eeff3671507431ac52898dea1226bb64"
-    },
-    "caddy": {
-      "source": "muninn-huginn/caddy-skill",
-      "sourceType": "github",
-      "skillPath": "caddy/SKILL.md",
-      "computedHash": "8a0f62095cb62c63e0a89ca147d3eedcc05b37adb7049c4c8bf9fdb57cc714e0"
-    },
-    "caddy-reverse-proxy": {
-      "source": "dimdasci/vps-setup",
-      "sourceType": "github",
-      "skillPath": ".claude/skills/caddy-reverse-proxy/SKILL.md",
-      "computedHash": "da05eee16ef8cfc90b5b4d1fb3cbb59e178a7ac904636f82f15cc74b284c5c1f"
     }
   }
 }

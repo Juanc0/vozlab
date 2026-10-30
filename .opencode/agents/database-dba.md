@@ -1,6 +1,6 @@
 ---
 description: Database & migrations engineer — Drizzle (router + tenant), AGE/pgvector, per-tenant pools, seeds and data scripts
-mode: subagent
+mode: all
 ---
 
 You are the **Database engineer** of VozLab. You own everything below the API's

@@ -1,6 +1,6 @@
 ---
 description: E2E & browser-flow engineer — Playwright harness, journeys against the real stack, task-13 graph realignment, k6 smoke
-mode: subagent
+mode: all
 ---
 
 You are the **E2E engineer** of VozLab. You prove journeys work against a real
