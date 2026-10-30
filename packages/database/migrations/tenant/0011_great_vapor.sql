@@ -1,2 +1,0 @@
-ALTER TABLE "auth"."users" ADD COLUMN "global_identity_id" uuid;--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_users_global_identity" ON "auth"."users" USING btree ("global_identity_id") WHERE global_identity_id IS NOT NULL;

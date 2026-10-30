@@ -5,71 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1792190538406,
-      "tag": "0000_jazzy_stone_men",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1792393184361,
-      "tag": "0001_blushing_hellcat",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793064510971,
-      "tag": "0002_huge_rhino",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793064620097,
-      "tag": "0003_previous_jack_flag",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1793064643435,
-      "tag": "0004_white_black_tarantula",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1793064780161,
-      "tag": "0005_parallel_cerebro",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1793068504228,
-      "tag": "0006_goofy_stryfe",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1793209141552,
-      "tag": "0007_glamorous_killraven",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1793209453816,
-      "tag": "0008_sturdy_ultragirl",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1793209453817,
-      "tag": "0009_rename_global_identities",
+      "when": 1793343441566,
+      "tag": "0000_aspiring_piledriver",
       "breakpoints": true
     }
   ]

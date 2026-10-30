@@ -121,11 +121,15 @@ export type TenantIdentityProvider = typeof tenantIdentityProviders.$inferSelect
 export type NewTenantIdentityProvider = typeof tenantIdentityProviders.$inferInsert;
 
 /**
- * Global identity index (D6, M2a).
+ * Global user index (D6, M2a) — the router DB is the cross-tenant identity
+ * vault: one row per unique (issuer, subject) pair across all institutions.
  *
- * Maps (issuer, subject) → global_identity_id in the router DB.
- * Contains NO PII (no email, name, role). Only the IdP subject hash.
- * One row per unique (issuer, subject) pair across all institutions.
+ * Since v5/v6 this row carries the identity profile (`email`, `full_name`,
+ * `picture`) as the single source of truth for "who is this user", and the
+ * IdP `subject` is stored RAW (not hashed). Workspace/role data remain in
+ * the tenant DB. Plan 2 (identity-consolidation) will turn `email` into a
+ * peppered hash — until then the PII here is plaintext by decision, not an
+ * oversight.
  */
 export const globalUsers = pgTable(
   'global_users',
@@ -144,7 +148,7 @@ export const globalUsers = pgTable(
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('uniq_global_identities_issuer_subject').on(table.issuer, table.subject),
+    uniqueIndex('uniq_global_users_issuer_subject').on(table.issuer, table.subject),
   ]
 );
 
@@ -152,15 +156,15 @@ export type GlobalUser = typeof globalUsers.$inferSelect;
 export type NewGlobalUser = typeof globalUsers.$inferInsert;
 
 /**
- * Global identity ↔ tenant link (D7, M2b).
+ * Global user ↔ tenant link (D7, M2b).
  *
- * Links a global identity to a tenant user. No FK between DBs (router
+ * Links a global user to a tenant user. No FK between DBs (router
  * and tenant are separate physical databases).
  */
 export const globalIdentityTenants = pgTable(
-  'global_identity_tenants',
+  'global_user_tenants',
   {
-    globalIdentityId: uuid('global_identity_id')
+    globalIdentityId: uuid('global_user_id')
       .notNull()
       .references(() => globalUsers.id, { onDelete: 'cascade' }),
     tenantId: uuid('tenant_id')
@@ -172,7 +176,7 @@ export const globalIdentityTenants = pgTable(
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('uniq_global_identity_tenant').on(table.globalIdentityId, table.tenantId),
+    uniqueIndex('uniq_global_user_tenant').on(table.globalIdentityId, table.tenantId),
     uniqueIndex('uniq_tenant_user').on(table.tenantId, table.tenantUserId),
   ]
 );
@@ -181,15 +185,15 @@ export type GlobalIdentityTenant = typeof globalIdentityTenants.$inferSelect;
 export type NewGlobalIdentityTenant = typeof globalIdentityTenants.$inferInsert;
 
 /**
- * Global identity audit events (D11, append-only, router DB).
+ * Global user audit events (D11, append-only, router DB).
  *
  * No PII: only IDs, roles and states.
  */
 export const globalIdentityEvents = pgTable(
-  'global_identity_events',
+  'global_user_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    globalIdentityId: uuid('global_identity_id').notNull(),
+    globalIdentityId: uuid('global_user_id').notNull(),
     tenantId: uuid('tenant_id'),
     actorType: varchar('actor_type', { length: 30 }).notNull(),
     actorId: varchar('actor_id', { length: 255 }),
@@ -199,9 +203,9 @@ export const globalIdentityEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('idx_global_identity_events_identity').on(table.globalIdentityId),
-    index('idx_global_identity_events_tenant').on(table.tenantId),
-    index('idx_global_identity_events_created').on(table.createdAt),
+    index('idx_global_user_events_identity').on(table.globalIdentityId),
+    index('idx_global_user_events_tenant').on(table.tenantId),
+    index('idx_global_user_events_created').on(table.createdAt),
   ]
 );
 

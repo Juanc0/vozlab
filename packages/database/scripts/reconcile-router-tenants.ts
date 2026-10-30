@@ -1,8 +1,8 @@
 /**
  * Reconciliation job: router ↔ institutions (D14).
  *
- * Compares auth.users.global_identity_id and workspace_memberships status
- * with global_identity_tenants in the router DB. Creates missing links,
+ * Compares auth.users.global_user_id and workspace_memberships status
+ * with global_user_tenants in the router DB. Creates missing links,
  * calculates tenant status (ACTIVE/SUSPENDED/LEFT), reports orphans (no PII).
  * Idempotent.
  *
@@ -56,17 +56,17 @@ async function main(): Promise<void> {
     const tenantDb = drizzle(tenantPool);
 
     try {
-      // Read local users with global_identity_id and their membership status.
+      // Read local users with global_user_id and their membership status.
       const rows = await tenantDb.execute(sql`
-        SELECT u.id AS user_id, u.global_identity_id,
+        SELECT u.id AS user_id, u.global_user_id,
                (SELECT status FROM auth.workspace_memberships wm WHERE wm.user_id = u.id LIMIT 1) AS membership_status
         FROM auth.users u
-        WHERE u.global_identity_id IS NOT NULL
+        WHERE u.global_user_id IS NOT NULL
       `);
 
       const users = rows.rows as Array<{
         user_id: string;
-        global_identity_id: string;
+        global_user_id: string;
         membership_status: string | null;
       }>;
 
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
       );
 
       for (const u of users) {
-        const globalId = u.global_identity_id;
+        const globalId = u.global_user_id;
         const membershipStatus = u.membership_status;
 
         // Calculate tenant status for this user's link.
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
               .update(globalIdentityTenants)
               .set({ status: linkStatus, lastSeenAt: new Date() })
               .where(
-                sql`global_identity_id = ${globalId}::uuid AND tenant_id = ${tenant.id}::uuid`
+                sql`global_user_id = ${globalId}::uuid AND tenant_id = ${tenant.id}::uuid`
               );
             console.log(`  Updated link ${globalId} → ${linkStatus}`);
           }
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
       }
 
       // Check for orphaned links (in router but not in tenant).
-      const localGlobalIds = new Set(users.map((u) => u.global_identity_id));
+      const localGlobalIds = new Set(users.map((u) => u.global_user_id));
       for (const link of existingLinks) {
         if (!localGlobalIds.has(link.globalIdentityId)) {
           console.log(`  ORPHAN: global identity ${link.globalIdentityId} has no local user.`);
