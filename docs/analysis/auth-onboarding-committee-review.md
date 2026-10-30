@@ -2,6 +2,17 @@
 
 Comité: arquitectura + seguridad + producto + devops + frontend + base de datos.
 Fecha: 2026-10-29 (v6 — estado REAL verificado sobre código, no aspiracional).
+
+> **Nota de vocabulario (2026-10-30):** este registro es evidencia fechada y
+> conserva los nombres con que fue escrita. Las tablas/columnas/puertos
+> `global_identity_*` (`global_identity_tenants`, `global_identity_events`,
+> `global_identity_id`, `IGlobalIdentityEventRepository`) se renombraron a la
+> familia `global_user_*` y los folds de migración (router `0000–0009`,
+> tenant `0000–0017`) se colapsaron a un baseline único por BD —
+> [ADR-0044](../decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md).
+> Los contratos wire (`globalUserId` en HTTP) y el valor persistido
+> `'global_identity'` del discriminador de auditoría NO cambiaron.
+
 Contexto: VozLab multi-tenant (router DB `vozlab_router` + una DB por tenant), Fastify API + SvelteKit 5 PWA, OIDC (Zitadel local en `:8081` vía identity-lab, actualmente CAÍDO en dev), event join anónimo, workspaces con admin tenant/workspace, join requests, invitaciones email-bound (solo URL, sin servicio de email), códigos efímeros, invitaciones globales cross-IdP, roles múltiples por workspace.
 
 Estado de referencia: `pnpm turbo run build type-check test` VERDE (352 tests API, 521 tests web) — verificado 2026-10-29 SIN cache tras la tanda B9/B11. Nota: el gate había estado mostrando verde por cache de turbo sobre un fallo latente en web (`refresh-lock.test.ts`): la extensión `@testing-library/jest-dom/vitest` rompe `rejects.toThrow(<string>)` en vitest 5.0.5 (vitest-dev/vitest#5285, el matcher lee mensaje vacío); el test ahora captura el motivo de rechazo directamente. Las cinco P0 están cerradas (commits `22c5481`, `f1a28e9`, `85ceb64`, `835468c`, `150e067`), el login real contra Zitadel está **verificado end-to-end** (B13, §6.5), el selector de tenants web está cerrado (v6-01) y las P1 **B6** (`e9bde8b`), **B7** (`7833c75`) y **B10** (seed v6, `cb161b4`) están cerradas con evidencia E2E, junto con la brecha **B14** (el handle JIT nunca se escribía — verificado en vivo: `testuser` reparado por `select-tenant`). Cerrada también la P2 **B12** (átomos cableados + eventos de identidad, `f7f154b`) y los dos puntos P2 de E2E/offline de admin (§6.5(8), `b78a1ac`). Quedan B9 (social logins — scripted e idempotente en `setup-zitadel.sh` §8; faltan credenciales externas), B11 (instrumentado T2 por [ADR-0043](../decisions/ADR-0043-production-topology-caddy-t2.md) — falta el hostname final) y la tarea nueva **13** (re-alineación de la suite E2E del grafo, 14 tests rojos por drift preexistente de la toolbar 3.57–3.64).

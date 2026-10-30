@@ -187,7 +187,10 @@ export type NewGlobalUserTenant = typeof globalUserTenants.$inferInsert;
 /**
  * Global user audit events (D11, append-only, router DB).
  *
- * No PII: only IDs, roles and states.
+ * Convention: IDs, roles and states only — but `metadata` is free-form JSON
+ * the writers control, so the shape is NOT enforced by the schema. Writers
+ * must not put PII in it (the router is the PII vault; this table is its
+ * action log).
  */
 export const globalUserEvents = pgTable(
   'global_user_events',

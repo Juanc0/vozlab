@@ -11,11 +11,11 @@ VozLab separates three questions:
 
 ## 1. Current auth flow
 
-| Concern | Implementation (2026-10-29) |
+| Concern | Implementation (2026-10-30) |
 | --- | --- |
 | Browser login | `GET /api/v1/auth/login?redirect=/path` → 302 to the IdP |
-| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-identity upsert, `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the identity is linked to N>1 institutions) |
-| Tenant selection | `GET /api/v1/auth/resolve-tenants?gid=` + `POST /api/v1/auth/select-tenant {globalIdentityId, tenantId}` (first login, no session yet); `POST /api/v1/auth/switch-tenant` (authenticated, re-points the session to another linked institution) — every selection writes `TENANT_SELECTED` |
+| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-user upsert (`global_users`), `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the user is linked to N>1 institutions) |
+| Tenant selection | `GET /api/v1/auth/resolve-tenants?globalUserId=` + `POST /api/v1/auth/select-tenant {globalUserId, tenantId}` (first login, no session yet); `POST /api/v1/auth/switch-tenant` (authenticated, re-points the session to another linked institution) — every selection writes `TENANT_SELECTED` |
 | Access token | HS256 JWT, 15 min default, returned in JSON; the PWA holds it in memory only |
 | Refresh token | Opaque `v1.<tenant UUID>.<64 hex>`, 30 d default, `HttpOnly` cookie, rotated on every use |
 | Refresh storage | `auth.refresh_tokens` (tenant DB): SHA-256 hash, family id, expiry, revocation timestamp |

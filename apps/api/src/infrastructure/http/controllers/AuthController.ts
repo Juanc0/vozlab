@@ -152,7 +152,8 @@ export class AuthController {
 
   /** POST /api/v1/auth/switch-tenant (Bearer). Cambia el tenant de la sesión
    *  activa sin re-autenticar. Valida que el tenant destino esté vinculado al
-   *  identity global y emite un nuevo refresh token para ese tenant. */
+   *  usuario global (`global_users`) y emite un nuevo refresh token para ese
+   *  tenant. */
   async switchTenant(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const body = req.body as { globalUserId?: string; tenantId?: string };
     if (!body?.globalUserId || !body?.tenantId) {

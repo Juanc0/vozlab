@@ -20,8 +20,9 @@ persistence boundary and every byte that crosses a physical database.
 
 ## Hard rules (learned the expensive way)
 
-- **Hand-written migrations must be registered in `meta/_journal.json`.** The
-  router migration `0009` was written and never journaled → `global_users`
+- **Hand-written migrations must be registered in `meta/_journal.json`.** A
+  pre-baseline router fold (`0009`, history in git) was written and never
+  journaled → `global_users`
   didn't exist → auth "outage" (committee B13). After any manual SQL migration:
   journal entry + `db:migrate` against a scratch DB to prove it.
 - The dev volume can lag the migration fold (`handle` missing was found this

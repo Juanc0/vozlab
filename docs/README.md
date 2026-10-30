@@ -5,16 +5,21 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-29**. Phases 0–3 are complete and the auth/tenancy
+Status snapshot: **2026-10-30**. Phases 0–3 are complete and the auth/tenancy
 intervention (v5/v6) is closed on code: OIDC with explicit institution
 selection, multiple roles, GUEST/event kinds, ephemeral join codes, tenant and
 global invitations, direct add by handle, persistent audit, per-action rate
 limits, admin UI, offline and a real Zitadel login verified end to end
-(`analysis/auth-onboarding-committee-review.md` §6.5). Phase 2 workers:
-embedder, Relator and Extractor are implemented; the Consolidator and the
-ingestion producer are not. Phase 4: observability stack (metrics/Prometheus/
-Grafana/Tempo, k6 smoke), containers and CI are defined; the T2 production
-deployment is instrumented ([ADR-0043](decisions/ADR-0043-production-topology-caddy-t2.md))
+(`analysis/auth-onboarding-committee-review.md` §6.5). The db-baseline plan
+landed the same day ([ADR-0044](decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md)):
+the identity storage speaks one `global_user_*` vocabulary and each DB
+migrates from a single baseline fold; the dev volume was reset and
+`test:integration` (38 tests) now runs green locally exactly as in CI. Phase 2
+workers: embedder, Relator and Extractor are implemented; the Consolidator and
+the ingestion producer are not. Phase 4: observability stack
+(metrics/Prometheus/Grafana/Tempo, k6 smoke), containers and CI are defined;
+the T2 production deployment is instrumented
+([ADR-0043](decisions/ADR-0043-production-topology-caddy-t2.md))
 pending a real hostname. Gates: `pnpm turbo run build type-check test` green
 (≈352 API unit tests, ≈521 web tests, Python suite `uv run pytest`), lint 0
 errors / ≈35 warnings. E2E Playwright: 17 green, 1 opt-in (`E2E_OIDC=1`), 14
@@ -76,7 +81,7 @@ task 13.
 | [testing.md](testing.md) | Test layering, current coverage, CI, known gaps |
 | [agent-tooling.md](agent-tooling.md) | Skills, subagents, slash commands and MCP servers used to work on VozLab |
 | [components/](components/) | Per component/flow docs with STATUS banners: extractor, relator, web-pwa (BUILT); ci-cd (PARTIAL); consolidator, dns-domain-verification (NOT BUILT) |
-| [plans/](plans/README.md) | Active work plans (empty today — the backlog lives in ROADMAP until the next area is opened) |
+| [plans/](plans/README.md) | Active work plans — today [db-baseline/v1](plans/db-baseline/v1.md) (tasks landed 2026-10-30, closure pending); the backlog otherwise lives in ROADMAP |
 | [ops/runbook-dev.md](ops/runbook-dev.md) | Local bootstrap, migrations, seed, tokens, troubleshooting |
 | [ops/runbook-ops.md](ops/runbook-ops.md) | Runtime topology, health checks, shutdown, operational readiness checklist |
 | [ops/runbook-demo-zrok.md](ops/runbook-demo-zrok.md) | Local demo through three reserved zrok shares + presenter script/checklist + parity rules |

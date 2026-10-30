@@ -56,6 +56,7 @@ When an old document (under `docs/modules`, `docs/system` or `docs/devops`) conf
 | [0041](ADR-0041-tenant-and-workspace-administration.md) | Tenant and workspace administration (US-00) | accepted | Two-level admin model: tenant maintainer + workspace admin. |
 | [0042](ADR-0042-cross-tenant-identity-and-explicit-tenant.md) | Cross-tenant identity and explicit tenant selection | proposed | Global identity in the router with explicit tenant selection at login. |
 | [0043](ADR-0043-production-topology-caddy-t2.md) | Production topology is T2 — Caddy on a single host, three origins | Accepted | `app.`/`api.`/`auth.` mirror the zrok demo; T3 (single origin) rejected; T1 stays a DNS swap. Supersedes 0039's tunnel exposure for production. |
+| [0044](ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md) | Identity vocabulary coherence (`global_user_*`) and migration baseline collapse | Accepted | The half-renamed identity family is fully renamed (wire bytes and the stored `'global_identity'` discriminator untouched); 28 folds collapse to one baseline per DB; old volumes are reset, not migrated. |
 
 ## How to add an ADR
 

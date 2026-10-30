@@ -908,7 +908,9 @@ Decided, and not to be re-opened without evidence:
 - **db-baseline v1** — identity vocabulary coherence (finish the
   `global_users` rename), collapse 28 migration folds into one baseline per
   DB, purge dev-cluster orphans, reset the dev volume so local
-  `test:integration` equals CI. Plan:
+  `test:integration` equals CI. Tasks T1–T5 landed 2026-10-30 (`90fc8b2`,
+  `552b6e0`, `b461fc3`, `03adb33`, `ba3514b`, + this docs pass), closure
+  checklist pending. Plan:
   [docs/plans/db-baseline/v1.md](docs/plans/db-baseline/v1.md); approved
   design: [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md).
   Its closure opens `identity-consolidation` v1 carrying DEC-3/4/5 (thin

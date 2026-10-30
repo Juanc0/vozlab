@@ -2,14 +2,14 @@
   /**
    * The tenant switcher (v6/TASK-01: closing the selector loop).
    *
-   * A global identity can be linked to more than one institution. Once the
+   * A global user can be linked to more than one institution. Once the
    * session exists, the PWA knows its `globalUserId` (`GET /auth/me`), so the
    * change is a plain `POST /auth/switch-tenant`: the API validates the link,
    * rotates the refresh cookie for the destination tenant and the app
    * re-adopts the session. **No re-authentication.**
    *
    * The control renders only when there is something to switch: no global
-   * identity, or a single ACTIVE linked tenant, leaves the block hidden.
+   * user id, or a single ACTIVE linked tenant, leaves the block hidden.
    */
   import { goto } from '$app/navigation';
   import { listLinkedTenants, switchTenant, type LinkedTenantDto } from '$lib/api/admin';

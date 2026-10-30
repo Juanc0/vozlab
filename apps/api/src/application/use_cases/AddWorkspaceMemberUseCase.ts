@@ -23,7 +23,7 @@ export interface AddWorkspaceMemberInput {
  * Use Case: add an existing tenant user to a workspace directly (US-00).
  *
  * Direct add is for people who already signed in to the institution. Lookup
- * is by `handle` (unique per tenant) or by `globalUserId` (identity global
+ * is by `handle` (unique per tenant) or by `globalUserId` (global user
  * vinculada al tenant). El email dejó de ser clave de búsqueda: quien nunca
  * se ha autenticado necesita una invitación.
  *

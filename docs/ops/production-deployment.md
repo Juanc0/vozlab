@@ -48,7 +48,14 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Postgres arranca **nuevo** (no copiar el volumen dev). Sembrar solo lo que
-aplique (el seed dev fixture NO es para producción).
+aplique (el seed dev fixture NO es para producción). Para validar el archivo
+de compose **sin** `.env` (p. ej. en CI o antes de copiarlo), el `config -q`
+exige valores dummy para las variables obligatorias `:?`:
+
+```bash
+APP_HOSTNAME=h API_HOSTNAME=h AUTH_HOSTNAME=h ACME_EMAIL=e@x ZITADEL_DB_PASSWORD=d \
+ZITADEL_MASTERKEY=d docker compose -f docker-compose.prod.yml config -q
+```
 
 ## 3. Zitadel
 
@@ -121,7 +128,7 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps caddy \
 
 - [ ] `https://api.example.com/health` → `{"status":"alive"}`.
 - [ ] Login completo (test user) app → auth → callback → selector de tenant;
-      evento `OIDC_LOGIN` y `TENANT_SELECTED` en `global_identity_events`.
+      evento `OIDC_LOGIN` y `TENANT_SELECTED` en `global_user_events`.
 - [ ] Cookie `vozlab_refresh`: `Secure` + `HttpOnly` + `Path=/api/v1/auth`.
 - [ ] Logout → post-logout landing en `https://app.example.com`.
 - [ ] Social logins (si se configuraron): botones Google/Microsoft en la

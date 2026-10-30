@@ -90,8 +90,8 @@ export interface AuthSessionDto {
 export interface AuthMeDto extends AuthUserDto {
   workspaces: WorkspaceSummaryDto[];
   /**
-   * Router-DB global identity for the tenant user, when linked. The PWA
-   * needs it for `POST /auth/switch-tenant` (tenant selector, v6/TASK-01).
+   * Router-DB global user id for the tenant user, when linked (`global_users`).
+   * The PWA needs it for `POST /auth/switch-tenant` (tenant selector, v6/TASK-01).
    */
   globalUserId: string | null;
   /** Internal UUID of the tenant the session is acting in. */

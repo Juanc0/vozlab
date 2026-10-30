@@ -46,10 +46,11 @@ const APP_SCHEMAS = ['auth', 'meta', 'public', 'social'] as const;
 const METADATA_SCHEMAS = ['drizzle', 'ag_catalog'] as const;
 
 /**
- * `vozlab_graph` (the Apache AGE mirror) is deliberately NOT granted. It is
- * empty today because AGE mirroring is deferred (ADR-0004); when it lands it
- * will duplicate `public.nodes` and `public.edges`, which the reader can
- * already read. Add it here with the mirroring work.
+ * `vozlab_graph` (the Apache AGE mirror) is deliberately NOT granted. It does
+ * not exist today: graph creation was removed from the init SQL and the graph
+ * is created on demand only when the AGE adapter lands (ADR-0004). When it
+ * does, it will duplicate `public.nodes` and `public.edges`, which the reader
+ * can already read — add it here together with the mirroring work.
  */
 
 /**

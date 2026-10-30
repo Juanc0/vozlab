@@ -1,6 +1,6 @@
 import type { ApiClient } from './client';
 
-/** A tenant linked to a global identity (`GET /auth/resolve-tenants`). */
+/** A tenant linked to a global user (`GET /auth/resolve-tenants`). */
 export interface LinkedTenantDto {
   id: string;
   slug: string;
@@ -45,7 +45,7 @@ export async function switchTenant(
   });
 }
 
-/** The tenants linked to a global identity — the options of the selector. */
+/** The tenants linked to a global user — the options of the selector. */
 export async function listLinkedTenants(
   client: ApiClient,
   globalUserId: string

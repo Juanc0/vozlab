@@ -25,7 +25,7 @@ export class SessionState {
   user = $state<AuthUserDto | null>(null);
 
   /**
-   * Router-DB global identity of the signed-in user (`GET /auth/me`).
+   * Router-DB global user id of the signed-in user (`GET /auth/me`).
    * `null` until the memberships are loaded, or when the user has no link.
    * The tenant switcher needs it for `POST /auth/switch-tenant` (v6/TASK-01).
    */

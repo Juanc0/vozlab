@@ -89,6 +89,14 @@ One soft-delete verb per port (`softDelete`, never `softDeletePost`). A
 boolean predicate is `existsInWorkspace`, not `find…`. See
 [ADR-0010](decisions/ADR-0010-port-naming-vocabulary.md).
 
+Identity nouns follow the table family (ADR-0044): SQL is `global_user_*`
+(`global_user_id`, `global_user_tenants`, `global_user_events`), TS internals
+mirror it (`GlobalUser*` types, `IGlobalUserEventRepository`, `globalUserId`
+params), and the HTTP wire keeps the same camelCase `globalUserId`. The one
+frozen exception is the persisted audit discriminator VALUE
+`'global_identity'` (the `IAuditLog` `targetType` routing key): identifiers
+rename, stored bytes do not.
+
 ## 6. Errors
 
 - The domain throws `DomainError` with a stable `DomainErrorCode`, no HTTP

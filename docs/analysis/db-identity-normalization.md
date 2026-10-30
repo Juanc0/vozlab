@@ -1,8 +1,15 @@
 # DB identity normalization — design & decision record
 
+> **Plan 1 EXECUTED 2026-10-30** — the renames, baseline collapse, orphan
+> purge and dev-volume reset landed (`90fc8b2`, `552b6e0`, `b461fc3`,
+> `03adb33`, `ba3514b`); the decision is recorded in
+> [ADR-0044](../decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md).
+> The audit table below keeps the old names on purpose — it IS the old→new
+> map. Plan 2 (`identity-consolidation`, DEC-3/4/5) has not opened. This
+> record archives when its plans close.
 > Opened: 2026-10-30. Record of an active intervention (same class as
-> `auth-onboarding-committee-review.md`). It archives when its plans close.
-> Design gate passed 2026-10-30: every DEC below is **approved** — DEC-1/2/3
+> `auth-onboarding-committee-review.md`). Design gate passed 2026-10-30: every
+> DEC below is **approved** — DEC-1/2/3
 > by the user's structured choices, DEC-4/5 by the P-1…P-5 answers, DEC-6/7
 > with them, DEC-8 recorded as builder calls. Approved ones graduate to ADRs
 > inside the plans that execute them. Builder check run by the architect
