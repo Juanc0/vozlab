@@ -2,8 +2,11 @@
 
 > Opened: 2026-10-30. Record of an active intervention (same class as
 > `auth-onboarding-committee-review.md`). It archives when its plans close.
-> Decisions here are PROPOSED until the user approves this document; approved
-> ones graduate to ADRs before any code moves.
+> Design gate passed 2026-10-30: every DEC below is **approved** — DEC-1/2/3
+> by the user's structured choices, DEC-4/5 by the P-1…P-5 answers, DEC-6/7
+> with them, DEC-8 recorded as builder calls. Approved ones graduate to ADRs
+> inside the plans that execute them. Builder check run by the architect
+> subagent the same day; its corrections are integrated in place.
 
 ## Intent
 
@@ -43,7 +46,7 @@ each item its own green task on top of the new baseline).
 | D1 | router `event_codes` (390 rows) vs tenant `workspace_join_codes` (12 rows) | two credential systems with near-identical semantics (hash-lookup, expiry, max_uses/used_count, revoked, auto-approve on the tenant side). `event_codes` additionally keeps `workspace_id` + `created_by_hash` inside the router — the cross-layer leak under discussion |
 | D2 | router `global_invitations` (7 rows) vs tenant `invitations` (2 rows) | both live. Router stores `email` **plaintext**; tenant stores `email` **and** `email_hash` — inconsistent PII handling of the same credential |
 | D3 | `workspaces.join_code` (column, `RotateJoinCodeUseCase`) vs table `workspace_join_codes` (`JoinCodeController`, `Create/UpdateWorkspaceJoinCodeUseCase`, `RequestWorkspaceAccessUseCase`) | two join-code mechanisms per workspace |
-| D4 | `users.provider_user_id` vs table `external_identities` | ADR-0028 says the table wins and the column is "backward compatibility"; `DrizzleUserRepository` still carries **two upsert paths**, one per mechanism |
+| D4 | `users.provider_user_id` vs table `external_identities` | the "kept for backward compatibility" clause is the **schema comment** in `tenant.auth.schema.ts:102-103`; ADR-0028 itself only declares `external_identities` the per-tenant source of (issuer, subject). `DrizzleUserRepository` still carries **two upsert paths**, one per mechanism |
 | D5 | `users.email` vs `global_users.email` | v5 declared router the single source of "who is this user"; tenant JIT still writes/reads `users.email` (used to link accounts across IdPs by verified email). It is a functional cache, undocumented as such |
 
 ### Orphans / debris
@@ -62,12 +65,16 @@ each item its own green task on top of the new baseline).
 
 Pre-production (T2 not deployed, dev volume declared disposable), so history
 lives in git, not in the folds. `packages/database/migrations/{router,tenant}/`
-replaced by one generated `0000_baseline.sql` each (journal restarted from
-entry 0), produced from the renamed schema files via
-`pnpm --filter @vozlab/database db:generate:{router|tenant}` after deleting the
-old folds + journals. Any existing database with the old `drizzle.__drizzle_migrations`
-history is incompatible by design — which is fine because DEC-2 wipes it.
-Post-plan-1 folds accumulate normally.
+replaced by one generated fold each (journal restarted from entry 0). Correct
+procedure (drizzle-kit 0.31 semantics, per the builder check): delete the old
+folds, the `meta/_journal.json` **and the `meta/*_snapshot.json` files** (the
+snapshots are the diff base — leaving them makes `generate` append `0010/0018`
+instead of emitting a baseline), then run
+`pnpm --filter @vozlab/database db:generate:{router|tenant}`. The generated
+file is `0000_<random-slug>.sql`; either keep the slug or rename file **and**
+journal `tag` together (migrate matches on tag). Any existing database with
+the old `drizzle.__drizzle_migrations` history is incompatible by design —
+which is fine because DEC-2 wipes it. Post-plan-1 folds accumulate normally.
 
 ### DEC-2 — Database restart (user: yes)
 
@@ -101,42 +108,82 @@ routing index in the router:
   `revoked_at` already exist there — D1 collapses into one mechanism).
 - `JoinEventUseCase` re-orchestrates: hash → `event_code_routes` → tenant id →
   open tenant → single conditional `UPDATE … RETURNING` redemption inside the
-  tenant transaction (capacity stays atomic, just relocated) → create the
+  tenant transaction (capacity atomicity *relocates* — it is not inherited:
+  the tenant path needs the conditional-UPDATE implementation, see below) →
+  create the
   `ANONYMOUS_EVENT` user + GUEST membership + rotating session (unchanged).
+- Credential separation (user answered P-3, 2026-10-30): `workspace_join_codes`
+  gains `purpose varchar(12) NOT NULL` — `'WORKSPACE'` (default; redeemable
+  only by the authenticated `RequestWorkspaceAccessUseCase` path) or `'EVENT'`
+  (redeemable only by the anonymous QR join path, `auto_approve=true`). The
+  two flows each guard their purpose, so unifying the table does not let a
+  QR code grant an authenticated MEMBER membership (the leak the builder
+  check flagged). One mechanism, two credential classes.
 - The **QR stays opaque** (raw code only): ADR-0019's opacity decision stands;
   its *responsibility* exception is what the amendment retires. A new ADR
-  amends ADR-0019 and the ADR-0002 amendment text.
-- `db:event-code` CLI keeps its UX but writes both sides (tenant row + router
-  route) transactionally in the CLI, not the API.
-- Consistency rule documented: routing rows are deleted when the credential is
-  revoked/expired by the CLI/rotation job; a stale route is **harmless** —
-  routing is not authority, the tenant rejects the redemption.
+  amends ADR-0019 and the ADR-0002 amendment text — and must also fix
+  ADR-0019's existing stale claim that the join inserts role `MEMBER`
+  (`JoinEventUseCase:98` creates `GUEST`; CI's fresh fold blessed that on
+  2026-10-30).
+- `db:event-code` CLI keeps its UX but writes both sides: **tenant row first,
+  then router route** — a transaction cannot span the two physical DBs
+  (ADR-0002), so it is sequencing + idempotent upsert on `code_hash`, with
+  revocation deleting route-first. A missing route = 404 the CLI can re-push;
+  a stale route = harmless (routing is not authority).
+- The tenant-side consume must be implemented as the atomic
+  `UPDATE … WHERE hash matches AND not revoked AND not expired AND used_count
+  < max_uses RETURNING` (the builder check confirmed today's
+  `DrizzleWorkspaceJoinCodeRepository` does a JS check + unguarded
+  `WHERE id` increment — the atomicity currently lives only in the router;
+  it is relocated *and* newly built, not inherited).
+- Builder's call (DEC-8 family): `workspace_join_codes.created_by` is a
+  nullable UUID but `event_codes.created_by_hash` is the ADR-0013 pseudonym —
+  unify the column to `created_by_hash varchar(64)` (matches pseudonym
+  semantics; no hash→uuid resolution dance).
 
-### DEC-4 — Email credentials: hash-only, no plaintext in any credential table (user: chose)
+### DEC-4 — Email: hashed EVERYWHERE with a pepper; no cleartext in any table (user: chose, P-1+P-2 answered 2026-10-30)
 
-Applies to `global_invitations` (drop `email`, add `email_hash`), tenant
-`invitations` (drop `email`, keep `email_hash`) and the JIT linking lookup
-(compare the verified email's hash). Plan 2.
+The router vault (`global_users`) does NOT keep cleartext either:
+`email` becomes `email_hash` there too. Consequences accepted: nothing in
+the platform can ever display or contact by email from the DB; account
+linking (cross-IdP JIT and invitation redemption) compares hashes of the
+verified email the IdP just delivered — equality over hash is sufficient.
+`full_name`/`picture` (profile, not credentials) stay as they are.
 
-Builder's call (flagged to user in §Open P-2): plain unsalted SHA-256 of an
-email is enumerable (rainbow tables over public email lists). Proposal: the
-hash becomes `HMAC-SHA-256(email_lower_trimmed, EMAIL_PEPPER)` with the pepper
-a zod-validated env secret, so stored hashes stay searchable-by-comparison
-but not enumerable from a DB leak alone.
+All email-derived hashes become `HMAC-SHA-256(lower(trim(email)),
+EMAIL_PEPPER)` — a zod-validated env secret (new required var; dev default
+in `.env.example`). Plain unsalted SHA-256 over an email is enumerable from
+a dump via public email lists; the pepper removes that while keeping
+search-by-comparison. High-entropy random tokens (refresh tokens, event/join
+code tokens, invitation tokens) KEEP plain SHA-256 (`hashOpaqueToken`) —
+they are not dictionary-attackable and a pepper there would buy nothing.
+
+Applies in Plan 2 to: `global_users.email→email_hash`, `global_invitations`
+(drop `email`, add `email_hash`), tenant `invitations` (drop `email`, keep
+`email_hash` — now peppered), `users.email` (dropped entirely by DEC-5/T4),
+and every use case that hashes or compares an email.
 
 ### DEC-5 — One mechanism per remaining concept (Plan 2 folds)
 
-- D3: drop `workspaces.join_code`; `CreateWorkspaceUseCase` inserts the default
-  `workspace_join_codes` row; `RotateJoinCodeUseCase` rotates that row
-  (`is_default` flag or label convention — plan decides).
+- D3 (user's formulation, 2026-10-30): the `workspaces` table manages **no**
+  credential. Drop `workspaces.join_code` (static, plaintext, cannot expire
+  or revoke) **and** `workspaces.auto_approve_join_code` (P-5: written,
+  seeded, exposed in the admin DTO, read by no behavior → dropped).
+  `workspace_join_codes` is the sole credential manager:
+  `CreateWorkspaceUseCase` inserts the default row in the same transaction;
+  `RotateJoinCodeUseCase` rotates that row; the raw code is revealed only in
+  the create/rotate response — the admin UI's code display becomes
+  reveal-on-rotation (one small web task, the only web change of the
+  intervention).
 - D4: drop `users.provider_user_id` + `uniq_users_provider_provider_user`;
-  `external_identities` is the sole external-identity store (ADR-0028
-  completed, its "kept for backward compatibility" clause retired); the second
-  upsert path in `DrizzleUserRepository` is deleted.
-- D5: after D1–D4, decide `users.email`: since linking uses hashes and the
-  router is the declared identity vault, proposal = **drop `users.email`
-  entirely** (the tenant knows `author_hash` + pseudonym; email exists only in
-  `global_users`), which makes D5's cache issue moot. Pending P-1.
+  `external_identities` is the sole external-identity store (the "kept for
+  backward compatibility" clause is the schema comment, retired here;
+  ADR-0028's direction completed); the second upsert path in
+  `DrizzleUserRepository` is deleted.
+- D5: with DEC-4 + D4, `users.email` is **dropped** — the tenant knows
+  `author_hash` + pseudonym only; no email (clear or hashed) persists per
+  tenant. Linking by verified email moves to `email_hash` equality in the
+  router vault, before the tenant row exists.
 
 ### DEC-6 — Naming coherence sweep (Plan 1, mechanical)
 
@@ -148,41 +195,67 @@ external IdP identities inside the tenant (it was never about `global_users`).
 ### DEC-7 — Orphan deletion (Plan 1)
 
 `vozlab_graph` creation out of the init SQL (extension stays); `POSTGRES_DB`
-out of compose; the two `backfill-*` scripts deleted.
+out of compose **in both files** (`docker-compose.yml` env+healthcheck and
+`docker-compose.prod.yml` healthcheck use `-d vozlab` — dropping the DB
+without editing the prod healthcheck would leave the service unhealthy);
+the two `backfill-*` scripts deleted **with their `db:backfill:*` entries
+in `packages/database/package.json`**.
+
+### DEC-8 — Builder decisions taken during the check (2026-10-30, architect subagent)
+
+Recorded as mine, not the user's:
+
+- The Plan-1 sweep renames **internals to the wire contract**, not the wire
+  to internals: the HTTP surface already says `globalUserId`
+  (`AuthController`, `web/api/admin.ts`); only the persisted audit
+  discriminator strings stay untouched (zero web surface preserved).
+- Fixture comments citing "tenant migration 0013" (neighbors/auth tests)
+  become "the baseline" after DEC-1.
+- "Local equals CI" is folds+data parity only — CI provisions plain
+  `pgvector/pgvector:pg18` without the `age` extension while the compose
+  image has it; that asymmetry is noted, not chased.
 
 ## Plan shape
 
 **Plan 1 — `db-baseline`** (renames + collapse + reset + orphans; every task
 gate-green):
-schema files rename → generate single baselines → delete old folds/journals →
-init SQL + compose cleanup → script deletions → TS rename sweep (ports,
-adapters, use-case params, fixtures, integration tests) → volume reset →
-seed + `db:seed` fixtures green → `test:integration` locally equals CI
-(drift gone) → docs updates (requirements matrix, conventions, agent-tooling,
-database-dba note about drift now obsolete) → ADR: "migration baseline
-collapse + identity naming coherence" (supersedes nothing; amends none).
+schema files rename → **delete old folds + journals + `meta/*_snapshot.json`
+first** (the snapshots are the diff base; generating with them present
+appends instead of baselining, DEC-1) → `db:generate:{router|tenant}` yields
+the single baseline fold each → init SQL + both composes cleanup → script +
+package.json deletions → TS rename sweep (ports, adapters, use-case params,
+fixtures; wire names untouched, DEC-8) → `pg_dump` backup of the dev volume →
+volume reset (`compose down -v` + `up -d --build` + migrate both + seed) →
+`test:integration` **locally** green — the drift class disappears, local
+equals CI for the first time → docs updates (requirements matrix, conventions,
+this record) → ADR: "identity naming coherence + migration baseline collapse."
 
 **Plan 2 — `identity-consolidation`** (each item its own fold + code + tests):
-T1 email-hash policy (pepper, DEC-4) · T2 `event_code_routes` + join-code
-unification + `JoinEventUseCase` re-orchestration (DEC-3, ADR amending
-0019/0002) · T3 drop `workspaces.join_code` (D3) · T4 drop `provider_user_id`
-(D4) · T5 drop `users.email` / finalize identity vault (D5, P-1 answer) ·
-T6 global_invitations email (D2 tail) · each: requirements-matrix + component
-docs updated with the task.
+T1 email-hash policy: `EMAIL_PEPPER` env + HMAC helper + peppered hashes in
+`global_invitations`/`invitations` and JIT linking (DEC-4) · T2 `users.email`
+dropped (tenant never stores email, clear or hashed) and `global_users.email`
+→ `email_hash` — vault decision (DEC-5 D5, P-1 answered) · T3 drop
+`workspaces.join_code` + `workspaces.auto_approve_join_code`; default row in
+`workspace_join_codes`; reveal-on-rotation web task (DEC-5 D3, P-4/P-5) ·
+T4 drop `users.provider_user_id`; one upsert path (DEC-5 D4) · T5
+`event_code_routes` + `purpose` column + atomic tenant-side redemption +
+`JoinEventUseCase` re-orchestration; ADR amending 0019/0002 and fixing the
+MEMBER→GUEST stale text (DEC-3) · each: requirements-matrix + component docs
+updated with the task.
 
-## Open items needing the user
+## Open items — all answered by the user (2026-10-30)
 
-- **P-1**: global `users.email` (identity vault) — cleartext email stays ONLY
-  in `global_users.email` in the router (per-tenant DBs never store it;
-  DEC-5 T5), or hashed there too (then no component can ever display or
-  contact by email; JIT/cross-IdP linking works either way since equality
-  over hash suffices). Proposal: cleartext in the vault only.
-- **P-2**: peppered HMAC instead of the current unsalted SHA-256 for the
-  credential hashes (DEC-4). Proposal: yes.
+P-1 hashed vault · P-2 pepper on email-derived hashes only · P-3 `purpose`
+column separates EVENT/WORKSPACE credentials · P-4 table manages the codes,
+reveal-on-rotation accepted (user's own formulation) · P-5 dead flag dropped.
+Nothing remains that changes what gets built; the builder-check's minor gaps
+became DEC-8.
 
 ## Out of scope
 
 - Consolidator handler, ingestion producer, AGE adapter, SSE (ROADMAP).
 - Production go-live (B11 hostname) and external IdP credentials (B9).
-- Anything web-facing: the PWA reads the API, not the DBs; renames of router
-  columns have zero web surface (verified: web has no SQL).
+- Web changes beyond the one P-4 forces (admin DTO + copy). The PWA reads the
+  API, not the DBs; the Plan-1 rename sweep has zero web surface (verified:
+  web has no SQL, and per DEC-8 internals move toward the wire names, not
+  the reverse).
