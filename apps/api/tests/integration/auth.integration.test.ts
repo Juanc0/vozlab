@@ -46,6 +46,7 @@ let workspaceId = '';
 const createdEmails = new Set<string>();
 const createdUserIds = new Set<string>();
 const createdCodeHashes = new Set<string>();
+const createdEventWorkspaceIds = new Set<string>();
 
 function uniqueIdentity(label: string): MockOidcIdentity {
   const suffix = randomUUID();
@@ -160,9 +161,18 @@ afterEach(async () => {
       [Array.from(createdCodeHashes)]
     );
   }
+  if (createdEventWorkspaceIds.size > 0) {
+    const ids = Array.from(createdEventWorkspaceIds);
+    await tenantPool.query(
+      'delete from auth.workspace_memberships where workspace_id = any($1::uuid[])',
+      [ids]
+    );
+    await tenantPool.query('delete from auth.workspaces where id = any($1::uuid[])', [ids]);
+  }
   createdEmails.clear();
   createdUserIds.clear();
   createdCodeHashes.clear();
+  createdEventWorkspaceIds.clear();
 });
 
 afterAll(async () => {
@@ -317,11 +327,25 @@ describe('auth integration', () => {
     const codeHash = createHash('sha256').update(code).digest('hex');
     createdCodeHashes.add(codeHash);
 
+    // JoinEventUseCase only resolves codes for kind='EVENT' workspaces, and
+    // join_code is NOT NULL + unique since tenant migration 0013. The seeded
+    // 'general' workspace is PRIVATE on a fresh migration fold (the dev
+    // volume drifted it long ago), so this test creates its own event
+    // workspace instead of reusing it.
+    const eventWorkspace = await tenantPool.query(
+      `insert into auth.workspaces (slug, name, kind, join_code)
+       values ($1, 'Integration event', 'EVENT', $2)
+       returning id`,
+      [`evt_it_${randomUUID()}`, randomUUID().replace(/-/g, '').slice(0, 24)]
+    );
+    const eventWorkspaceId = eventWorkspace.rows[0].id as string;
+    createdEventWorkspaceIds.add(eventWorkspaceId);
+
     await routerPool.query(
       `insert into event_codes
          (tenant_id, workspace_id, code_hash, label, expires_at, max_uses)
        values ($1, $2, $3, $4, now() + interval '1 hour', 1)`,
-      [tenantId, workspaceId, codeHash, 'integration']
+      [tenantId, eventWorkspaceId, codeHash, 'integration']
     );
 
     const join = await fetch(`${API}/api/v1/auth/event-join`, {
@@ -348,7 +372,7 @@ describe('auth integration', () => {
       workspaces: Array<{ id: string; role: string }>;
     };
     expect(meBody.workspaces).toContainEqual(
-      expect.objectContaining({ id: workspaceId, role: 'MEMBER' })
+      expect.objectContaining({ id: eventWorkspaceId, role: 'MEMBER' })
     );
 
     expect((await refreshSession(refreshCookie(join))).status).toBe(200);

@@ -90,7 +90,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v10
+      # The action publishes full tags only (v10 does not exist; first CI run
+      # proved it: "unable to find version v10").
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "0.11.8"
           enable-cache: true

@@ -1,9 +1,16 @@
 name: E2E
 
+# Trigger: manual only, by committee decision, until ROADMAP task 13 closes.
+# The Postgres image with AGE + pgvector is built from ./docker/postgres (it
+# does not exist on any registry), so the previous `services:` block could
+# never pull it — every push run failed at "Initialize containers". Even with
+# the infra fixed below, 14 graph journeys are knowingly red until the
+# toolbar realignment (task 13); a push-triggered red would just train
+# everyone to ignore red. Restore `push: branches: [main]` when task 13 is
+# green.
+
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -12,26 +19,18 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: vozlab/postgres:18-age-pgvector
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      # Builds vozlab/postgres:18-age-pgvector and runs the initdb scripts
+      # (packages/database/scripts) that create vozlab_router +
+      # vozlab_tenant_dev with the extensions. The container names
+      # (vozlab-postgres/vozlab-redis) are what the Playwright global-setup
+      # psqls through `docker exec`.
+      - name: Start Postgres + Redis
+        run: docker compose up -d --build postgres redis
+
+      - uses: pnpm/action-setup@v4 # reads `packageManager` from package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -40,11 +39,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Provision databases
+        run: |
+          pnpm --filter @vozlab/database db:migrate:router
+          pnpm --filter @vozlab/database db:migrate:tenant
+          pnpm --filter @vozlab/database db:seed:dev
+
       - name: Build web + api
         run: pnpm turbo run build type-check
 
+      # The harness brings its own API (:3100) and serves the built web
+      # (:5174) via playwright webServer; no dev .env exists on the runner —
+      # the API's env defaults cover the local stack, same as on the host.
       - name: Run web E2E
         run: pnpm --filter @vozlab/web test:e2e
-        env:
-          E2E_API_PORT: 3000
-          E2E_WEB_PORT: 5173
