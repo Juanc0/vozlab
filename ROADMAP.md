@@ -905,17 +905,13 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
-- **db-baseline v1** — identity vocabulary coherence (finish the
-  `global_users` rename), collapse 28 migration folds into one baseline per
-  DB, purge dev-cluster orphans, reset the dev volume so local
-  `test:integration` equals CI. Tasks T1–T5 landed 2026-10-30 (`90fc8b2`,
-  `552b6e0`, `b461fc3`, `03adb33`, `ba3514b`, + this docs pass), closure
-  checklist pending. Plan:
-  [docs/plans/db-baseline/v1.md](docs/plans/db-baseline/v1.md); approved
-  design: [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md).
-  Its closure opens `identity-consolidation` v1 carrying DEC-3/4/5 (thin
-  router for event codes, `purpose`-separated join codes, peppered email
-  hashes with zero cleartext, one mechanism per credential/identity concept).
+- **identity-consolidation v1** — to be opened from DEC-3/4/5 of
+  [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md):
+  thin router `event_code_routes` + `purpose`-separated join codes, peppered
+  email hashes with zero cleartext, one mechanism per credential/identity
+  concept, reveal-on-rotation admin UI. db-baseline v1 CLOSED 2026-10-30
+  (ADR-0044; archived plan
+  [docs/archive/plans/db-baseline/v1.md](docs/archive/plans/db-baseline/v1.md)).
 
 ## Tracked, not scheduled
 

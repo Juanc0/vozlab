@@ -37,6 +37,7 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
-- [db-baseline/v1](db-baseline/v1.md) — identity vocabulary coherence +
-  migration baseline collapse + dev-volume reset. Design record:
-  [../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md).
+*No open plan.* [db-baseline v1](../archive/plans/db-baseline/v1.md) closed
+2026-10-30 (ADR-0044; design record
+[../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md)).
+The next act is `identity-consolidation` v1 (DEC-3/4/5 of that record).
