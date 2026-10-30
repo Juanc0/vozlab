@@ -329,6 +329,96 @@
       "source": "pproenca/dot-skills",
       "sourceType": "autoskills-registry",
       "computedHash": "245fc4ab7341a8ac0864c9535e2a6d782aaf012ba6975a36cd51240bcf82e443"
+    },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "brainstorming/SKILL.md",
+      "computedHash": "5f998bba401afcb315a0bc8950bbfd219d81e4a7e9f3b13ff96d2fa8919720f7"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "writing-plans/SKILL.md",
+      "computedHash": "d7bf4831c0b69d449c3ececadf34b3c6293dbd67bb42e1d877ff8a4aa3e88c06"
+    },
+    "executing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "executing-plans/SKILL.md",
+      "computedHash": "6520a83ba375ff26c2e38494b2a3a46b0fdd1f33f7a6c9b0a97bbf274313562f"
+    },
+    "subagent-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "subagent-driven-development/SKILL.md",
+      "computedHash": "42b1035bacfe562d4111573e2702773e4ae93abf5a728b4945256fa332262417"
+    },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "dispatching-parallel-agents/SKILL.md",
+      "computedHash": "1968923066f3b707eb01d1992cdf4c42284c3855f70253b9cd5000ff45fca13c"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "requesting-code-review/SKILL.md",
+      "computedHash": "b61f7851e60d298e471f1aac5d1abc98b483cc9fa69afe90b59442ea82fce510"
+    },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "receiving-code-review/SKILL.md",
+      "computedHash": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438"
+    },
+    "finishing-a-development-branch": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "finishing-a-development-branch/SKILL.md",
+      "computedHash": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "test-driven-development/SKILL.md",
+      "computedHash": "a3d8ce3a803409436a89d1b811ad3dd1a03ec8a8ed87b034b6af2414a6ecc6b1"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "systematic-debugging/SKILL.md",
+      "computedHash": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "verification-before-completion/SKILL.md",
+      "computedHash": "92507ff749221393389cb6878391affdc1ce8b4ac77fcd88b4ccaa7a325e856e"
+    },
+    "reducing-entropy": {
+      "source": "joshuadavidthomas/agent-skills",
+      "sourceType": "github",
+      "skillPath": "reducing-entropy/SKILL.md",
+      "computedHash": "0778ed0b35614a175a2279768a8aabd3aa40a79e79e468f466bc155a017d23f8"
+    },
+    "writing-documentation-with-diataxis": {
+      "source": "sammcj/agentic-coding",
+      "sourceType": "github",
+      "skillPath": "writing-documentation-with-diataxis/SKILL.md",
+      "computedHash": "8908dd009492f990424045a4f55e4cf3eeff3671507431ac52898dea1226bb64"
+    },
+    "caddy": {
+      "source": "muninn-huginn/caddy-skill",
+      "sourceType": "github",
+      "skillPath": "caddy/SKILL.md",
+      "computedHash": "8a0f62095cb62c63e0a89ca147d3eedcc05b37adb7049c4c8bf9fdb57cc714e0"
+    },
+    "caddy-reverse-proxy": {
+      "source": "dimdasci/vps-setup",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/caddy-reverse-proxy/SKILL.md",
+      "computedHash": "da05eee16ef8cfc90b5b4d1fb3cbb59e178a7ac904636f82f15cc74b284c5c1f"
     }
   }
 }

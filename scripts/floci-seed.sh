@@ -57,6 +57,3 @@ aws sqs create-queue \
 echo "=== Done ==="
 echo "Floci is running at $ENDPOINT"
 echo "Verify: aws --endpoint-url $ENDPOINT secretsmanager list-secrets"
-EOF
-chmod +x /home/juan/repos/vozlab/scripts/floci-seed.sh
-echo created

@@ -60,3 +60,12 @@ online-first; offline mode is **read-only**.
 3. `svelte-check` / `tsc --noEmit` and the Vitest suite must stay green.
 4. Report which acceptance criteria of `docs/components/web-pwa.md` your change
    satisfies, and which remain open.
+
+## Methodology wiring (2026-10-29)
+
+- Evidence lands in `docs/components/web-pwa.md` (+ `design-system.md` when a
+  token/house rule changes), same commit. Gate for web: `pnpm --filter
+  @vozlab/web test` (vitest) and, for journeys, the `e2e-qa` agent.
+- Unit-test trap owned by this area: jest-dom's vitest-5 extension breaks
+  `expect(...).rejects.toThrow(<string>)` (vitest-dev/vitest#5285) — capture
+  the rejection reason instead.

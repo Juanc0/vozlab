@@ -88,3 +88,14 @@ There is **no build output**: `build` is `tsc --noEmit` and `start` runs through
    Redis, HTTP or Ollama.
 5. If a requirement's status changed, update the matrix in `docs/README.md` in
    the same change.
+
+## Methodology wiring (2026-10-29)
+
+- Evidence lands in `docs/api-reference.md` / `errors.md` / the component doc,
+  same commit as the code (docs/README rules). Gate: 9/9 fresh when docs
+  moved; `bash scripts/docs-hygiene.sh`.
+- Boundary rule learned paying the lint debt: wire values get **validated,
+  not cast** (`WorkspaceRoleSchema.safeParse` pattern); no `any` at all in
+  new code — CI fails errors.
+- Protected routes follow the guard order and `scoped()` buckets; a new
+  admin/write route without a scoped bucket is a review blocker.

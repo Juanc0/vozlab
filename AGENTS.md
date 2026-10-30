@@ -181,6 +181,9 @@ they disagree with the code, **the code wins** — fix the doc.
   one-line result, and update `docs/README.md` if a requirement changed.
 - `/review-arch` (`.opencode/commands/review-arch.md`): audit code vs `docs/` vs
   `ROADMAP.md` and report gaps.
+- `/new-plan`, `/close-plan`, `/docs-hygiene` (`.opencode/commands/`): the plan
+  lifecycle (open `docs/plans/<area>/vN.md` → archive on closure) and the
+  documentation gate (`bash scripts/docs-hygiene.sh`, also a CI step).
 - Document lifecycle: active work lives in `docs/plans/<area>/v<N>.md`; on
   closure its evidence must already be in `docs/components/` + ADRs, its
   unfinished slivers move forward with an origin citation, and the plan file

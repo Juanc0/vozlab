@@ -34,6 +34,9 @@ jobs:
       # Lint (warnings allowed; errors fail).
       - run: pnpm lint
 
+      # Documentation gate: links, heredoc artifacts, dead refs, debris.
+      - run: bash scripts/docs-hygiene.sh
+
   integration:
     name: API integration tests
     runs-on: ubuntu-latest

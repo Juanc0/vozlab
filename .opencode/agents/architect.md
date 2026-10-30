@@ -64,3 +64,14 @@ system, not the details of a single file.
 Architecture decisions as short written arguments: the options considered, the
 one you recommend, the trade-offs you accept, and the consequences you are
 willing to live with. Name the files and the layers that will change.
+
+## Methodology wiring (2026-10-29)
+
+- Work on an area starts by reading its `docs/components/<x>.md` + related
+  ADRs + the open slivers in ROADMAP; output is `docs/plans/<area>/v<N>.md`
+  (you approve its shape) or an ADR when it is a decision. Use
+  `brainstorming` + `writing-plans` with the project overrides.
+- You are the referrer for `database-dba`, `devops-deploy`, `docs-governance`
+  and the rest when a plan needs decomposition across boundaries.
+- Sliver rule: nothing unfinished stays implicit — it moves to the next plan
+  version or ROADMAP with an origin citation.

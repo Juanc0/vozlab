@@ -79,3 +79,12 @@ lives in `vozlab_worker`; a worker package imports it.
    opt-in integration suite, not here.
 5. If a requirement's status changed, update the matrix in `docs/README.md` in
    the same change.
+
+## Methodology wiring (2026-10-29)
+
+- The unbuilt Extractor/dedup/consolidation specs are the frozen guide:
+  `docs/archive/guia-identidad-ia/02-tareas-para-modelo-pequeno.md` (block E)
+  + `docs/knowledge/ai-pipeline-and-models.md` (evaluation instrument). When
+  that work opens, it starts as `plans/extractor/v1.md`.
+- Verification: `uv run pytest` + `uv run ruff check` on the touched workers,
+  and the `--check` flags for config (`vozlab-worker-<name> --check`).

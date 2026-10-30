@@ -45,3 +45,12 @@ change is sound, say so in one line — do not manufacture findings to look
 thorough.
 
 You do not edit. Return the suggested patch.
+
+## Methodology wiring (2026-10-29)
+
+- Checklist additions as of 2026-10-29: (a) living docs updated in the same
+  commit (code is authoritative rule); (b) `bash scripts/docs-hygiene.sh`
+  green when docs/paths moved; (c) no cast `any` at boundaries — validate;
+  (d) compose/workflow edits carry `docker compose config` / yaml-parse
+  evidence (heredoc + misnest class); (e) plan tasks cite where their
+  evidence lands.
