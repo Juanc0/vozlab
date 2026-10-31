@@ -92,6 +92,20 @@ The container reaches the host database through
 `host.docker.internal` (`--add-host=host.docker.internal:host-gateway`), which
 works both with the Compose stack and with a native PostgreSQL.
 
+OpenCode spawns the server through `scripts/postgres-mcp.sh` (see
+`opencode.json` → `mcp.servers.postgres.command`). The script:
+
+- uses a fixed container name (`vozlab-postgres-mcp`) and removes any stale
+  container from a crashed/previous session before starting, so only one
+  instance can exist at a time;
+- feeds the container's stdin through a FIFO and tears the container down
+  (`docker rm -f`) when the client pipe closes, because `postgres-mcp` does
+  not exit on stdin EOF on its own.
+
+If you ever see leftover `crystaldba/postgres-mcp` containers, remove them
+with `docker rm -f $(docker ps -aq --filter ancestor=crystaldba/postgres-mcp)`
+and run `docker container prune -f` for the dead ones. Do not invoke
+`docker run crystaldba/postgres-mcp` directly — always go through the script.
 #### The reader role
 
 The server does **not** connect as the superuser. It connects as
