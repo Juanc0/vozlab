@@ -14,7 +14,7 @@ VozLab separates three questions:
 | Concern | Implementation (2026-10-30) |
 | --- | --- |
 | Browser login | `GET /api/v1/auth/login?redirect=/path` → 302 to the IdP |
-| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-user upsert (`global_users`), `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the user is linked to N>1 institutions) |
+| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-user upsert (`global_users`), `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the user is linked to N>1 institutions); an invitation token carried in the state is redeemed through the unified path (§6) before tenant selection |
 | Tenant selection | `GET /api/v1/auth/resolve-tenants?globalUserId=` + `POST /api/v1/auth/select-tenant {globalUserId, tenantId}` (first login, no session yet); `POST /api/v1/auth/switch-tenant` (authenticated, re-points the session to another linked institution) — every selection writes `TENANT_SELECTED` |
 | Access token | HS256 JWT, 15 min default, returned in JSON; the PWA holds it in memory only |
 | Refresh token | Opaque `v1.<tenant UUID>.<64 hex>`, 30 d default, `HttpOnly` cookie, rotated on every use |
@@ -216,6 +216,18 @@ that distinction.
   has `UNIQUE(workspace_id, user_id)` so the role lookup always sees one row.
 - Event join is the deliberate exception: the event code authorizes one
   `MEMBER` membership in the code's workspace (see §9).
+- **Invitations are one mechanism (DEC-9, ADR-0045).** `POST
+  /api/v1/workspaces/:id/invitations` writes the tenant `auth.invitations`
+  row (72 h, single-use, re-send invalidates; email bound as the peppered
+  hash) and then the idempotent `router.credential_routes` row (kind
+  `INVITATION`). The OIDC callback redeems it through ONE best-effort path
+  before tenant selection: hash → route → that tenant → guards → email-bind
+  → atomic accept + JIT user + router link + membership. An unroutable,
+  revoked, expired or mismatched link never bricks the login — the callback
+  logs and continues without redemption (routing is never authority; an
+  admin revoke touches the tenant row and the route simply goes stale).
+  There is no separate "global invitation" subsystem: `global_invitations`,
+  `POST /api/v1/invitations/global` and their use cases were retired.
 
 ## 7. Workspace isolation
 

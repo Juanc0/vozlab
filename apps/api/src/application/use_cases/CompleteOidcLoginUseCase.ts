@@ -10,9 +10,9 @@ import { IOidcStateStore } from '../../domain/ports/IOidcStateStore.js';
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalUserRepository } from '../../domain/ports/IGlobalUserRepository.js';
 import { IInvitationRepository } from '../../domain/ports/IInvitationRepository.js';
+import { ICredentialRouteRepository } from '../../domain/ports/ICredentialRouteRepository.js';
 import { IAuditLog } from '../../domain/ports/IAuditLog.js';
 import { IRefreshTokenRepository } from '../../domain/ports/IRefreshTokenRepository.js';
-import type { RedeemGlobalInvitationUseCase } from './RedeemGlobalInvitationUseCase.js';
 import { RedeemInvitationAtomicUseCase } from './RedeemInvitationAtomicUseCase.js';
 import {
   generateAuthorHash,
@@ -21,6 +21,7 @@ import {
   hashOpaqueToken,
 } from '../../shared/auth/refreshToken.js';
 import { deriveHandle } from '../../shared/auth/deriveHandle.js';
+import { log } from '../../shared/logger/index.js';
 
 export interface CompleteOidcLoginInput {
   code: string;
@@ -59,11 +60,12 @@ export class CompleteOidcLoginUseCase {
     private readonly refreshRepo: IRefreshTokenRepository,
     private readonly refreshTtlMs: number,
     /**
-     * B12 (v5/TASK-08): the mutation of the tenant-local redemption is the
+     * B12 (v5/TASK-08): the mutation of the redemption is the
      * `RedeemInvitationAtomic` use case — conditional accept + membership
      * add in one transaction, audited after commit. This use case keeps the
-     * strict validation (token, status, expiry, email binding) because a
-     * broken invitation link must fail the login visibly, never silently.
+     * validation (token, status, expiry, email binding) because only a
+     * VALID invitation may mutate state — but under DEC-9 a failed check
+     * means "continue without redeeming", never a bricked login.
      */
     private readonly redeemInvitation: RedeemInvitationAtomicUseCase,
     /**
@@ -72,12 +74,12 @@ export class CompleteOidcLoginUseCase {
      */
     private readonly emailPepper: string,
     /**
-     * v6/TASK-06: optional global-invitation redemption. When the OIDC state
-     * carries a token that exists in the GLOBAL registry, redemption happens
-     * before tenant resolution — the invited identity may have no tenant link
-     * and no institutional claim for one.
+     * DEC-9 (audit §8.5): the thin L0 directory that answers "which tenant
+     * owns this invitation token?" BEFORE any tenant is resolved. The old
+     * two branches (global registry + strict tenant-local check) are ONE
+     * path: route hit → that tenant is the destination for this hop.
      */
-    private readonly redeemGlobalInvitation?: RedeemGlobalInvitationUseCase,
+    private readonly credentialRoutes: ICredentialRouteRepository,
     /**
      * B12: identity trail. Every session issued by the callback records an
      * `OIDC_LOGIN` on the global user (router DB, append-only).
@@ -125,23 +127,20 @@ export class CompleteOidcLoginUseCase {
       }
     );
 
-    // v6/TASK-06: a GLOBAL invitation is redeemed before tenant resolution.
-    // The cross-IdP invitee has no tenant link yet and its institutional
-    // claim maps to no tenant; the invitation itself carries the destination.
-    if (state.invitationToken && this.redeemGlobalInvitation) {
-      const isGlobal = await this.redeemGlobalInvitation.isGlobalToken(
-        state.invitationToken
+    // DEC-9 (audit §8.5): ONE redemption path for every invitation —
+    // same-org and external invitees are the same flow. Runs BEFORE tenant
+    // selection: the token IS the tenant selector for this hop. Redemption
+    // is best-effort (ruling 7): a stale, revoked or mismatched link never
+    // bricks the login — the invitation simply does not grant anything and
+    // the ordinary resolution continues below.
+    if (state.invitationToken) {
+      const redeemed = await this.tryRedeemInvitation(
+        state.invitationToken,
+        identity,
+        emailHash,
+        globalUser.id
       );
-      if (isGlobal) {
-        const redeemed = await this.redeemGlobalInvitation.execute({
-          token: state.invitationToken,
-          globalUserId: globalUser.id,
-          identityEmail: identity.email,
-          identityEmailVerified: identity.emailVerified,
-          issuer: identity.issuer,
-          subject: identity.subject,
-          fullName: identity.fullName,
-        });
+      if (redeemed) {
         return this.issueSession(
           redeemed.user,
           redeemed.tenantId,
@@ -208,41 +207,89 @@ export class CompleteOidcLoginUseCase {
     // selector and `switch-tenant`) only ever sees manually reconciled rows.
     await this.routerDb.linkGlobalUserTenant(globalUser.id, tenant.id, user.id, 'ACTIVE');
 
-    // D9: redeem the invitation carried by the OIDC state.
-    //
-    // Redemption is strict: the token must exist, be PENDING, unexpired and
-    // unused, and the peppered hash of the verified identity email must
-    // equal the hash the invitation was bound to (DEC-4 — the cleartext is
-    // never stored or compared). A failure is an error — never a silent
-    // "logged in without the membership" — so a broken link is visible.
-    if (state.invitationToken) {
-      const { createHash } = await import('node:crypto');
-      const tokenHash = createHash('sha256')
-        .update(state.invitationToken)
-        .digest('hex');
+    return this.issueSession(user, tenant.id, state.redirectPath, globalUser.id);
+  }
 
-      const invitation = await this.invitationRepo.findByTokenHash(
-        tokenHash,
-        tenant.id
+  /**
+   * DEC-9 unified redemption (audit §8.5): hash → `credential_routes` →
+   * open tenant → `findByTokenHash` → guards → email-bind → JIT user →
+   * atomic accept + membership → router link LAST. Returns the session
+   * target on success, `null` to mean "login continues WITHOUT redemption" —
+   * an unroutable, revoked, expired, exhausted, email-mismatched or
+   * race-lost invitation never fails the login itself (ruling 7; routing is
+   * not authority, the tenant row is the gate) and never writes a link.
+   */
+  private async tryRedeemInvitation(
+    token: string,
+    identity: Awaited<ReturnType<IIdentityProvider['exchangeCode']>>,
+    emailHash: string | null,
+    globalUserId: string
+  ): Promise<{ user: AuthUser; tenantId: string } | null> {
+    const tokenHash = hashOpaqueToken(token);
+
+    const routedTenantId = await this.credentialRoutes.findTenantId(
+      tokenHash,
+      'INVITATION'
+    );
+    if (!routedTenantId) {
+      log.warn(
+        { globalUserId },
+        'invitation token carried in OIDC state is not routable — login continues without redemption'
       );
+      return null;
+    }
 
-      const usable =
-        invitation !== null &&
-        invitation.status === 'PENDING' &&
-        invitation.expiresAt > new Date() &&
-        (invitation.maxUses === null ||
-          invitation.usedCount < invitation.maxUses);
-      const boundEmailHash = invitation?.emailHash ?? null;
-      const emailMatches =
-        boundEmailHash !== null &&
-        identity.emailVerified === true &&
-        emailHash !== null &&
-        boundEmailHash === emailHash;
+    const tenant = await this.routerDb.findTenantById(routedTenantId);
+    if (!tenant) {
+      log.warn(
+        { routedTenantId, globalUserId },
+        'invitation route points at a missing tenant — login continues without redemption'
+      );
+      return null;
+    }
 
-      if (!invitation || !usable || !emailMatches) {
-        throw new DomainError('ERR_INVITATION_INVALID');
-      }
+    const invitation = await this.invitationRepo.findByTokenHash(
+      tokenHash,
+      tenant.id
+    );
+    const usable =
+      invitation !== null &&
+      invitation.status === 'PENDING' &&
+      invitation.expiresAt > new Date() &&
+      (invitation.maxUses === null ||
+        invitation.usedCount < invitation.maxUses);
+    // DEC-4 bind: the peppered hash of the verified email must equal the
+    // hash the invitation was bound to — the cleartext never exists here.
+    const emailMatches =
+      invitation !== null &&
+      invitation.emailHash !== null &&
+      identity.emailVerified === true &&
+      emailHash !== null &&
+      invitation.emailHash === emailHash;
 
+    if (!invitation || !usable || !emailMatches) {
+      log.warn(
+        { tenantId: tenant.id, invitationId: invitation?.id ?? null, globalUserId },
+        'invitation not redeemable (revoked/expired/used or email mismatch) — login continues without redemption'
+      );
+      return null;
+    }
+
+    const user = await this.userRepo.findOrCreateByExternalIdentity(
+      {
+        issuer: identity.issuer,
+        subject: identity.subject,
+        fullName: identity.fullName,
+        authorHash: generateAuthorHash(),
+        // B14: the redeemed account gets its lookup alias from the IdP
+        // assertion (in memory only — no email is ever stored).
+        handle: deriveHandle(identity),
+        globalUserId,
+      },
+      tenant.id
+    );
+
+    try {
       // B12: the mutation is the atomic use case — conditional accept +
       // membership add in one transaction, `INVITATION_REDEEMED` after commit.
       await this.redeemInvitation.execute({
@@ -253,15 +300,40 @@ export class CompleteOidcLoginUseCase {
         tid: tenant.id,
         actorId: user.id,
       });
+    } catch (err) {
+      if (err instanceof DomainError && err.code === 'ERR_INVITATION_INVALID') {
+        // Lost the accept race (concurrent redemption) — the human still
+        // logs in; the second grant simply never happens. NO router link is
+        // written on this path: a link is only minted for a redemption that
+        // actually granted membership, never for an inert invitation.
+        log.warn(
+          { tenantId: tenant.id, invitationId: invitation.id, globalUserId },
+          'invitation accept race lost — login continues without redemption'
+        );
+        return null;
+      }
+      throw err;
     }
 
-    return this.issueSession(user, tenant.id, state.redirectPath, globalUser.id);
+    // Router link LAST, only after the atomic grant committed (task-6 review,
+    // MEDIUM-1): an invitation that never granted a membership must never
+    // park the tenant in the picker or auto-select it. Accepted shape notes:
+    // the atomic's own TX created user+membership, so between its commit and
+    // this router write there is a brief window where another request's
+    // `findTenantsByGlobalUser` does not yet see the tenant — harmless and
+    // self-healing (this call is retried on every login, and the
+    // institutional path refreshes the same link). If THIS write throws, the
+    // membership exists without the link: the next login re-runs the
+    // institutional path, which re-JITs the same user and re-links.
+    await this.routerDb.linkGlobalUserTenant(globalUserId, tenant.id, user.id, 'ACTIVE');
+
+    return { user, tenantId: tenant.id };
   }
 
   /**
    * Issue the refresh family and build the login result for a resolved
-   * tenant session (shared by the institutional and the global-invitation
-   * redemption paths).
+   * tenant session (shared by the institutional and the unified
+   * invitation-redemption paths).
    */
   private async issueSession(
     user: AuthUser,
@@ -285,7 +357,7 @@ export class CompleteOidcLoginUseCase {
     const linked = await this.routerDb.findTenantsByGlobalUser(globalUserId);
 
     // B12: explicit identity trail. Every session the callback issues —
-    // institutional or global-invitation path — leaves one `OIDC_LOGIN` on
+    // institutional or invitation-redeemed path — leaves one `OIDC_LOGIN` on
     // the global user (router DB, append-only, no PII).
     await this.audit?.record({
       actorId: user.id,

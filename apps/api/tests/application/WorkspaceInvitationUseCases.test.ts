@@ -5,10 +5,10 @@ import {
   INVITATION_MAX_USES,
   INVITATION_TTL_MS,
 } from '../../src/application/use_cases/CreateInvitationUseCase.js';
-import { hashEmail } from '../../src/shared/auth/refreshToken.js';
+import { hashEmail, hashOpaqueToken } from '../../src/shared/auth/refreshToken.js';
 import { ListInvitationsUseCase } from '../../src/application/use_cases/ListInvitationsUseCase.js';
 import { RevokeInvitationUseCase } from '../../src/application/use_cases/RevokeInvitationUseCase.js';
-import { AUTH_USER, TENANT_ID, USER_ID } from '../support/authFakes.js';
+import { AUTH_USER, TENANT_ID, USER_ID, makeCredentialRouteRepository } from '../support/authFakes.js';
 import { makeUnitOfWork } from '../support/fakes.js';
 import {
   invitationRecord,
@@ -26,6 +26,7 @@ function setup(initial = [invitationRecord()]) {
   const membershipAdmin = makeMembershipAdminRepository();
   const workspace = workspaceRecord();
   const workspaces = makeWorkspaceRepository([workspace]);
+  const routes = makeCredentialRouteRepository();
   const created: Array<{ workspaceId: string; tokenHash: string; emailHash?: string | null }> = [];
   const invitationRepo = {
     async create(input: never) {
@@ -64,6 +65,7 @@ function setup(initial = [invitationRecord()]) {
     workspaces,
     invitations,
     created,
+    routes,
     create: new CreateInvitationUseCase(
       invitationRepo,
       invitations.repo,
@@ -71,7 +73,8 @@ function setup(initial = [invitationRecord()]) {
       membershipRepo,
       userRepo as never,
       uow,
-      PEPPER
+      PEPPER,
+      routes.credentialRoutes
     ),
     list: new ListInvitationsUseCase(
       invitations.repo,
@@ -150,6 +153,50 @@ describe('CreateInvitationUseCase', () => {
     expect(invitation.emailHash).toBe(
       hashEmail('invitee@example.edu', PEPPER)
     );
+  });
+
+  it('records the routable directory entry after the tenant commit (DEC-9)', async () => {
+    const ctx = setup([]);
+
+    const { token } = await ctx.create.execute({
+      actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
+      tid: TENANT_ID,
+      workspaceId: ctx.workspace.id,
+      email: 'invitee@example.edu',
+      role: 'MEMBER',
+    });
+
+    // The route carries ONLY the hash of the same token the tenant row
+    // bound — never the raw token, never an email byte (ADR-0046/DEC-9).
+    expect(ctx.routes.inserts).toEqual([
+      {
+        hash: hashOpaqueToken(token),
+        kind: 'INVITATION',
+        tenantId: TENANT_ID,
+      },
+    ]);
+  });
+
+  it('surfaces an unroutable invitation without rolling back the tenant row (re-send is the re-push)', async () => {
+    const ctx = setup([]);
+    ctx.routes.setInsertFails(true);
+
+    await expect(
+      ctx.create.execute({
+        actorUserId: USER_ID,
+        actorAuthorHash: AUTH_USER.authorHash,
+        tid: TENANT_ID,
+        workspaceId: ctx.workspace.id,
+        email: 'invitee@example.edu',
+        role: 'MEMBER',
+      })
+    ).rejects.toThrow('fake router directory failure');
+
+    // Tenant-first ordering (ADR-0002): the authority row committed BEFORE
+    // the failed route insert and stays — the link is inert until re-send.
+    expect(ctx.created).toHaveLength(1);
+    expect(ctx.routes.inserts).toEqual([]);
   });
 });
 

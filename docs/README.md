@@ -7,8 +7,9 @@ document.
 
 Status snapshot: **2026-10-30**. Phases 0–3 are complete and the auth/tenancy
 intervention (v5/v6) is closed on code: OIDC with explicit institution
-selection, multiple roles, GUEST/event kinds, ephemeral join codes, tenant and
-global invitations, direct add by handle, persistent audit, per-action rate
+selection, multiple roles, GUEST/event kinds, ephemeral join codes, one
+invitation mechanism under tenant authority (DEC-9, ADR-0045), direct add by
+handle, persistent audit, per-action rate
 limits, admin UI, offline and a real Zitadel login verified end to end
 (`analysis/auth-onboarding-committee-review.md` §6.5). The db-baseline plan
 landed the same day ([ADR-0044](decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md)):

@@ -3,7 +3,6 @@ import { env } from '../../shared/config/env.js';
 import { log } from '../../shared/logger/index.js';
 import { IRouterDatabase, TenantConnectionConfig } from '../../domain/ports/IRouterDatabase.js';
 import { IGlobalUserRepository, GlobalUser, GlobalUserProfile } from '../../domain/ports/IGlobalUserRepository.js';
-import { IGlobalInvitationRepository, GlobalInvitationRecord, CreateGlobalInvitationInput } from '../../domain/ports/IGlobalInvitationRepository.js';
 import { ITenantIdentityProviderRepository, TenantIdentityProvider } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { GlobalUserEventInput, IGlobalUserEventRepository } from '../../domain/ports/IGlobalUserEventRepository.js';
 import {
@@ -13,7 +12,7 @@ import {
 import { globalUsers } from '@vozlab/database';
 import { InfrastructureError } from '../../domain/errors/InfrastructureError.js';
 import { createRouterDrizzle } from '@vozlab/database';
-import { credentialRoutes, tenants, tenantConnections, tenantIdentityProviders, globalUserTenants, globalInvitations, globalUserEvents } from '@vozlab/database';
+import { credentialRoutes, tenants, tenantConnections, tenantIdentityProviders, globalUserTenants, globalUserEvents } from '@vozlab/database';
 
 /**
  * RouterDatabaseClient: adapter that implements IRouterDatabase.
@@ -23,7 +22,7 @@ import { credentialRoutes, tenants, tenantConnections, tenantIdentityProviders, 
  * that knows about the router schema — all other layers go through the port.
  */
 export class RouterDatabaseClient
-  implements IRouterDatabase, ICredentialRouteRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalInvitationRepository, IGlobalUserEventRepository
+  implements IRouterDatabase, ICredentialRouteRepository, IGlobalUserRepository, ITenantIdentityProviderRepository, IGlobalUserEventRepository
 {
   private db: ReturnType<typeof createRouterDrizzle>['db'];
   private pool: ReturnType<typeof createRouterDrizzle>['pool'];
@@ -295,6 +294,28 @@ export class RouterDatabaseClient
   }
 
   /**
+   * Idempotent directory insert (ADR-0046 + DEC-9): make a credential hash
+   * routable. The credential's AUTHORITY already lives in the tenant — this
+   * row only answers "which tenant?" — so a duplicate insert is a silent
+   * no-op and a re-push of a lost route is safe.
+   */
+  async ensureRoute(
+    credentialHash: string,
+    kind: CredentialRouteKind,
+    tenantId: string
+  ): Promise<void> {
+    try {
+      await this.db
+        .insert(credentialRoutes)
+        .values({ credentialHash, kind, tenantId })
+        .onConflictDoNothing();
+    } catch (err) {
+      log.error({ err, kind, tenantId }, 'failed to record credential route');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  /**
    * Resolve the physical database connection config for a tenant.
    * Returns null if the tenant has no provisioned connection row.
    * Throws InfrastructureError('ERR_DATABASE_CONNECTION_FAILED') on driver/connection failure.
@@ -476,82 +497,6 @@ export class RouterDatabaseClient
    */
   async ping(): Promise<void> {
     await this.db.execute(sql`SELECT 1`);
-  }
-
-  // --- IGlobalInvitationRepository ---
-
-  async createInvitation(input: CreateGlobalInvitationInput): Promise<GlobalInvitationRecord> {
-    try {
-      const [row] = await this.db
-        .insert(globalInvitations)
-        .values({
-          tokenHash: input.tokenHash,
-          tenantId: input.tenantId,
-          workspaceId: input.workspaceId,
-          role: input.role,
-          email: input.email,
-          expiresAt: input.expiresAt,
-          maxUses: input.maxUses ?? null,
-        })
-        .returning();
-      return {
-        id: row.id,
-        tokenHash: row.tokenHash,
-        tenantId: row.tenantId,
-        workspaceId: row.workspaceId,
-        role: row.role,
-        email: row.email,
-        status: row.status,
-        maxUses: row.maxUses,
-        usedCount: row.usedCount,
-        expiresAt: row.expiresAt,
-        createdAt: row.createdAt,
-      };
-    } catch (err) {
-      log.error({ err }, 'failed to create global invitation');
-      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-    }
-  }
-
-  async findByTokenHash(tokenHash: string): Promise<GlobalInvitationRecord | null> {
-    try {
-      const [row] = await this.db
-        .select()
-        .from(globalInvitations)
-        .where(eq(globalInvitations.tokenHash, tokenHash))
-        .limit(1);
-      if (!row) return null;
-      return {
-        id: row.id,
-        tokenHash: row.tokenHash,
-        tenantId: row.tenantId,
-        workspaceId: row.workspaceId,
-        role: row.role,
-        email: row.email,
-        status: row.status,
-        maxUses: row.maxUses,
-        usedCount: row.usedCount,
-        expiresAt: row.expiresAt,
-        createdAt: row.createdAt,
-      };
-    } catch (err) {
-      log.error({ err }, 'failed to find global invitation');
-      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-    }
-  }
-
-  async accept(id: string): Promise<boolean> {
-    try {
-      const res = await this.db
-        .update(globalInvitations)
-        .set({ status: 'ACCEPTED', usedCount: sql`${globalInvitations.usedCount} + 1` })
-        .where(and(eq(globalInvitations.id, id), eq(globalInvitations.status, 'PENDING')))
-        .returning();
-      return res.length > 0;
-    } catch (err) {
-      log.error({ err }, 'failed to accept global invitation');
-      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
-    }
   }
 
   async close(): Promise<void> {

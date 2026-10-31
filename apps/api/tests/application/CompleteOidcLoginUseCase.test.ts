@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
 import { RedeemInvitationAtomicUseCase } from '../../src/application/use_cases/RedeemInvitationAtomicUseCase.js';
 import { deriveHandle } from '../../src/shared/auth/deriveHandle.js';
-import { RedeemGlobalInvitationUseCase } from '../../src/application/use_cases/RedeemGlobalInvitationUseCase.js';
 import {
   hashEmail,
   hashOpaqueToken,
@@ -11,7 +10,6 @@ import {
 import type { OidcStateData } from '../../src/domain/ports/IOidcStateStore.js';
 import type { AuditEvent, IAuditLog } from '../../src/domain/ports/IAuditLog.js';
 import type { Invitation } from '../../src/domain/ports/IInvitationRepository.js';
-import type { GlobalInvitationRecord } from '../../src/domain/ports/IGlobalInvitationRepository.js';
 import { makeUnitOfWork } from '../support/fakes.js';
 import {
   AUTH_USER,
@@ -20,7 +18,7 @@ import {
   TENANT,
   TENANT_ID,
   WORKSPACE_ID,
-  makeGlobalInvitationRepository,
+  makeCredentialRouteRepository,
   makeGlobalUserRepository,
   makeAuditLog,
   makeIdentityProvider,
@@ -42,13 +40,11 @@ function setup(
     /** Result of `findTenantById` (the router by-uuid lookup). */
     byId?: typeof TENANT | null;
     state?: OidcStateData;
-    /** Global invitations seeded in the router registry. */
-    globalInvitations?: GlobalInvitationRecord[];
-    /** When false, the redeem use case is NOT wired (legacy behavior). */
-    withRedeem?: boolean;
+    /** Seed for the credential-route directory fake (`"<hash>:<kind>"` → tenant). */
+    routes?: Record<string, string>;
     /** B12: audit sink; when set, the login records `OIDC_LOGIN`. */
     audit?: IAuditLog;
-    /** Seed for the tenant-local invitation fake (the D9 lookup + race). */
+    /** Seed for the tenant invitation fake (the DEC-9 lookup + race). */
     invitationSeed?: { byTokenHash?: Invitation | null; acceptResult?: boolean };
   } = {}
 ) {
@@ -66,16 +62,8 @@ function setup(
   const refresh = makeRefreshTokenRepository();
   const invitation = makeInvitationRepository(overrides.invitationSeed);
   const membership = makeMembershipRepository();
-  const globalInvites = makeGlobalInvitationRepository(overrides.globalInvitations ?? []);
+  const routes = makeCredentialRouteRepository(overrides.routes ?? {});
   const { uow } = makeUnitOfWork();
-  const redeem = new RedeemGlobalInvitationUseCase(
-    globalInvites.repo,
-    globalUser.repo,
-    router.routerDb,
-    users.userRepo,
-    membership.membershipRepo,
-    uow
-  );
   // B12: the login composes the atomic redemption — same repos, same uow,
   // so the `accept`/`add` assertions on the fakes keep proving the flow.
   const redeemInvitation = new RedeemInvitationAtomicUseCase(
@@ -95,7 +83,7 @@ function setup(
     REFRESH_TTL_MS,
     redeemInvitation,
     PEPPER,
-    overrides.withRedeem === false ? undefined : redeem,
+    routes.credentialRoutes,
     overrides.audit
   );
 
@@ -109,8 +97,7 @@ function setup(
     refresh,
     invitation,
     membership,
-    globalInvites,
-    redeem,
+    routes,
   };
 }
 
@@ -250,36 +237,46 @@ describe('CompleteOidcLoginUseCase', () => {
     expect(refresh.creates).toEqual([]);
   });
 
-  describe('global invitation redemption (P0-2)', () => {
-    const GLOBAL_TOKEN = 'c'.repeat(64);
+  describe('unified invitation redemption (DEC-9, audit §8.5)', () => {
+    const TOKEN = 'unified-invitation-token-1';
+    const TOKEN_HASH = hashOpaqueToken(TOKEN);
 
-    function globalInvitation(
-      overrides: Partial<GlobalInvitationRecord> = {}
-    ): GlobalInvitationRecord {
+    /** The tenant invitation the unified path would redeem in these tests. */
+    function pendingInvitation(overrides: Partial<Invitation> = {}): Invitation {
       return {
-        id: 'global-inv-1',
-        tokenHash: hashOpaqueToken(GLOBAL_TOKEN),
-        tenantId: TENANT_ID,
+        id: 'inv-1',
         workspaceId: WORKSPACE_ID,
-        role: 'CONTRIBUTOR',
-        email: 'ada@example.edu',
-        status: 'PENDING',
-        maxUses: null,
-        usedCount: 0,
+        emailHash: hashEmail(OIDC_IDENTITY.email as string, PEPPER),
+        role: 'MEMBER',
+        tokenHash: TOKEN_HASH,
         expiresAt: new Date(Date.now() + 60_000),
+        maxUses: 1,
+        usedCount: 0,
+        status: 'PENDING',
+        revokedAt: null,
+        createdBy: null,
         createdAt: new Date(),
         ...overrides,
       };
     }
 
-    it('redeems a global token for an invitee with no tenant link', async () => {
+    /** Route the token to TENANT_ID in the directory fake. */
+    function routed(): Record<string, string> {
+      return { [`${TOKEN_HASH}:INVITATION`]: TENANT_ID };
+    }
+
+    it('redeems a routable invitation for an invitee with no tenant link (external persona)', async () => {
       // `tenant: null` → no claim match and no linked tenants: the ONLY way
-      // this login can succeed is through the invitation itself.
-      const { useCase, router, users, refresh, membership, globalInvites } = setup({
+      // this login can succeed is through the routed invitation — the token
+      // IS the tenant selector for the hop (same path as an same-org link).
+      const auditSink = makeAuditLog();
+      const { useCase, router, users, refresh, membership, invitation } = setup({
         tenant: null,
         byId: TENANT,
-        state: { ...OIDC_STATE, invitationToken: GLOBAL_TOKEN },
-        globalInvitations: [globalInvitation()],
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: { byTokenHash: pendingInvitation() },
+        audit: auditSink.audit,
       });
 
       const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
@@ -290,103 +287,7 @@ describe('CompleteOidcLoginUseCase', () => {
         tenantId: TENANT_ID,
       });
       expect(refresh.creates).toHaveLength(1);
-      expect(membership.added).toHaveLength(1);
-      expect(membership.added[0]).toMatchObject({
-        workspaceId: WORKSPACE_ID,
-        role: 'CONTRIBUTOR',
-      });
-      expect(router.calls).toContain(
-        `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
-      );
-      expect(globalInvites.records[0].status).toBe('ACCEPTED');
-      // The tenant-local invitation path must NOT have been consulted.
-      expect(
-        router.calls.some((c) => c.startsWith('findTenantByOidcId'))
-      ).toBe(false);
       expect(users.oidcUpserts).toHaveLength(1);
-    });
-
-    it('fails the login when the global invitation is expired', async () => {
-      const { useCase, refresh, membership } = setup({
-        tenant: null,
-        state: { ...OIDC_STATE, invitationToken: GLOBAL_TOKEN },
-        globalInvitations: [
-          globalInvitation({ expiresAt: new Date(Date.now() - 1_000) }),
-        ],
-      });
-
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
-      expect(refresh.creates).toEqual([]);
-      expect(membership.added).toEqual([]);
-    });
-
-    it('fails the login when the identity email does not match the invitation', async () => {
-      const { useCase, refresh } = setup({
-        tenant: null,
-        state: { ...OIDC_STATE, invitationToken: GLOBAL_TOKEN },
-        globalInvitations: [globalInvitation({ email: 'someone-else@example.com' })],
-      });
-
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
-      expect(refresh.creates).toEqual([]);
-    });
-
-    it('falls through to the local invitation path when the token is not global', async () => {
-      // Tenant-local token: isGlobalToken=false → normal resolution proceeds.
-      // The tenant-local repo has no such invitation, so D9 strictness fails
-      // the login AFTER the tenant user was created and linked.
-      const { useCase, router, users, refresh } = setup({
-        state: { ...OIDC_STATE, invitationToken: GLOBAL_TOKEN },
-        globalInvitations: [],
-      });
-
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
-      expect(users.oidcUpserts).toHaveLength(1);
-      expect(router.calls).toContain(
-        `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
-      );
-      expect(refresh.creates).toEqual([]);
-    });
-  });
-
-  describe('tenant-local invitation redemption (D9, composed by the B12 atom)', () => {
-    /** The tenant-local invitation the login of this file would redeem. */
-    function localInvitation(overrides: Partial<Invitation> = {}): Invitation {
-      return {
-        id: 'inv-local-1',
-        workspaceId: WORKSPACE_ID,
-        emailHash: hashEmail(OIDC_IDENTITY.email as string, PEPPER),
-        role: 'MEMBER',
-        tokenHash: 'token-hash',
-        expiresAt: new Date(Date.now() + 60_000),
-        maxUses: null,
-        usedCount: 0,
-        status: 'PENDING',
-        revokedAt: null,
-        createdBy: null,
-        createdAt: new Date(),
-        ...overrides,
-      };
-    }
-
-    it('accepts the invitation and adds the membership atomically, then audits', async () => {
-      const auditSink = makeAuditLog();
-      const { useCase, invitation, membership } = setup({
-        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
-        invitationSeed: { byTokenHash: localInvitation() },
-        audit: auditSink.audit,
-      });
-
-      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
-
-      expect(result.requiresTenantSelection).toBe(false);
-      expect(invitation.calls).toContain('accept:inv-local-1');
       expect(membership.added).toHaveLength(1);
       expect(membership.added[0]).toMatchObject({
         userId: AUTH_USER.id,
@@ -394,35 +295,19 @@ describe('CompleteOidcLoginUseCase', () => {
         role: 'MEMBER',
         tid: TENANT_ID,
       });
-      // The atom's event carries the tenant the store routes by, and the
-      // login's `OIDC_LOGIN` still lands — two distinct actions.
+      expect(invitation.calls).toContain('accept:inv-1');
+      expect(router.calls).toContain(
+        `linkGlobalUserTenant:global-id-1:${TENANT_ID}:${AUTH_USER.id}:ACTIVE`
+      );
+      // The institutional resolution never ran: the route answered the tenant.
+      expect(
+        router.calls.some((c) => c.startsWith('findTenantByOidcId'))
+      ).toBe(false);
+      // Ruling 6: the trail is the tenant-side accept + the OIDC_LOGIN vault
+      // event — no new global action string.
       const actions = auditSink.events.map((event) => event.action);
       expect(actions).toContain('INVITATION_REDEEMED');
       expect(actions).toContain('OIDC_LOGIN');
-      const redeemed = auditSink.events.find(
-        (event) => event.action === 'INVITATION_REDEEMED'
-      );
-      expect(redeemed).toMatchObject({
-        tenantId: TENANT_ID,
-        targetType: 'workspace',
-        targetId: WORKSPACE_ID,
-        actorId: AUTH_USER.id,
-      });
-      expect(redeemed?.metadata).toMatchObject({ invitationId: 'inv-local-1' });
-    });
-
-    it('fails the login when a concurrent redemption won the accept race', async () => {
-      const { useCase, invitation, membership, refresh } = setup({
-        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
-        invitationSeed: { byTokenHash: localInvitation(), acceptResult: false },
-      });
-
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
-      expect(invitation.calls).toContain('accept:inv-local-1');
-      expect(membership.added).toEqual([]);
-      expect(refresh.creates).toEqual([]);
     });
 
     it('redeems when the IdP email differs from the bound hash only in case/whitespace (DEC-4 normalization)', async () => {
@@ -431,8 +316,9 @@ describe('CompleteOidcLoginUseCase', () => {
       // hash equality must bridge the difference.
       const { useCase, membership } = setup({
         identity: { ...OIDC_IDENTITY, email: '  ADA@Example.EDU ' },
-        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
-        invitationSeed: { byTokenHash: localInvitation() },
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: { byTokenHash: pendingInvitation() },
       });
 
       const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
@@ -441,33 +327,122 @@ describe('CompleteOidcLoginUseCase', () => {
       expect(membership.added).toHaveLength(1);
     });
 
-    it('fails the login when the identity email hashes differently than the bound invitation', async () => {
-      const { useCase, membership, refresh } = setup({
-        identity: { ...OIDC_IDENTITY, email: 'mallory@example.edu' },
-        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
-        invitationSeed: { byTokenHash: localInvitation() },
+    it('continues the login without redemption when the token is not routable (stale link, ruling 7)', async () => {
+      // No directory row for the hash: the link is simply invalid. The
+      // ordinary institutional flow proceeds — login is never bricked.
+      const { useCase, invitation, membership, refresh } = setup({
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: {},
+        invitationSeed: { byTokenHash: pendingInvitation() },
       });
 
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      // The tenant invitation was never consulted: routing gates lookup.
+      expect(invitation.calls).toEqual([]);
       expect(membership.added).toEqual([]);
-      expect(refresh.creates).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
     });
 
-    it('refuses an invitation already past its max uses', async () => {
-      const { useCase, invitation, membership } = setup({
-        state: { ...OIDC_STATE, invitationToken: 'local-token-1' },
+    it('continues the login with no grant when the invitation was revoked (route stale, authority gone)', async () => {
+      // DEC-9 invariant: the admin revoke touches the tenant row only; the
+      // route stays inert. Redemption sees REVOKED → login proceeds, no
+      // membership, no session-destroying error.
+      const { useCase, invitation, membership, refresh } = setup({
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: { byTokenHash: pendingInvitation({ status: 'REVOKED' }) },
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).not.toContain('accept:inv-1');
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
+    });
+
+    it('continues the login with no grant when the invitation expired', async () => {
+      const { useCase, invitation, membership, refresh } = setup({
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
         invitationSeed: {
-          byTokenHash: localInvitation({ maxUses: 2, usedCount: 2 }),
+          byTokenHash: pendingInvitation({
+            expiresAt: new Date(Date.now() - 1_000),
+          }),
         },
       });
 
-      await expect(
-        useCase.execute({ code: 'auth-code', state: 'state-1' })
-      ).rejects.toMatchObject({ code: 'ERR_INVITATION_INVALID' });
-      expect(invitation.calls).not.toContain('accept:inv-local-1');
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).not.toContain('accept:inv-1');
       expect(membership.added).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
+    });
+
+    it('continues the login with no grant when the invitation is past its max uses', async () => {
+      const { useCase, invitation, membership, refresh } = setup({
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: {
+          byTokenHash: pendingInvitation({ maxUses: 1, usedCount: 1 }),
+        },
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).not.toContain('accept:inv-1');
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
+    });
+
+    it('continues the login with no grant when the identity email hashes differently', async () => {
+      // Someone else followed the link: the bind rejects, the human still
+      // logs in through their own tenant — the invitation grants nothing.
+      const { useCase, invitation, membership, refresh } = setup({
+        identity: { ...OIDC_IDENTITY, email: 'mallory@example.edu' },
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: { byTokenHash: pendingInvitation() },
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).not.toContain('accept:inv-1');
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
+    });
+
+    it('continues the login when a concurrent redemption won the accept race', async () => {
+      const { useCase, invitation, membership, refresh, router } = setup({
+        state: { ...OIDC_STATE, invitationToken: TOKEN },
+        routes: routed(),
+        invitationSeed: {
+          byTokenHash: pendingInvitation(),
+          acceptResult: false,
+        },
+      });
+
+      const result = await useCase.execute({ code: 'auth-code', state: 'state-1' });
+
+      expect(result.requiresTenantSelection).toBe(false);
+      expect(invitation.calls).toContain('accept:inv-1');
+      // The loser's grant never landed, but its session does.
+      expect(membership.added).toEqual([]);
+      expect(refresh.creates).toHaveLength(1);
+      // MEDIUM-1 (task-6 review): the redemption path writes NO router link
+      // when the accept fails — the tenant must not be parked in the picker
+      // or auto-selected by a grant that never happened. The single link
+      // write here is the ordinary institutional-path one (the claim-resolved
+      // session), never a second one for the inert invitation.
+      const linkWrites = router.calls.filter((c) =>
+        c.startsWith('linkGlobalUserTenant')
+      );
+      expect(linkWrites).toHaveLength(1);
     });
   });
 

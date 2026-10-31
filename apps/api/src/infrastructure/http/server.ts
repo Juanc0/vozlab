@@ -73,8 +73,6 @@ import { RefreshSessionUseCase } from '../../application/use_cases/RefreshSessio
 import { LogoutUseCase } from '../../application/use_cases/LogoutUseCase.js';
 import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
-import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
-import { RedeemGlobalInvitationUseCase } from '../../application/use_cases/RedeemGlobalInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { UpdateWorkspaceJoinCodeUseCase } from '../../application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
 import { DrizzleAuditLog } from '../persistence/repositories/DrizzleAuditLog.js';
@@ -293,16 +291,6 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   const invitationRepo = new DrizzleInvitationRepository(poolManager);
   const cleanupUseCase = new CleanupExpiredInvitationsUseCase(invitationRepo, userRepo);
-  const createGlobalInvitationUseCase = new CreateGlobalInvitationUseCase(routerDb);
-  const redeemGlobalInvitationUseCase = new RedeemGlobalInvitationUseCase(
-    routerDb,
-    routerDb,
-    routerDb,
-    userRepo,
-    membershipRepo,
-    uow,
-    auditLog
-  );
   const redeemInvitationAtomicUseCase = new RedeemInvitationAtomicUseCase(
     invitationRepo,
     membershipRepo,
@@ -320,7 +308,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     refreshTtlMs,
     redeemInvitationAtomicUseCase,
     env.EMAIL_PEPPER,
-    redeemGlobalInvitationUseCase,
+    // DEC-9: the unified invitation redemption rides the thin L0 directory
+    // (routerDb implements ICredentialRouteRepository).
+    routerDb,
     auditLog
   );
   const selectTenantUseCase = new SelectTenantUseCase(
@@ -483,7 +473,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     membershipRepo,
     userRepo,
     uow,
-    env.EMAIL_PEPPER
+    env.EMAIL_PEPPER,
+    // DEC-9: post-commit idempotent route insert (tenant-first ordering).
+    routerDb
   );
   const listInvitationsUseCase = new ListInvitationsUseCase(
     invitationAdminRepo,
@@ -542,7 +534,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     cleanupUseCase,
     createWorkspaceJoinCodeUseCase,
     updateWorkspaceJoinCodeUseCase,
-    createGlobalInvitationUseCase,
     workspaceJoinCodeRepo,
     createWorkspaceUseCase,
     getWorkspaceUseCase,

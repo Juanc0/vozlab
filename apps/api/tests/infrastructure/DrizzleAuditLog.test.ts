@@ -119,12 +119,12 @@ describe('DrizzleAuditLog', () => {
 
     await audit.record({
       actorId: 'global-1',
-      action: 'GLOBAL_INVITATION_REDEEMED',
+      action: 'OIDC_LOGIN',
       targetType: 'global_identity',
       targetId: 'global-1',
       tenantId: 'tenant-9',
       globalUserId: 'global-1',
-      metadata: { invitationId: 'gi-1' },
+      metadata: { redirectPath: '/' },
       actorType: 'USER',
     });
 
@@ -134,8 +134,8 @@ describe('DrizzleAuditLog', () => {
       globalUserId: 'global-1',
       tenantId: 'tenant-9',
       actorType: 'USER',
-      action: 'GLOBAL_INVITATION_REDEEMED',
-      metadata: { invitationId: 'gi-1' },
+      action: 'OIDC_LOGIN',
+      metadata: { redirectPath: '/' },
     });
   });
 

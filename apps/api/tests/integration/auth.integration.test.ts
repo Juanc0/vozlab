@@ -419,20 +419,12 @@ describe('auth integration', () => {
   it('redeems a tenant-local invitation when the IdP email differs only in case/whitespace (DEC-4 end-to-end)', async () => {
     // The invitation bound only the peppered hash of the canonical address;
     // the mock IdP asserts the SAME address with different case and padding.
-    // The equality of hashes (trim+lower, then HMAC) must bridge it — this
-    // is the normalization proof against the migrated dev volume.
+    // The equality of hashes (trim+lower, then HMAC) is all matching ever
+    // needs — this is the normalization proof against the migrated dev
+    // volume. DEC-9: the token must also be ROUTABLE — the unified callback
+    // resolves the tenant from `credential_routes` before anything else.
     const invitedEmail = `it-redeem-${randomUUID()}@example.edu`;
-    const rawToken = randomBytes(32).toString('base64url');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-
-    const inserted = await tenantPool.query(
-      `insert into auth.invitations
-         (workspace_id, email_hash, role, token_hash, expires_at, max_uses, status)
-       values ($1, $2, 'MEMBER', $3, now() + interval '1 hour', 1, 'PENDING')
-       returning id`,
-      [workspaceId, hashEmail(invitedEmail, process.env.EMAIL_PEPPER as string), tokenHash]
-    );
-    createdInvitationIds.add(inserted.rows[0].id as string);
+    const minted = await mintInvitationCredential(invitedEmail);
 
     const identity: MockOidcIdentity = {
       sub: `it-redeem-${randomUUID()}`,
@@ -443,7 +435,9 @@ describe('auth integration', () => {
     };
     createdSubjects.add(identity.sub);
 
-    const callback = await completeLogin(identity, '/', { invitation: rawToken });
+    const callback = await completeLogin(identity, '/', {
+      invitation: minted.raw,
+    });
     expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/`);
 
     const membership = await tenantPool.query(
@@ -457,9 +451,148 @@ describe('auth integration', () => {
 
     const inviteRow = await tenantPool.query(
       `select status, used_count from auth.invitations where id = $1`,
-      [inserted.rows[0].id]
+      [minted.invitationId]
     );
     expect(inviteRow.rows[0]).toMatchObject({ status: 'ACCEPTED', used_count: 1 });
+  });
+
+  // --- Credential routing, invitation side (DEC-9, audit §8.5) -----------
+
+  /**
+   * Mint an invitation exactly like `CreateInvitationUseCase` (tenant
+   * authority FIRST, then the idempotent router route): a PENDING
+   * email-bound row in `auth.invitations` plus its `credential_routes`
+   * entry. `status` simulates the admin revoke (tenant row only — the route
+   * stays stale and inert, ruling 7).
+   */
+  async function mintInvitationCredential(
+    invitedEmail: string,
+    opts: { status?: 'PENDING' | 'REVOKED' } = {}
+  ): Promise<{ raw: string; invitationId: string }> {
+    const raw = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(raw).digest('hex');
+    const inserted = await tenantPool.query(
+      `insert into auth.invitations
+         (workspace_id, email_hash, role, token_hash, expires_at, max_uses, status)
+       values ($1, $2, 'MEMBER', $3, now() + interval '1 hour', 1, $4)
+       returning id`,
+      [
+        workspaceId,
+        hashEmail(invitedEmail, process.env.EMAIL_PEPPER as string),
+        tokenHash,
+        opts.status ?? 'PENDING',
+      ]
+    );
+    createdInvitationIds.add(inserted.rows[0].id as string);
+    createdCodeHashes.add(tokenHash); // afterEach: router directory cleanup
+    await routerPool.query(
+      `insert into credential_routes (credential_hash, kind, tenant_id)
+       values ($1, 'INVITATION', $2)`,
+      [tokenHash, tenantId]
+    );
+    return { raw, invitationId: inserted.rows[0].id as string };
+  }
+
+  it('an external invitee redeems a Sabana invitation through a personal IdP login in ONE callback (DEC-9, §8.5)', async () => {
+    // The C3/C4 persona: a gmail-like identity asserted by a provider that
+    // maps to NO institutional tenant. Without the invitation this login
+    // ends in ERR_TENANT_NOT_PROVISIONED; with it, the route IS the tenant
+    // selector and the callback produces JIT user + router link + ACTIVE
+    // membership + working session in one hop.
+    const invitedEmail = `it-ext-${randomUUID()}@gmail.com`;
+    const minted = await mintInvitationCredential(invitedEmail);
+
+    const identity: MockOidcIdentity = {
+      sub: `it-ext-${randomUUID()}`,
+      email: invitedEmail,
+      emailVerified: true,
+      name: 'Integration External Invitee',
+      tenantKey: `missing-${RUN_ID}`,
+    };
+    createdSubjects.add(identity.sub);
+
+    const callback = await completeLogin(identity, '/', {
+      invitation: minted.raw,
+    });
+    expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/`);
+    const cookie = refreshCookie(callback);
+
+    // JIT tenant user + ACTIVE membership in the invited workspace.
+    const membership = await tenantPool.query(
+      `select m.role, m.status
+         from auth.workspace_memberships m
+         join auth.external_identities e on e.user_id = m.user_id
+        where m.workspace_id = $1 and e.subject = $2`,
+      [workspaceId, identity.sub]
+    );
+    expect(membership.rows[0]).toMatchObject({ role: 'MEMBER', status: 'ACTIVE' });
+
+    // Router link created: the picker lists Sabana from now on.
+    const link = await routerPool.query(
+      `select count(*)::int as count
+         from global_user_tenants t
+         join global_users u on u.id = t.global_user_id
+        where u.subject = $1 and t.status = 'ACTIVE'`,
+      [identity.sub]
+    );
+    expect(link.rows[0].count).toBe(1);
+
+    // Single-use consumed; a second session on the same token cannot be
+    // re-redeemed because the invitation is now ACCEPTED.
+    const inviteRow = await tenantPool.query(
+      'select status, used_count from auth.invitations where id = $1',
+      [minted.invitationId]
+    );
+    expect(inviteRow.rows[0]).toMatchObject({ status: 'ACCEPTED', used_count: 1 });
+
+    // The session works: refresh yields an access token for this user.
+    const refresh = await refreshSession(cookie);
+    expect(refresh.status).toBe(200);
+    const body = (await refresh.json()) as { user: { fullName: string } };
+    expect(body.user.fullName).toBe('Integration External Invitee');
+  });
+
+  it('a revoked invitation is inert: the login proceeds with no membership (ruling 7)', async () => {
+    // Admin revoke touches the TENANT row only; the router route goes stale.
+    // DEC-9's invariant — routing is never authority — turns the dead link
+    // into "continue without redeeming", never a bricked login: the Sabana
+    // persona still signs in through the claim, with zero membership.
+    const invitedEmail = `it-revoked-${randomUUID()}@example.edu`;
+    const minted = await mintInvitationCredential(invitedEmail, {
+      status: 'REVOKED',
+    });
+
+    const identity: MockOidcIdentity = {
+      sub: `it-revoked-${randomUUID()}`,
+      email: invitedEmail,
+      emailVerified: true,
+      name: 'Integration Revoked Link',
+      tenantKey: 'sabana',
+    };
+    createdSubjects.add(identity.sub);
+
+    const callback = await completeLogin(identity, '/', {
+      invitation: minted.raw,
+    });
+    // Login proceeds normally (302 to the app with a session cookie).
+    expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/`);
+    refreshCookie(callback);
+
+    const membership = await tenantPool.query(
+      `select count(*)::int as count
+         from auth.workspace_memberships m
+         join auth.external_identities e on e.user_id = m.user_id
+        where m.workspace_id = $1 and e.subject = $2`,
+      [workspaceId, identity.sub]
+    );
+    expect(membership.rows[0].count).toBe(0);
+
+    // The revoked row was never accepted and burned no use.
+    const inviteRow = await tenantPool.query(
+      'select status, used_count from auth.invitations where id = $1',
+      [minted.invitationId]
+    );
+    expect(inviteRow.rows[0]).toMatchObject({ status: 'REVOKED', used_count: 0 });
   });
 
   // --- Credential routing, event side (ADR-0046) -------------------------

@@ -10,14 +10,15 @@
  * - the ephemeral join codes: create, inline edit (B6) and revoke;
  * - the multiple-roles rule: remove one role chip and grant the membership
  *   back through the direct add by `handle` (v6-03 + B14 handles);
- * - the global invitation form (cross-IdP): its token is shown once;
+ * - the invitation form (DEC-9 unified): the workspace route's link is
+ *   revealed once;
  * - the tenant hygiene sweep (B7).
  *
  * The journeys that change state are designed to return the dev database to
  * its seeded shape (remove the chip, then add it back; the created join code
- * is revoked at the end). The global invitation is the one exception: the
- * API has no list nor revoke for it (ADR-0019 is create + redeem), so its
- * row — bound to a marker mail at `@invalid.example` — accumulates per run.
+ * is revoked at the end). The invitation is the one exception: its PENDING
+ * row — bound to a marker mail at `@invalid.example` — accumulates per run
+ * until the 72 h expiry or the hygiene sweep flips it.
  */
 
 import { expect, test } from './support/fixtures';
@@ -121,18 +122,18 @@ test.describe('the admin panel as maintainer', () => {
     await expect(row.locator('span.rounded', { hasText: 'MEMBER' })).toBeVisible();
   });
 
-  test('the global invitation shows its token exactly once', async ({ page }) => {
+  test('the invitation form reveals its link exactly once (DEC-9 unified)', async ({ page }) => {
     await page.getByRole('button', { name: /Open Community/ }).click();
 
     const email = `${marker()}@invalid.example`;
     await page.getByPlaceholder('Correo').fill(email);
     await page.getByRole('button', { name: 'Crear invitación' }).click();
 
-    await expect(page.getByText('Token (se muestra una vez)')).toBeVisible();
-    // The raw credential is 64 hex — the API stores only its hash.
-    await expect(page.getByText('Token (se muestra una vez)').locator('code')).toHaveText(
-      /^[0-9a-f]{64}$/
-    );
+    // One mechanism now: the workspace invitation answer carries the copyable
+    // `/login?invitation=<token>` link, shown exactly once.
+    await expect(page.getByText('Enlace de invitación')).toBeVisible();
+    const link = page.getByText('Enlace de invitación').locator('code');
+    await expect(link).toContainText(/\/login\?invitation=[A-Za-z0-9_-]{40,}$/);
   });
 
   test('the hygiene sweep answers with its counts', async ({ page }) => {

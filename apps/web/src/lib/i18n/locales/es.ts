@@ -869,8 +869,6 @@ export const es = {
     cleanupDays: 'Ventana de inactividad de invitados (días)',
     runCleanup: 'Ejecutar limpieza',
     cleanupResult: '{invitations} invitaciones caducadas · {guests} invitados eliminados',
-    globalInvitation: 'Invitación global (cross-IdP)',
-    invitationToken: 'Token (se muestra una vez)',
     label: 'Etiqueta',
     createdCode: 'Código (se muestra una vez)',
     addMember: 'Añadir miembro',

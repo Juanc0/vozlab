@@ -1,7 +1,8 @@
 # ADR-0045: Credential consolidation and peppered email hashes
 
-- Status: Accepted (email section; the credential-lookup and invitation-unification
-  sections will be appended as tasks T4–T7 of the same intervention land)
+- Status: Accepted (email section; join-code consolidation appended with T4;
+  invitation unification appended with T6 — DEC-9. Remaining planned sections
+  arrive with T7 of the same intervention)
 - Date: 2026-10-30
 - Related: ADR-0013 (opaque pseudonym), ADR-0042 (cross-tenant identity in the
   router), ADR-0044 (vocabulary coherence and the migration baseline this fold
@@ -158,3 +159,72 @@ and every one of them can ride on a comparison instead of the value.
 - P4 proof: the integration test "exactly 3 of 10 parallel redemptions
   succeed" (`apps/api/tests/integration/joinCodeConsume.integration.test.ts`)
   against the migrated volume.
+
+## Invitation unification (T6, 2026-10-30 — DEC-9)
+
+### Decision
+
+1. **One invitation mechanism.** Router fold `0003_special_vision.sql` drops
+   `global_invitations`; `CreateGlobalInvitationUseCase`,
+   `RedeemGlobalInvitationUseCase`, `GlobalInvitationController`, the
+   `POST /api/v1/invitations/global` route and the
+   `IGlobalInvitationRepository` port are deleted. The tenant
+   `auth.invitations` row is now the model for EVERY invitation — same-org
+   and external invitees take the identical path (audit §8.5), and the strict
+   tenant semantics (72 h TTL, single use, revoke-on-resend) close the global
+   twin's lax defaults (caller-set expiry, unlimited uses, plaintext email).
+2. **Mint = tenant authority FIRST, then route.** `CreateInvitationUseCase`
+   commits its tenant transaction (revoke-pending-for-hash → insert row →
+   `membership_events` INVITED) and only then performs the idempotent
+   `router.credential_routes(token_hash, 'INVITATION', tenant)` insert —
+   a different physical DB, never inside the tenant TX (ADR-0002). A failed
+   route insert throws with a logged note: the invitation exists but is
+   unroutable, and the re-send — which invalidates and re-mints — is the
+   re-push path.
+3. **One redemption path in the callback.** `CompleteOidcLoginUseCase` no
+   longer branches between a global registry and a post-tenant local check.
+   When the OIDC state carries a token: hash → `credential_routes` (kind
+   INVITATION) → open THAT tenant (the token is the tenant selector for the
+   hop) → `findByTokenHash` → guards (PENDING / expiry / uses) →
+   `hashEmail(verified email)` = `email_hash` → atomic accept + JIT user +
+   router link + ACTIVE membership + `membership_events`. If the invitation's
+   tenant differs from the one about to be auto-selected, redemption still
+   happens there; the picker lists the newly linked tenant afterwards.
+4. **Redemption is best-effort inside the login.** Both the old "strict
+   tenant-local" behavior (invalid link ⇒ `ERR_INVITATION_INVALID` fails the
+   login) and the plan sentence "a revoked invitation 404s" are SUPERSEDED
+   (controller ruling 7): an unroutable, revoked, expired, exhausted,
+   email-mismatched or race-lost invitation logs a warning and the login
+   continues through the ordinary resolution — a stale link must never brick
+   the login of whoever holds it. Routing is never authority: admin revoke
+   touches the tenant row only and the router route goes stale and inert, by
+   design.
+5. **Trail.** The unified path records the tenant `membership_events`
+   INVITED→redeemed atom (`INVITATION_REDEEMED` audit) plus the `OIDC_LOGIN`
+   vault trail. No new global action string is introduced — resurrecting
+   `GLOBAL_INVITATION_REDEEMED` would imply the deleted subsystem (historical
+   rows stay: DEC-8, no data rewrite).
+
+### Consequences accepted
+
+- The web admin has one invitation button talking to
+  `POST /api/v1/workspaces/:id/invitations`; the answer reveals the copyable
+  `/login?invitation=<token>` link once.
+- Every invitation link, old or new, is single-use and 72 h — including
+  anything previously minted through the retired (unlimited-uses) route.
+- Seeds and dev fixtures must carry the route row with the tenant row
+  (mirror shape of the EVENT side); `db:seed:dev` now inserts both.
+- The router DB keeps zero invitation state; a dumped directory reveals only
+  SHA-256 of high-entropy tokens plus their tenant id.
+
+### Evidence (T6)
+
+- Fold: `packages/database/migrations/router/0003_special_vision.sql`
+  (applied to the dev volume; 0 live rows, nothing migrated).
+- Acceptance scenarios (integration, migrated volume): "an external invitee
+  redeems a Sabana invitation through a personal IdP login in ONE callback
+  (DEC-9, §8.5)" and "a revoked invitation is inert: the login proceeds with
+  no membership (ruling 7)"
+  (`apps/api/tests/integration/auth.integration.test.ts`). The DEC-4
+  case/whitespace normalization test still passes on the unified substrate
+  (its fixture now mints the route row).

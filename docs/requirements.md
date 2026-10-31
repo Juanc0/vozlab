@@ -217,7 +217,9 @@ appears in the PWA selector. *(Backend, CLI bootstrap and audit delivered;
 web admin UI is the next slice — see ADR-0041.)*
 
 v5 extensions (see ADR-0042 and `docs/analysis/auth-onboarding-committee-review.md`):
-cross-tenant identity via router DB, explicit tenant selection, global invitations,
+cross-tenant identity via router DB, explicit tenant selection, invitations
+unified under tenant authority (the router twin retired by DEC-9,
+[ADR-0045](decisions/ADR-0045-credential-consolidation-and-peppered-email.md)),
 social logins, workspaces.kind (EVENT/PUBLIC/PRIVATE), GUEST role, ephemeral
 workspace codes, multiple roles per workspace (union), alta directa by handle.
 
@@ -225,7 +227,7 @@ workspace codes, multiple roles per workspace (union), alta directa by handle.
 | User type | Workspace kind | Flow |
 |---|---|---|
 | Institutional (OIDC) | any | OIDC login → tenant resolution → workspace by invitation/join code/request |
-| External collaborator | any | Global invitation URL → OIDC (any IdP) → redeem |
+| External collaborator | any | Workspace invitation URL → OIDC (any IdP) → routed redemption (DEC-9, ADR-0045) |
 | Event attendee (anonymous) | EVENT only | QR with both codes → anonymous user + GUEST membership (auto-approved) |
 | Admin (tenant) | any | Direct add by handle/identity |
 | Admin (workspace) | own | Approve join requests, manage members/roles |

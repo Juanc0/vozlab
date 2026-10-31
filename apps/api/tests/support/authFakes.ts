@@ -22,10 +22,6 @@ import type {
   IGlobalUserRepository,
 } from '../../src/domain/ports/IGlobalUserRepository.js';
 import type {
-  GlobalInvitationRecord,
-  IGlobalInvitationRepository,
-} from '../../src/domain/ports/IGlobalInvitationRepository.js';
-import type {
   Invitation,
   IInvitationRepository,
 } from '../../src/domain/ports/IInvitationRepository.js';
@@ -176,50 +172,6 @@ export function makeRouterDb(
   };
 
   return { routerDb, calls };
-}
-
-export function makeGlobalInvitationRepository(
-  seed: GlobalInvitationRecord[] = []
-): {
-  repo: IGlobalInvitationRepository;
-  records: GlobalInvitationRecord[];
-  accepts: string[];
-} {
-  const records = [...seed];
-  const accepts: string[] = [];
-
-  const repo: IGlobalInvitationRepository = {
-    async createInvitation(input) {
-      const record: GlobalInvitationRecord = {
-        id: `global-inv-${records.length + 1}`,
-        tokenHash: input.tokenHash,
-        tenantId: input.tenantId,
-        workspaceId: input.workspaceId,
-        role: input.role,
-        email: input.email,
-        status: 'PENDING',
-        maxUses: input.maxUses ?? null,
-        usedCount: 0,
-        expiresAt: input.expiresAt,
-        createdAt: new Date(),
-      };
-      records.push(record);
-      return record;
-    },
-    async findByTokenHash(tokenHash) {
-      return records.find((r) => r.tokenHash === tokenHash) ?? null;
-    },
-    async accept(id) {
-      accepts.push(id);
-      const record = records.find((r) => r.id === id);
-      if (!record || record.status !== 'PENDING') return false;
-      record.status = 'ACCEPTED';
-      record.usedCount += 1;
-      return true;
-    },
-  };
-
-  return { repo, records, accepts };
 }
 
 export function makeIdentityProvider(
@@ -402,28 +354,54 @@ export function makeTokenIssuer(): {
 /**
  * Fake `ICredentialRouteRepository` (ADR-0046): a hash→tenant directory.
  * `routes` maps `"<hash>:<kind>"` to the tenant id, so cross-kind lookups
- * miss exactly like the kind-filtered SQL does.
+ * miss exactly like the kind-filtered SQL does. `ensureRoute` mirrors the
+ * idempotent ON CONFLICT DO NOTHING insert; `insertFails` drives the
+ * "invitation created but unroutable" test.
  */
 export function makeCredentialRouteRepository(
   routes: Record<string, string> = {}
 ): {
   credentialRoutes: ICredentialRouteRepository;
   lookups: Array<{ hash: string; kind: CredentialRouteKind }>;
+  /** Every successful `ensureRoute`, in call order. */
+  inserts: Array<{ hash: string; kind: CredentialRouteKind; tenantId: string }>;
+  /** When true, `ensureRoute` throws — the router-side failure test. */
+  setInsertFails(fails: boolean): void;
   addRoute(hash: string, kind: CredentialRouteKind, tenantId: string): void;
 } {
   const table = new Map(Object.entries(routes));
   const lookups: Array<{ hash: string; kind: CredentialRouteKind }> = [];
+  const inserts: Array<{
+    hash: string;
+    kind: CredentialRouteKind;
+    tenantId: string;
+  }> = [];
+  let insertFails = false;
 
   const credentialRoutes: ICredentialRouteRepository = {
     async findTenantId(credentialHash, kind) {
       lookups.push({ hash: credentialHash, kind });
       return table.get(`${credentialHash}:${kind}`) ?? null;
     },
+    async ensureRoute(credentialHash, kind, tenantId) {
+      if (insertFails) {
+        throw new Error('fake router directory failure');
+      }
+      const key = `${credentialHash}:${kind}`;
+      if (!table.has(key)) {
+        table.set(key, tenantId);
+        inserts.push({ hash: credentialHash, kind, tenantId });
+      }
+    },
   };
 
   return {
     credentialRoutes,
     lookups,
+    inserts,
+    setInsertFails(fails) {
+      insertFails = fails;
+    },
     addRoute(hash, kind, tenantId) {
       table.set(`${hash}:${kind}`, tenantId);
     },

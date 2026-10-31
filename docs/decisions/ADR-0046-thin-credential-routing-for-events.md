@@ -93,6 +93,7 @@ correction, and `Amended by` now appears on ADR-0019's header.
 - Cross-purpose presentation fails in both directions at the database level.
 - The INVITATION kind pre-declares the T6/T7 path: invitations will reuse
   the same routing model instead of adding a third credential table.
+  (Realized by ADR-0045's Invitation-unification section, 2026-10-30.)
 
 ### Negative / costs
 

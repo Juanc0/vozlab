@@ -31,17 +31,28 @@ correct physical database. The JWT `tid` claim is an **OIDC identifier string**
 | `public.tenant_connections` | `id` uuid PK; `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `host`, `database`, `user`; `port` default `5432`; `password`; timestamps. |
 | `public.credential_routes` | `credential_hash` varchar(64) UNIQUE; `kind` varchar(12) CHECK IN (`EVENT`,`INVITATION`); `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `created_at`. Thin L0 directory only — no capacity, expiry or workspace (ADR-0046). |
 
+| `public.tenant_identity_providers` | `tenant_id` FK cascade; `provider_kind`; `issuer`; `client_id`; `metadata_url`; `enabled`; timestamps. IdP federation registry — scheduled for retirement by identity-consolidation T7. |
+| `public.global_users` | one row per `(issuer, subject)` UNIQUE; `email_hash varchar(64)` (peppered HMAC, DEC-4 — never cleartext) + `idx_global_users_email_hash`; profile + timestamps. The cross-tenant identity vault (ADR-0042). |
+| `public.global_user_tenants` | `(global_user_id, tenant_id)` UNIQUE + `(tenant_id, tenant_user_id)` UNIQUE; `status`. The router↔tenant user link that feeds the tenant picker and `switch-tenant`. |
+| `public.global_user_events` | append-only identity trail (`OIDC_LOGIN`, …). IDs and states only — writers must keep `metadata` PII-free. |
+
 `tenant_connections.tenant_id` has no UNIQUE constraint: the application reads
 the first matching row and assumes one connection per tenant. The
 `provisioned` flag is not consulted by the current code; provisioning is
 inferred from the presence of a tenant row and a connection row.
 
-`credential_routes` is the **only** router table outside the tenant/connection pair
+`credential_routes` is the only *credential* table in the router — the rest
+answer "which tenant?" (`tenants`, `tenant_connections`) or "which human?"
+(`global_*`, ADR-0042)
 ([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md), amending
 ADR-0019). A QR is scanned before the tenant is known, so the raw code is
 hashed and resolved globally to a tenant id; the credential itself is a
 `auth.workspace_join_codes` row of purpose EVENT in that tenant. The CLI validates the workspace in the
-tenant DB before inserting, but there is no cross-database FK.
+tenant DB before inserting, but there is no cross-database FK. The same holds
+for `kind='INVITATION'` (DEC-9, retired `global_invitations`): the directory
+row routes the callback to the tenant; the authority is the tenant
+`auth.invitations` row, and a stale route is inert — the OIDC callback then
+simply continues without redemption.
 
 ## 3. Tenant database
 

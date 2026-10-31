@@ -597,6 +597,24 @@ async function seed(): Promise<void> {
       )
       .onConflictDoNothing();
 
+    // DEC-9 (ruling 8): every seeded invitation also gets its router
+    // directory row — the same tenant-first, route-after sequence the API's
+    // CreateInvitationUseCase runs. Without it the demo `/login?invitation=`
+    // link is inert (unroutable) and the unified callback skips redemption
+    // exactly as it must for a stale link. The EXPIRED row keeps its route
+    // by design: a stale route is inert, never harmful (routing is not
+    // authority, ADR-0046).
+    for (const invite of DEMO_INVITATIONS) {
+      await routerDb
+        .insert(credentialRoutes)
+        .values({
+          credentialHash: sha256Hex(invite.tokenRaw),
+          kind: 'INVITATION',
+          tenantId: TENANT_ID,
+        })
+        .onConflictDoNothing();
+    }
+
     // --- Tenant DB: base ontology (US-00 fixture) -------------------------
     await tenantDb
       .insert(ontologyClasses)

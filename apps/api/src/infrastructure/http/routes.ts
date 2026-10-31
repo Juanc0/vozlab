@@ -41,7 +41,6 @@ import { GetMeUseCase } from '../../application/use_cases/GetMeUseCase.js';
 import { JoinEventUseCase } from '../../application/use_cases/JoinEventUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
-import { CreateGlobalInvitationUseCase } from '../../application/use_cases/CreateGlobalInvitationUseCase.js';
 import { CreateWorkspaceUseCase } from '../../application/use_cases/CreateWorkspaceUseCase.js';
 import { GetWorkspaceUseCase } from '../../application/use_cases/GetWorkspaceUseCase.js';
 import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorkspaceUseCase.js';
@@ -97,7 +96,6 @@ import { TenantAdminController } from './controllers/TenantAdminController.js';
 import { CleanupController } from './controllers/CleanupController.js';
 import { JoinCodeController } from './controllers/JoinCodeController.js';
 import type { UpdateWorkspaceJoinCodeUseCase } from '../../application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
-import { GlobalInvitationController } from './controllers/GlobalInvitationController.js';
 import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
 import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
 import { WorkspaceAccessController } from './controllers/WorkspaceAccessController.js';
@@ -152,7 +150,6 @@ export interface RouteDependencies {
   cleanupUseCase?: CleanupExpiredInvitationsUseCase;
   createWorkspaceJoinCodeUseCase?: CreateWorkspaceJoinCodeUseCase;
   updateWorkspaceJoinCodeUseCase?: UpdateWorkspaceJoinCodeUseCase;
-  createGlobalInvitationUseCase?: CreateGlobalInvitationUseCase;
   workspaceJoinCodeRepo?: IWorkspaceJoinCodeRepository;
   createWorkspaceUseCase: CreateWorkspaceUseCase;
   getWorkspaceUseCase: GetWorkspaceUseCase;
@@ -300,9 +297,6 @@ export async function registerRoutes(
     : null;
   const joinCodeController = deps.createWorkspaceJoinCodeUseCase
     ? new JoinCodeController(deps.createWorkspaceJoinCodeUseCase, deps.workspaceJoinCodeRepo, deps.updateWorkspaceJoinCodeUseCase)
-    : null;
-  const globalInvitationController = deps.createGlobalInvitationUseCase
-    ? new GlobalInvitationController(deps.createGlobalInvitationUseCase)
     : null;
   const ingestionController = new IngestionController(
     resolveSourceUseCase,
@@ -465,14 +459,6 @@ export async function registerRoutes(
     { preHandler: [...tenantAdmin, scoped('admin-create-workspace')] },
     (req, reply) => tenantAdminController.createWorkspaceHandler(req, reply)
   );
-
-  if (globalInvitationController) {
-    app.post(
-      '/api/v1/invitations/global',
-      { preHandler: [...tenantAdmin, scoped('admin-global-invitation')] },
-      (req, reply) => globalInvitationController.createHandler(req, reply)
-    );
-  }
 
   if (joinCodeController) {
     app.post(

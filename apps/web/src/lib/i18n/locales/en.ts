@@ -804,8 +804,6 @@ export const en: Dictionary<typeof es> = {
     cleanupDays: 'Guest inactivity window (days)',
     runCleanup: 'Run cleanup',
     cleanupResult: '{invitations} invitations expired · {guests} guests removed',
-    globalInvitation: 'Global invitation (cross-IdP)',
-    invitationToken: 'Token (shown once)',
     label: 'Label',
     createdCode: 'Code (shown once)',
     addMember: 'Add member',

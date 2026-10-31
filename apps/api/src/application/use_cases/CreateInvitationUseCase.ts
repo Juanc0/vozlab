@@ -5,12 +5,14 @@ import {
   IInvitationRepository,
   Invitation,
 } from '../../domain/ports/IInvitationRepository.js';
+import { ICredentialRouteRepository } from '../../domain/ports/ICredentialRouteRepository.js';
 import { IMembershipAdminRepository } from '../../domain/ports/IMembershipAdminRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { assertWorkspaceAdmin } from '../policies/workspaceAdminPolicy.js';
 import { hashEmail, hashOpaqueToken } from '../../shared/auth/refreshToken.js';
+import { log } from '../../shared/logger/index.js';
 
 /** Short enough that a leaked link dies quickly, long enough to be usable. */
 export const INVITATION_TTL_MS = 72 * 60 * 60 * 1000;
@@ -45,6 +47,11 @@ export interface CreateInvitationResult {
  * email in the workspace: a re-send invalidates the old link instead of
  * leaving several live ways into the workspace. Only the hash of the token
  * is stored; the raw token exists once, in the answer.
+ *
+ * DEC-9 ordering (ADR-0002, no cross-DB transaction): the tenant authority
+ * (row + `membership_events` INVITED) commits FIRST; the idempotent router
+ * directory insert follows. A failed route insert is reported, never
+ * swallowed — but it also never rolls the tenant row back.
  */
 export class CreateInvitationUseCase {
   constructor(
@@ -58,7 +65,14 @@ export class CreateInvitationUseCase {
      * DEC-4: the HMAC key for the peppered email hash, injected by the
      * composition root (never read from the environment inside this layer).
      */
-    private readonly emailPepper: string
+    private readonly emailPepper: string,
+    /**
+     * DEC-9 (audit §8.5): after the tenant TX commits, the token hash is
+     * made routable in the thin L0 directory so the OIDC callback can find
+     * this tenant from the link alone. Routing is never authority — the
+     * tenant `invitations` row written above is the whole grant.
+     */
+    private readonly credentialRoutes: ICredentialRouteRepository
   ) {}
 
   async execute(input: CreateInvitationInput): Promise<CreateInvitationResult> {
@@ -118,6 +132,21 @@ export class CreateInvitationUseCase {
 
       return created;
     });
+
+    // DEC-9 (ruling 3): the route insert runs AFTER the tenant transaction
+    // committed — it is a different physical DB and must never join the TX.
+    // On failure the invitation exists but is unroutable; the error surfaces
+    // (never swallowed) because a re-send — which invalidates and re-mints —
+    // is the documented re-push path.
+    try {
+      await this.credentialRoutes.ensureRoute(tokenHash, 'INVITATION', input.tid);
+    } catch (err) {
+      log.error(
+        { err, invitationId: invitation.id, workspaceId: input.workspaceId },
+        'invitation created but unroutable — re-send (which invalidates+re-mints) is the re-push path'
+      );
+      throw err;
+    }
 
     return { invitation, token: rawToken };
   }

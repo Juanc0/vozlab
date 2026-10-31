@@ -30,7 +30,7 @@
   let creatingCode = $state(false);
   let inviteEmail = $state('');
   let inviteRole = $state('MEMBER');
-  let createdInviteToken = $state<string | null>(null);
+  let createdInviteLink = $state<string | null>(null);
   let creatingInvite = $state(false);
   // ADR-0045 reveal-once: the raw workspace join code exists only right
   // after create or rotate — the stored hash is never fetched back.
@@ -104,17 +104,19 @@
 
   const selected = $derived(workspaces.find((w) => w.id === selectedId) ?? null);
 
-  async function createGlobalInvite() {
+  async function createInvite() {
     if (!selectedId) return;
     creatingInvite = true;
     try {
-      const res = await admin.createGlobalInvitation(api, {
-        workspaceId: selectedId,
+      // DEC-9: the workspace invitation route is the ONLY invitation
+      // mechanism — same-org and external invitees take the identical path
+      // (72 h, single-use, re-send invalidates). The answer carries the
+      // copyable link, shown exactly once.
+      const res = await admin.createInvitation(api, selectedId, {
         email: inviteEmail,
-        role: inviteRole,
-        expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        role: inviteRole as 'MEMBER' | 'MODERATOR' | 'ADMIN',
       });
-      createdInviteToken = res.token;
+      createdInviteLink = res.url;
       inviteEmail = '';
     } catch (e) {
       error = describeFailure(e);
@@ -315,18 +317,18 @@
           {/if}
 
           <div class="border-t border-rule pt-3 space-y-2">
-            <h3>{t('admin.globalInvitation') ?? 'Global invitation (cross-IdP)'}</h3>
+            <h3>{t('admin.invitations') ?? 'Invitations'}</h3>
             <input class="field w-full" bind:value={inviteEmail} placeholder={t('admin.email') ?? 'Email'} />
             <select class="field w-full" bind:value={inviteRole}>
               <option value="MEMBER">MEMBER</option>
               <option value="MODERATOR">MODERATOR</option>
               <option value="ADMIN">ADMIN</option>
             </select>
-            <button type="button" class="btn btn-primary" disabled={creatingInvite} onclick={createGlobalInvite}>
+            <button type="button" class="btn btn-primary" disabled={creatingInvite} onclick={createInvite}>
               {t('admin.createInvitation') ?? 'Create invitation'}
             </button>
-            {#if createdInviteToken}
-              <p class="text-small">{t('admin.invitationToken') ?? 'Token (shown once)'}: <code>{createdInviteToken}</code></p>
+            {#if createdInviteLink}
+              <p class="text-small">{t('admin.invitationLink') ?? 'Invitation link'}: <code>{createdInviteLink}</code></p>
             {/if}
           </div>
 

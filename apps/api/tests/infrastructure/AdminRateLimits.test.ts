@@ -12,7 +12,6 @@ import { ManageRoleAtomicUseCase } from '../../src/application/use_cases/ManageR
 import { ChangeMemberRoleUseCase } from '../../src/application/use_cases/ChangeMemberRoleUseCase.js';
 import { CleanupExpiredInvitationsUseCase } from '../../src/application/use_cases/CleanupExpiredInvitationsUseCase.js';
 import { CompleteOidcLoginUseCase } from '../../src/application/use_cases/CompleteOidcLoginUseCase.js';
-import { CreateGlobalInvitationUseCase } from '../../src/application/use_cases/CreateGlobalInvitationUseCase.js';
 import { CreateInvitationUseCase } from '../../src/application/use_cases/CreateInvitationUseCase.js';
 import { CreateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/CreateWorkspaceJoinCodeUseCase.js';
 import { UpdateWorkspaceJoinCodeUseCase } from '../../src/application/use_cases/UpdateWorkspaceJoinCodeUseCase.js';
@@ -170,7 +169,6 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     cleanupUseCase: unused(CleanupExpiredInvitationsUseCase.prototype),
     createWorkspaceJoinCodeUseCase: unused(CreateWorkspaceJoinCodeUseCase.prototype),
     updateWorkspaceJoinCodeUseCase: unused(UpdateWorkspaceJoinCodeUseCase.prototype),
-    createGlobalInvitationUseCase: unused(CreateGlobalInvitationUseCase.prototype),
     createWorkspaceUseCase: unused(CreateWorkspaceUseCase.prototype),
     getWorkspaceUseCase: unused(GetWorkspaceUseCase.prototype),
     updateWorkspaceUseCase: unused(UpdateWorkspaceUseCase.prototype),
@@ -219,7 +217,6 @@ const WS = WORKSPACE_ID;
 describe('admin routes carry dedicated per-actor rate limits (P0-5)', () => {
   const cases: Array<{ title: string; scope: string; route: Hit }> = [
     { title: 'create workspace', scope: 'admin-create-workspace', route: { method: 'POST', url: '/api/v1/admin/workspaces', withWorkspaceHeader: false } },
-    { title: 'global invitation', scope: 'admin-global-invitation', route: { method: 'POST', url: '/api/v1/invitations/global', withWorkspaceHeader: false } },
     { title: 'cleanup', scope: 'admin-cleanup', route: { method: 'POST', url: '/api/v1/admin/cleanup', withWorkspaceHeader: false } },
     { title: 'switch tenant', scope: 'auth-switch-tenant', route: { method: 'POST', url: '/api/v1/auth/switch-tenant', withWorkspaceHeader: false } },
     { title: 'join code create', scope: 'admin-join-code', route: { method: 'POST', url: `/api/v1/workspaces/${WS}/join-codes` } },
