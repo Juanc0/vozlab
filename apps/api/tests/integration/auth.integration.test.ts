@@ -452,17 +452,27 @@ describe('auth integration', () => {
     );
     const priorLinkVaultId =
       (priorLink.rows[0]?.global_user_id as string | null) ?? null;
-
-    const seeded = await seedHumanIdentity(
-      {
-        routerPool,
-        tenantPool,
-        tenantId: TENANT_ID,
-        issuer,
-        emailPepper: process.env.EMAIL_PEPPER as string,
-      },
-      'maintainer'
+    // The vault row this run would write under the mock issuer. Present on
+    // CI (the provision seed uses the same `OIDC_ISSUER` as this suite) and
+    // absent locally (the dev volume's seed ran under its `.env` realm); the
+    // `finally` branches on it.
+    const priorIssuerVault = await routerPool.query(
+      `select id, last_login_at from global_users where issuer = $1 and subject = $2`,
+      [issuer, subject]
     );
+    const priorIssuerVaultId =
+      (priorIssuerVault.rows[0]?.id as string | null) ?? null;
+    const priorIssuerLastLoginAt =
+      (priorIssuerVault.rows[0]?.last_login_at as Date | string | null) ?? null;
+
+    const seedOptions = {
+      routerPool,
+      tenantPool,
+      tenantId: TENANT_ID,
+      issuer,
+      emailPepper: process.env.EMAIL_PEPPER as string,
+    };
+    const seeded = await seedHumanIdentity(seedOptions, 'maintainer');
 
     const vaultBefore = await routerPool.query(
       `select id, last_login_at, email_hash, full_name, email_verified
@@ -554,8 +564,16 @@ describe('auth integration', () => {
         expect.objectContaining({ id: workspaceId, role: 'ADMIN' })
       );
     } finally {
-      // Undo every row the mock-issuer run wrote and restore the two moved
-      // pointers, so the dev volume keeps the state its own seed issued.
+      // Undo every row the mock-issuer run wrote and restore the moved
+      // pointers, so the volume keeps the state its own seed issued. Two
+      // shapes exist, and only the local one may delete:
+      //   - local: the volume was seeded under a different issuer (this
+      //     process forces the mock realm), so every mock-issuer row here
+      //     was created BY THIS TEST → delete them.
+      //   - CI parity (`.github/workflows/ci.yml` seeds under this same mock
+      //     issuer): the vault / external-identity / link rows pre-existed →
+      //     deleting them would leave `auth.users.global_user_id` dangling,
+      //     so re-seed them and restore `last_login_at` exactly.
       await tenantPool.query(
         'delete from auth.refresh_tokens where user_id = $1 and created_at >= $2',
         [persona.id, tokenStart]
@@ -564,25 +582,34 @@ describe('auth integration', () => {
         'delete from global_user_events where global_user_id = $1',
         [seeded.globalUserId]
       );
-      await tenantPool.query(
-        'delete from auth.external_identities where issuer = $1 and subject = $2',
-        [issuer, subject]
-      );
-      await routerPool.query(
-        'delete from global_user_tenants where global_user_id = $1',
-        [seeded.globalUserId]
-      );
-      await routerPool.query('delete from global_users where id = $1', [
-        seeded.globalUserId,
-      ]);
+      if (priorIssuerVaultId !== null) {
+        // Idempotent upserts heal what the login moved (email_hash,
+        // full_name, last_seen_at, link anchor). The seed deliberately never
+        // writes `last_login_at` (a seed is not a login), so restore it
+        // explicitly — NULL on CI.
+        await seedHumanIdentity(seedOptions, 'maintainer');
+        await routerPool.query(
+          'update global_users set last_login_at = $2 where id = $1',
+          [seeded.globalUserId, priorIssuerLastLoginAt]
+        );
+      } else {
+        await tenantPool.query(
+          'delete from auth.external_identities where issuer = $1 and subject = $2',
+          [issuer, subject]
+        );
+        await routerPool.query(
+          'delete from global_user_tenants where global_user_id = $1',
+          [seeded.globalUserId]
+        );
+        await routerPool.query('delete from global_users where id = $1', [
+          seeded.globalUserId,
+        ]);
+      }
       await tenantPool.query(
         'update auth.users set global_user_id = $2 where id = $1',
         [persona.id, priorGlobalUserId]
       );
-      if (
-        priorLinkVaultId !== null &&
-        priorLinkVaultId !== seeded.globalUserId
-      ) {
+      if (priorLinkVaultId !== null) {
         await routerPool.query(
           `insert into global_user_tenants
              (global_user_id, tenant_id, tenant_user_id, status)
@@ -591,6 +618,11 @@ describe('auth integration', () => {
            do update set global_user_id = excluded.global_user_id,
                          status = 'ACTIVE'`,
           [priorLinkVaultId, tenantId, persona.id]
+        );
+      } else {
+        await routerPool.query(
+          'delete from global_user_tenants where tenant_id = $1 and tenant_user_id = $2',
+          [tenantId, persona.id]
         );
       }
     }

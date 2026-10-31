@@ -74,6 +74,10 @@ jobs:
       - name: Provision databases
         env:
           EMAIL_PEPPER: integration-test-pepper-at-least-32-chars-xx # dev-only; seed hashes emails (DEC-4)
+          # COUPLED to the F1 seeded-subject integration test: the suite
+          # forces this exact issuer, and that test RESTORES (never deletes)
+          # the identity rows this seed writes under it. Change both together
+          # — if the issuers diverge, the test's cleanup branch switches shape.
           OIDC_ISSUER: http://127.0.0.1:18080/realms/vozlab # same mock realm the integration suite asserts (setup/env.ts) — keeps the CI seed artifact byte-identical to local
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vozlab_router;" || true
