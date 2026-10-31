@@ -378,6 +378,24 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
   -H "X-Workspace-ID: $WS"
 ```
 
+## 10b. Workspace invitations (workspace admin)
+
+All routes require `Authorization: Bearer <jwt>` + `X-Workspace-ID` and an
+admin (or moderator) role in the target workspace. Invitation authority lives
+in the tenant DB (`auth.invitations`); the router only holds a thin
+`credential_routes` directory entry (hash → tenant) that makes the OIDC
+callback routable (ADR-0045, DEC-9).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/workspaces/:workspaceId/invitations` | List invitations for a workspace. |
+| `POST` | `/api/v1/workspaces/:workspaceId/invitations` | Create a PENDING invitation (email hash, role, expiry, max uses). Returns the raw token once (72 h, single-use, revoke-on-resend). |
+| `DELETE` | `/api/v1/invitations/:invitationId` | Revoke an invitation (tenant row flips to REVOKED; the router route is deleted). |
+
+Redemption is not a separate endpoint: the invitee follows the URL with
+`?invitation=<raw>` and the unified OIDC callback (`/api/v1/auth/callback`)
+redeems it best-effort (ADR-0045 §DEC-9).
+
 ## 11. Not implemented
 
 No route exists today for: batched node ingestion (`BatchCreateNodeSchema` is a

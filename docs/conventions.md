@@ -89,6 +89,14 @@ One soft-delete verb per port (`softDelete`, never `softDeletePost`). A
 boolean predicate is `existsInWorkspace`, not `find…`. See
 [ADR-0010](decisions/ADR-0010-port-naming-vocabulary.md).
 
+## 6. Identity and credential vocabulary (identity-consolidation v1)
+
+- **Credential routing** is a thin directory: `router.credential_routes (credential_hash, kind, tenant_id)` answers only "which tenant?"; authority always lives in the tenant. Kinds: `EVENT` (workspace_join_codes purpose EVENT) and `INVITATION` (auth.invitations). Routing is never authority (ADR-0046).
+- **Email** is never stored cleartext. `EMAIL_PEPPER` (≥32 chars) + `hashEmail = HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)`. High-entropy tokens use plain SHA-256 (`hashOpaqueToken`).
+- **External identity** has one store: `auth.external_identities (issuer, subject, provider_kind)`. `users.provider_user_id` and `is_anonymous` are gone (DEC-4/DEC-5 D4); `provider='ANONYMOUS_EVENT'` is the sole guest discriminator.
+- **Join credentials**: `workspace_join_codes` is the sole workspace credential (purpose WORKSPACE or EVENT); `workspaces.join_code`/`auto_approve_join_code` dropped.
+- **Invitations**: one tenant table, 72 h, single-use, revoke-on-resend; `global_invitations` retired (DEC-9, ADR-0045).
+
 Identity nouns follow the table family (ADR-0044): SQL is `global_user_*`
 (`global_user_id`, `global_user_tenants`, `global_user_events`), TS internals
 mirror it (`GlobalUser*` types, `IGlobalUserEventRepository`, `globalUserId`

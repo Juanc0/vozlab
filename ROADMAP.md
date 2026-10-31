@@ -905,8 +905,9 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
-- **identity-consolidation v1** — OPEN 2026-10-30 (T1-T8 done; T9 open):
-  [docs/plans/identity-consolidation/v1.md](docs/plans/identity-consolidation/v1.md) (T8: seed coherent with F1 login state; cleanup hardened)
+- **identity-consolidation v1** — CLOSED 2026-10-31 (T1-T9 done):
+  [docs/plans/identity-consolidation/v1.md](docs/plans/identity-consolidation/v1.md)
+  (T9: ?gid→?guid, verification reset, docs truth pass + audit closure).
   — executes DEC-3/4/5 of
   [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md)
   merged with the findings of

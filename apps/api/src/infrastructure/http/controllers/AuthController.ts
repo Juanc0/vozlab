@@ -112,7 +112,7 @@ export class AuthController {
       if (result.requiresTenantSelection) {
         const gid = result.globalUserId ?? '';
         return reply.redirect(
-          this.webUrl(`/select-tenant?gid=${encodeURIComponent(gid)}`)
+          this.webUrl(`/select-tenant?guid=${encodeURIComponent(gid)}`)
         );
       }
       setRefreshCookie(

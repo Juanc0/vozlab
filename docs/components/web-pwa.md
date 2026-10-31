@@ -7,7 +7,11 @@
 > Known remaining gaps: the graph E2E journeys need realignment to the
 > toolbar redesign (task 13, `docs/analysis/auth-onboarding-committee-review.md`
 > §5), the event QR *scanner* is not built (join is by typed code), and the
-> admin invitation QR rendering is open backlog. The routing/layout sections
+> admin invitation QR rendering is open backlog. Shipped (identity-consolidation
+> T4/T6): admin workspace page reveal-on-rotation for join codes (raw code
+> appears only after rotate/reveal; stored codes are never fetched), and the
+> admin invitation UI switched to the workspace invitation route. The
+> routing/layout sections
 > below that predate the toolbar redesign (3.57–3.64) describe the *planned*
 > shape; the code is authoritative.
 

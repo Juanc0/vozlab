@@ -232,6 +232,17 @@ defect is that the seed never populates it (P5).
 
 ## 5. Findings register (severity-ranked)
 
+> **Closure status (2026-10-31, identity-consolidation v1):** every finding
+> below is CLOSED by tasks T1–T9 of `docs/plans/identity-consolidation/v1.md`.
+> P1 (cleartext email) → T3; P2 (dead guest cleanup) → T7; P3 (`/auth/me`
+> status filter) → T1; P4 (join-code race) → T4; P5 (seed not login-reachable)
+> → T8; P6 (integration teardown residue) → T1; P7 (dead
+> `tenant_identity_providers`/legacy matcher) → T7; P8.2 (workspace `join_code`
+> cleartext) → T4; P8.4 (creator semantics) → T4; P8.5 (membership_events
+> action set) → T1/T4; P8.6 (unused email DTO) → T1; P9 (picture hardcoded
+> null) → T1. P7.5 (event-code revoke half-life) → T5. The register text
+> below is retained as the original audit record.
+
 **P1 — Cleartext email confirmed, in 4 places.** (Critical, planned)
 `auth.users.email`, `auth.invitations.email` (live rows hold real addresses:
 2 seeded + admin-created ones are cleartext), `global_users.email` (3 live

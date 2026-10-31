@@ -10,7 +10,7 @@
   const session = getSessionState();
   const api = getApiClient();
 
-  const gid = $derived(page.url.searchParams.get('gid') ?? '');
+  const gid = $derived(page.url.searchParams.get('guid') ?? '');
   let tenants = $state<LinkedTenantDto[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
