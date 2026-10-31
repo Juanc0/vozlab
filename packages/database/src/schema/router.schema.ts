@@ -91,36 +91,11 @@ export const tenantConnections = pgTable('tenant_connections', {
 export type TenantConnection = typeof tenantConnections.$inferSelect;
 export type NewTenantConnection = typeof tenantConnections.$inferInsert;
 
-/**
- * Identity providers configured per tenant (D1).
- *
- * Each row describes an IdP that a tenant uses for institutional login.
- * The `issuer` is matched against the `iss` claim of the IdP's tokens.
- * `client_id` and `metadata_url` are used by the broker (Keycloak/Zitadel)
- * to federate the provider.
- */
-export const tenantIdentityProviders = pgTable(
-  'tenant_identity_providers',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
-      .notNull()
-      .references(() => tenants.id, { onDelete: 'cascade' }),
-    providerKind: varchar('provider_kind', { length: 30 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'OIDC_SOCIAL' | 'SAML' | 'LDAP'
-    issuer: varchar('issuer', { length: 512 }).notNull(),
-    clientId: varchar('client_id', { length: 255 }),
-    metadataUrl: varchar('metadata_url', { length: 1024 }),
-    enabled: boolean('enabled').default(true).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index('idx_tenant_idp_tenant').on(table.tenantId),
-    index('idx_tenant_idp_issuer').on(table.issuer),
-  ]
-);
-
-export type TenantIdentityProvider = typeof tenantIdentityProviders.$inferSelect;
-export type NewTenantIdentityProvider = typeof tenantIdentityProviders.$inferInsert;
+// RETIRED (identity-consolidation T7, audit D-2 user ruling): the
+// `public.tenant_identity_providers` table (D1 IdP-federation registry).
+// The broker (Zitadel) already owns federation config — 0 rows, 0 UI
+// callers, `findByIssuer` uncalled. The port, controller, routes and
+// adapter methods were deleted with it.
 
 /**
  * Global user index (D6, M2a) — the router DB is the cross-tenant identity

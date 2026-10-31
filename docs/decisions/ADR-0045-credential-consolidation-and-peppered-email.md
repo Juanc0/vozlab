@@ -1,8 +1,7 @@
 # ADR-0045: Credential consolidation and peppered email hashes
 
 - Status: Accepted (email section; join-code consolidation appended with T4;
-  invitation unification appended with T6 — DEC-9. Remaining planned sections
-  arrive with T7 of the same intervention)
+  invitation unification appended with T6 — DEC-9; deletions appended with T7)
 - Date: 2026-10-30
 - Related: ADR-0013 (opaque pseudonym), ADR-0042 (cross-tenant identity in the
   router), ADR-0044 (vocabulary coherence and the migration baseline this fold
@@ -228,3 +227,71 @@ and every one of them can ride on a comparison instead of the value.
   (`apps/api/tests/integration/auth.integration.test.ts`). The DEC-4
   case/whitespace normalization test still passes on the unified substrate
   (its fixture now mints the route row).
+
+## Deletions — single identity store (T7, 2026-10-30 — DEC-5 D4; audit D-2, D-4, P2)
+
+### Decision
+
+1. **`users.provider_user_id` + `uniq_users_provider_provider_user` are
+   dropped** (tenant fold `0004_keen_texas_twister.sql`). ADR-0028's
+   direction is completed: `auth.external_identities(issuer, subject)` is
+   the sole external-identity store, and its unique index is what keeps
+   concurrent JIT callbacks to one row — the JIT insert writes the subject
+   only there, never back onto `users`. The dead legacy matcher
+   (`findOrCreateOidcUser`) and `DirectIdentityAddUseCase` were already
+   excised with T3; the port projection (`AuthUser`), the JIT input and the
+   OIDC adapter's backward-compat alias shed the field with this fold.
+2. **`users.is_anonymous` is dropped** (same fold, D-4 ruling): one
+   discriminator remains — `provider = 'ANONYMOUS_EVENT'`. The flag had no
+   writer since inception, which was silently killing the guest sweep (P2):
+   `DrizzleUserRepository.removeInactiveGuests` filtered
+   `is_anonymous = TRUE` and therefore matched nothing. The filter is now
+   `eq(users.provider, 'ANONYMOUS_EVENT')`, and the sweep has its first
+   real-database proof
+   (`apps/api/tests/integration/guestCleanup.integration.test.ts`: 2 stale
+   guests removed, fresh guest and an older institutional user untouched).
+   The live caller is the opt-in `POST /api/v1/admin/cleanup` route
+   (`CleanupExpiredInvitationsUseCase`); no in-process scheduler ever existed
+   — that finding graduates to the ROADMAP, it is not invented here.
+3. **`public.tenant_identity_providers` is dropped** (router fold
+   `0004_ambiguous_lady_ursula.sql`, D-2 user ruling): the D1 IdP-federation
+   registry was an orphan abstraction — 0 rows, 0 UI callers, `findByIssuer`
+   uncalled. The broker (Zitadel) owns federation config; the table-side
+   experiment is retired. Deleted with it: the schema export and types, the
+   `ITenantIdentityProviderRepository` port, the four
+   `RouterDatabaseClient` methods + its implements-entry,
+   `TenantIdentityProviderController` and its three
+   `/api/v1/identity-providers` routes (they used the plain auth guard, no
+   scoped limiter keys to orphan). No shared-types DTOs existed for the
+   surface (the controller cast its bodies inline); the web has zero
+   references — nothing on the wire had consumers.
+4. **Seeds and fixtures follow.** `dev-identities`/`seed-dev` no longer
+   write `provider_user_id`; the five seeded users stay reachable by
+   `handle`/`author_hash` (they still have no `external_identities` rows —
+   exactly what T8 fixes, not pre-built here). The integration suites look
+   dev identities up by `author_hash` (`sha256('dev-<name>')`), the seeded
+   unique column.
+
+### Consequences accepted
+
+- The tenant `users` row carries no IdP subject and no guest flag: identity
+  is `(issuer, subject)` in `external_identities` only; guests are
+  `provider` only. Two representations of one fact can no longer drift.
+- The OIDC adapter's `ExternalIdentity` no longer duplicates `sub` into a
+  `providerUserId` alias — one name for the subject, everywhere.
+- Dropping the users-level unique index moves the JIT race guard entirely
+  onto `uniq_external_identities_issuer_subject`: a concurrent double-create
+  aborts on the identity insert and surfaces `ERR_ACCOUNT_LINK_CONFLICT`
+  (retry-safe), never two rows.
+
+### Evidence (T7)
+
+- Folds applied to the live dev volumes
+  (`db:migrate:tenant`, `db:migrate:router`); verified
+  `\d auth.users` shows neither column and the router table is gone.
+- P2 proof: `apps/api/tests/integration/guestCleanup.integration.test.ts`
+  (repo-level, real DB).
+- Acceptance residual greps for
+  `provider_user_id|providerUserId|is_anonymous|isAnonymous|tenant_identity_providers|TenantIdentityProvider`
+  over `apps/`, `packages/`, `.opencode/agents` return only retirement
+  comments (schema notes + the T7 comment blocks) — no live code.

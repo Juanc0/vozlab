@@ -1,0 +1,1 @@
+DROP TABLE "tenant_identity_providers" CASCADE;

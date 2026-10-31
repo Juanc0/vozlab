@@ -35,10 +35,8 @@ export const users = authSchema.table(
     handle: varchar('handle', { length: 64 }).unique(),
     fullName: varchar('full_name', { length: 255 }),
     provider: varchar('provider', { length: 50 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'ANONYMOUS_EVENT'
-    providerUserId: varchar('provider_user_id', { length: 255 }),
     authorHash: varchar('author_hash', { length: 64 }).notNull().unique(),
     anonymousAlias: varchar('anonymous_alias', { length: 100 }),
-    isAnonymous: boolean('is_anonymous').default(false).notNull(),
     systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT'
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
     globalUserId: uuid('global_user_id'),
@@ -49,12 +47,11 @@ export const users = authSchema.table(
     uniqueIndex('uniq_users_global_user')
       .on(table.globalUserId)
       .where(sql`global_user_id IS NOT NULL`),
-    // One account per IdP subject; prevents duplicate JIT rows under
-    // concurrent callbacks. NULL provider_user_id is allowed for event users.
-    uniqueIndex('uniq_users_provider_provider_user').on(
-      table.provider,
-      table.providerUserId
-    ),
+    // RETIRED (identity-consolidation T7, DEC-5 D4 + D-4): the legacy
+    // `provider_user_id` column with `uniq_users_provider_provider_user`,
+    // and `is_anonymous` (guests are discriminated by `provider` alone).
+    // `auth.external_identities(issuer, subject)` is the sole external-
+    // identity store; JIT uniqueness is enforced there.
   ]
 );
 
@@ -92,8 +89,9 @@ export const membershipEvents = authSchema.table(
  * External identity mapping (ADR-0028, C3).
  *
  * Stores the (issuer, subject) pair for each OIDC account so that multiple
- * providers can be linked to the same VozLab user. The `users.provider_user_id`
- * column is kept for backward compatibility but new code should use this table.
+ * providers can be linked to the same VozLab user. Since identity-consolidation
+ * T7 (DEC-5 D4) this is the SOLE external-identity store: the legacy
+ * `users.provider_user_id` "backward compatibility" column is dropped.
  */
 export const externalIdentities = authSchema.table(
   'external_identities',

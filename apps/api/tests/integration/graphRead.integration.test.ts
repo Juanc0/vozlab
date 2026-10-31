@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
@@ -161,8 +161,8 @@ beforeAll(async () => {
   workspaceId = workspace.rows[0].id as string;
 
   const identities = await tenantPool.query(
-    'select provider_user_id, id, author_hash from auth.users where provider_user_id = $1',
-    ['dev-maintainer']
+    'select author_hash, id from auth.users where author_hash = $1',
+    [createHash('sha256').update('dev-maintainer').digest('hex')]
   );
   if (identities.rowCount !== 1) {
     throw new Error('dev identities missing: run db:seed:dev');

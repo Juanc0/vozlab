@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
@@ -11,6 +11,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * The route is agent-only and tenant-scoped, and it does not take an
  * `X-Workspace-ID`: the workspace is the answer.
  */
+
+/** Seeded dev identities carry `author_hash = sha256('dev-<name>')`. */
+const devAuthorHash = (name: string): string =>
+  createHash('sha256').update(name).digest('hex');
 
 const tenantPool = new Pool({
   host: process.env.TENANT_DB_HOST,
@@ -68,17 +72,17 @@ beforeAll(async () => {
   workspaceId = workspace.rows[0].id as string;
 
   const identities = await tenantPool.query(
-    "select provider_user_id, id, author_hash from auth.users where provider_user_id = any($1::text[])",
-    [['dev-agent', 'dev-maintainer']]
+    'select author_hash, id from auth.users where author_hash = any($1::text[])',
+    [['dev-agent', 'dev-maintainer'].map(devAuthorHash)]
   );
-  const byProvider = new Map(
+  const byHash = new Map(
     identities.rows.map((row) => [
-      row.provider_user_id as string,
+      row.author_hash as string,
       { id: row.id as string, authorHash: row.author_hash as string },
     ])
   );
-  const agent = byProvider.get('dev-agent');
-  const human = byProvider.get('dev-maintainer');
+  const agent = byHash.get(devAuthorHash('dev-agent'));
+  const human = byHash.get(devAuthorHash('dev-maintainer'));
   if (!agent || !human) {
     throw new Error('dev identities missing: run db:seed:dev');
   }

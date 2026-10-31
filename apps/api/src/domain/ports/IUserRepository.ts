@@ -8,7 +8,6 @@ export interface AuthUser {
   id: string;
   fullName: string | null;
   provider: AuthProvider;
-  providerUserId: string | null;
   authorHash: string;
   anonymousAlias: string | null;
   systemRole: string;
@@ -47,8 +46,8 @@ export interface UserWorkspace {
  * Port: identity rows in the tenant's physical DB (`auth.users`).
  *
  * `findOrCreateByExternalIdentity` is an upsert, not a read-then-write in the
- * use case: concurrent callbacks for the same IdP subject must produce exactly
- * one row (backed by `uniq_users_provider_provider_user`).
+ * use case: concurrent callbacks for the same (issuer, subject) must produce
+ * exactly one row (backed by `uniq_external_identities_issuer_subject`).
  */
 export interface IUserRepository {
   findById(userId: string, tid: string): Promise<AuthUser | null>;

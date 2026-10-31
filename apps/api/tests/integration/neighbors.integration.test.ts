@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
@@ -12,6 +12,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * through the agent-only embedding route, so the test exercises the same path
  * the embedder worker uses.
  */
+
+/** Seeded dev identities carry `author_hash = sha256('dev-<name>')`. */
+const devAuthorHash = (name: string): string =>
+  createHash('sha256').update(name).digest('hex');
 
 const tenantPool = new Pool({
   host: process.env.TENANT_DB_HOST,
@@ -108,17 +112,17 @@ beforeAll(async () => {
   workspaceId = workspace.rows[0].id as string;
 
   const identities = await tenantPool.query(
-    "select provider_user_id, id, author_hash from auth.users where provider_user_id = any($1::text[])",
-    [['dev-embedder', 'dev-maintainer']]
+    'select author_hash, id from auth.users where author_hash = any($1::text[])',
+    [['dev-embedder', 'dev-maintainer'].map(devAuthorHash)]
   );
-  const byProvider = new Map(
+  const byHash = new Map(
     identities.rows.map((row) => [
-      row.provider_user_id as string,
+      row.author_hash as string,
       { id: row.id as string, authorHash: row.author_hash as string },
     ])
   );
-  const embedder = byProvider.get('dev-embedder');
-  const maintainer = byProvider.get('dev-maintainer');
+  const embedder = byHash.get(devAuthorHash('dev-embedder'));
+  const maintainer = byHash.get(devAuthorHash('dev-maintainer'));
   if (!embedder || !maintainer) {
     throw new Error('dev identities missing: run db:seed:dev');
   }
@@ -201,7 +205,7 @@ describe('neighbour lookup integration', () => {
     );
     await tenantPool.query(
       `insert into auth.workspace_memberships (id, workspace_id, user_id, role)
-       select gen_random_uuid(), $1, id, 'ADMIN' from auth.users where provider_user_id = 'dev-maintainer'
+       select gen_random_uuid(), $1, id, 'ADMIN' from auth.users where handle = 'dev-maintainer'
        on conflict do nothing`,
       [otherWorkspaceId]
     );

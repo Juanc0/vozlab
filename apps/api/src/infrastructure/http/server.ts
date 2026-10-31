@@ -558,7 +558,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     listInvitationsUseCase,
     revokeInvitationUseCase,
     routerDb,
-    tenantIdentityProviderRepo: routerDb,
     dataSourceRepo: dataSourceRepo,
     ingestSourceUseCase: ingestSourceUseCase,
     membershipRepo,

@@ -27,7 +27,6 @@ function toAuthUser(row: UserRow): AuthUser {
     id: row.id,
     fullName: row.fullName,
     provider: row.provider as AuthProvider,
-    providerUserId: row.providerUserId,
     authorHash: row.authorHash,
     anonymousAlias: row.anonymousAlias,
     systemRole: row.systemRole,
@@ -172,7 +171,6 @@ export class DrizzleUserRepository implements IUserRepository {
           .insert(users)
           .values({
             provider: 'OIDC_INSTITUTIONAL',
-            providerUserId: input.subject,
             fullName: input.fullName,
             handle: freeHandle,
             authorHash: input.authorHash,
@@ -223,7 +221,6 @@ export class DrizzleUserRepository implements IUserRepository {
         .insert(users)
         .values({
           provider: 'ANONYMOUS_EVENT',
-          providerUserId: null,
           fullName: null,
           authorHash: input.authorHash,
           anonymousAlias: input.alias,
@@ -284,6 +281,11 @@ export class DrizzleUserRepository implements IUserRepository {
   /**
    * v6/TASK-09 (B7): delete anonymous event guests inactive since `cutoff`.
    *
+   * P2 fix (identity-consolidation T7, D-4 ruling): the guests are selected
+   * by `provider = 'ANONYMOUS_EVENT'` — the single discriminator. The filter
+   * used to be `is_anonymous = TRUE`, a column no writer ever set, which made
+   * this sweep silently delete nothing since inception.
+   *
    * Inactivity is the absence of **every** signal the tenant DB carries:
    * the account creation, any membership row, any `membership_events` row
    * for the user, and any refresh-token issuance (rotation is the only
@@ -302,7 +304,7 @@ export class DrizzleUserRepository implements IUserRepository {
         .delete(users)
         .where(
           and(
-            eq(users.isAnonymous, true),
+            eq(users.provider, 'ANONYMOUS_EVENT'),
             lt(users.createdAt, cutoff),
             sql`not exists (
                    select 1 from ${workspaceMemberships} m

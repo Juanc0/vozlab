@@ -199,21 +199,27 @@ that distinction.
 
 ## 6. JIT accounts and workspace access
 
-- First OIDC login creates `auth.users` with `provider =
-  OIDC_INSTITUTIONAL`, the IdP `sub` as `provider_user_id`, and a random 64-hex
+- First OIDC login creates `auth.users` (`provider =
+  OIDC_INSTITUTIONAL`) plus its `auth.external_identities` row carrying the
+  IdP `(issuer, subject)` — the sole identity key — and a random 64-hex
   `author_hash`. The row is needed before a token can carry `sub` and
   `authorHash`.
 - **JIT does not grant workspace access.** No `workspace_memberships` row is
   created; protected workspace routes still return `403
   ERR_UNAUTHORIZED_WORKSPACE_ACCESS` until an administrator adds one.
   `GET /auth/me` returns an empty `workspaces` list in that state.
-- Existing OIDC users are matched by `(provider, provider_user_id)`. If the
-  subject changed but the verified email matches an OIDC row, the repository
-  links the new subject to that row. A matching `ANONYMOUS_EVENT` row is a
-  conflict (`409 ERR_ACCOUNT_LINK_CONFLICT`) and is never taken over.
-- `auth.users` has `UNIQUE(provider, provider_user_id)` (nullable) so
-  concurrent callbacks cannot create duplicates; `auth.workspace_memberships`
-  has `UNIQUE(workspace_id, user_id)` so the role lookup always sees one row.
+- Returning users are matched by `(issuer, subject)` in
+  `external_identities`. Cross-IdP account linking by verified email rides on
+  the router vault (`global_users.email_hash`) before any tenant row exists;
+  the tenant itself never stores email or the legacy `provider_user_id`
+  (DEC-4/DEC-5 D4, ADR-0045). An `ANONYMOUS_EVENT` row has no external
+  identity and is never taken over by an institutional login.
+- `external_identities` has `UNIQUE(issuer, subject)` so concurrent callbacks
+  cannot create duplicate identities (the retired
+  `UNIQUE(provider, provider_user_id)` users-level guard moved here);
+  `auth.workspace_memberships`
+  has `UNIQUE(workspace_id, user_id, role)` so the role lookup sees one row
+  per role.
 - Event join is the deliberate exception: the event code authorizes one
   `MEMBER` membership in the code's workspace (see §9).
 - **Invitations are one mechanism (DEC-9, ADR-0045).** `POST

@@ -93,8 +93,6 @@ export interface DevIdentityFixture {
   readonly id: string;
   /** JWT `sub` claim — equals `id` so membership resolution succeeds. */
   readonly sub: string;
-  /** Stable stand-in for the IdP subject (`auth.users.provider_user_id`). */
-  readonly providerUserId: string;
   /** 64-char hex SHA-256 of `dev-<name>` (`auth.users.author_hash`, unique). */
   readonly authorHash: string;
   readonly fullName: string;
@@ -126,7 +124,6 @@ export const DEV_IDENTITIES: Readonly<
   maintainer: Object.freeze({
     id: '44444444-4444-4444-8444-444444444444',
     sub: '44444444-4444-4444-8444-444444444444',
-    providerUserId: 'dev-maintainer',
     authorHash: authorHashFor('maintainer'),
     fullName: 'Dev Maintainer',
     email: 'dev-maintainer@example.edu',
@@ -141,7 +138,6 @@ export const DEV_IDENTITIES: Readonly<
   moderator: Object.freeze({
     id: '44444444-4444-4444-8444-444444444445',
     sub: '44444444-4444-4444-8444-444444444445',
-    providerUserId: 'dev-moderator',
     authorHash: authorHashFor('moderator'),
     fullName: 'Dev Moderator',
     email: 'dev-moderator@example.edu',
@@ -155,7 +151,6 @@ export const DEV_IDENTITIES: Readonly<
   member: Object.freeze({
     id: '44444444-4444-4444-8444-444444444446',
     sub: '44444444-4444-4444-8444-444444444446',
-    providerUserId: 'dev-member',
     authorHash: authorHashFor('member'),
     fullName: 'Dev Member',
     email: 'dev-member@example.edu',
@@ -169,7 +164,6 @@ export const DEV_IDENTITIES: Readonly<
   agent: Object.freeze({
     id: '44444444-4444-4444-8444-444444444447',
     sub: '44444444-4444-4444-8444-444444444447',
-    providerUserId: 'dev-agent',
     authorHash: authorHashFor('agent'),
     fullName: 'Dev System Agent',
     email: 'dev-agent@example.edu',
@@ -182,7 +176,6 @@ export const DEV_IDENTITIES: Readonly<
   embedder: Object.freeze({
     id: '44444444-4444-4444-8444-444444444448',
     sub: '44444444-4444-4444-8444-444444444448',
-    providerUserId: 'dev-embedder',
     authorHash: authorHashFor('embedder'),
     fullName: 'Dev Embedder Worker',
     email: 'dev-embedder@example.edu',

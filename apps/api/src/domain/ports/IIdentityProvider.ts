@@ -13,10 +13,12 @@
 export interface ExternalIdentity {
   /** Issuer URL of the identity provider. */
   issuer: string;
-  /** Stable IdP subject (`sub`); stored as `auth.users.provider_user_id`. */
+  /**
+   * Stable IdP subject (`sub`). The per-tenant identity key is
+   * `auth.external_identities(issuer, subject)` — the legacy
+   * `users.provider_user_id` column was retired (identity-consolidation T7).
+   */
   subject: string;
-  /** Alias for `subject`; kept for backward compatibility. */
-  providerUserId: string;
   email: string | null;
   /** `true` = verified, `false` = explicitly unverified, `null` = not asserted. */
   emailVerified: boolean | null;

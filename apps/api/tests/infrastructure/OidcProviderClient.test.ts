@@ -127,7 +127,6 @@ describe('OidcProviderClient', () => {
     expect(identity).toEqual({
       issuer: CONFIG.issuer,
       subject: 'idp-sub-1',
-      providerUserId: 'idp-sub-1',
       email: 'ada@example.edu',
       emailVerified: true,
       fullName: 'Ada Lovelace',

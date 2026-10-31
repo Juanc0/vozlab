@@ -10,7 +10,7 @@ Antes de que una institución acepte logins con `@ejemplo.edu`, debe demostrar q
 
 ## Flujo propuesto
 
-1. **Admin de la institución** registra su dominio en VozLab (via D1 `tenant_identity_providers` o una tabla nueva `tenant_domains`).
+1. **Admin de la institución** registra su dominio en VozLab (via una tabla nueva `tenant_domains`; la retired `tenant_identity_providers` ya no existe — ADR-0045 T7).
 2. **VozLab genera un token de verificación** (CSPRNG, 32 bytes, base64url) y lo muestra al admin.
 3. **Admin crea un registro DNS TXT** en su dominio:
    ```

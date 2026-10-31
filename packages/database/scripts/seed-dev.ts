@@ -531,7 +531,6 @@ async function seed(): Promise<void> {
           return {
             id: identity.id,
             provider: 'OIDC_INSTITUTIONAL',
-            providerUserId: identity.providerUserId,
             authorHash: identity.authorHash,
             fullName: identity.fullName,
             handle: DEV_HANDLES[name] ?? null,

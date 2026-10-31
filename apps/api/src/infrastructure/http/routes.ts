@@ -66,7 +66,6 @@ import { RevokeInvitationUseCase } from '../../application/use_cases/RevokeInvit
 import { IRouterDatabase } from '../../domain/ports/IRouterDatabase.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUserRepository } from '../../domain/ports/IUserRepository.js';
-import { ITenantIdentityProviderRepository } from '../../domain/ports/ITenantIdentityProviderRepository.js';
 import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
@@ -99,7 +98,6 @@ import type { UpdateWorkspaceJoinCodeUseCase } from '../../application/use_cases
 import { WorkspaceAdminController } from './controllers/WorkspaceAdminController.js';
 import { WorkspaceAccessAdminController } from './controllers/WorkspaceAccessAdminController.js';
 import { WorkspaceAccessController } from './controllers/WorkspaceAccessController.js';
-import { TenantIdentityProviderController } from './controllers/TenantIdentityProviderController.js';
 import { DataSourceController } from './controllers/DataSourceController.js';
 import { IngestionController } from './controllers/IngestionController.js';
 
@@ -174,7 +172,6 @@ export interface RouteDependencies {
   listInvitationsUseCase: ListInvitationsUseCase;
   revokeInvitationUseCase: RevokeInvitationUseCase;
   routerDb: IRouterDatabase;
-  tenantIdentityProviderRepo?: ITenantIdentityProviderRepository;
   dataSourceRepo?: IDataSourceRepository;
   ingestSourceUseCase?: IngestSourceUseCase;
   membershipRepo: IMembershipRepository;
@@ -333,9 +330,10 @@ export async function registerRoutes(
     deps.listMyJoinRequestsUseCase
   );
 
-  const tipController = deps.tenantIdentityProviderRepo
-    ? new TenantIdentityProviderController(deps.tenantIdentityProviderRepo)
-    : null;
+  // RETIRED (identity-consolidation T7, audit D-2): the
+  // TenantIdentityProviderController and its three /api/v1/identity-providers
+  // routes — the table had zero rows and zero UI callers; Zitadel owns
+  // federation config.
 
   const dataSourceController = deps.dataSourceRepo
     ? new DataSourceController(deps.dataSourceRepo)
@@ -628,26 +626,6 @@ export async function registerRoutes(
     { preHandler: [...tenantSession, scoped('join-request-create')] },
     (req, reply) => workspaceAccessController.requestAccessHandler(req, reply)
   );
-
-  if (tipController) {
-    app.get(
-      '/api/v1/identity-providers',
-      { preHandler: guard },
-      (req, reply) => tipController.list(req, reply)
-    );
-
-    app.post(
-      '/api/v1/identity-providers',
-      { preHandler: guard },
-      (req, reply) => tipController.create(req, reply)
-    );
-
-    app.patch(
-      '/api/v1/identity-providers/:id',
-      { preHandler: guard },
-      (req, reply) => tipController.setEnabled(req, reply)
-    );
-  }
 
   if (dataSourceController) {
     app.get(

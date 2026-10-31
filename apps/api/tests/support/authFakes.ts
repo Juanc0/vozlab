@@ -57,7 +57,6 @@ export const AUTH_USER: AuthUser = {
   id: USER_ID,
   fullName: 'Ada Lovelace',
   provider: 'OIDC_INSTITUTIONAL',
-  providerUserId: 'idp-sub-1',
   authorHash: AUTHOR_HASH,
   anonymousAlias: null,
   systemRole: 'USER',
@@ -67,7 +66,6 @@ export const AUTH_USER: AuthUser = {
 export const OIDC_IDENTITY: OidcIdentity = {
   issuer: 'https://idp.test',
   subject: 'idp-sub-1',
-  providerUserId: 'idp-sub-1',
   email: 'ada@example.edu',
   emailVerified: true,
   fullName: 'Ada Lovelace',
@@ -265,7 +263,6 @@ export function makeUserRepository(
         id: '44444444-4444-4444-8444-444444444444',
         fullName: null,
         provider: 'ANONYMOUS_EVENT',
-        providerUserId: null,
         authorHash: input.authorHash,
         anonymousAlias: input.alias,
       };
