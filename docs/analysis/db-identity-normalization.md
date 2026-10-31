@@ -6,7 +6,7 @@
 > [ADR-0044](../decisions/ADR-0044-identity-vocabulary-coherence-and-migration-baseline.md).
 > The audit table below keeps the old names on purpose — it IS the old→new
 > map. **Plan 2 (`identity-consolidation` v1) OPENED 2026-10-30**
-> ([../plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md))
+> ([../archive/plans/identity-consolidation/v1.md](../archive/plans/identity-consolidation/v1.md))
 > executing DEC-3/4/5 merged with the findings of
 > [db-auth-router-flows-audit.md](db-auth-router-flows-audit.md); **DEC-9**
 > (invitations: tenant authority + generic router `credential_routes`) was
@@ -275,7 +275,7 @@ updated with the task.
 
 > The OPENED plan superseded this sketch: 9 tasks with T5/T6 split per DEC-9
 > — the authoritative task text is
-> [../plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md).
+> [../archive/plans/identity-consolidation/v1.md](../archive/plans/identity-consolidation/v1.md).
 
 ## Open items — all answered by the user (2026-10-30)
 

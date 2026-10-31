@@ -7,7 +7,7 @@
   router), ADR-0044 (vocabulary coherence and the migration baseline this fold
   appends to), source design record:
   `docs/analysis/db-identity-normalization.md` (DEC-4, DEC-5 D5), audit P1,
-  executed by `docs/plans/identity-consolidation/v1.md` (task 3).
+  executed by `docs/archive/plans/identity-consolidation/v1.md` (task 3).
 
 ## Context
 

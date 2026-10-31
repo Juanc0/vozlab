@@ -2,7 +2,7 @@
 
 - Status: ANSWERED (findings accepted 2026-10-30; rulings D-1..D-5 chosen by
   the user; remediation merged into
-  [plans/identity-consolidation/v1.md](../plans/identity-consolidation/v1.md);
+  [plans/identity-consolidation/v1.md](../archive/plans/identity-consolidation/v1.md);
   the §8 diagrams + §9 alternatives led to **DEC-9 adopted 2026-10-30**)
 - Date: 2026-10-30
 - Method: schema read (`router.schema.ts`, `tenant.auth.schema.ts`) + live SQL
@@ -233,7 +233,7 @@ defect is that the seed never populates it (P5).
 ## 5. Findings register (severity-ranked)
 
 > **Closure status (2026-10-31, identity-consolidation v1):** every finding
-> below is CLOSED by tasks T1–T9 of `docs/plans/identity-consolidation/v1.md`.
+> below is CLOSED by tasks T1–T9 of `docs/archive/plans/identity-consolidation/v1.md`.
 > P1 (cleartext email) → T3; P2 (dead guest cleanup) → T7; P3 (`/auth/me`
 > status filter) → T1; P4 (join-code race) → T4; P5 (seed not login-reachable)
 > → T8; P6 (integration teardown residue) → T1; P7 (dead

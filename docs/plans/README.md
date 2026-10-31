@@ -37,7 +37,7 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
-- [identity-consolidation/v1](identity-consolidation/v1.md) — DEC-3/4/5 +
+- [identity-consolidation/v1](../archive/plans/identity-consolidation/v1.md) — DEC-3/4/5 + (closed; see ROADMAP)
   audit P1–P9 merged (one mechanism per credential, zero cleartext email).
   Design record: [../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md);
   audit: [../analysis/db-auth-router-flows-audit.md](../analysis/db-auth-router-flows-audit.md).

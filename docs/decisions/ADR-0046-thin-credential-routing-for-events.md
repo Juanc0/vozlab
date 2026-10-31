@@ -8,7 +8,7 @@
   ADR-0045 (credential consolidation — `workspace_join_codes` is the sole
   join credential), source design record:
   `docs/analysis/db-identity-normalization.md` (DEC-3), audit §2-F2/D-5 and
-  diagrams §8.6/§8.7, executed by `docs/plans/identity-consolidation/v1.md`
+  diagrams §8.6/§8.7, executed by `docs/archive/plans/identity-consolidation/v1.md`
   (task 5).
 
 ## Context
