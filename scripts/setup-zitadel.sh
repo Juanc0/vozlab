@@ -457,7 +457,7 @@ ensure_login_policy() {
   if [ "$POLICY_OWNER" = "$ORG_ID" ]; then
     return 0
   fi
-  local CREATE_POLICY='{"allowUsernameLogin":true,"allowIdpLogin":true,"allowRegistration":true,"passwordlessType":"PASSWORDLESS_TYPE_ALLOWED"}'
+  local CREATE_POLICY='{"allowUsernamePassword":true,"allowExternalIdp":true,"allowRegister":true,"passwordlessType":"PASSWORDLESS_TYPE_ALLOWED","passwordCheckLifetime":"864000s","hidePasswordReset":true}'
   api POST /management/v1/policies/login "$CREATE_POLICY" >/dev/null ||
     fail "could not create the organization login policy."
   log "   Created organization login policy (username + external IdP + registration allowed)."
