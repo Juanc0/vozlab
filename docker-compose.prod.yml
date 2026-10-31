@@ -52,7 +52,7 @@ services:
       - vozlab-net
 
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:9-alpine
     container_name: vozlab-redis
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
@@ -200,7 +200,7 @@ services:
     restart: unless-stopped
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.4
     container_name: vozlab-ollama
     volumes:
       - ollama_data:/root/.ollama

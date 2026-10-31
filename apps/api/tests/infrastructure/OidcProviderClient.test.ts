@@ -2,7 +2,7 @@ import {
   SignJWT,
   generateKeyPair,
   type JWTVerifyGetKey,
-  type KeyLike,
+  type CryptoKey,
 } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -22,8 +22,8 @@ const CONFIG: OidcProviderConfig = {
   scopes: 'openid profile email',
 };
 
-let privateKey: KeyLike;
-let publicKey: KeyLike;
+let privateKey: CryptoKey;
+let publicKey: CryptoKey;
 let jwks: JWTVerifyGetKey;
 
 beforeAll(async () => {

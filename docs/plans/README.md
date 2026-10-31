@@ -37,11 +37,9 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
-- [upgrade-waves/v1](upgrade-waves/v1.md) — OPEN 2026-10-31: full dependency
-  upgrade program (Waves 0–5) per
-  [docs/knowledge/dependency-lifecycle.md](../knowledge/dependency-lifecycle.md) §5.
-  Horizontal slicing; each task leaves the gate green. Goal: bring every
-  runtime/library/connection/protocol/schema/DB to a supported/current line.
+- [upgrade-waves/v1](../archive/plans/upgrade-waves/v1.md) — CLOSED 2026-10-31 (waves 0–4 done;
+  wave 5 SvelteKit 3 deferred to v2): full dependency upgrade program.
+  ADR-0047. Archived at `docs/archive/plans/upgrade-waves/v1.md`.
 - [identity-consolidation/v1](../archive/plans/identity-consolidation/v1.md) — DEC-3/4/5 + (closed; see ROADMAP)
   audit P1–P9 merged (one mechanism per credential, zero cleartext email).
   Design record: [../analysis/db-identity-normalization.md](../analysis/db-identity-normalization.md);

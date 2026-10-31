@@ -905,8 +905,9 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
-- **upgrade-waves v1** — OPEN 2026-10-31:
-  [docs/plans/upgrade-waves/v1.md](docs/plans/upgrade-waves/v1.md)
+- **upgrade-waves v1** — CLOSED 2026-10-31 (waves 0–4 done; wave 5 SvelteKit 3
+  deferred to v2): [docs/archive/plans/upgrade-waves/v1.md](docs/archive/plans/upgrade-waves/v1.md)
+  ADR-0047.
   — full dependency upgrade program (Waves 0–5): hygiene (dead Cytoscape
   removal, d3 deps, patch wave, vitest align, Node 24 pin, Ollama pin, CI
   permissions, Dependabot), Fastify 4→5 + node-redis 4→6 + pino 9→10,
@@ -993,6 +994,7 @@ Identity/auth survivors (promoted from the archived v5/v6 task trees and
   `RootPicker` is unimported, `GraphListView` unreachable), and four specs also
   assume the demo graph of `general`, where the event-code session cannot live.
   Catalogued in `docs/analysis/auth-onboarding-committee-review.md` §5 task 13.
+- SvelteKit 3 adoption (upgrade-waves v1 T5.1 deferred 2026-10-31): SvelteKit 3.1.1 requires TypeScript ^6.0.0 (only beta/dev releases exist) and adapter-node 6.x. Tracked for `plans/upgrade-waves/v2` once TS 6 stable ships. Origin: `docs/plans/upgrade-waves/v1.md` T5.1.
 - Consolidator handler (FR-20): scheduled cluster synthesis (deferred for MVP, 2026-10-26).
 - Apache AGE mirroring adapter ([ADR-0004](docs/decisions/ADR-0004-bounded-sql-cte-age-deferred.md)).
 - Redis-buffered CQRS vote scoring ([ADR-0005](docs/decisions/ADR-0005-synchronous-vote-scoring.md)).

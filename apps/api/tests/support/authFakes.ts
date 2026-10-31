@@ -331,7 +331,7 @@ export function makeTokenIssuer(): {
     [];
 
   const tokenIssuer: ITokenIssuer = {
-    issue(input) {
+    async issue(input) {
       counter += 1;
       issued.push({
         userId: input.userId,

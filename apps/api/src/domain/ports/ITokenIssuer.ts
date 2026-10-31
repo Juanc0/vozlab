@@ -24,5 +24,5 @@ export interface IssueAccessTokenInput {
  * long-lived signed token from becoming a second, unrevocable access path.
  */
 export interface ITokenIssuer {
-  issue(input: IssueAccessTokenInput): AccessToken;
+  issue(input: IssueAccessTokenInput): Promise<AccessToken>;
 }

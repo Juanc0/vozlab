@@ -136,7 +136,7 @@ export class JoinEventUseCase {
       return created;
     });
 
-    const access = this.tokenIssuer.issue({
+    const access = await this.tokenIssuer.issue({
       userId: user.id,
       tenantKey: tenant.oidcTenantId,
       authorHash: user.authorHash,

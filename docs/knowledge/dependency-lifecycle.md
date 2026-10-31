@@ -1,6 +1,11 @@
 # 10 — Dependencies and lifecycle
 
-> **Knowledge doc** — verified 2026-10-29 (Fastify 4 / node-redis 4 / Zod 3 / jose 5 / dead Cytoscape deps still true). Upgrade waves graduate via `plans/upgrade-waves/`.
+> **Knowledge doc** — re-verified 2026-10-31 after `plans/upgrade-waves/v1`
+> (waves 0–4 executed): Fastify 5, node-redis 6, Zod 4, jose 6, Valkey 9,
+> ESLint 10, Node 24, pgvector ≥ 0.8.0, dead Cytoscape removed, Ollama
+> pinned. Remaining lag: SvelteKit 2 (wave 5 deferred), TypeScript 5,
+> Drizzle/Svelte/Tailwind/Python per §7. Upgrade waves graduate via
+> `plans/upgrade-waves/`.
 
 This file answers two questions: which versions does VozLab run, and how far are they from supported releases?
 Installed versions are from `node_modules` and `uv.lock` on 2026-10-23. "Latest" is from the npm registry (dist-tags)

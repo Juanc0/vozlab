@@ -1,0 +1,16 @@
+# Ollama model manifest — pinned references for reproducible deploys.
+# Update the digest after `ollama pull <model>`; verify with `ollama show <model>`.
+# Image: ollama/ollama:0.5.4 (see docker-compose.yml / docker-compose.prod.yml)
+
+embedding:
+  model: nomic-embed-text
+  dimensions: 768
+  digest: sha256:UNPINNED  # run `ollama pull nomic-embed-text` then record `ollama show nomic-embed-text --modelfile` digest
+
+chat:
+  model: (see worker settings: OLLAMA_MODEL in apps/worker-relacionador and apps/worker-extractor)
+  digest: sha256:UNPINNED
+
+notes:
+  - Workers read model names from settings (OLLAMA_MODEL / EMBEDDING_MODEL); the API never calls Ollama directly.
+  - Pin digests before the first production deploy (ADR-0037: Ollama colocated).

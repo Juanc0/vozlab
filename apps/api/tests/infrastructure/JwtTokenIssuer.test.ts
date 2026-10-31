@@ -7,10 +7,10 @@ const USER_ID = '33333333-3333-4333-8333-333333333333';
 const AUTHOR_HASH = 'a'.repeat(64);
 
 describe('JwtTokenIssuer', () => {
-  it('signs exactly the claims AuthGuard requires', () => {
+  it('signs exactly the claims AuthGuard requires', async () => {
     const issuer = new JwtTokenIssuer({ secret: SECRET, expiresIn: '15m' });
 
-    const { token, expiresAt } = issuer.issue({
+    const { token, expiresAt } = await issuer.issue({
       userId: USER_ID,
       tenantKey: 'tenant-1',
       authorHash: AUTHOR_HASH,
@@ -31,10 +31,10 @@ describe('JwtTokenIssuer', () => {
     expect(expiresAt.getTime()).toBe(payload.exp! * 1000);
   });
 
-  it('includes the agent type when minting for a system agent', () => {
+  it('includes the agent type when minting for a system agent', async () => {
     const issuer = new JwtTokenIssuer({ secret: SECRET, expiresIn: '1h' });
 
-    const { token } = issuer.issue({
+    const { token } = await issuer.issue({
       userId: USER_ID,
       tenantKey: 'tenant-1',
       authorHash: AUTHOR_HASH,

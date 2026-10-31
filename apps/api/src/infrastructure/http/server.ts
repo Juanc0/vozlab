@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import Fastify, { FastifyInstance, FastifyBaseLogger } from 'fastify';
+import Fastify, { FastifyInstance, FastifyBaseLogger, LogController } from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import { env } from '../../shared/config/env.js';
@@ -110,9 +110,9 @@ import { TRUST_PROXY } from './proxyTrust.js';
  */
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: logger as unknown as FastifyBaseLogger,
+    loggerInstance: logger as unknown as FastifyBaseLogger,
     requestIdHeader: 'x-correlation-id',
-    requestIdLogLabel: 'reqId',
+    logController: new LogController({ requestIdLogLabel: 'reqId' }),
     genReqId: () => randomUUID(),
     // B11/T2: same-host reverse proxy (Caddy) — `req.ip` follows
     // X-Forwarded-For only when the peer is loopback. See proxyTrust.ts.

@@ -64,7 +64,7 @@ const editProposalSchema = z.object({
   kind: z.literal('EDIT').default('EDIT'),
   targetId: z.string().uuid('targetId must be a valid UUID'),
   targetType: TargetTypeSchema,
-  proposedChanges: z.record(z.unknown()),
+  proposedChanges: z.record(z.string(), z.unknown()),
   justification: z.string().optional(),
 });
 

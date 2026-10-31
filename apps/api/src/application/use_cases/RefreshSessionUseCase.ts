@@ -79,7 +79,7 @@ export class RefreshSessionUseCase {
       throw new DomainError('ERR_REFRESH_TOKEN_INVALID');
     }
 
-    const access = this.tokenIssuer.issue({
+    const access = await this.tokenIssuer.issue({
       userId: user.id,
       tenantKey: tenant.oidcTenantId,
       authorHash: user.authorHash,

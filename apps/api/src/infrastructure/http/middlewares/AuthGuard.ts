@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import jwt from 'jsonwebtoken';
+import { jwtVerify, type JWTPayload } from 'jose';
 import { env } from '../../../shared/config/env.js';
 import { AgentTypeSchema, buildError, type AgentType } from '@vozlab/shared-types';
 import { AuthorHash } from '../../../domain/value_objects/AuthorHash.js';
@@ -58,13 +58,17 @@ export function authGuard(blacklist: ITokenBlacklist) {
 
     const token = authHeader.slice(7).trim();
 
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
     let payload: VozLabJwtPayload;
     try {
-      payload = jwt.verify(token, env.JWT_SECRET, {
+      const { payload: p } = await jwtVerify(token, secret, {
         algorithms: ['HS256'],
-      }) as VozLabJwtPayload;
+      });
+      payload = p as VozLabJwtPayload;
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'TokenExpiredError') {
+      const name = (err as { code?: string; name?: string })?.code
+        ?? (err as { name?: string })?.name;
+      if (name === 'ERR_JWT_EXPIRED' || name === 'JWTExpired') {
         const e = buildError('ERR_TOKEN_EXPIRED');
         return reply.status(e.status).send({ code: e.code, message: e.message });
       }

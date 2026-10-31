@@ -1,15 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import jwt, { type SignOptions } from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 import { env } from '../../shared/config/env.js';
 import {
   ITokenIssuer,
   IssueAccessTokenInput,
   AccessToken,
 } from '../../domain/ports/ITokenIssuer.js';
-
-interface DecodedToken {
-  exp?: number;
-}
 
 export interface JwtTokenIssuerOptions {
   /** Defaults to `env.JWT_SECRET`; injectable for tests. */
@@ -26,15 +22,15 @@ export interface JwtTokenIssuerOptions {
  * (see `IRefreshTokenRepository`).
  */
 export class JwtTokenIssuer implements ITokenIssuer {
-  private readonly secret: string;
+  private readonly secret: Uint8Array;
   private readonly expiresIn: string;
 
   constructor(options: JwtTokenIssuerOptions = {}) {
-    this.secret = options.secret ?? env.JWT_SECRET;
+    this.secret = new TextEncoder().encode(options.secret ?? env.JWT_SECRET);
     this.expiresIn = options.expiresIn ?? env.JWT_EXPIRES_IN;
   }
 
-  issue(input: IssueAccessTokenInput): AccessToken {
+  async issue(input: IssueAccessTokenInput): Promise<AccessToken> {
     const claims: Record<string, unknown> = {
       tid: input.tenantKey,
       jti: randomUUID(),
@@ -42,23 +38,26 @@ export class JwtTokenIssuer implements ITokenIssuer {
     };
     if (input.agentType) claims.type = input.agentType;
 
-    const options: SignOptions = {
-      algorithm: 'HS256',
-      subject: input.userId,
-      // env.ts validates the compact duration format at startup.
-      expiresIn: this.expiresIn as SignOptions['expiresIn'],
-    };
+    const token = await new SignJWT(claims)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(input.userId)
+      .setIssuedAt()
+      .setExpirationTime(this.expiresIn)
+      .sign(this.secret);
 
-    const token = jwt.sign(claims, this.secret, options);
-    const decoded = jwt.decode(token) as DecodedToken | null;
+    // Decode the exp claim without re-verifying (we just signed it).
+    const parts = token.split('.');
+    const payload = JSON.parse(
+      Buffer.from(parts[1], 'base64url').toString('utf8')
+    ) as { exp?: number };
 
-    if (!decoded?.exp) {
+    if (!payload?.exp) {
       throw new Error('Issued access token has no exp claim');
     }
 
     return {
       token,
-      expiresAt: new Date(decoded.exp * 1000),
+      expiresAt: new Date(payload.exp * 1000),
     };
   }
 }

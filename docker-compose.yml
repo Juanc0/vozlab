@@ -23,7 +23,7 @@ services:
       - vozlab-net
 
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:9-alpine
     container_name: vozlab-redis
     ports:
       - "6379:6379"
@@ -33,7 +33,7 @@ services:
       - vozlab-net
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.4
     container_name: vozlab-ollama
     ports:
       - "11434:11434"

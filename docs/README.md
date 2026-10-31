@@ -23,7 +23,9 @@ the T2 production deployment is instrumented
 ([ADR-0043](decisions/ADR-0043-production-topology-caddy-t2.md))
 pending a real hostname. Gates: `pnpm turbo run build type-check test` green
 (≈352 API unit tests, ≈521 web tests, Python suite `uv run pytest`), lint 0
-errors / ≈35 warnings. E2E Playwright: 17 green, 1 opt-in (`E2E_OIDC=1`), 14
+errors / ≈39 warnings (ESLint 10 flat config). Dependency upgrade wave
+0–4 executed (Fastify 5, node-redis 6, Valkey 9, Zod 4, jose 6, ESLint 10,
+Node 24); wave 5 (SvelteKit 3) deferred. E2E Playwright: 17 green, 1 opt-in (`E2E_OIDC=1`), 14
 red pending the graph-suite realignment (task 13). **CI green on GitHub
 Actions since run 5 (2026-10-30, `176731a`)**; E2E is manual-dispatch until
 task 13.
