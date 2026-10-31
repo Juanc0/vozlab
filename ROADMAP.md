@@ -905,6 +905,16 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
+- **upgrade-waves v1** — OPEN 2026-10-31:
+  [docs/plans/upgrade-waves/v1.md](docs/plans/upgrade-waves/v1.md)
+  — full dependency upgrade program (Waves 0–5): hygiene (dead Cytoscape
+  removal, d3 deps, patch wave, vitest align, Node 24 pin, Ollama pin, CI
+  permissions, Dependabot), Fastify 4→5 + node-redis 4→6 + pino 9→10,
+  Zod 3→4 + jose 5→6 (drop jsonwebtoken), pgvector pin + AGE removal +
+  Valkey adoption, ESLint 8→10 + flat config + TS 7 evaluation, SvelteKit
+  2→3. Out of scope: Drizzle, Svelte 5, Tailwind 4, Python 3.12
+  (leave-alone list), AGE adapter, SSE, GraphQL. Horizontal slicing; each
+  task leaves the gate green.
 - **identity-consolidation v1** — CLOSED 2026-10-31 (T1-T9 done):
   [docs/archive/plans/identity-consolidation/v1.md](docs/archive/plans/identity-consolidation/v1.md)
   (T9: ?gid→?guid, verification reset, docs truth pass + audit closure).
