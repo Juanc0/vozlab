@@ -54,10 +54,17 @@ export interface IWorkspaceJoinCodeRepository {
     tid: string,
     tx?: DbTransaction
   ): Promise<WorkspaceJoinCodeRecord>;
+  /**
+   * The workspace's join-code rows. When `purpose` is given the filter runs
+   * in SQL (T8 carry-over): a caller that only manages one credential class
+   * (e.g. the rotation, WORKSPACE-only) never pulls the other class across
+   * the boundary.
+   */
   list(
     workspaceId: string,
     tid: string,
-    tx?: DbTransaction
+    tx?: DbTransaction,
+    purpose?: JoinCodePurpose
   ): Promise<WorkspaceJoinCodeRecord[]>;
   findById(id: string, tid: string): Promise<WorkspaceJoinCodeRecord | null>;
 

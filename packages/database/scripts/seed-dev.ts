@@ -24,13 +24,22 @@
  *   Router DB  (`vozlab_router`)
  *     - tenants            : slug `sabana`, oidc_tenant_id `sabana`
  *     - tenant_connections : physical config of the dev tenant DB
+ *     - global_users       : one vault row per HUMAN persona (issuer from
+ *                            `OIDC_ISSUER`, peppered `email_hash`, full_name)
+ *     - global_user_tenants: ACTIVE link vault row ↔ tenant user
+ *     - credential_routes  : thin L0 directory rows for the EVENT code and
+ *                            the two sample invitations
  *   Tenant DB  (`vozlab_tenant_dev`)
  *     - auth.workspaces            : `general` (PUBLIC), `community` (PUBLIC),
  *                                    `paper-lab` (PRIVATE, join requests),
  *                                    `evento-demo` (EVENT, auto-approve)
  *     - auth.users                 : 5 dev identities (stable authorHash each;
  *                                    the three humans also carry a `handle`
- *                                    for the admin's direct-add demo)
+ *                                    for the admin's direct-add demo and the
+ *                                    `global_user_id` vault pointer)
+ *     - auth.external_identities   : (issuer, subject, provider_kind) pair per
+ *                                    HUMAN — so a real login on a seeded
+ *                                    subject finds the row, never duplicates
  *     - auth.workspace_memberships : multiple roles per user (member is
  *                                    MODERATOR+MEMBER in `general`), three
  *                                    workspaces with real members, `paper-lab`
@@ -79,6 +88,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { createHash } from 'node:crypto';
 import { emailHashPeppered, requireEmailPepper } from './email-hash.js';
+import { hashOpaqueToken } from './token-hash.js';
+import { resolveSeedIssuer, seedHumanIdentities } from './seed-identities.js';
+import type { SeededHumanIdentity } from './seed-identities.js';
 import {
   createRouterDrizzle,
   tenants,
@@ -150,11 +162,6 @@ const OP_ADDRESSES_ID = '88888888-8888-4888-8888-888888888882';
 const OP_BUILDS_ON_ID = '88888888-8888-4888-8888-888888888883';
 const OP_EVIDENCED_BY_ID = '88888888-8888-4888-8888-888888888884';
 const DATA_SOURCE_ID = '99999999-9999-4999-8999-999999999991';
-
-/** SHA-256 hex — mirrors the token/code hashing of the API use cases. */
-function sha256Hex(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
 
 /**
  * Deterministic UUID (v4 shape) for a clone of a base ontology row in a
@@ -487,7 +494,7 @@ async function seed(): Promise<void> {
       .values(
         DEMO_JOIN_CODES.map((code) => ({
           workspaceId: code.workspaceId,
-          codeHash: sha256Hex(code.raw),
+          codeHash: hashOpaqueToken(code.raw),
           purpose: code.purpose,
           label: code.label,
           maxUses: code.maxUses,
@@ -514,7 +521,7 @@ async function seed(): Promise<void> {
     await routerDb
       .insert(credentialRoutes)
       .values({
-        credentialHash: sha256Hex(EVENT_CODE),
+        credentialHash: hashOpaqueToken(EVENT_CODE),
         kind: 'EVENT',
         tenantId: TENANT_ID,
       })
@@ -574,6 +581,36 @@ async function seed(): Promise<void> {
       ])
       .onConflictDoNothing();
 
+    // --- Login-reachable identity state (T8, D-3 ruling; audit P5) --------
+    // For each seeded HUMAN the routine in `./seed-identities.js` writes
+    // exactly the state the F1 OIDC callback reaches after a real login:
+    // router vault row (peppered email_hash + full_name), the tenant user's
+    // `global_user_id`, `auth.external_identities(issuer, subject)`, and the
+    // ACTIVE `global_user_tenants` link. Without it a real login on a seeded
+    // subject finds no external identity and JITs a duplicate `auth.users`
+    // row. The issuer comes from `process.env.OIDC_ISSUER` (never hardcoded —
+    // the seed must match the realm the environment actually uses).
+    //
+    // SYSTEM_AGENT identities (agent, embedder) get NO vault/external-identity
+    // pair, deliberately: their tokens are minted by `db:mint-token` and they
+    // never log in through a broker, so there is no IdP pair to seed (audit
+    // P5 note).
+    const issuer = resolveSeedIssuer();
+    const seededIdentities = issuer
+      ? await seedHumanIdentities({
+          routerPool,
+          tenantPool,
+          tenantId: TENANT_ID,
+          issuer,
+          emailPepper: requireEmailPepper(),
+        })
+      : null;
+    if (!issuer) {
+      console.warn(
+        '⚠  OIDC_ISSUER is not set — skipped the human identity state (vault rows, external identities, tenant links). The graph/credentials seed still ran; set OIDC_ISSUER to make logins reach the seeded people (see runbook-dev § seed).'
+      );
+    }
+
     // Sample invitations (B10) for `community` and `general`: one PENDING —
     // its raw token opens `/login?invitation=…` — and one EXPIRED so the
     // hygiene sweep (v6/TASK-09) has something real to report. The hashes
@@ -587,7 +624,7 @@ async function seed(): Promise<void> {
           workspaceId: invite.workspaceId,
           emailHash: emailHashPeppered(invite.email, requireEmailPepper()),
           role: invite.role,
-          tokenHash: sha256Hex(invite.tokenRaw),
+          tokenHash: hashOpaqueToken(invite.tokenRaw),
           expiresAt: invite.expiresAt,
           maxUses: 1,
           status: invite.status,
@@ -607,7 +644,7 @@ async function seed(): Promise<void> {
       await routerDb
         .insert(credentialRoutes)
         .values({
-          credentialHash: sha256Hex(invite.tokenRaw),
+          credentialHash: hashOpaqueToken(invite.tokenRaw),
           kind: 'INVITATION',
           tenantId: TENANT_ID,
         })
@@ -956,7 +993,7 @@ async function seed(): Promise<void> {
     await insertDemoGraph(tenantDb, graph);
 
     // --- Report ------------------------------------------------------------
-    printReport(graph, removed);
+    printReport(graph, removed, issuer, seededIdentities);
   } finally {
     await routerPool.end();
     await tenantPool.end();
@@ -1241,7 +1278,12 @@ function scoreOf(
  * The report the presenter reads off the terminal. Spanish labels: the demo
  * is shown in front of an audience.
  */
-function printReport(graph: ResolvedDemoGraph, removed: RemovedContent): void {
+function printReport(
+  graph: ResolvedDemoGraph,
+  removed: RemovedContent,
+  issuer: string | null,
+  seededIdentities: SeededHumanIdentity[] | null
+): void {
   const line = '═'.repeat(78);
   const thin = '─'.repeat(78);
 
@@ -1426,6 +1468,26 @@ function printReport(graph: ResolvedDemoGraph, removed: RemovedContent): void {
       `  Invitación EXPIRED de ejemplo (${DEMO_INVITATIONS[1].email}) — el ` +
       'cleanup (v6/TASK-09) debe contarla.\n'
   );
+
+  // --- T8 (D-3): the login-reachable identity state ----------------------
+  if (issuer && seededIdentities) {
+    console.log(
+      '\n  IDENTIDAD DE DEMOSTRACIÓN — reachable por login real (T8/D-3):\n' +
+        `    realm sembrado: ${issuer}\n` +
+        seededIdentities
+          .map((s) => {
+            const identity = DEV_IDENTITIES[s.name];
+            return (
+              `    ${DEV_HANDLES[s.name]} — subject "${identity.subject}", ` +
+              `email ${identity.email} (vault + external identity + link listos)`
+            );
+          })
+          .join('\n') +
+        '\n  Un login OIDC sobre uno de estos subjects encuentra la fila\n' +
+        '  sembrada (no duplica el usuario). Los SYSTEM_AGENT (agent,\n' +
+        '  embedder) no tienen par de IdP: se mintean, nunca inician sesión.\n'
+    );
+  }
 }
 
 /** `RELATES_TO` → `se relaciona con`. */

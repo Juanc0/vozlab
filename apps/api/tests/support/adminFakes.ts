@@ -462,8 +462,13 @@ export function makeJoinCodeRepository(
       rows.set(row.id, row);
       return row;
     },
-    async list(workspaceId) {
-      return [...rows.values()].filter((row) => row.workspaceId === workspaceId);
+    async list(workspaceId, _tid, _tx, purpose) {
+      // Mirrors the adapter's SQL: the optional purpose filter applies.
+      return [...rows.values()].filter(
+        (row) =>
+          row.workspaceId === workspaceId &&
+          (purpose === undefined || row.purpose === purpose)
+      );
     },
     async findById(id) {
       return rows.get(id) ?? null;

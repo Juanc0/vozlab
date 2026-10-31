@@ -254,7 +254,11 @@ describe('RotateJoinCodeUseCase', () => {
   function makeRotateRepo(initial: WorkspaceJoinCodeRecord[]) {
     const rows = new Map(initial.map((r) => [r.id, r]));
     const revokes: string[] = [];
-    const listCalls: Array<{ workspaceId: string; tx?: unknown }> = [];
+    const listCalls: Array<{
+      workspaceId: string;
+      tx?: unknown;
+      purpose?: string;
+    }> = [];
     const creates: Array<{
       workspaceId: string;
       codeHash: string;
@@ -268,9 +272,19 @@ describe('RotateJoinCodeUseCase', () => {
     let seq = rows.size;
     return {
       repo: {
-        async list(workspaceId: string, _tid: string, tx?: unknown) {
-          listCalls.push({ workspaceId, tx });
-          return [...rows.values()].filter((r) => r.workspaceId === workspaceId);
+        async list(
+          workspaceId: string,
+          _tid: string,
+          tx?: unknown,
+          purpose?: string
+        ) {
+          listCalls.push({ workspaceId, tx, purpose });
+          // Mirrors the adapter: the purpose filter runs in the query.
+          return [...rows.values()].filter(
+            (r) =>
+              r.workspaceId === workspaceId &&
+              (purpose === undefined || r.purpose === purpose)
+          );
         },
         async revoke(id: string) {
           revokes.push(id);
@@ -342,6 +356,8 @@ describe('RotateJoinCodeUseCase', () => {
     expect(fake.listCalls[0]).toMatchObject({
       workspaceId: WORKSPACE_ID,
       tx: TX_SENTINEL,
+      // T8 carry-over: the WORKSPACE purpose filter is passed INTO the query.
+      purpose: 'WORKSPACE',
     });
 
     // Only the most recent NON-revoked row dies; already-revoked history

@@ -931,6 +931,15 @@ Identity/auth survivors (promoted from the archived v5/v6 task trees and
   staging build (TASK-12.3 remainder; runbook `docs/ops/production-deployment.md`).
 - Cleanup cron: wire OR formally decline the scheduled trigger for
   `POST /admin/cleanup` (manual endpoint + UI exist).
+- Guest-cleanup sweep is route-only (T7 finding, identity-consolidation):
+  `removeInactiveGuests` exists and is proven, but no scheduled trigger calls
+  it — stale `ANONYMOUS_EVENT` accounts live until an admin hits
+  `/admin/cleanup`. Decide cron vs on-login lazy sweep.
+- Event-code re-push has no same-code path (T5 note, identity-consolidation):
+  `db:event-code` always mints a NEW random credential; if the router-route
+  insert fails after the tenant row commits, re-running the CLI creates a
+  second credential rather than re-pushing the route for the first raw code.
+  Accept (the orphan is inert and revocable) or add `--push-route <raw>`.
 - Invitation QR: render the global-invitation URL as QR in admin (v6-11 AC
   half shipped as URL-only); the old two-code QR design
   (`docs/archive/notes/p2-qr-both-codes.md`) is superseded by the single

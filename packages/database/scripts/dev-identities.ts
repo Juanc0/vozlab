@@ -102,6 +102,15 @@ export interface DevIdentityFixture {
   readonly membership: DevMembershipFixture | null;
   /** JWT `type` claim — only present for system agents. */
   readonly agentType?: AgentType;
+  /**
+   * T8 (D-3): the IdP subject the mock/dev OIDC login presents for this
+   * human — the value that lands in `global_users.subject` and
+   * `auth.external_identities.subject`. Deterministic by construction.
+   * SYSTEM_AGENT identities have none: their tokens are minted by
+   * `db:mint-token`, they never log in through a broker, so no IdP pair
+   * exists to seed (identity-consolidation audit P5).
+   */
+  readonly subject?: string;
 }
 
 /**
@@ -129,6 +138,7 @@ export const DEV_IDENTITIES: Readonly<
     email: 'dev-maintainer@example.edu',
     // Tenant administrator (US-00): manages users and every workspace.
     systemRole: 'ADMIN',
+    subject: 'dev-oidc-maintainer',
     membership: Object.freeze({
       id: '55555555-5555-4555-8555-555555555555',
       role: 'ADMIN',
@@ -142,6 +152,7 @@ export const DEV_IDENTITIES: Readonly<
     fullName: 'Dev Moderator',
     email: 'dev-moderator@example.edu',
     systemRole: 'MODERATOR',
+    subject: 'dev-oidc-moderator',
     membership: Object.freeze({
       id: '55555555-5555-4555-8555-555555555556',
       role: 'MODERATOR',
@@ -155,6 +166,7 @@ export const DEV_IDENTITIES: Readonly<
     fullName: 'Dev Member',
     email: 'dev-member@example.edu',
     systemRole: 'USER',
+    subject: 'dev-oidc-member',
     membership: Object.freeze({
       id: '55555555-5555-4555-8555-555555555557',
       role: 'MEMBER',
@@ -192,4 +204,18 @@ export const DEV_IDENTITY_NAMES: readonly DevIdentityName[] = [
   'member',
   'agent',
   'embedder',
+];
+
+/** The three human personas — the ones with a broker login and an IdP pair. */
+export type DevHumanName = 'maintainer' | 'moderator' | 'member';
+
+/**
+ * T8 (D-3): humans only. The seed writes the login-reachable identity state
+ * for exactly these; the `SYSTEM_AGENT` identities (agent, embedder) are
+ * intentionally absent — they are minted, never logged in.
+ */
+export const DEV_HUMAN_NAMES: readonly DevHumanName[] = [
+  'maintainer',
+  'moderator',
+  'member',
 ];

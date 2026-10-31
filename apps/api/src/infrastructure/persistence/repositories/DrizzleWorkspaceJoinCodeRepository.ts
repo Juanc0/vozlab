@@ -58,13 +58,21 @@ export class DrizzleWorkspaceJoinCodeRepository implements IWorkspaceJoinCodeRep
   async list(
     workspaceId: string,
     tid: string,
-    tx?: DbTransaction
+    tx?: DbTransaction,
+    purpose?: JoinCodePurpose
   ): Promise<WorkspaceJoinCodeRecord[]> {
     const db = await this.client(tid, tx);
     const rows = await db
       .select()
       .from(workspaceJoinCodes)
-      .where(eq(workspaceJoinCodes.workspaceId, workspaceId));
+      .where(
+        purpose
+          ? and(
+              eq(workspaceJoinCodes.workspaceId, workspaceId),
+              eq(workspaceJoinCodes.purpose, purpose)
+            )
+          : eq(workspaceJoinCodes.workspaceId, workspaceId)
+      );
     return rows.map((r) => this.toRecord(r));
   }
 

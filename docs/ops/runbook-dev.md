@@ -105,6 +105,30 @@ Idempotent. Creates the `sabana` tenant, the `general` workspace
 ontology classes `Problem`, `Idea`, `Resource` and one example data source
 (`dev-minutes-2026`).
 
+**Login-reachable identity state (T8 / D-3).** For each of the three HUMAN
+personas (`dev-maintainer`, `dev-moderator`, `dev-member`) the seed now
+writes the *same* state a real F1 OIDC login leaves behind, so a login on a
+seeded subject **finds the seeded row instead of JIT-creating a duplicate**:
+
+- a router `global_users` vault row — `issuer` taken from `OIDC_ISSUER`
+  (never hardcoded), the persona's `subject`, a peppered `email_hash`
+  (`EMAIL_PEPPER`, DEC-4) and `full_name`;
+- the tenant `auth.users` row with `global_user_id` pointing at that vault
+  row, and `handle` set to the value `deriveHandle` will COALESCE onto
+  (the email's local-part);
+- a tenant `auth.external_identities(issuer, subject, provider_kind)` pair —
+  the sole external-identity store (audit D-2);
+- an ACTIVE `global_user_tenants` link.
+
+The two `SYSTEM_AGENT` identities (`agent`, `embedder`) carry **no** IdP
+pair on purpose: their tokens are minted (`db:mint-token`) and they never
+log in through a broker (audit P5 note). The personas' subjects are
+`dev-oidc-maintainer` / `dev-oidc-moderator` / `dev-oidc-member`; signing in
+through the mock/Zitadel path with one of those subjects (and the seeded
+`dev-<role>@example.edu` email) resolves the existing account. If
+`OIDC_ISSUER` is not set the seed **skips** this block and warns — the
+graph/credentials still seed, but the humans would not be login-reachable.
+
 It also writes the **demo graph**: 24 nodes and 35 relations in Spanish,
 arranged in three independent clusters — *movilidad y transporte*, *espacios
 y accesibilidad* and *vida académica y bienestar* — plus 4 proposals, 3

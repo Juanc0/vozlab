@@ -26,7 +26,7 @@
  *
  * Defaults: `--tenant sabana`, the seeded dev workspace, 7 days, unlimited uses.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import {
@@ -35,6 +35,7 @@ import {
   tenantConnections,
   tenants,
 } from '../src/index.js';
+import { hashOpaqueToken } from './token-hash.js';
 import {
   TENANT_SLUG,
   WORKSPACE_ID,
@@ -212,9 +213,7 @@ async function resolveTenant(client: { db: ReturnType<typeof createRouterDrizzle
  * hash itself.
  */
 function credentialHashOf(value: string): string {
-  return HASH_RE.test(value)
-    ? value.toLowerCase()
-    : createHash('sha256').update(value).digest('hex');
+  return HASH_RE.test(value) ? value.toLowerCase() : hashOpaqueToken(value);
 }
 
 async function mint(args: Args): Promise<void> {
@@ -249,7 +248,7 @@ async function mint(args: Args): Promise<void> {
       }
 
       const rawCode = `${RAW_CODE_PREFIX}${randomBytes(18).toString('base64url')}`;
-      const codeHash = createHash('sha256').update(rawCode).digest('hex');
+      const codeHash = hashOpaqueToken(rawCode);
       const expiresAt = new Date(Date.now() + args.days * DAY_MS);
 
       // TENANT FIRST (DEC-3 sequencing): the authority row is the EVENT-
@@ -346,6 +345,15 @@ async function revoke(args: Args, presented: string): Promise<void> {
         [codeHash]
       );
       if (!updated.rowCount) {
+        // Distinguish the two misses (T5 carry-over): when the directory
+        // DELETE above removed a row but this tenant has no matching EVENT
+        // credential, the revoke cleaned up a DANGLING ROUTE — a real action
+        // — rather than doing nothing at all.
+        if (deleted.length > 0) {
+          fail(
+            `Stale route removed; no tenant credential found — hash ${codeHash} had a directory entry in tenant "${tenant.slug}" but no EVENT row in auth.workspace_join_codes. The code is un-redeemable either way.`
+          );
+        }
         fail(
           `No EVENT credential with hash ${codeHash} exists in tenant "${tenant.slug}" — nothing was revoked. Present the raw code or its 64-hex SHA-256.`
         );

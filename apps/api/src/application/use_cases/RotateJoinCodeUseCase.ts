@@ -57,8 +57,16 @@ export class RotateJoinCodeUseCase {
     const created = await this.uow.runInTransaction(input.tid, async (tx) => {
       // T4-M2: the current-row read runs INSIDE the transaction (same tx
       // handle), so a concurrent rotation cannot be missed and the
-      // revoke+insert pair is serialized on the real state.
-      const rows = await this.codeRepo.list(input.workspaceId, input.tid, tx);
+      // revoke+insert pair is serialized on the real state. The WORKSPACE
+      // purpose filter runs in SQL (T8 carry-over): the rotation manages
+      // workspace credentials only and never pulls the EVENT class across
+      // the boundary.
+      const rows = await this.codeRepo.list(
+        input.workspaceId,
+        input.tid,
+        tx,
+        'WORKSPACE'
+      );
       const current = mostRecentActive(rows);
       if (current) {
         await this.codeRepo.revoke(current.id, input.tid, tx);
@@ -105,9 +113,9 @@ export class RotateJoinCodeUseCase {
 }
 
 /**
- * The workspace's most recent non-revoked WORKSPACE-purpose row, or null
- * when it has none (DEC-3: EVENT-class rows are a different credential and
- * rotation leaves them alone).
+ * The workspace's most recent non-revoked row among the queried ones
+ * (DEC-3: the EVENT class never reaches this query anymore — the purpose
+ * filter runs in the SQL statement of `list`, T8 carry-over).
  */
 function mostRecentActive(
   rows: WorkspaceJoinCodeRecord[]
@@ -115,7 +123,6 @@ function mostRecentActive(
   let best: WorkspaceJoinCodeRecord | null = null;
   for (const row of rows) {
     if (row.revokedAt !== null) continue;
-    if (row.purpose !== 'WORKSPACE') continue;
     if (!best || row.createdAt > best.createdAt) best = row;
   }
   return best;

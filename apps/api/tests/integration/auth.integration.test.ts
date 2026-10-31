@@ -11,6 +11,12 @@ import {
 } from 'vitest';
 import { hashEmail } from '../../src/shared/auth/refreshToken.js';
 import {
+  DEV_HANDLES,
+  DEV_IDENTITIES,
+  TENANT_ID,
+} from '../../../../packages/database/scripts/dev-identities.js';
+import { seedHumanIdentity } from '../../../../packages/database/scripts/seed-identities.js';
+import {
   startMockOidcProvider,
   type MockOidcIdentity,
   type MockOidcProvider,
@@ -414,6 +420,180 @@ describe('auth integration', () => {
       [identity.sub]
     );
     expect(users.rows[0].count).toBe(0);
+  });
+
+  // --- T8 (D-3): seeded identities are login-reachable --------------------
+
+  it('a real F1 login on a SEEDED subject finds the seeded user (audit P5)', async () => {
+    // ISSUER TRAP (T8 ruling 6, binding): this process's `OIDC_ISSUER` is
+    // the ephemeral mock realm, while the volume's `db:seed:dev` used the
+    // issuer its `.env` had. The test therefore does NOT depend on
+    // pre-seeded vault rows — it runs the EXPORTED per-person seed routine
+    // IN-PROCESS first (issuer from live `process.env`), so CI and local
+    // execute identically. Pre-T8 this test fails: without the seeded
+    // (issuer, subject) pair the login JITs a duplicate `auth.users` row.
+    const issuer = process.env.OIDC_ISSUER as string;
+    const persona = DEV_IDENTITIES.maintainer;
+    const subject = persona.subject as string;
+    const handle = DEV_HANDLES.maintainer as string;
+
+    // Snapshot the pointers this run moves, restored in the `finally` so
+    // the dev volume ends exactly as it started (local==CI hygiene).
+    const prior = await tenantPool.query(
+      'select global_user_id from auth.users where id = $1',
+      [persona.id]
+    );
+    const priorGlobalUserId =
+      (prior.rows[0]?.global_user_id as string | null) ?? null;
+    const priorLink = await routerPool.query(
+      `select global_user_id from global_user_tenants
+        where tenant_id = $1 and tenant_user_id = $2`,
+      [tenantId, persona.id]
+    );
+    const priorLinkVaultId =
+      (priorLink.rows[0]?.global_user_id as string | null) ?? null;
+
+    const seeded = await seedHumanIdentity(
+      {
+        routerPool,
+        tenantPool,
+        tenantId: TENANT_ID,
+        issuer,
+        emailPepper: process.env.EMAIL_PEPPER as string,
+      },
+      'maintainer'
+    );
+
+    const vaultBefore = await routerPool.query(
+      `select id, last_login_at, email_hash, full_name, email_verified
+         from global_users where issuer = $1 and subject = $2`,
+      [issuer, subject]
+    );
+    expect(vaultBefore.rowCount).toBe(1);
+    expect(vaultBefore.rows[0].id).toBe(seeded.globalUserId);
+
+    const tokenStart = new Date();
+    try {
+      const callback = await completeLogin(
+        {
+          sub: subject,
+          email: persona.email,
+          emailVerified: true,
+          name: persona.fullName,
+          tenantKey: 'sabana',
+        },
+        '/'
+      );
+      expect(callback.headers.get('location')).toBe(`${WEB_ORIGIN}/`);
+      const cookie = refreshCookie(callback);
+
+      // Exactly ONE tenant user for the seeded handle — and it is the
+      // seeded row, not a JIT duplicate. The handle survives because it
+      // equals `deriveHandle`'s value for this persona (ruling 4).
+      const userRows = await tenantPool.query(
+        'select id, global_user_id from auth.users where handle = $1',
+        [handle]
+      );
+      expect(userRows.rowCount).toBe(1);
+      expect(userRows.rows[0].id).toBe(persona.id);
+      expect(userRows.rows[0].global_user_id).toBe(seeded.globalUserId);
+
+      // The external-identity pair is not duplicated and still points at
+      // the seeded user (pre-T8 this row did not exist at all).
+      const extRows = await tenantPool.query(
+        'select user_id from auth.external_identities where issuer = $1 and subject = $2',
+        [issuer, subject]
+      );
+      expect(extRows.rowCount).toBe(1);
+      expect(extRows.rows[0].user_id).toBe(persona.id);
+
+      // The vault row was UPDATED (`last_login_at` stamped by the login),
+      // never inserted: same id, still exactly one row.
+      const vaultAfter = await routerPool.query(
+        'select id, last_login_at from global_users where issuer = $1 and subject = $2',
+        [issuer, subject]
+      );
+      expect(vaultAfter.rowCount).toBe(1);
+      expect(vaultAfter.rows[0].id).toBe(seeded.globalUserId);
+      expect(vaultAfter.rows[0].last_login_at).not.toBeNull();
+      if (vaultBefore.rows[0].last_login_at !== null) {
+        expect(
+          new Date(vaultAfter.rows[0].last_login_at).getTime()
+        ).toBeGreaterThan(
+          new Date(vaultBefore.rows[0].last_login_at).getTime()
+        );
+      }
+
+      // The seeded ACTIVE link survived the login in the sabana tenant.
+      const linkRows = await routerPool.query(
+        `select status, tenant_user_id from global_user_tenants
+          where global_user_id = $1 and tenant_id = $2`,
+        [seeded.globalUserId, tenantId]
+      );
+      expect(linkRows.rowCount).toBe(1);
+      expect(linkRows.rows[0]).toMatchObject({
+        status: 'ACTIVE',
+        tenant_user_id: persona.id,
+      });
+
+      // A working session in the sabana tenant: the seeded memberships of
+      // the person (not an orphan JIT account) answer `/auth/me`.
+      const refresh = await refreshSession(cookie);
+      expect(refresh.status).toBe(200);
+      const session = (await refresh.json()) as {
+        accessToken: string;
+        user: { id: string };
+      };
+      expect(session.user.id).toBe(persona.id);
+      const meResponse = await me(session.accessToken);
+      expect(meResponse.status).toBe(200);
+      const meBody = (await meResponse.json()) as {
+        workspaces: Array<{ id: string; role: string }>;
+      };
+      expect(meBody.workspaces).toContainEqual(
+        expect.objectContaining({ id: workspaceId, role: 'ADMIN' })
+      );
+    } finally {
+      // Undo every row the mock-issuer run wrote and restore the two moved
+      // pointers, so the dev volume keeps the state its own seed issued.
+      await tenantPool.query(
+        'delete from auth.refresh_tokens where user_id = $1 and created_at >= $2',
+        [persona.id, tokenStart]
+      );
+      await routerPool.query(
+        'delete from global_user_events where global_user_id = $1',
+        [seeded.globalUserId]
+      );
+      await tenantPool.query(
+        'delete from auth.external_identities where issuer = $1 and subject = $2',
+        [issuer, subject]
+      );
+      await routerPool.query(
+        'delete from global_user_tenants where global_user_id = $1',
+        [seeded.globalUserId]
+      );
+      await routerPool.query('delete from global_users where id = $1', [
+        seeded.globalUserId,
+      ]);
+      await tenantPool.query(
+        'update auth.users set global_user_id = $2 where id = $1',
+        [persona.id, priorGlobalUserId]
+      );
+      if (
+        priorLinkVaultId !== null &&
+        priorLinkVaultId !== seeded.globalUserId
+      ) {
+        await routerPool.query(
+          `insert into global_user_tenants
+             (global_user_id, tenant_id, tenant_user_id, status)
+           values ($1, $2, $3, 'ACTIVE')
+           on conflict (tenant_id, tenant_user_id)
+           do update set global_user_id = excluded.global_user_id,
+                         status = 'ACTIVE'`,
+          [priorLinkVaultId, tenantId, persona.id]
+        );
+      }
+    }
   });
 
   it('redeems a tenant-local invitation when the IdP email differs only in case/whitespace (DEC-4 end-to-end)', async () => {
