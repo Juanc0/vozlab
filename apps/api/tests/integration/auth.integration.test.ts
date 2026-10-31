@@ -438,7 +438,11 @@ describe('auth integration', () => {
     const handle = DEV_HANDLES.maintainer as string;
 
     // Snapshot the pointers this run moves, restored in the `finally` so
-    // the dev volume ends exactly as it started (local==CI hygiene).
+    // the dev volume ends exactly as it started (local==CI hygiene). The
+    // timestamps are snapshotted as TEXT, not `pg` `Date` objects: JS Dates
+    // are millisecond-only, so restoring through them truncates microseconds
+    // (`2026-10-31 02:15:07.236793+00` → `…236+00`). The restore SQL casts
+    // the text back with `::timestamptz`.
     const prior = await tenantPool.query(
       'select global_user_id from auth.users where id = $1',
       [persona.id]
@@ -446,7 +450,8 @@ describe('auth integration', () => {
     const priorGlobalUserId =
       (prior.rows[0]?.global_user_id as string | null) ?? null;
     const priorLink = await routerPool.query(
-      `select global_user_id, status, first_seen_at from global_user_tenants
+      `select global_user_id, status, first_seen_at::text as first_seen_at
+         from global_user_tenants
         where tenant_id = $1 and tenant_user_id = $2`,
       [tenantId, persona.id]
     );
@@ -455,34 +460,34 @@ describe('auth integration', () => {
     const priorLinkStatus =
       (priorLink.rows[0]?.status as string | null) ?? null;
     const priorLinkFirstSeenAt =
-      (priorLink.rows[0]?.first_seen_at as Date | string | null) ?? null;
+      (priorLink.rows[0]?.first_seen_at as string | null) ?? null;
     // The vault row this run would write under the mock issuer. Present on
     // CI (the provision seed uses the same `OIDC_ISSUER` as this suite) and
     // absent locally (the dev volume's seed ran under its `.env` realm); the
     // `finally` branches on it.
     const priorIssuerVault = await routerPool.query(
-      `select id, last_login_at, picture
+      `select id, last_login_at::text as last_login_at, picture
          from global_users where issuer = $1 and subject = $2`,
       [issuer, subject]
     );
     const priorIssuerVaultId =
       (priorIssuerVault.rows[0]?.id as string | null) ?? null;
     const priorIssuerLastLoginAt =
-      (priorIssuerVault.rows[0]?.last_login_at as Date | string | null) ?? null;
+      (priorIssuerVault.rows[0]?.last_login_at as string | null) ?? null;
     const priorIssuerPicture =
       (priorIssuerVault.rows[0]?.picture as string | null) ?? null;
     // The login stamps the external identity's `last_login_at`; capture it
     // (and whether the pair pre-existed at all) so the CI-parity branch can
     // restore it exactly. Locally the pair does not pre-exist.
     const priorExternalIdentity = await tenantPool.query(
-      `select last_login_at from auth.external_identities
+      `select last_login_at::text as last_login_at
+         from auth.external_identities
         where issuer = $1 and subject = $2`,
       [issuer, subject]
     );
     const priorExternalIdentityExisted = priorExternalIdentity.rowCount === 1;
     const priorExternalIdentityLastLoginAt =
-      (priorExternalIdentity.rows[0]?.last_login_at as Date | string | null) ??
-      null;
+      (priorExternalIdentity.rows[0]?.last_login_at as string | null) ?? null;
 
     const seedOptions = {
       routerPool,
@@ -631,14 +636,14 @@ describe('auth integration', () => {
         // IdP's value, which the mock does not assert.
         const reseeded = await seedHumanIdentity(seedOptions, 'maintainer');
         await routerPool.query(
-          'update global_users set last_login_at = $2, picture = $3 where id = $1',
+          'update global_users set last_login_at = $2::timestamptz, picture = $3 where id = $1',
           [reseeded.globalUserId, priorIssuerLastLoginAt, priorIssuerPicture]
         );
         if (priorExternalIdentityExisted) {
           // Only when the pair pre-existed: locally the row this run created
           // is deleted below, so there is no prior timestamp to restore.
           await tenantPool.query(
-            `update auth.external_identities set last_login_at = $3
+            `update auth.external_identities set last_login_at = $3::timestamptz
               where issuer = $1 and subject = $2`,
             [issuer, subject, priorExternalIdentityLastLoginAt]
           );
@@ -681,11 +686,12 @@ describe('auth integration', () => {
           [priorLinkVaultId, tenantId, persona.id]
         );
         // Re-inserting the link resets `status`/`first_seen_at` to their
-        // column defaults; restore the snapshotted values. `last_seen_at`
+        // column defaults; restore the snapshotted values (`first_seen_at`
+        // round-trips as text so its microseconds survive). `last_seen_at`
         // (vault and link) is the only timestamp the seed/login intentionally
         // moves and is not restored.
         await routerPool.query(
-          `update global_user_tenants set status = $3, first_seen_at = $4
+          `update global_user_tenants set status = $3, first_seen_at = $4::timestamptz
             where tenant_id = $1 and tenant_user_id = $2`,
           [tenantId, persona.id, priorLinkStatus, priorLinkFirstSeenAt]
         );
