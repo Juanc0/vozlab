@@ -316,7 +316,10 @@ async function revoke(args: Args, presented: string): Promise<void> {
     const { tenant, connection } = await resolveTenant(client, args.tenant);
 
     // ROUTE FIRST (audit D-5): kill the directory entry before the
-    // authority row. A missing route is harmless — routing is not
+    // authority row. The delete is TENANT-SCOPED: a wrong-tenant invocation
+    // must never remove another tenant's route (and the "had a directory
+    // entry in tenant X" message below only tells the truth if the row
+    // belonged to X). A missing route is harmless — routing is not
     // authority (ADR-0046), and the tenant row revocation below is the
     // state that matters.
     const deleted = await client.db
@@ -324,7 +327,8 @@ async function revoke(args: Args, presented: string): Promise<void> {
       .where(
         and(
           eq(credentialRoutes.credentialHash, codeHash),
-          eq(credentialRoutes.kind, 'EVENT')
+          eq(credentialRoutes.kind, 'EVENT'),
+          eq(credentialRoutes.tenantId, tenant.id)
         )
       )
       .returning({ hash: credentialRoutes.credentialHash });

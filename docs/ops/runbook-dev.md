@@ -106,9 +106,10 @@ ontology classes `Problem`, `Idea`, `Resource` and one example data source
 (`dev-minutes-2026`).
 
 **Login-reachable identity state (T8 / D-3).** For each of the three HUMAN
-personas (`dev-maintainer`, `dev-moderator`, `dev-member`) the seed now
-writes the *same* state a real F1 OIDC login leaves behind, so a login on a
-seeded subject **finds the seeded row instead of JIT-creating a duplicate**:
+personas (`dev-maintainer`, `dev-moderator`, `dev-member`) the seed writes,
+for the seeded `(issuer, subject)` pair, the *same* state the F1 OIDC callback
+leaves behind (row counts, pointers and login-stamped fields), so a login on
+a seeded subject **finds the seeded row instead of JIT-creating a duplicate**:
 
 - a router `global_users` vault row — `issuer` taken from `OIDC_ISSUER`
   (never hardcoded), the persona's `subject`, a peppered `email_hash`
@@ -123,11 +124,14 @@ seeded subject **finds the seeded row instead of JIT-creating a duplicate**:
 The two `SYSTEM_AGENT` identities (`agent`, `embedder`) carry **no** IdP
 pair on purpose: their tokens are minted (`db:mint-token`) and they never
 log in through a broker (audit P5 note). The personas' subjects are
-`dev-oidc-maintainer` / `dev-oidc-moderator` / `dev-oidc-member`; signing in
-through the mock/Zitadel path with one of those subjects (and the seeded
-`dev-<role>@example.edu` email) resolves the existing account. If
-`OIDC_ISSUER` is not set the seed **skips** this block and warns — the
-graph/credentials still seed, but the humans would not be login-reachable.
+`dev-oidc-maintainer` / `dev-oidc-moderator` / `dev-oidc-member`. The
+integration suite's **mock realm asserts exactly these subjects** — that is
+the F1 seeded-subject acceptance test. The dev **Zitadel** realm does not:
+it mints its own numeric `sub` ids, so a real Zitadel login JIT-creates a
+separate account until the realm is configured with these ids (tracked in
+`ROADMAP.md`). If `OIDC_ISSUER` is not set the seed **skips** this block and
+warns — the graph/credentials still seed, but the humans would not be
+login-reachable.
 
 It also writes the **demo graph**: 24 nodes and 35 relations in Spanish,
 arranged in three independent clusters — *movilidad y transporte*, *espacios

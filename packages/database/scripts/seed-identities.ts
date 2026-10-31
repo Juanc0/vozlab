@@ -124,49 +124,66 @@ export async function seedHumanIdentity(
     throw new Error(`vault upsert returned no row for ${opts.issuer}/${subject}`);
   }
 
-  // (b) Tenant user — the fixed-id row seed-dev writes anyway, healed with
-  // the vault pointer. The base fields stay canonical (same rule as the bulk
-  // insert in seed-dev). Handle coherence (ruling 4): the seeded handle
-  // equals `deriveHandle`'s value for this persona (email local-part; no
-  // preferred_username in the dev realm), and the F1 update path COALESCEs —
-  // so a login on this subject lands ON this handle instead of colliding.
-  const [user] = await tenantDb
-    .insert(users)
-    .values({
-      id: identity.id,
-      provider: 'OIDC_INSTITUTIONAL',
-      authorHash: identity.authorHash,
-      fullName: identity.fullName,
-      handle: DEV_HANDLES[name] ?? null,
-      systemRole: identity.systemRole,
-      globalUserId: vault.id,
-    })
-    .onConflictDoUpdate({
-      target: users.id,
-      set: {
-        fullName: sql`excluded.full_name`,
-        handle: sql`excluded.handle`,
-        systemRole: sql`excluded.system_role`,
+  // (b)+(c) commit in ONE tenant transaction: the `auth.users.global_user_id`
+  // pointer and the (issuer, subject) pair must land together — a crash
+  // between them would leave the vault un-linked or the pair pointing at a
+  // stale user. The router vault (a) and link (d) live in the OTHER physical
+  // database and remain separate by design (no cross-DB transaction).
+  const user = await tenantDb.transaction(async (tx) => {
+    // (b) Tenant user — the fixed-id row seed-dev writes anyway, healed with
+    // the vault pointer. The base fields stay canonical (same rule as the bulk
+    // insert in seed-dev). Handle coherence (ruling 4): the seeded handle
+    // equals `deriveHandle`'s value for this persona (email local-part; no
+    // preferred_username in the dev realm), and the F1 update path COALESCEs —
+    // so a login on this subject lands ON this handle instead of colliding.
+    const [upserted] = await tx
+      .insert(users)
+      .values({
+        id: identity.id,
+        provider: 'OIDC_INSTITUTIONAL',
+        authorHash: identity.authorHash,
+        fullName: identity.fullName,
+        handle: DEV_HANDLES[name] ?? null,
+        systemRole: identity.systemRole,
         globalUserId: vault.id,
-      },
-    })
-    .returning({ id: users.id });
-  if (!user) {
-    throw new Error(`tenant user upsert returned no row for "${name}"`);
-  }
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          fullName: sql`excluded.full_name`,
+          handle: sql`excluded.handle`,
+          systemRole: sql`excluded.system_role`,
+          globalUserId: vault.id,
+        },
+      })
+      .returning({ id: users.id });
+    if (!upserted) {
+      throw new Error(`tenant user upsert returned no row for "${name}"`);
+    }
 
-  // (c) External identity — the key the F1 path looks up first. A fresh row
-  // is inserted; an existing one (this persona already logged in under this
-  // issuer) is left alone, duplicate-safe by the (issuer, subject) unique.
-  await tenantDb
-    .insert(externalIdentities)
-    .values({
-      userId: user.id,
-      issuer: opts.issuer,
-      subject,
-      providerKind: 'OIDC_INSTITUTIONAL',
-    })
-    .onConflictDoNothing();
+    // (c) External identity — the key the F1 path looks up first. The upsert
+    // also REPAIRS a damaged pair (audit P5): a `(issuer, subject)` row left
+    // on a JIT orphan by a pre-T8 login is re-pointed onto the canonical
+    // persona instead of being left alone, so a re-seed heals the duplicate
+    // trap the migration inherited.
+    await tx
+      .insert(externalIdentities)
+      .values({
+        userId: upserted.id,
+        issuer: opts.issuer,
+        subject,
+        providerKind: 'OIDC_INSTITUTIONAL',
+      })
+      .onConflictDoUpdate({
+        target: [externalIdentities.issuer, externalIdentities.subject],
+        set: {
+          userId: upserted.id,
+          providerKind: 'OIDC_INSTITUTIONAL',
+        },
+      });
+
+    return upserted;
+  });
 
   // (d) Router link vault↔tenant user, ACTIVE. Keyed on (tenant_id,
   // tenant_user_id) — NOT the API's (global_user_id, tenant_id) arbiter: one

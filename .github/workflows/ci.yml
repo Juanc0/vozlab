@@ -87,6 +87,11 @@ jobs:
           pnpm --filter @vozlab/database db:migrate:router
           pnpm --filter @vozlab/database db:migrate:tenant
           pnpm --filter @vozlab/database db:seed:dev
+          # The seed MUST write the three human vault rows under the issuer
+          # this suite forces: if `OIDC_ISSUER` is dropped or diverges, the F1
+          # seeded-subject test's cleanup branch flips silently (delete
+          # instead of restore) and the seeded identity state disappears.
+          test "$(PGPASSWORD=postgres psql -h localhost -U postgres -d vozlab_router -tAc "select count(*) from global_users where issuer = 'http://127.0.0.1:18080/realms/vozlab'")" -ge 3
 
       - name: Run integration suite
         run: pnpm --filter @vozlab/api test:integration

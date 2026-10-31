@@ -940,6 +940,18 @@ Identity/auth survivors (promoted from the archived v5/v6 task trees and
   insert fails after the tenant row commits, re-running the CLI creates a
   second credential rather than re-pushing the route for the first raw code.
   Accept (the orphan is inert and revocable) or add `--push-route <raw>`.
+- Zitadel dev realm does not assert the seeded `dev-oidc-*` subjects (T8
+  review M3): the integration suite's mock realm proves the login path, but
+  the dev Zitadel realm mints its own numeric `sub`, so a real Zitadel login
+  JIT-creates a separate account. Configure explicit realm user ids in
+  `scripts/setup-zitadel.sh` (if the pinned API allows) or accept the
+  mock-realm-only proof.
+- Multi-issuer link re-anchor uses the wrong unique (T8 review L5):
+  `RouterDatabaseClient.linkGlobalUserTenant` upserts on
+  `(global_user_id, tenant_id)` while `uniq_tenant_user (tenant_id,
+  tenant_user_id)` is the one-link-per-user invariant; a persona with
+  external identities under two issuers can 503 on the second login. Align
+  the arbiter and cover it.
 - Invitation QR: render the global-invitation URL as QR in admin (v6-11 AC
   half shipped as URL-only); the old two-code QR design
   (`docs/archive/notes/p2-qr-both-codes.md`) is superseded by the single
