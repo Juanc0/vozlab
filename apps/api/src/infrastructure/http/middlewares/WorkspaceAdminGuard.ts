@@ -1,7 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { buildError } from '@vozlab/shared-types';
 import { IMembershipRepository } from '../../../domain/ports/IMembershipRepository.js';
-import type { WorkspaceRole } from '../../../domain/ports/IMembershipRepository.js';
 import { IUserRepository } from '../../../domain/ports/IUserRepository.js';
 import { InfrastructureError } from '../../../domain/errors/InfrastructureError.js';
 import { isValidWorkspaceId } from './workspaceId.js';
@@ -80,14 +79,9 @@ export function workspaceAdminGuard(deps: {
 
       // v5: a user may hold several roles in one workspace simultaneously;
       // authorization uses the union of all ACTIVE rows, so a MEMBER+ADMIN
-      // passes even when the first row returned is MEMBER.
-      let roles: WorkspaceRole[] = [];
-      if (deps.membershipRepo.getRoles) {
-        roles = await deps.membershipRepo.getRoles(userId, headerWorkspaceId, tid);
-      } else {
-        const single = await deps.membershipRepo.getRole(userId, headerWorkspaceId, tid);
-        roles = single ? [single] : [];
-      }
+      // passes even when the first row returned is MEMBER. `getRoles` is
+      // required by IMembershipRepository, so there is no fallback.
+      const roles = await deps.membershipRepo.getRoles(userId, headerWorkspaceId, tid);
       if (roles.length === 0) {
         const err = buildError('ERR_UNAUTHORIZED_WORKSPACE_ACCESS');
         return reply.status(err.status).send({ code: err.code, message: err.message });
