@@ -45,6 +45,15 @@
   const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
 
   /**
+   * Routes that stay usable even when the account has no workspace
+   * membership: the request-access surface is the way out of that state,
+   * so the guard must not replace its children with the no-membership card.
+   */
+  const usableWithoutMembership = $derived(
+    page.url.pathname === '/request-access' || page.url.pathname.startsWith('/request-access/')
+  );
+
+  /**
    * The padding of the column of the navigation.
    *
    * The rail is 56 pixels wide and it holds a touch target of 44: the
@@ -226,10 +235,10 @@
     -->
     <div class="min-w-0 {isWorkspace
       ? 'h-full min-h-0'
-      : status === 'no-membership'
+      : status === 'no-membership' && !usableWithoutMembership
         ? ''
         : 'px-4 py-6 sm:px-6 sm:py-8'}">
-      {#if status === 'no-membership'}
+      {#if status === 'no-membership' && !usableWithoutMembership}
         <section class="rounded-card border border-brand-200 bg-brand-100 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
           <div class="flex flex-col items-center px-7 py-3">
             <h1>{t('app.noWorkspaceHeading')}</h1>

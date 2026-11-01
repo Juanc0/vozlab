@@ -156,6 +156,25 @@ describe('the (app) guard', () => {
     expect(goto).not.toHaveBeenCalled();
   });
 
+  it('renders the request-access page even without a membership', async () => {
+    pageState.url = new URL('http://localhost:5173/request-access');
+
+    stubFetch({
+      refresh: () =>
+        json({ accessToken: 'token', expiresAt: '2026-10-19T12:15:00.000Z', user: USER }),
+      me: () => json({ ...USER, workspaces: [] })
+    });
+
+    renderLayout();
+
+    await waitFor(() => {
+      expect(screen.getByText('Page of the app')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/sin acceso a espacios de trabajo/i)).not.toBeInTheDocument();
+    expect(goto).not.toHaveBeenCalled();
+  });
+
   it('renders the application once the session is restored', async () => {
     stubFetch({
       refresh: () =>

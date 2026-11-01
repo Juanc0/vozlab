@@ -363,7 +363,10 @@ the other way round.
   single vertically stacked, horizontally centred block
   (`flex flex-col items-center`) holding only the heading; the `/join`
   action moved to the navigation column and the redundant message text and
-  its `app.noWorkspaceText` key were removed.
+  its `app.noWorkspaceText` key were removed. The request-access route
+  (`/request-access`) stays usable in this state: the guard renders its
+  children there instead of the no-membership card, so the "Solicitar
+  acceso" link in the navigation actually works.
 - The navigation column carries a **join** control next to (below) the
   workspace selector — in expanded mode a full-width secondary button labelled
   `common.joinEvent` ("Unirse a un evento" / "Join an event"), in the rail an
