@@ -941,6 +941,14 @@ Decided, and not to be re-opened without evidence:
 
 - **sidebar-reorder v1** — CLOSED 2026-10-31 (T1–T6 done):
   [docs/archive/plans/sidebar-reorder/v1.md](docs/archive/plans/sidebar-reorder/v1.md)
+
+- **no-workspace-message v1** — OPEN 2026-10-31:
+  [docs/plans/no-workspace-message/v1.md](docs/plans/no-workspace-message/v1.md)
+  — reword and restyle the `no-membership` block of `(app)/+layout.svelte`
+  so it states the signed-in user lacks access to any workspace (without
+  implying an empty tenant) and matches the graph floating bar's padding and
+  card chrome. Horizontal slicing; 5 tasks (T1–T5). Out of scope: the
+  `(auth)/join` branch, component extraction, dark mode.
   — reorder the bottom of `AppSidebar` so the four account/scope controls
   (Workspace → Tenant → Language → Logout) group together at the foot of the
   column, in expanded and rail form. Horizontal slicing; 6 tasks (T1–T6),
