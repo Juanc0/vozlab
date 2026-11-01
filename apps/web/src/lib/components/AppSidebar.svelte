@@ -259,7 +259,11 @@
     spacing the column keeps from the top edge (the padding of the
     column, not a margin of its own).
   -->
-  <div class="flex items-center gap-2.5 {collapsed ? 'justify-center' : ''}">
+  <a
+    href="/"
+    aria-label={title}
+    class="flex items-center gap-2.5 rounded-control {collapsed ? 'justify-center' : ''} hover:opacity-80"
+  >
     <span aria-hidden="true" class="shrink-0 text-accent">
       <svg
         width="32"
@@ -284,7 +288,7 @@
     {:else}
       <span class="text-brand font-semibold leading-none text-text">{title}</span>
     {/if}
-  </div>
+  </a>
 
   <!--
     The toggle of the rail. It is a **quiet** control — the accent is scarce
