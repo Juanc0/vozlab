@@ -898,6 +898,7 @@ export const es = {
     members: 'Miembros',
     access: 'Acceso',
     codes: 'Códigos',
+    eventCodes: 'Códigos de evento',
     save: 'Guardar cambios',
     saved: 'Guardado.',
     loadFailed: 'No se pudo cargar el espacio de trabajo.'

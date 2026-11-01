@@ -833,6 +833,7 @@ export const en: Dictionary<typeof es> = {
     members: 'Members',
     access: 'Access',
     codes: 'Codes',
+    eventCodes: 'Event codes',
     save: 'Save changes',
     saved: 'Saved.',
     loadFailed: 'Could not load the workspace.'

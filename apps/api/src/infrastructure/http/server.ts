@@ -175,7 +175,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     workspaceJoinCodeRepo,
     userRepo,
     membershipRepo,
-    auditLog
+    auditLog,
+    workspaceRepo,
+    routerDb
   );
   const updateWorkspaceJoinCodeUseCase = new UpdateWorkspaceJoinCodeUseCase(
     workspaceJoinCodeRepo,

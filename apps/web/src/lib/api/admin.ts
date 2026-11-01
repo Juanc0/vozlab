@@ -154,7 +154,7 @@ export async function updateAdminWorkspace(
 export async function createJoinCode(
   client: ApiClient,
   workspaceId: string,
-  input: { label?: string | null; expiresAt?: string | null; maxUses?: number | null; autoApprove?: boolean }
+  input: { label?: string | null; expiresAt?: string | null; maxUses?: number | null; autoApprove?: boolean; purpose?: 'WORKSPACE' | 'EVENT' }
 ): Promise<{ id: string; code: string }> {
   return client.request<{ id: string; code: string }>({
     method: 'POST',
@@ -166,12 +166,14 @@ export async function createJoinCode(
 
 export async function listJoinCodes(
   client: ApiClient,
-  workspaceId: string
-): Promise<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>> {
-  const body = await client.request<{ codes: Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }> }>({
+  workspaceId: string,
+  purpose?: 'WORKSPACE' | 'EVENT'
+): Promise<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null; purpose?: string }>> {
+  const body = await client.request<{ codes: Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null; purpose?: string }> }>({
     method: 'GET',
     path: `/workspaces/${workspaceId}/join-codes`,
-    workspace: workspaceId
+    workspace: workspaceId,
+    query: purpose ? { purpose } : undefined
   });
   return body.codes;
 }

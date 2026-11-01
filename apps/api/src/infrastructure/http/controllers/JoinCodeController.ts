@@ -18,7 +18,13 @@ export class JoinCodeController {
     const params = req.params as { workspaceId?: string };
     const workspaceId = params.workspaceId;
     if (!workspaceId) return sendError(reply, 'ERR_VALIDATION_FAILED');
-    const body = (req.body ?? {}) as { label?: string; expiresAt?: string; maxUses?: number; autoApprove?: boolean };
+    const body = (req.body ?? {}) as {
+      label?: string;
+      expiresAt?: string;
+      maxUses?: number;
+      autoApprove?: boolean;
+      purpose?: 'WORKSPACE' | 'EVENT';
+    };
 
     try {
       const result = await this.createCode.execute({
@@ -26,6 +32,7 @@ export class JoinCodeController {
         actorAuthorHash: ctx.authorHash,
         tid: ctx.tid,
         workspaceId,
+        purpose: body.purpose,
         label: body.label ?? null,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
         maxUses: body.maxUses ?? null,
@@ -44,8 +51,9 @@ export class JoinCodeController {
     const workspaceId = params.workspaceId;
     if (!workspaceId) return sendError(reply, 'ERR_VALIDATION_FAILED');
     if (!this.codeRepo) return sendError(reply, 'ERR_VALIDATION_FAILED');
+    const query = (req.query ?? {}) as { purpose?: 'WORKSPACE' | 'EVENT' };
     try {
-      const codes = await this.codeRepo.list(workspaceId, ctx.tid);
+      const codes = await this.codeRepo.list(workspaceId, ctx.tid, undefined, query.purpose);
       return reply.status(200).send({ codes });
     } catch (error) {
       return sendError(reply, mapDomainError(error));
