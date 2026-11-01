@@ -41,6 +41,58 @@ describe('the navigation column', () => {
     expect(screen.queryByRole('banner', { name: 'VozLab' })).not.toBeInTheDocument();
   });
 
+  it('keeps the bottom controls in order: workspace, then language, then sign-out', () => {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    const workspaceSelect = screen.getByRole('combobox', { name: 'Espacio de trabajo' });
+    const localeSelect = screen.getByRole('combobox', { name: 'Idioma' });
+    const signOutButton = screen.getByRole('button', { name: 'Cerrar sesión' });
+
+    // Workspace comes before the language, and the language before the sign-out.
+    expect(
+      workspaceSelect.compareDocumentPosition(localeSelect) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      localeSelect.compareDocumentPosition(signOutButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('projects the same order onto the rail: workspace, then language, then session', () => {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      props: { collapsed: true },
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    const workspaceButton = screen.getByTitle('General');
+    const localeButton = screen.getByTitle('Idioma');
+    const sessionButton = screen.getByTitle('Sesión iniciada');
+
+    expect(
+      workspaceButton.compareDocumentPosition(localeButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      localeButton.compareDocumentPosition(sessionButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('folds into a rail of icons: the name becomes the reading of the screen reader, the mark stays', async () => {
     const { client, session, workspace } = governanceHarness();
 

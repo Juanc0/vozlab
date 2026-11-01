@@ -19,10 +19,12 @@
    * - the **session** becomes a control that opens a menu with the identity
    *   and the sign-out inside it: the identity stays readable, and it is
    *   still announced by the control itself;
-   * - the **language selector** sits at the bottom of the column, just
-   *   **above** the session: it changes the whole application, and the
-   *   sign-out — the way out — is the last thing of the column. Its rail
-   *   version opens the same selector inside its own menu.
+   * - the **bottom of the column** holds, top to bottom: the workspace
+   *   selector, the tenant (institution) switcher, the language selector and
+   *   the session with the sign-out — the way out is the last thing of the
+   *   column. The rail projects the same order with three icon controls
+   *   (workspace, language, session); the tenant lives inside the session
+   *   menu there.
    */
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -220,13 +222,6 @@
       <span class="block truncate text-body font-medium text-text">{displayName}</span>
     </p>
 
-    <!--
-      The institution switcher: when the identity is linked to more than one
-      ACTIVE tenant, the session moves without re-authenticating
-      (v6/TASK-01). Hidden when there is nothing to switch.
-    -->
-    <TenantSwitcher />
-
     <button
       type="button"
       class="btn btn-secondary w-full"
@@ -354,7 +349,27 @@
       controls that open their own menu. Nothing is hidden — the menu
       holds the very same controls the column holds.
     -->
+    <!--
+      The rail: the same bottom order as the column, projected to three
+      icon controls — workspace, then language, then session (logout last).
+      The tenant switcher lives inside the session menu, so it has no icon
+      of its own here.
+    -->
     <div class="mt-auto flex flex-col items-center gap-2 border-t border-rule pt-4">
+      <button
+        type="button"
+        class="grid size-11 place-items-center rounded-control text-body font-semibold text-muted hover:bg-raised hover:text-text"
+        title={activeWorkspace?.name ?? t('workspace.label')}
+        aria-haspopup="dialog"
+        aria-expanded={menu === 'workspace'}
+        onclick={(event) => openMenu('workspace', event)}
+      >
+        <span aria-hidden="true">{workspaceMark}</span>
+        <span class="sr-only">
+          {t('sidebar.workspaceControl', { name: activeWorkspace?.name ?? t('workspace.noneSelected') })}
+        </span>
+      </button>
+
       <button
         type="button"
         class="grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
@@ -386,20 +401,6 @@
 
       <button
         type="button"
-        class="grid size-11 place-items-center rounded-control text-body font-semibold text-muted hover:bg-raised hover:text-text"
-        title={activeWorkspace?.name ?? t('workspace.label')}
-        aria-haspopup="dialog"
-        aria-expanded={menu === 'workspace'}
-        onclick={(event) => openMenu('workspace', event)}
-      >
-        <span aria-hidden="true">{workspaceMark}</span>
-        <span class="sr-only">
-          {t('sidebar.workspaceControl', { name: activeWorkspace?.name ?? t('workspace.noneSelected') })}
-        </span>
-      </button>
-
-      <button
-        type="button"
         class="grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
         title={displayName}
         aria-haspopup="dialog"
@@ -424,15 +425,19 @@
       </button>
     </div>
   {:else}
-    <WorkspaceSelector />
-
     <!--
-      The foot of the column, at the very bottom: the **language** first
-      and the **session** under it. The sign-out is the way out of the
-      application, so it is the last thing of the column — and the
-      language, which changes every screen of it, sits right above.
+      The foot of the column, at the very bottom: the scope, then the
+      institution, then the language, then the way out. The sign-out is the
+      last thing of the column; the language sits above it because it
+      changes every screen; the tenant switcher sits above the language
+      because it is part of the session's identity; the workspace is the
+      scope of the work and comes first.
     -->
     <div class="mt-auto space-y-3 border-t border-rule pt-4">
+      <WorkspaceSelector />
+
+      <TenantSwitcher />
+
       <div>
         <p class="mb-1 text-small text-muted">
           {t('locale.label')}

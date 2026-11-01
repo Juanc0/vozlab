@@ -345,6 +345,12 @@ the other way round.
   `vh`: the chrome of a mobile browser changes the height of `vh`.
 - No horizontal scroll at 320 px. The tables scroll inside their own
   container, never the page.
+- The navigation column's foot holds, top to bottom: the **workspace**
+  selector, the **tenant (institution)** switcher, the **language**
+  selector and the **session** with the sign-out — the way out is the last
+  thing of the column. The rail projects the same order as three icon
+  controls (workspace, language, session); the tenant lives inside the
+  session menu there. Order is locked by `tests/app-sidebar.test.ts`.
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 
