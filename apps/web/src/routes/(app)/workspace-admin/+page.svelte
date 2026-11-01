@@ -29,7 +29,7 @@
   );
 
   // Section navigation.
-  let section = $state<'general' | 'members' | 'access' | 'codes'>('general');
+  let section = $state<'general' | 'members' | 'access' | 'codes' | 'eventCodes'>('general');
 
   // General
   let ws = $state<AdminWorkspaceDto | null>(null);
@@ -69,6 +69,13 @@
   let editExpiresAt = $state('');
   let editAutoApprove = $state(false);
   let savingCode = $state(false);
+
+  // Event codes (only for kind='EVENT' workspaces)
+  let eventCodes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
+  let eventCodesLoading = $state(false);
+  let newEventCodeLabel = $state('');
+  let creatingEventCode = $state(false);
+  let createdEventCode = $state<string | null>(null);
 
   async function loadWorkspace(): Promise<void> {
     if (!canAdmin) return;
@@ -145,11 +152,42 @@
     if (!canAdmin) return;
     codesLoading = true;
     try {
-      codes = await admin.listJoinCodes(api, workspace.currentWorkspaceId);
+      codes = await admin.listJoinCodes(api, workspace.currentWorkspaceId, 'WORKSPACE');
     } catch (e) {
       error = describeFailure(e);
     } finally {
       codesLoading = false;
+    }
+  }
+
+  async function loadEventCodes(): Promise<void> {
+    if (!canAdmin) return;
+    eventCodesLoading = true;
+    try {
+      eventCodes = await admin.listJoinCodes(api, workspace.currentWorkspaceId, 'EVENT');
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      eventCodesLoading = false;
+    }
+  }
+
+  async function createEventCode(): Promise<void> {
+    creatingEventCode = true;
+    error = null;
+    try {
+      const res = await admin.createJoinCode(api, workspace.currentWorkspaceId, {
+        label: newEventCodeLabel || null,
+        purpose: 'EVENT',
+        autoApprove: true
+      });
+      createdEventCode = res.code;
+      newEventCodeLabel = '';
+      await loadEventCodes();
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      creatingEventCode = false;
     }
   }
 
@@ -201,6 +239,7 @@
       loadMembers();
       loadAccess();
       loadCodes();
+      loadEventCodes();
     }
   });
 
@@ -296,6 +335,11 @@
       <button type="button" class="px-3 py-2 text-body font-medium {section === 'codes' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'codes')}>
         {t('workspaceAdmin.codes')}
       </button>
+      {#if ws?.kind === 'EVENT'}
+        <button type="button" class="px-3 py-2 text-body font-medium {section === 'eventCodes' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'eventCodes')}>
+          {t('workspaceAdmin.eventCodes')}
+        </button>
+      {/if}
     </nav>
 
     {#if section === 'general'}
@@ -480,6 +524,39 @@
                     <button type="button" class="btn btn-quiet text-small" onclick={() => (editingCodeId = null)}>{t('common.cancel') ?? 'Cancel'}</button>
                   </form>
                 {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {:else if section === 'eventCodes'}
+      <div class="rounded-card bg-brand-100 p-4 space-y-3">
+        <h2>{t('workspaceAdmin.eventCodes')}</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <input class="field" bind:value={newEventCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
+          <button type="button" class="btn btn-primary text-small" disabled={creatingEventCode} onclick={createEventCode}>
+            {t('admin.createJoinCode') ?? 'Create'}
+          </button>
+        </div>
+        {#if createdEventCode}
+          <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdEventCode}</code></p>
+        {/if}
+        {#if eventCodesLoading}
+          <p>{t('common.loading') ?? 'Loading…'}</p>
+        {:else}
+          <ul class="space-y-2">
+            {#each eventCodes as c (c.id)}
+              <li class="text-small">
+                <div class="flex items-center justify-between gap-2">
+                  <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''} {c.revokedAt ? '(revoked)' : ''}</span>
+                  <span class="flex gap-1">
+                    {#if !c.revokedAt}
+                      <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadEventCodes(); } catch (e) { error = describeFailure(e); } }}>
+                        {t('admin.revoke') ?? 'Revoke'}
+                      </button>
+                    {/if}
+                  </span>
+                </div>
               </li>
             {/each}
           </ul>
