@@ -458,7 +458,7 @@
     <div class="mt-auto space-y-3 border-t border-rule pt-4 pb-4">
       <WorkspaceSelector />
 
-      <a href="/join" class="btn btn-secondary h-auto w-full whitespace-normal leading-tight">
+      <a href="/join" class="btn btn-secondary w-full">
         {t('common.joinEvent')}
       </a>
 
