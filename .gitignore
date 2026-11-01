@@ -32,6 +32,8 @@ __pycache__/
 playwright-report/
 test-results/
 
+# Captured screenshots + HTML baselines (frontend-tooling T3)
+docs/analysis/screenshots/
 # Editor / OS
 .DS_Store
 .idea/

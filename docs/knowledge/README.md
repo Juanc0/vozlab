@@ -13,7 +13,8 @@ reality. When a file is fully absorbed, it moves to `docs/archive/`.
 | [graph-and-ontology-strategy.md](graph-and-ontology-strategy.md) | Ontology governance gaps G1–G9 + state machine, storage-engine comparison, outbox-before-projection rule | `plans/ontology-governance/`, `plans/age-mirror/` |
 | [dependency-lifecycle.md](dependency-lifecycle.md) | Upgrade waves (Fastify 5, node-redis 6, Zod 4, jose), dead-Cytoscape inventory | `plans/upgrade-waves/` |
 | [internationalization-strategy.md](internationalization-strategy.md) | Six-places framework, content-language (lang column) plan, Spanish masking gaps | `plans/i18n-content/` |
-| [security-baseline.md](security-baseline.md) | Threat model, controls-sound checklist, open S-items (S-02/03/04/05/12/15) | each S-item closed → recorded here or in an ADR; the document is the standing audit baseline, not a plan |
+| [frontend-design-tokens.md](frontend-design-tokens.md) | Read-only audit of the Tailwind 4 theme: `@theme` block, colour palette, spacing, typography, breakpoints, dark-mode strategy, motion/elevation, gaps vs. industrial standard | `plans/design-system/` or `plans/frontend-ux/` |
+| [frontend-plan-examples.md](frontend-plan-examples.md) | Three worked examples of opening a small scoped frontend plan (redesign one primitive, refine one screen section, add a new layout shell) | `plans/design-system/`, `plans/frontend-ux/`, `plans/layout-shells/` || [security-baseline.md](security-baseline.md) | Threat model, controls-sound checklist, open S-items (S-02/03/04/05/12/15) | each S-item closed → recorded here or in an ADR; the document is the standing audit baseline, not a plan |
 
 Provenance: carried 2026-10-29 from the frozen `knowledge-transfer/` pack
 (then dated 2026-10-23); files were verified against code the same day — the

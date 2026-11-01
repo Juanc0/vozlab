@@ -403,6 +403,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": "d0c470a07b90936ca77fea9fbe25ab657a5bc1f386eb45b18bb70899df7e6baf"
     },
+    "web-quality-audit": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-quality-audit/SKILL.md",
+      "computedHash": "9be796fc70ff05cf9842327d234b019376dc1abad8d7e3c4e3ea2dab8d8d3deb"
+    },
     "writing-documentation-with-diataxis": {
       "source": "sammcj/agentic-coding",
       "sourceType": "github",

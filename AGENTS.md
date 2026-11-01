@@ -196,3 +196,27 @@ they disagree with the code, **the code wins** — fix the doc.
   `executing-plans` (inline) only when subagents are unavailable or the user
   explicitly asks. Persisted here so `/next-task` and any future plan inherit
   it.
+
+### Frontend work
+- **Skills to load** for any UI work (load via the `skill` tool before
+  coding): `frontend-design`, `design-taste-frontend`, `impeccable`,
+  `ui-craft` (plus its variants `ui-craft-minimal`, `ui-craft-editorial`,
+  `ui-craft-dense-dashboard`), `ui-taste`, `ui-ux-pro-max`,
+  `tailwind-design-system`, `accessibility`, `accessibility-audit`,
+  `playwright-best-practices`, `svelte-code-writer`,
+  `svelte5-best-practices`, `web-quality-audit`. The full frontend tooling
+  inventory lives in
+  `docs/components/web-pwa.md` §Tooling baseline.
+- **MCP usage**: Playwright MCP for screenshots and interaction checks against
+  a running page; Chrome DevTools MCP for DOM inspection and performance
+  profiling. Both are declared in `opencode.json` (enabled).
+- **Capture script**: `pnpm --filter @vozlab/web capture:screenshots` runs
+  `apps/web/scripts/capture.mjs` against a running dev server
+  (`CAPTURE_BASE_URL`, default `http://localhost:5173`), writing PNG + full HTML
+  to `docs/analysis/screenshots/<YYYY-MM-DD>/` at 1440×900 and 390×844.
+- **Evidence rule**: any PR that changes UI must include before/after
+  screenshots in its evidence (captured via the script above or the Playwright
+  MCP). No UI change ships without them.
+- **Example walkthrough**: `docs/knowledge/frontend-plan-examples.md` (T6 of
+  `docs/plans/frontend-tooling/v1.md`) shows how to open a small scoped
+  frontend plan.

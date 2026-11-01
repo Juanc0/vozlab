@@ -22,6 +22,47 @@ layout, and `vite-plugin-pwa` (Workbox + manifest). The PWA is the co-creation
 client: graph exploration, proposals, discussions and votes. It is online-first;
 offline mode is read-only.
 
+## Tooling baseline
+
+Agent harness for frontend work (see `docs/plans/frontend-tooling/v1.md`).
+
+- **Enabled MCPs**: Playwright (`@playwright/mcp`), Chrome DevTools
+  (`chrome-devtools-mcp`). Both are declared in `opencode.json` with
+  `disabled` unset.
+- **Frontend skills** (`.agents/skills/`): `frontend-design`,
+  `design-taste-frontend`, `impeccable`, `ui-craft` (+variants
+  `ui-craft-dense-dashboard`, `ui-craft-editorial`, `ui-craft-minimal`),
+  `ui-taste`, `ui-ux-pro-max`, `tailwind-design-system`, `accessibility`,
+  `accessibility-audit`, `playwright-best-practices`, `svelte-code-writer`,
+  `svelte5-best-practices`, `web-quality-audit`.
+- **Installed via T5 (2026-10-31)**: `web-quality-audit`
+  (`addyosmani/web-quality-skills`, skill `web-quality-audit`,
+  `skills-lock.json` entry). Chosen from candidates evaluated via
+  `npx skills find` (lighthouse, "visual regression", storybook,
+  "responsive design", accessibility): an evidence-led web quality audit
+  (Lighthouse 13+ performance insights, accessibility, SEO, best
+  practices, agentic browsing) that complements the existing design /
+  accessibility / Playwright skills. Qualifies because it (a) installs
+  with no new infra — it drives the already-enabled Chrome DevTools MCP
+  and the `capture:screenshots` script against a running dev server,
+  (b) is free/OSS (Apache-2.0, maintained by Addy Osmani / Google Chrome
+  team; 34k+ installs; Snyk/Socket/Agent Trust Hub audits pass), and
+  (c) is directly useful for the shipped views (login, canvas,
+  proposals, discussions, admin). Rejected alternatives: Storybook skills
+  (require standing up Storybook infra), `argent-screenshot-diff`
+  (mobile/native-oriented, not web), and a standalone responsive-design
+  skill (overlaps the layout rules already documented in this file).
+  Installation command:
+  `npx skills add addyosmani/web-quality-skills --skill web-quality-audit -y --agent '*' --copy`.
+- **Capture command**: `capture:screenshots` — `pnpm --filter @vozlab/web
+  capture:screenshots` runs `apps/web/scripts/capture.mjs`, which drives a
+  headless Chromium against a *running* dev server (`CAPTURE_BASE_URL`, default
+  `http://localhost:5173`). It captures `/`, `/login`, `/proposals`,
+  `/discussions` (and `/admin` when reachable) at `1440×900` and `390×844`,
+  writing PNG + full HTML to `docs/analysis/screenshots/<YYYY-MM-DD>/`
+  (`<slug>-<W>x<H>.{png,html}`, slug `root` for `/`). A failed navigation is
+  logged and skipped; `networkidle` is awaited with a 15 s timeout. The output
+  directory is gitignored.
 ## Routing
 
 ```text
