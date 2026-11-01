@@ -945,8 +945,8 @@ Decided, and not to be re-opened without evidence:
 - **no-workspace-message v1** — CLOSED 2026-10-31 (T1–T5 done):
   [docs/archive/plans/no-workspace-message/v1.md](docs/archive/plans/no-workspace-message/v1.md)
 
-- **no-workspace-message v2** — OPEN 2026-10-31:
-  [docs/plans/no-workspace-message/v2.md](docs/plans/no-workspace-message/v2.md)
+- **no-workspace-message v2** — CLOSED 2026-10-31 (T1–T4 done):
+  [docs/archive/plans/no-workspace-message/v2.md](docs/archive/plans/no-workspace-message/v2.md)
   — give the no-membership card the floating bar's outer air (top-4/right-4
   on small screens, top-7/right-7 on large) and drop the doubled container
   padding. Horizontal slicing; 4 tasks (T1–T4). Out of scope: real
