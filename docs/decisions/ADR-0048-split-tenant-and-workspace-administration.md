@@ -7,7 +7,7 @@
 - Related: ADR-0008 (a foreign workspace's resource answers 404), ADR-0045
   (workspace join codes and invitations), ADR-0046 (event-code routing),
   `docs/auth-and-tenancy.md` §12 (the normative role model),
-  `docs/plans/admin-surfaces/v1.md` (execution plan)
+  `docs/archive/plans/admin-surfaces/v1.md` (execution plan, archived on closure)
 
 ## Context
 
@@ -208,7 +208,7 @@ Workspace deletion or archive, moving a member between workspaces, a UI for
   navigation mapping
 - `docs/domain-model.md` §3.1 — membership `status`, the multi-row union and
   the unique key
-- `docs/plans/admin-surfaces/v1.md` — the execution plan (T2–T9)
+- `docs/archive/plans/admin-surfaces/v1.md` — the execution plan (T2–T9, archived on closure)
 - `docs/decisions/ADR-0041-tenant-and-workspace-administration.md` — the
   decision this record completes
 - `apps/api/src/application/policies/workspaceAdminPolicy.ts` —

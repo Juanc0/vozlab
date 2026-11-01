@@ -75,7 +75,9 @@ apps/web/src/routes/
     ├── +layout.svelte            # session guard, sidebar, workspace selector
     ├── +page.svelte              # graph canvas
     ├── proposals/+page.svelte    # knowledge pull requests
-    └── discussions/+page.svelte  # threads and comments
+    ├── discussions/+page.svelte  # threads and comments
+    ├── admin/+page.svelte        # tenant administration (systemRole === 'ADMIN')
+    └── workspace-admin/+page.svelte  # workspace administration (workspace ADMIN)
 ```
 
 `(app)` redirects to `/login` when no session is available. The URL stays
@@ -730,6 +732,29 @@ server remains authoritative and enforces one active vote per user/target.
 Approval controls are shown only to the target's maintainer; moderators see
 auto-apply only when the server-side criteria are met. Do not infer permissions
 from the UI alone: the API re-checks every action.
+
+## Administration surfaces
+
+Two role-gated surfaces, split in `admin-surfaces v1` (ADR-0048):
+
+- **`/admin`** — tenant administration: workspace existence and creation
+  (including workspaces the caller does not belong to), the tenant user
+  directory, the tenant hygiene sweep and a read-only break-glass roster with
+  an explicit entry into a workspace. Reachable only when
+  `session.user.systemRole === 'ADMIN'`.
+- **`/workspace-admin`** — workspace administration: profile, members and
+  roles, join requests, invitations, workspace join codes and (for
+  `kind='EVENT'` workspaces) event codes. Reachable when the active
+  workspace role is `ADMIN`, or, for a tenant admin, via
+  `/workspace-admin?workspaceId=<id>` (break-glass, without mutating the
+  per-tab selector).
+
+The navigation renders `admin.title` for a tenant admin and
+`workspaceAdmin.title` for a workspace admin; both render when both hold.
+Graph, proposals and discussions stay gated by membership existence;
+request-access stays always visible. The `(app)` no-membership block does not
+mask `/admin` or `/workspace-admin`: the nested guards decide. A non-admin
+sees a localized no-access state and no API call is made.
 
 ## PWA behavior
 

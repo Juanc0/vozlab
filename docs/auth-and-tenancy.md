@@ -538,7 +538,7 @@ discovers which surfaces to offer.
   and the `/admin` navigation entry exist. `/admin` still renders the mixed
   page and is still masked by the no-membership card, and `/workspace-admin`
   does not exist yet; the mapping above is the contract those surfaces are
-  built against in the [admin-surfaces plan](plans/admin-surfaces/v1.md).
+  built against in the [admin-surfaces plan](archive/plans/admin-surfaces/v1.md).
 
 ### 12.5 Ownership matrix
 
