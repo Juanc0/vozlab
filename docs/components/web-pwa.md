@@ -351,6 +351,12 @@ the other way round.
   thing of the column. The rail projects the same order as three icon
   controls (workspace, language, session); the tenant lives inside the
   session menu there. Order is locked by `tests/app-sidebar.test.ts`.
+- The `no-membership` block of `(app)/+layout.svelte` states that the
+  signed-in user has no access to any workspace in this institution (it
+  never implies the tenant is empty nor hints at workspace counts); its
+  copy lives in `app.noWorkspaceHeading` / `app.noWorkspaceText` (es/en).
+  Its container reuses the graph floating bar's chrome: `rounded-card`,
+  `border border-brand-200`, `bg-brand-100`, `shadow-float`, `px-7 py-3`.
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 

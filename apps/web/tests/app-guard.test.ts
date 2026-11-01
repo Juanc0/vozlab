@@ -149,7 +149,7 @@ describe('the (app) guard', () => {
     renderLayout();
 
     await waitFor(() => {
-      expect(screen.getByText(/no hay ningún espacio de trabajo en esta institución/i)).toBeInTheDocument();
+      expect(screen.getByText(/sin acceso a espacios de trabajo/i)).toBeInTheDocument();
     });
 
     // A valid account without a membership is not a redirect loop.

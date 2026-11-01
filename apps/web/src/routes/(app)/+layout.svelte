@@ -226,7 +226,7 @@
     -->
     <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : 'px-4 py-6 sm:px-6 sm:py-8'}">
       {#if status === 'no-membership'}
-        <section class="rounded-card bg-brand-100 p-6">
+        <section class="rounded-card border border-brand-200 bg-brand-100 px-7 py-3 shadow-float">
           <h1>{t('app.noWorkspaceHeading')}</h1>
           <p class="mt-2 max-w-measure text-body text-muted">
             {t('app.noWorkspaceText')}

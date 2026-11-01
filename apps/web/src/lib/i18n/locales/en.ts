@@ -246,9 +246,9 @@ export const en: Dictionary<typeof es> = {
 
   app: {
     workspaceAndSections: 'Workspace and sections',
-    noWorkspaceHeading: 'No workspace in this institution',
+    noWorkspaceHeading: 'No workspace access',
     noWorkspaceText:
-      'Your account is valid, but it is not a member of any workspace of this institution. Ask an administrator to add you to one, or join an event with a code.',
+      'Your account is valid, but you do not have access to any workspace in this institution. Ask an administrator to add you to one, or join an event with a code.',
     restoreFailedHeading: 'The session could not be restored',
     restoreFailedOffline:
       'The browser is offline: the session needs the network to be restored. The pages that need the server cannot be loaded until the connection is back.',
