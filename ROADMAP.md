@@ -957,8 +957,8 @@ Decided, and not to be re-opened without evidence:
 - **navbar-join v1** — CLOSED 2026-10-31 (T1–T7 done):
   [docs/archive/plans/navbar-join/v1.md](docs/archive/plans/navbar-join/v1.md)
 
-- **navbar-polish v1** — OPEN 2026-11-01:
-  [docs/plans/navbar-polish/v1.md](docs/plans/navbar-polish/v1.md)
+- **navbar-polish v1** — CLOSED 2026-11-01 (T1–T6 done):
+  [docs/archive/plans/navbar-polish/v1.md](docs/archive/plans/navbar-polish/v1.md)
   — shorten the join button label (purpose-focused, no "code" word) and make
   the language selector full-width like the other navbar controls.
   Horizontal slicing; 6 tasks (T1–T6). Out of scope: auth pages wording,
