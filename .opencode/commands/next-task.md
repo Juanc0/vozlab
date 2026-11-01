@@ -35,3 +35,14 @@ Act as the High-Level Engineering Committee.
    `docs/README.md`. Unfinished slivers move to the next plan version or
    ROADMAP "Tracked, not scheduled" with an origin citation — never leave one
    implicit.
+8. **Post-execution review gate:** if the task just completed was the LAST open
+   task of an active plan, do NOT archive and do NOT mark the plan closed.
+   Summarize what the plan shipped (tasks, evidence targets, ADRs) and ask the
+   user: "All tasks done — archive now, or do you want adjustments/verification
+   first?" Stop here and wait for the answer.
+   - If the user wants adjustments → reopen the affected tasks (uncheck them)
+     or open a `v<N+1>` carry-forward plan citing the origin; do not archive.
+   - If the user confirms archive-ready → hand off to `/close-plan <path>`
+     (which re-confirms before archiving).
+   This gate prevents premature closure that later requires follow-up fix plans
+   to undo or readjust already-archived work.

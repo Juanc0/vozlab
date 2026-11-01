@@ -191,6 +191,14 @@ they disagree with the code, **the code wins** — fix the doc.
   unfinished slivers move forward with an origin citation, and the plan file
   goes to `docs/archive/plans/`. Never leave completed task prompts or status
   notes in the living docs.
+- **Post-execution review gate:** when the last task of an active plan is
+  completed, do not archive and do not mark the plan closed. Summarize what
+  shipped and ask the user whether to archive now or adjust/verify first.
+  Archive only via `/close-plan`, which re-confirms before archiving. If
+  adjustments are needed, reopen the affected tasks (uncheck) or open a
+  `v<N+1>` carry-forward plan citing the origin. This prevents premature
+  closure that later requires follow-up fix plans to undo or readjust
+  already-archived work.
 - Plan execution preference: **subagent-driven-development** (one fresh
   subagent per task) is the default for executing any plan in this repo; use
   `executing-plans` (inline) only when subagents are unavailable or the user

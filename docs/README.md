@@ -66,12 +66,16 @@ for emergency recovery.
 4. **Never lose a sliver.** An unfinished detail is either (a) copied into the
    next version (`v<N+1>`) with its origin cited, or (b) moved to ROADMAP
    "Tracked, not scheduled". It does not stay alive in prose or in a note.
-5. **Close the plan** with its checklist: implementation recorded in
+5. **Post-execution review gate (before closing):** when the last task of an
+   active plan completes, do not archive. Summarize what shipped and ask the
+   user whether to archive now or adjust/verify first. Archive only on
+   explicit approval.
+6. **Close the plan** with its checklist: implementation recorded in
    `components/<x>.md`; decisions in ADRs; remaining slivers re-homed; plan
    directory moved to `archive/plans/<area>/`; this README's status snapshot
    and the requirements matrix updated. Then the repo gains nothing new
    outside `archive/`.
-6. **Iterate**: the next deep pass over the same area opens `v2.md` against a
+7. **Iterate**: the next deep pass over the same area opens `v2.md` against a
    doc that already reflects `v1`'s reality.
 
 ## Live documents

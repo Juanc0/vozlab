@@ -27,6 +27,22 @@ One paragraph. Done means: <observable outcome>.
 ## Out of scope (this version)
 - <thing> → <where it goes: plans/<area>/v<N+1> or ROADMAP "Tracked, not scheduled">
 
+## Post-execution review gate (before closing)
+
+When the last task of an active plan is completed, **do not archive**. The
+agent summarizes what shipped (tasks, evidence targets, ADRs) and asks the
+user: "Ready to archive, or do you want adjustments/verification first?"
+
+- If the user wants adjustments → reopen the affected tasks (uncheck them in
+  the plan) or open a `v<N+1>` carry-forward plan citing the origin; do not
+  archive.
+- If the user confirms archive-ready → run the closure checklist below (via
+  `/close-plan`), which re-confirms before archiving.
+
+This gate exists because archiving too early forces follow-up fix plans
+(v<N+1>, v<N+2>) to undo or readjust already-archived work. A plan is only
+as good as the reality it mirrors; verify before sealing.
+
 ## Closure checklist (run before moving this file to archive/)
 - [ ] every task's implementation is recorded in its living doc (evidence field above)
 - [ ] decisions taken during execution became ADRs
