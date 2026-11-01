@@ -83,6 +83,9 @@ import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorksp
 import { RotateJoinCodeUseCase } from '../../application/use_cases/RotateJoinCodeUseCase.js';
 import { ListWorkspacesUseCase } from '../../application/use_cases/ListWorkspacesUseCase.js';
 import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUsersUseCase.js';
+import { UpdateTenantUserSystemRoleUseCase } from '../../application/use_cases/UpdateTenantUserSystemRoleUseCase.js';
+import { SuspendTenantUserUseCase } from '../../application/use_cases/SuspendTenantUserUseCase.js';
+import { ActivateTenantUserUseCase } from '../../application/use_cases/ActivateTenantUserUseCase.js';
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
@@ -384,6 +387,19 @@ export async function buildServer(): Promise<FastifyInstance> {
     tenantAdminRepo,
     userRepo
   );
+  const updateTenantUserSystemRoleUseCase = new UpdateTenantUserSystemRoleUseCase(
+    userRepo,
+    auditLog
+  );
+  const suspendTenantUserUseCase = new SuspendTenantUserUseCase(
+    userRepo,
+    refreshTokenRepo,
+    auditLog
+  );
+  const activateTenantUserUseCase = new ActivateTenantUserUseCase(
+    userRepo,
+    auditLog
+  );
   const listMembersUseCase = new ListMembersUseCase(
     membershipAdminRepo,
     membershipRepo,
@@ -543,6 +559,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     rotateJoinCodeUseCase,
     listWorkspacesUseCase,
     listTenantUsersUseCase,
+    updateTenantUserSystemRoleUseCase,
+    suspendTenantUserUseCase,
+    activateTenantUserUseCase,
     listMembersUseCase,
     addWorkspaceMemberUseCase,
     changeMemberRoleUseCase,

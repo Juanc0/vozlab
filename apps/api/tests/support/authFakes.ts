@@ -228,12 +228,16 @@ export function makeUserRepository(
     workspaces?: UserWorkspace[];
     /** Value returned by `removeInactiveGuests`. */
     removedGuests?: number;
+    /** Value returned by `countSystemAdmins`. Default 1. */
+    systemAdminCount?: number;
   } = {}
 ): {
   userRepo: IUserRepository;
   oidcUpserts: Array<{ input: unknown; tid: string }>;
   anonymousCreates: Array<{ input: NewAnonymousUser; tid: string; tx?: DbTransaction }>;
   guestSweeps: Array<{ tid: string; cutoff: Date }>;
+  systemRoleUpdates: Array<{ userId: string; systemRole: string; tid: string }>;
+  sessionInvalidations: Array<{ userId: string; value: Date | null; tid: string }>;
 } {
   const user = options.user === undefined ? AUTH_USER : options.user;
   const workspaces = options.workspaces ?? [];
@@ -244,6 +248,16 @@ export function makeUserRepository(
     tx?: DbTransaction;
   }> = [];
   const guestSweeps: Array<{ tid: string; cutoff: Date }> = [];
+  const systemRoleUpdates: Array<{
+    userId: string;
+    systemRole: string;
+    tid: string;
+  }> = [];
+  const sessionInvalidations: Array<{
+    userId: string;
+    value: Date | null;
+    tid: string;
+  }> = [];
 
   const userRepo: IUserRepository = {
     async findById() {
@@ -274,9 +288,26 @@ export function makeUserRepository(
       guestSweeps.push({ tid, cutoff });
       return options.removedGuests ?? 0;
     },
+    async updateSystemRole(userId, systemRole, tid) {
+      systemRoleUpdates.push({ userId, systemRole, tid });
+      return { ...(user ?? AUTH_USER), id: userId, systemRole } as AuthUser;
+    },
+    async setSessionsValidAfter(userId, value, tid) {
+      sessionInvalidations.push({ userId, value, tid });
+    },
+    async countSystemAdmins() {
+      return options.systemAdminCount ?? 1;
+    },
   };
 
-  return { userRepo, oidcUpserts, anonymousCreates, guestSweeps };
+  return {
+    userRepo,
+    oidcUpserts,
+    anonymousCreates,
+    guestSweeps,
+    systemRoleUpdates,
+    sessionInvalidations,
+  };
 }
 
 export function makeRefreshTokenRepository(

@@ -47,6 +47,9 @@ import { UpdateWorkspaceUseCase } from '../../application/use_cases/UpdateWorksp
 import { RotateJoinCodeUseCase } from '../../application/use_cases/RotateJoinCodeUseCase.js';
 import { ListWorkspacesUseCase } from '../../application/use_cases/ListWorkspacesUseCase.js';
 import { ListTenantUsersUseCase } from '../../application/use_cases/ListTenantUsersUseCase.js';
+import { UpdateTenantUserSystemRoleUseCase } from '../../application/use_cases/UpdateTenantUserSystemRoleUseCase.js';
+import { SuspendTenantUserUseCase } from '../../application/use_cases/SuspendTenantUserUseCase.js';
+import { ActivateTenantUserUseCase } from '../../application/use_cases/ActivateTenantUserUseCase.js';
 import { ListMembersUseCase } from '../../application/use_cases/ListMembersUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ChangeMemberRoleUseCase } from '../../application/use_cases/ChangeMemberRoleUseCase.js';
@@ -155,6 +158,9 @@ export interface RouteDependencies {
   rotateJoinCodeUseCase: RotateJoinCodeUseCase;
   listWorkspacesUseCase: ListWorkspacesUseCase;
   listTenantUsersUseCase: ListTenantUsersUseCase;
+  updateTenantUserSystemRoleUseCase?: UpdateTenantUserSystemRoleUseCase;
+  suspendTenantUserUseCase?: SuspendTenantUserUseCase;
+  activateTenantUserUseCase?: ActivateTenantUserUseCase;
   listMembersUseCase: ListMembersUseCase;
   addWorkspaceMemberUseCase: AddWorkspaceMemberUseCase;
   changeMemberRoleUseCase: ChangeMemberRoleUseCase;
@@ -302,7 +308,10 @@ export async function registerRoutes(
   const tenantAdminController = new TenantAdminController(
     deps.listWorkspacesUseCase,
     deps.createWorkspaceUseCase,
-    deps.listTenantUsersUseCase
+    deps.listTenantUsersUseCase,
+    deps.updateTenantUserSystemRoleUseCase!,
+    deps.suspendTenantUserUseCase!,
+    deps.activateTenantUserUseCase!
   );
   const workspaceAdminController = new WorkspaceAdminController(
     deps.getWorkspaceUseCase,
@@ -487,6 +496,24 @@ export async function registerRoutes(
     '/api/v1/admin/users',
     { preHandler: tenantAdmin },
     (req, reply) => tenantAdminController.listUsersHandler(req, reply)
+  );
+
+  app.patch(
+    '/api/v1/admin/users/:userId',
+    { preHandler: [...tenantAdmin, scoped('admin-user')] },
+    (req, reply) => tenantAdminController.updateUserSystemRoleHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/admin/users/:userId/suspend',
+    { preHandler: [...tenantAdmin, scoped('admin-user')] },
+    (req, reply) => tenantAdminController.suspendUserHandler(req, reply)
+  );
+
+  app.post(
+    '/api/v1/admin/users/:userId/activate',
+    { preHandler: [...tenantAdmin, scoped('admin-user')] },
+    (req, reply) => tenantAdminController.activateUserHandler(req, reply)
   );
 
   if (cleanupController) {

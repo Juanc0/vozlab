@@ -82,4 +82,32 @@ export interface IUserRepository {
    * Returns the number of guests removed.
    */
   removeInactiveGuests(tid: string, cutoff: Date, tx?: DbTransaction): Promise<number>;
+
+  /**
+   * Tenant user management (tenant-user-management T1): update a user's
+   * tenant-wide `system_role`. Returns the updated row.
+   */
+  updateSystemRole(
+    userId: string,
+    systemRole: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<AuthUser>;
+
+  /**
+   * Tenant user management (T1): set or clear `sessionsValidAfter` to
+   * invalidate sessions issued before `value`.
+   */
+  setSessionsValidAfter(
+    userId: string,
+    value: Date | null,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
+
+  /**
+   * Count users whose `system_role = 'ADMIN'` in this tenant (used for the
+   * last-admin guard).
+   */
+  countSystemAdmins(tid: string, tx?: DbTransaction): Promise<number>;
 }

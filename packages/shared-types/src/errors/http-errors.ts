@@ -82,6 +82,10 @@ export const ERROR_CODES = {
     status: 409,
     message: 'A workspace must keep at least one active ADMIN',
   },
+  ERR_LAST_TENANT_ADMIN: {
+    status: 409,
+    message: 'A tenant must keep at least one ADMIN',
+  },
   ERR_CANNOT_MODIFY_SELF: {
     status: 409,
     message: 'An administrator cannot suspend or remove their own membership',

@@ -359,4 +359,61 @@ export class DrizzleUserRepository implements IUserRepository {
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
     }
   }
+
+  async updateSystemRole(
+    userId: string,
+    systemRole: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<AuthUser> {
+    try {
+      const db = await this.client(tid, tx);
+      const [row] = await db
+        .update(users)
+        .set({ systemRole })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!row) throw new DomainError('ERR_USER_NOT_FOUND');
+      return toAuthUser(row);
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      log.error({ err: error, userId }, 'failed to update system role');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async setSessionsValidAfter(
+    userId: string,
+    value: Date | null,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    try {
+      const db = await this.client(tid, tx);
+      const updated = await db
+        .update(users)
+        .set({ sessionsValidAfter: value })
+        .where(eq(users.id, userId))
+        .returning({ id: users.id });
+      if (updated.length === 0) throw new DomainError('ERR_USER_NOT_FOUND');
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      log.error({ err: error, userId }, 'failed to set sessionsValidAfter');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
+
+  async countSystemAdmins(tid: string, tx?: DbTransaction): Promise<number> {
+    try {
+      const db = await this.client(tid, tx);
+      const [row] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(users)
+        .where(eq(users.systemRole, 'ADMIN'));
+      return row?.count ?? 0;
+    } catch (error) {
+      log.error({ err: error, tid }, 'failed to count system admins');
+      throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');
+    }
+  }
 }

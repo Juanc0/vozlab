@@ -1,11 +1,16 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import {
   AdminUserListQuerySchema,
   CreateWorkspaceSchema,
+  SystemRoleSchema,
 } from '@vozlab/shared-types';
 import { CreateWorkspaceUseCase } from '../../../application/use_cases/CreateWorkspaceUseCase.js';
 import { ListWorkspacesUseCase } from '../../../application/use_cases/ListWorkspacesUseCase.js';
 import { ListTenantUsersUseCase } from '../../../application/use_cases/ListTenantUsersUseCase.js';
+import { UpdateTenantUserSystemRoleUseCase } from '../../../application/use_cases/UpdateTenantUserSystemRoleUseCase.js';
+import { SuspendTenantUserUseCase } from '../../../application/use_cases/SuspendTenantUserUseCase.js';
+import { ActivateTenantUserUseCase } from '../../../application/use_cases/ActivateTenantUserUseCase.js';
 import { getTenantContext } from './requestContext.js';
 import { mapDomainError, sendError } from './errorResponse.js';
 import { toAdminUserDto, toAdminWorkspaceDto } from './adminDtos.js';
@@ -20,7 +25,10 @@ export class TenantAdminController {
   constructor(
     private readonly listWorkspaces: ListWorkspacesUseCase,
     private readonly createWorkspace: CreateWorkspaceUseCase,
-    private readonly listUsers: ListTenantUsersUseCase
+    private readonly listUsers: ListTenantUsersUseCase,
+    private readonly updateUserSystemRole: UpdateTenantUserSystemRoleUseCase,
+    private readonly suspendUser: SuspendTenantUserUseCase,
+    private readonly activateUser: ActivateTenantUserUseCase
   ) {}
 
   /** GET /api/v1/admin/workspaces */
@@ -108,6 +116,91 @@ export class TenantAdminController {
         users: result.users.map(toAdminUserDto),
         nextCursor: result.nextCursor,
       });
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  /** PATCH /api/v1/admin/users/:userId */
+  async updateUserSystemRoleHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const params = req.params as { userId?: string };
+    if (!params.userId) return sendError(reply, 'ERR_VALIDATION_FAILED');
+
+    const parsed = z
+      .object({ systemRole: SystemRoleSchema })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', {
+        issues: parsed.error.issues,
+      });
+    }
+
+    const ctx = getTenantContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const user = await this.updateUserSystemRole.execute({
+        actorUserId: ctx.userId,
+        tid: ctx.tid,
+        userId: params.userId,
+        systemRole: parsed.data.systemRole,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({
+        id: user.id,
+        systemRole: user.systemRole,
+      });
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  /** POST /api/v1/admin/users/:userId/suspend */
+  async suspendUserHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const params = req.params as { userId?: string };
+    if (!params.userId) return sendError(reply, 'ERR_VALIDATION_FAILED');
+
+    const ctx = getTenantContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      await this.suspendUser.execute({
+        actorUserId: ctx.userId,
+        tid: ctx.tid,
+        userId: params.userId,
+        reqId: ctx.reqId,
+      });
+      return reply.status(204).send();
+    } catch (error) {
+      return sendError(reply, mapDomainError(error));
+    }
+  }
+
+  /** POST /api/v1/admin/users/:userId/activate */
+  async activateUserHandler(
+    req: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const params = req.params as { userId?: string };
+    if (!params.userId) return sendError(reply, 'ERR_VALIDATION_FAILED');
+
+    const ctx = getTenantContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      await this.activateUser.execute({
+        actorUserId: ctx.userId,
+        tid: ctx.tid,
+        userId: params.userId,
+        reqId: ctx.reqId,
+      });
+      return reply.status(204).send();
     } catch (error) {
       return sendError(reply, mapDomainError(error));
     }
