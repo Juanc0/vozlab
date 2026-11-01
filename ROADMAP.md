@@ -905,6 +905,18 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
+- **node-governance v1** — OPEN 2026-11-01 (T1–T9):
+  [docs/plans/node-governance/v1.md](docs/plans/node-governance/v1.md)
+  — close the governance loop for nodes and edges (F-01): settle D-03 (visible
+  on creation, marked unreviewed, activatable by author or moderator, auto-apply
+  with 14-day + score ≥ 10 threshold), add Activate/Reject use cases + HTTP
+  routes + auto-activate override for nodes and edges, web inspector
+  approve/reject actions, "unreviewed" marking in the graph, seed alignment and
+  docs truth pass. Vertical slicing; 9 tasks (T1–T9). Out of scope: ontology
+  property governance (Area B), ontology lifecycle completion (Area C),
+  proposal→thread linking (Area D), Apache AGE, SSE, GraphQL, distinct-supporter
+  quorum.
+
 - **admin-surfaces v2** — CLOSED 2026-11-01 (T1–T4 done):
   [docs/archive/plans/admin-surfaces/v2.md](docs/archive/plans/admin-surfaces/v2.md)
 - **tenant-user-management v1** — CLOSED 2026-11-01 (T1–T4 done):
