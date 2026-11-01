@@ -191,3 +191,8 @@ they disagree with the code, **the code wins** — fix the doc.
   unfinished slivers move forward with an origin citation, and the plan file
   goes to `docs/archive/plans/`. Never leave completed task prompts or status
   notes in the living docs.
+- Plan execution preference: **subagent-driven-development** (one fresh
+  subagent per task) is the default for executing any plan in this repo; use
+  `executing-plans` (inline) only when subagents are unavailable or the user
+  explicitly asks. Persisted here so `/next-task` and any future plan inherit
+  it.

@@ -19,6 +19,9 @@ Act as the High-Level Engineering Committee.
 4. **Implement** the change in `apps/`, `packages/` and/or `docs/`, one
    component at a time. Validate wire input at the boundary (schema, not
    cast); no new `any`.
+   Default execution style: **subagent-driven-development** (one fresh
+   subagent per task); fall back to inline `executing-plans` only when
+   subagents are unavailable or the user explicitly asks.
 5. **Verify before claiming** anything: `pnpm turbo run build type-check
    test` green (9/9) and `pnpm lint` with 0 errors; `uv run pytest` + `uv run
    ruff check` if Python touched; `bash scripts/docs-hygiene.sh` green if any
