@@ -804,6 +804,7 @@ export const en: Dictionary<typeof es> = {
     email: 'Email',
     handle: 'Username handle',
     role: 'Role',
+    status: 'Status',
     suspend: 'Suspend',
     reactivate: 'Reactivate',
     remove: 'Remove',

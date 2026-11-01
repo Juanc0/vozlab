@@ -5,6 +5,7 @@
   import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto } from '@vozlab/shared-types';
   import { UpdateWorkspaceSchema } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
+  import ModalDialog from '$lib/components/ModalDialog.svelte';
 
   const api = getApiClient();
   const locale = getLocaleState();
@@ -83,6 +84,13 @@
   let addHandle = $state('');
   let addRole = $state('MEMBER');
   let adding = $state(false);
+  let addMemberOpen = $state(false);
+
+  $effect(() => {
+    if (!addMemberOpen) return;
+    addHandle = '';
+    addRole = 'MEMBER';
+  });
 
   // Access
   let joinRequests = $state<JoinRequestDto[]>([]);
@@ -319,6 +327,7 @@
     try {
       await admin.addMember(api, workspace.currentWorkspaceId, addHandle, addRole);
       addHandle = '';
+      addMemberOpen = false;
       await loadMembers();
     } catch (e) {
       error = describeFailure(e);
@@ -412,22 +421,11 @@
 
       {:else if activeTab === 'members'}
         <div class="rounded-card bg-brand-100 p-4 space-y-3">
-          <h2>{t('admin.members')}</h2>
-
-          <!-- General action: add member -->
-          <div class="space-y-2 border-b border-rule pb-3">
-            <h3 class="text-small font-medium">{t('admin.addMember') ?? 'Add member directly'}</h3>
-            <div class="flex flex-wrap items-center gap-2">
-              <input class="field" bind:value={addHandle} placeholder={t('admin.handle') ?? 'Handle'} />
-              <select class="field" bind:value={addRole}>
-                <option value="MEMBER">MEMBER</option>
-                <option value="MODERATOR">MODERATOR</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
-              <button type="button" class="btn btn-primary text-small" disabled={adding} onclick={addMemberDirect}>
-                {t('admin.addMember') ?? 'Add'}
-              </button>
-            </div>
+          <div class="flex items-center justify-between gap-2">
+            <h2>{t('admin.members')}</h2>
+            <button type="button" class="btn btn-primary" onclick={() => (addMemberOpen = true)}>
+              {t('admin.addMember')}
+            </button>
           </div>
 
           <!-- Row actions: member list -->
@@ -436,49 +434,85 @@
           {:else if grouped.length === 0}
             <p>{t('admin.noWorkspaces') ?? 'No members.'}</p>
           {:else}
-            <ul class="space-y-2">
-              {#each grouped as g (g.userId)}
-                <li class="flex flex-col gap-1 border-b border-rule py-2">
-                  <div class="flex items-center justify-between gap-2">
-                    <span>{g.fullName ?? g.handle ?? g.userId} ({g.status})</span>
-                    <span class="flex gap-1">
-                      {#if g.status === 'ACTIVE'}
-                        <button class="btn btn-quiet text-small" onclick={() => run(() => admin.suspendMember(api, workspace.currentWorkspaceId, g.userId))}>
-                          {t('admin.suspend')}
-                        </button>
-                      {:else if g.status === 'SUSPENDED'}
-                        <button class="btn btn-quiet text-small" onclick={() => run(() => admin.reactivateMember(api, workspace.currentWorkspaceId, g.userId))}>
-                          {t('admin.reactivate')}
-                        </button>
-                      {/if}
-                      <button class="btn btn-quiet text-small" onclick={() => run(() => admin.removeMember(api, workspace.currentWorkspaceId, g.userId))}>
-                        {t('admin.remove')}
-                      </button>
-                    </span>
-                  </div>
-                  <div class="flex flex-wrap gap-1 items-center">
-                    {#each g.roles as r (r)}
-                      <span class="text-small px-2 py-0.5 rounded bg-surface-2">
-                        {r}
-                        <button class="ml-1 text-small" onclick={() => run(() => admin.removeMemberRole(api, workspace.currentWorkspaceId, g.userId, r))}>×</button>
-                      </span>
-                    {/each}
-                    <select class="field text-small" onchange={async (e) => {
-                      const v = (e.target as HTMLSelectElement).value;
-                      if (v) await run(() => admin.assignMemberRole(api, workspace.currentWorkspaceId, g.userId, v));
-                      (e.target as HTMLSelectElement).value = '';
-                    }}>
-                      <option value="">{t('admin.addRole') ?? 'Add role…'}</option>
-                      <option value="MEMBER">MEMBER</option>
-                      <option value="MODERATOR">MODERATOR</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
-                  </div>
-                </li>
-              {/each}
-            </ul>
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+            <div class="overflow-x-auto rounded-card bg-brand-100" role="region" aria-label={t('admin.members')} tabindex="0">
+              <table class="w-full min-w-[34rem] border-collapse text-left text-body">
+                <caption class="sr-only">{t('admin.members')}</caption>
+                <thead class="text-small text-muted">
+                  <tr>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.handle')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.status') ?? 'Status'}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.role')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each grouped as g (g.userId)}
+                    <tr class="border-t border-rule align-top">
+                      <th scope="row" class="px-3 py-2 font-normal">{g.fullName ?? g.handle ?? g.userId}</th>
+                      <td class="px-3 py-2">{g.status}</td>
+                      <td class="px-3 py-2">
+                        <div class="flex flex-wrap gap-1 items-center">
+                          {#each g.roles as r (r)}
+                            <span class="text-small px-2 py-0.5 rounded bg-surface-2">
+                              {r}
+                              <button class="ml-1 text-small" onclick={() => run(() => admin.removeMemberRole(api, workspace.currentWorkspaceId, g.userId, r))}>×</button>
+                            </span>
+                          {/each}
+                          <select class="field text-small" onchange={async (e) => {
+                            const v = (e.target as HTMLSelectElement).value;
+                            if (v) await run(() => admin.assignMemberRole(api, workspace.currentWorkspaceId, g.userId, v));
+                            (e.target as HTMLSelectElement).value = '';
+                          }}>
+                            <option value="">{t('admin.addRole') ?? 'Add role…'}</option>
+                            <option value="MEMBER">MEMBER</option>
+                            <option value="MODERATOR">MODERATOR</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td class="px-3 py-2">
+                        <div class="flex items-center gap-2">
+                          {#if g.status === 'ACTIVE'}
+                            <button class="btn btn-quiet text-small" onclick={() => run(() => admin.suspendMember(api, workspace.currentWorkspaceId, g.userId))}>
+                              {t('admin.suspend')}
+                            </button>
+                          {:else if g.status === 'SUSPENDED'}
+                            <button class="btn btn-quiet text-small" onclick={() => run(() => admin.reactivateMember(api, workspace.currentWorkspaceId, g.userId))}>
+                              {t('admin.reactivate')}
+                            </button>
+                          {/if}
+                          <button class="btn btn-quiet text-small" onclick={() => run(() => admin.removeMember(api, workspace.currentWorkspaceId, g.userId))}>
+                            {t('admin.remove')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
           {/if}
         </div>
+
+        <ModalDialog open={addMemberOpen} title={t('admin.addMember')} onclose={() => (addMemberOpen = false)}>
+          <form class="space-y-2" onsubmit={(e) => { e.preventDefault(); addMemberDirect(); }}>
+            <input class="field w-full" bind:value={addHandle} placeholder={t('admin.handle')} />
+            <select class="field w-full" bind:value={addRole}>
+              <option value="MEMBER">MEMBER</option>
+              <option value="MODERATOR">MODERATOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <div class="flex items-center gap-2">
+              <button type="submit" class="btn btn-primary" disabled={adding}>
+                {t('admin.addMember')}
+              </button>
+              <button type="button" class="btn btn-secondary" onclick={() => (addMemberOpen = false)}>
+                {t('common.cancel')}
+              </button>
+            </div>
+          </form>
+        </ModalDialog>
 
       {:else if activeTab === 'access'}
         <div class="rounded-card bg-brand-100 p-4 space-y-3">

@@ -869,6 +869,7 @@ export const es = {
     email: 'Correo',
     handle: 'Alias de usuario',
     role: 'Rol',
+    status: 'Estado',
     suspend: 'Suspender',
     reactivate: 'Reactivar',
     remove: 'Eliminar',
