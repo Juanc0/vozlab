@@ -909,8 +909,8 @@ Decided, and not to be re-opened without evidence:
   [docs/archive/plans/admin-surfaces/v2.md](docs/archive/plans/admin-surfaces/v2.md)
 - **tenant-user-management v1** — CLOSED 2026-11-01 (T1–T4 done):
   [docs/archive/plans/tenant-user-management/v1.md](docs/archive/plans/tenant-user-management/v1.md)
-- **admin-data-tables v1** — OPEN 2026-11-01:
-  [docs/plans/admin-data-tables/v1.md](docs/plans/admin-data-tables/v1.md)
+- **admin-data-tables v1** — CLOSED 2026-11-01 (T1–T4 done):
+  [docs/archive/plans/admin-data-tables/v1.md](docs/archive/plans/admin-data-tables/v1.md)
   — convert /admin and /workspace-admin list views to data tables with modal
   creation forms (button at upper-right of table title). UI-only. Vertical
   slicing; 4 tasks (T1–T4). Out of scope: pagination/sorting/filtering,

@@ -765,6 +765,13 @@ request-access stays always visible. The `(app)` no-membership block does not
 mask `/admin` or `/workspace-admin`: the nested guards decide. A non-admin
 sees a localized no-access state and no API call is made.
 
+Both surfaces present their lists as **data tables** (`<table>` with
+`<thead>`/`<tbody>`, `scope="col"` headers, following the proposals page
+pattern) and move every "create new" form into a `ModalDialog` triggered by a
+button at the upper-right of the table's title row, so creation never
+overwhelms the list view. Row actions stay inline on each row. See
+`docs/archive/plans/admin-data-tables/v1.md`.
+
 ## PWA behavior
 
 Minimal manifest:
