@@ -828,7 +828,8 @@ export const en: Dictionary<typeof es> = {
     demote: 'Demote',
     memberships: 'Memberships',
     noMemberships: 'No memberships.',
-    systemRole: 'System role'
+    systemRole: 'System role',
+    actions: 'Actions'
   },
 
   workspaceAdmin: {

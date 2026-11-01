@@ -893,7 +893,8 @@ export const es = {
     demote: 'Degradar',
     memberships: 'Pertenencias',
     noMemberships: 'Sin pertenencias.',
-    systemRole: 'Rol del sistema'
+    systemRole: 'Rol del sistema',
+    actions: 'Acciones'
   },
 
   workspaceAdmin: {

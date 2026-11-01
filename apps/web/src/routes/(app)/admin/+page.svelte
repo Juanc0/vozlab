@@ -5,6 +5,7 @@
   import * as admin from '$lib/api/admin';
   import type { AdminUserDto, AdminWorkspaceDto, SystemRole } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
+  import ModalDialog from '$lib/components/ModalDialog.svelte';
 
   const api = getApiClient();
   const locale = getLocaleState();
@@ -41,6 +42,17 @@
   let newKind = $state('PRIVATE');
   let newInitialAdmin = $state('');
   let creating = $state(false);
+  let createWorkspaceOpen = $state(false);
+
+  $effect(() => {
+    if (!createWorkspaceOpen) return;
+    newName = '';
+    newSlug = '';
+    newDesc = '';
+    newPublic = true;
+    newKind = 'PRIVATE';
+    newInitialAdmin = '';
+  });
 
   // v6/TASK-09 (B7): the tenant hygiene sweep.
   let cleanupDays = $state('30');
@@ -103,6 +115,7 @@
       });
       workspaces = [...workspaces, ws];
       newName = ''; newSlug = ''; newDesc = '';
+      createWorkspaceOpen = false;
     } catch (e) {
       error = describeFailure(e);
     } finally {
@@ -223,28 +236,47 @@
     <div role="tabpanel" id={panelId} aria-labelledby={tabId(activeTab)} tabindex="0" class="mt-3 space-y-4">
       {#if activeTab === 'workspaces'}
         <div class="rounded-card bg-brand-100 p-4 space-y-3">
-          <h2>{t('admin.workspaces')}</h2>
+          <div class="flex items-center justify-between gap-2">
+            <h2>{t('admin.workspaces')}</h2>
+            <button type="button" class="btn btn-primary" onclick={() => (createWorkspaceOpen = true)}>
+              {t('admin.createWorkspace')}
+            </button>
+          </div>
           {#if workspacesLoading}
             <p>{t('common.loading')}</p>
           {:else if workspaces.length === 0}
             <p>{t('admin.noWorkspaces')}</p>
           {:else}
-            <ul class="space-y-1">
-              {#each workspaces as w (w.id)}
-                <li class="text-small flex items-center justify-between gap-2">
-                  <span class="flex-1">
-                    {w.name} <span class="text-muted">({w.slug})</span>
-                    <span class="text-accent">{w.kind}</span>
-                    <span class="text-muted">· {w.memberCount} {t('admin.members')} · {w.pendingRequestCount} {t('admin.joinRequests')}</span>
-                  </span>
-                </li>
-              {/each}
-            </ul>
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+            <div class="overflow-x-auto rounded-card bg-brand-100" role="region" aria-label={t('admin.workspaces')} tabindex="0">
+              <table class="w-full min-w-[34rem] border-collapse text-left text-body">
+                <caption class="sr-only">{t('admin.workspaces')}</caption>
+                <thead class="text-small text-muted">
+                  <tr>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.name')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.slug')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.kind')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.members')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.joinRequests')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each workspaces as w (w.id)}
+                    <tr class="border-t border-rule align-top">
+                      <th scope="row" class="px-3 py-2 font-normal">{w.name}</th>
+                      <td class="px-3 py-2">{w.slug}</td>
+                      <td class="px-3 py-2">{w.kind}</td>
+                      <td class="px-3 py-2">{w.memberCount}</td>
+                      <td class="px-3 py-2">{w.pendingRequestCount}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
           {/if}
         </div>
 
-        <div class="rounded-card bg-brand-100 p-4 space-y-3">
-          <h2>{t('admin.createWorkspace')}</h2>
+        <ModalDialog open={createWorkspaceOpen} title={t('admin.createWorkspace')} onclose={() => (createWorkspaceOpen = false)}>
           <form class="space-y-2" onsubmit={(e) => { e.preventDefault(); createWorkspace(); }}>
             <input class="field w-full" bind:value={newName} placeholder={t('admin.name')} />
             <input class="field w-full" bind:value={newSlug} placeholder={t('admin.slug')} />
@@ -274,7 +306,7 @@
               {t('admin.createWorkspace')}
             </button>
           </form>
-        </div>
+        </ModalDialog>
       {:else if activeTab === 'users'}
         <div class="rounded-card bg-brand-100 p-4 space-y-3">
           <h2>{t('admin.tenantUsers')}</h2>
@@ -283,52 +315,71 @@
           {:else if tenantUsers.length === 0}
             <p>{t('admin.noWorkspaces')}</p>
           {:else}
-            <ul class="space-y-2">
-              {#each tenantUsers as u (u.id)}
-                <li class="text-small flex flex-col gap-2 border-b border-rule pb-2">
-                  <div class="flex items-center justify-between gap-2">
-                    <span>{u.fullName ?? u.handle ?? u.id}</span>
-                    <div class="flex items-center gap-2">
-                      <label class="flex items-center gap-1">
-                        <span class="sr-only">{t('admin.systemRole')}</span>
-                        <select
-                          class="field"
-                          value={u.systemRole}
-                          onchange={(e) => changeSystemRole(u.id, (e.currentTarget as HTMLSelectElement).value as SystemRole)}
-                        >
-                          <option value="USER">USER</option>
-                          <option value="ADMIN">ADMIN</option>
-                          <option value="MODERATOR">MODERATOR</option>
-                          <option value="SYSTEM_AGENT">SYSTEM_AGENT</option>
-                        </select>
-                      </label>
-                      <button type="button" class="btn btn-primary text-small" onclick={() => suspendUser(u.id)}>
-                        {t('admin.suspend')}
-                      </button>
-                      <button type="button" class="btn btn-primary text-small" onclick={() => activateUser(u.id)}>
-                        {t('admin.activate')}
-                      </button>
-                      <button type="button" class="btn-quiet text-small" onclick={() => toggleExpanded(u.id)}>
-                        {t('admin.memberships')}
-                      </button>
-                    </div>
-                  </div>
-                  {#if expanded.has(u.id)}
-                    <div class="pl-4">
-                      {#if u.memberships.length === 0}
-                        <p class="text-muted">{t('admin.noMemberships')}</p>
-                      {:else}
-                        <ul class="space-y-1">
-                          {#each u.memberships as m (m.workspaceId)}
-                            <li class="text-muted">{m.workspaceName} · {m.role} · {m.status}</li>
-                          {/each}
-                        </ul>
-                      {/if}
-                    </div>
-                  {/if}
-                </li>
-              {/each}
-            </ul>
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+            <div class="overflow-x-auto rounded-card bg-brand-100" role="region" aria-label={t('admin.tenantUsers')} tabindex="0">
+              <table class="w-full min-w-[34rem] border-collapse text-left text-body">
+                <caption class="sr-only">{t('admin.tenantUsers')}</caption>
+                <thead class="text-small text-muted">
+                  <tr>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.handle')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.systemRole')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.memberships')}</th>
+                    <th scope="col" class="px-3 py-2 font-normal">{t('admin.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each tenantUsers as u (u.id)}
+                    <tr class="border-t border-rule align-top">
+                      <th scope="row" class="px-3 py-2 font-normal">{u.fullName ?? u.handle ?? u.id}</th>
+                      <td class="px-3 py-2">
+                        <label class="flex items-center gap-1">
+                          <span class="sr-only">{t('admin.systemRole')}</span>
+                          <select
+                            class="field"
+                            value={u.systemRole}
+                            onchange={(e) => changeSystemRole(u.id, (e.currentTarget as HTMLSelectElement).value as SystemRole)}
+                          >
+                            <option value="USER">USER</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="MODERATOR">MODERATOR</option>
+                            <option value="SYSTEM_AGENT">SYSTEM_AGENT</option>
+                          </select>
+                        </label>
+                      </td>
+                      <td class="px-3 py-2">{u.memberships.length}</td>
+                      <td class="px-3 py-2">
+                        <div class="flex items-center gap-2">
+                          <button type="button" class="btn btn-primary text-small" onclick={() => suspendUser(u.id)}>
+                            {t('admin.suspend')}
+                          </button>
+                          <button type="button" class="btn btn-primary text-small" onclick={() => activateUser(u.id)}>
+                            {t('admin.activate')}
+                          </button>
+                          <button type="button" class="btn-quiet text-small" onclick={() => toggleExpanded(u.id)}>
+                            {t('admin.memberships')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {#if expanded.has(u.id)}
+                      <tr class="border-t border-rule">
+                        <td colspan="4" class="px-3 py-2 pl-4">
+                          {#if u.memberships.length === 0}
+                            <p class="text-muted">{t('admin.noMemberships')}</p>
+                          {:else}
+                            <ul class="space-y-1">
+                              {#each u.memberships as m (m.workspaceId)}
+                                <li class="text-muted">{m.workspaceName} · {m.role} · {m.status}</li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                </tbody>
+              </table>
+            </div>
           {/if}
         </div>
       {:else}
