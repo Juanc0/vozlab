@@ -960,8 +960,8 @@ Decided, and not to be re-opened without evidence:
 - **navbar-polish v1** — CLOSED 2026-11-01 (T1–T6 done):
   [docs/archive/plans/navbar-polish/v1.md](docs/archive/plans/navbar-polish/v1.md)
 
-- **navbar-polish v2** — OPEN 2026-11-01:
-  [docs/plans/navbar-polish/v2.md](docs/plans/navbar-polish/v2.md)
+- **navbar-polish v2** — CLOSED 2026-11-01 (T1–T3 done):
+  [docs/archive/plans/navbar-polish/v2.md](docs/archive/plans/navbar-polish/v2.md)
   — restore the join button's height to match the logout button.
   Horizontal slicing; 3 tasks (T1–T3). Out of scope: label, rail, dark mode.
   — shorten the join button label (purpose-focused, no "code" word) and make
