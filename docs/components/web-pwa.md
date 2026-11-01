@@ -738,18 +738,23 @@ from the UI alone: the API re-checks every action.
 Two role-gated surfaces, split in `admin-surfaces v1` (ADR-0048) and closed in
 `admin-surfaces v2` (ADR-0049):
 
-- **`/admin`** — tenant administration only: workspace existence and creation
-  (including workspaces the caller does not belong to, with `kind` and an
-  optional `initialAdminUserId`), the tenant user directory (read-only) and
-  the tenant hygiene sweep. No workspace-scoped edits, no member/role/
-  invitation/join-code/event-code controls, no break-glass roster and no
-  "enter workspace administration" link. Reachable only when
+- **`/admin`** — tenant administration only, organized into tabs (Workspaces,
+  Users, Hygiene): workspace existence and creation (including workspaces the
+  caller does not belong to, with `kind` and an optional
+  `initialAdminUserId`), the tenant user directory (role/status management:
+  promote/demote `system_role`, suspend/activate with session invalidation,
+  ADR-0050) and the tenant hygiene sweep. No workspace-scoped edits, no
+  member/role/invitation/join-code/event-code controls, no break-glass roster
+  and no "enter workspace administration" link. Reachable only when
   `session.user.systemRole === 'ADMIN'`.
-- **`/workspace-admin`** — workspace administration: profile, members and
-  roles, join requests, invitations, workspace join codes and (for
-  `kind='EVENT'` workspaces) event codes. Reachable only when the active
-  workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`); there is
-  no `?workspaceId` tenant override and no break-glass entry. A tenant
+- **`/workspace-admin`** — workspace administration, organized into tabs
+  (General, Members, Access, Codes, Event codes): profile, members and roles,
+  join requests, invitations, workspace join codes and (for `kind='EVENT'`
+  workspaces) event codes. General actions (add member, create invitation,
+  create join code, create event code) are visually separated from the
+  list/row actions within each tab. Reachable only when the active workspace's
+  strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`); there is no
+  `?workspaceId` tenant override and no break-glass entry. A tenant
   administrator who is not a member of the selected workspace sees the
   localized no-access state and makes no API call.
 

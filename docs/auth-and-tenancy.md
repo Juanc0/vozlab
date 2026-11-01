@@ -472,8 +472,11 @@ active ones (`ADMIN` > `MODERATOR` > `MEMBER` > `GUEST`).
 in the router: each institution has its own administrators, a global user
 linked to two institutions can be `ADMIN` in one and `USER` in the other, and
 there is no platform-wide role to hold. `db:grant-tenant-admin` writes that
-tenant row, and no API route changes `system_role`
-([ADR-0041](decisions/ADR-0041-tenant-and-workspace-administration.md) §9).
+tenant row. `db:grant-tenant-admin` (and the dev seed) remain the only way to
+create the *first* tenant administrator; once one exists, a tenant `ADMIN`
+may change another existing user's `system_role` through
+`PATCH /api/v1/admin/users/:userId`
+([ADR-0050](decisions/ADR-0050-tenant-user-management-and-role-carveout.md)).
 
 ### 12.2 The token carries no role
 
@@ -506,7 +509,7 @@ discovers which surfaces to offer.
 | Session: `POST /auth/logout` | `authGuard` | valid access token | `401` |
 | Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `401 ERR_INVALID_TOKEN`, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` (missing `tid` in `tenantGuard`), `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
 | Tenant switch: `POST /auth/switch-tenant` | `authGuard` → `tenantGuard` → `scoped` rate limit | same | `403`, `429` |
-| Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
+| Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/:userId`, `POST /api/v1/admin/users/:userId/suspend`, `POST /api/v1/admin/users/:userId/activate`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
 | Workspace administration: `GET`/`PATCH /api/v1/workspaces/:workspaceId` (profile), `/api/v1/workspaces/:workspaceId/{members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | `ADMIN` in the union of the `ACTIVE` roles of the header workspace (no tenant-`ADMIN` bypass; ADR-0049) | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace or disagrees with `X-Workspace-ID` (for every caller, including a tenant `ADMIN`); `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN`. The legacy `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is intentionally unexposed by either surface. || Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
 | Onboarding: `GET /api/v1/workspace-discovery`, `GET`/`POST /api/v1/workspace-join-requests` | `authGuard` → `tenantGuard` → `rateLimit` | any valid tenant session | `401`/`403` |
 
@@ -540,7 +543,7 @@ discovers which surfaces to offer.
   no-membership gate of the `(app)` layout belongs to the workspace
   destinations, not to the tenant surface.
 - Build state (2026-11-01): `/admin` is the tenant-only surface (workspace
-  list, create form, tenant user directory, hygiene sweep) and
+  list, create form, tenant user directory (role/status management), hygiene sweep) and
   `/workspace-admin` requires an `ACTIVE` workspace `ADMIN` membership in the
   selected workspace, with no `?workspaceId` override or break-glass entry
   (admin-surfaces v2, ADR-0049). The role model and enforcement matrix above
@@ -552,13 +555,16 @@ discovers which surfaces to offer.
 | Workspace existence, including workspaces the caller does not belong to | Owns | — |
 | Workspace creation, its `kind`, and its first administrator | Owns | — |
 | Tenant user directory and the tenant cleanup sweep | Owns | — |
+| Tenant user role/status management (promote/demote `system_role`, suspend/activate, session invalidation) | Owns | — |
 | Workspace profile and settings (`name`, `description`, `isPublic`) | — | Owns |
 | Members and roles: add, assign or remove a role, change, suspend, reactivate, remove | — | Owns |
 | Join requests: approve, reject | — | Owns |
 | Invitations: create, revoke | — | Owns |
 | Workspace join codes (`purpose = 'WORKSPACE'`) | — | Owns |
 | Event codes (`purpose = 'EVENT'`, for a workspace with `kind = 'EVENT'`) | — | Owns |
-| Changing `system_role` | Neither — the ops CLI is the only door (ADR-0041 §9) | — |
+| Changing `system_role` for an *existing* user | Owns (ADR-0050) | — |
+| Creating the *first* tenant administrator (bootstrap) | Neither — the ops CLI is the only door (ADR-0041 §9, ADR-0050) | — |
+| Emergency recovery with no authenticable administrator | Neither — the ops CLI is the only door (ADR-0041 §9, ADR-0050) | — |
 | Workspace deletion or archive; moving a member between workspaces | Neither — not built | Neither — not built |
 
 ### 12.6 No bypass and no break-glass (ADR-0049)
@@ -575,7 +581,7 @@ Consequences for the surfaces:
   roster or "enter workspace administration" link. It renders only the
   workspace list (name, slug, kind, member and pending counts), the create
   form (name, slug, description, public, kind, initial admin), the tenant user
-  directory (read-only) and the tenant hygiene sweep.
+  directory (role/status management, ADR-0050) and the tenant hygiene sweep.
 - `/workspace-admin` is reachable only with an `ACTIVE` workspace `ADMIN`
   membership in the selected workspace. There is no `?workspaceId` tenant
   override and no break-glass entry; a tenant administrator who is not a
