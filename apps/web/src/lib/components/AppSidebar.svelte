@@ -94,6 +94,9 @@
   /** Platform-level administrators reach the admin surface. */
   const isSystemAdmin = $derived(session.user?.systemRole === 'ADMIN');
 
+  /** Workspace administrators reach the workspace administration surface. */
+  const isWorkspaceAdmin = $derived(workspace.isAdmin);
+
   const links = $derived([
     ...(hasWorkspaceMembership
       ? [
@@ -104,6 +107,9 @@
       : []),
     ...(isSystemAdmin
       ? [{ href: '/admin', label: t('admin.title'), icon: 'proposals' }]
+      : []),
+    ...(isWorkspaceAdmin
+      ? [{ href: '/workspace-admin', label: t('workspaceAdmin.title'), icon: 'proposals' }]
       : []),
     { href: '/request-access', label: t('requestAccess.title'), icon: 'discussions' }
   ]);

@@ -94,6 +94,51 @@ describe('the navigation column', () => {
     expect(screen.getByRole('link', { name: 'Administración' })).toBeInTheDocument();
   });
 
+  it('shows the workspace-admin link only for a workspace admin', () => {
+    const { client, session, workspace } = governanceHarness({ authorHash: 'hash', role: 'ADMIN' });
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.getByRole('link', { name: 'Administración del espacio de trabajo' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument();
+  });
+
+  it('shows both admin links when both roles hold', () => {
+    const { client, session, workspace } = governanceHarness({ authorHash: 'hash', role: 'ADMIN' });
+    session.user!.systemRole = 'ADMIN';
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.getByRole('link', { name: 'Administración' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Administración del espacio de trabajo' })).toBeInTheDocument();
+  });
+
+  it('hides the workspace-admin link for a plain member', () => {
+    const { client, session, workspace } = governanceHarness({ authorHash: 'hash', role: 'MEMBER' });
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.queryByRole('link', { name: 'Administración del espacio de trabajo' })).not.toBeInTheDocument();
+  });
+
   it('hides workspace-scoped links when there is no membership, keeps request-access', () => {
     const { client, session, workspace } = governanceHarness();
     workspace.hydrate([]);

@@ -882,7 +882,20 @@ export const es = {
     createInvitation: 'Crear invitación',
     revoke: 'Revocar',
     invitationLink: 'Enlace de invitación',
-    noWorkspaces: 'No hay espacios de trabajo.'
+    noWorkspaces: 'No hay espacios de trabajo.',
+    noAccess: 'No eres administrador del inquilino.'
+  },
+
+  workspaceAdmin: {
+    title: 'Administración del espacio de trabajo',
+    noAccess: 'No administras este espacio de trabajo.',
+    general: 'General',
+    members: 'Miembros',
+    access: 'Acceso',
+    codes: 'Códigos',
+    save: 'Guardar cambios',
+    saved: 'Guardado.',
+    loadFailed: 'No se pudo cargar el espacio de trabajo.'
   },
 
   requestAccess: {

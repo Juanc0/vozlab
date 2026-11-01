@@ -50,7 +50,12 @@
    * so the guard must not replace its children with the no-membership card.
    */
   const usableWithoutMembership = $derived(
-    page.url.pathname === '/request-access' || page.url.pathname.startsWith('/request-access/')
+    page.url.pathname === '/request-access' ||
+      page.url.pathname.startsWith('/request-access/') ||
+      page.url.pathname === '/admin' ||
+      page.url.pathname.startsWith('/admin/') ||
+      page.url.pathname === '/workspace-admin' ||
+      page.url.pathname.startsWith('/workspace-admin/')
   );
 
   /**

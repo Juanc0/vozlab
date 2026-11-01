@@ -12,6 +12,9 @@
   const workspace = getWorkspaceState();
   const t = locale.t;
 
+  /** Tenant administrators reach this surface. */
+  const canAdmin = $derived(session.user?.systemRole === 'ADMIN');
+
   let workspaces = $state<AdminWorkspaceDto[]>([]);
   let selectedId = $state<string | null>(null);
   let members = $state<AdminMemberDto[]>([]);
@@ -76,10 +79,12 @@
   }
 
   $effect(() => {
-    if (selectedId) loadMembers();
+    if (canAdmin && selectedId) loadMembers();
   });
 
-  onMount(loadWorkspaces);
+  onMount(() => {
+    if (canAdmin) loadWorkspaces();
+  });
 
   async function createWorkspace() {
     creating = true; error = null;
@@ -212,7 +217,13 @@
   <title>{t('admin.title')}</title>
 </svelte:head>
 
-<section class="space-y-6">
+{#if !canAdmin}
+  <section class="rounded-card bg-brand-100 p-6" role="status">
+    <h1>{t('admin.title')}</h1>
+    <p class="mt-2 text-body text-muted">{t('admin.noAccess')}</p>
+  </section>
+{:else}
+  <section class="space-y-6">
   <h1>{t('admin.title')}</h1>
 
   {#if error}
@@ -454,3 +465,4 @@
     </div>
   </div>
 </section>
+{/if}

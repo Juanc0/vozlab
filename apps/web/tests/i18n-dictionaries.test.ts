@@ -28,7 +28,8 @@ const IDENTICAL: readonly string[] = [
   'locale.en',
   'engines.panelD3Name',
   'engines.panelSvgName',
-  'engines.kpiMs'
+  'engines.kpiMs',
+  'workspaceAdmin.general'
 ];
 
 describe('the two dictionaries', () => {

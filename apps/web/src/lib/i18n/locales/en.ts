@@ -817,7 +817,20 @@ export const en: Dictionary<typeof es> = {
     createInvitation: 'Create invitation',
     revoke: 'Revoke',
     invitationLink: 'Invitation link',
-    noWorkspaces: 'No workspaces.'
+    noWorkspaces: 'No workspaces.',
+    noAccess: 'You are not a tenant administrator.'
+  },
+
+  workspaceAdmin: {
+    title: 'Workspace administration',
+    noAccess: 'You do not administer this workspace.',
+    general: 'General',
+    members: 'Members',
+    access: 'Access',
+    codes: 'Codes',
+    save: 'Save changes',
+    saved: 'Saved.',
+    loadFailed: 'Could not load the workspace.'
   },
 
   requestAccess: {
