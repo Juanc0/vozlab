@@ -3,7 +3,7 @@
   import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
-  import type { AdminMemberDto, AdminWorkspaceDto } from '@vozlab/shared-types';
+  import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto } from '@vozlab/shared-types';
   import { UpdateWorkspaceSchema } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
 
@@ -29,7 +29,7 @@
   );
 
   // Section navigation.
-  let section = $state<'general' | 'members'>('general');
+  let section = $state<'general' | 'members' | 'access'>('general');
 
   // General
   let ws = $state<AdminWorkspaceDto | null>(null);
@@ -47,6 +47,15 @@
   let addHandle = $state('');
   let addRole = $state('MEMBER');
   let adding = $state(false);
+
+  // Access
+  let joinRequests = $state<JoinRequestDto[]>([]);
+  let accessLoading = $state(false);
+  let inviteEmail = $state('');
+  let inviteRole = $state('MEMBER');
+  let creatingInvite = $state(false);
+  let createdInviteLink = $state<string | null>(null);
+  let invitations = $state<unknown[]>([]);
 
   async function loadWorkspace(): Promise<void> {
     if (!canAdmin) return;
@@ -78,10 +87,52 @@
     }
   }
 
+  async function loadAccess(): Promise<void> {
+    if (!canAdmin) return;
+    accessLoading = true;
+    try {
+      joinRequests = await admin.listJoinRequests(api, workspace.currentWorkspaceId);
+      invitations = await admin.listInvitations(api, workspace.currentWorkspaceId);
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      accessLoading = false;
+    }
+  }
+
+  async function createInvite(): Promise<void> {
+    creatingInvite = true;
+    error = null;
+    try {
+      const res = await admin.createInvitation(api, workspace.currentWorkspaceId, {
+        email: inviteEmail,
+        role: inviteRole as 'MEMBER' | 'MODERATOR' | 'ADMIN',
+      });
+      createdInviteLink = res.url;
+      inviteEmail = '';
+      await loadAccess();
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      creatingInvite = false;
+    }
+  }
+
+  async function approveRequest(id: string): Promise<void> {
+    await run(() => admin.approveJoinRequest(api, workspace.currentWorkspaceId, id));
+    await loadAccess();
+  }
+
+  async function rejectRequest(id: string): Promise<void> {
+    await run(() => admin.rejectJoinRequest(api, workspace.currentWorkspaceId, id));
+    await loadAccess();
+  }
+
   $effect(() => {
     if (canAdmin) {
       loadWorkspace();
       loadMembers();
+      loadAccess();
     }
   });
 
@@ -170,6 +221,9 @@
       </button>
       <button type="button" class="px-3 py-2 text-body font-medium {section === 'members' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'members')}>
         {t('workspaceAdmin.members')}
+      </button>
+      <button type="button" class="px-3 py-2 text-body font-medium {section === 'access' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'access')}>
+        {t('workspaceAdmin.access')}
       </button>
     </nav>
 
@@ -265,6 +319,52 @@
                     <option value="ADMIN">ADMIN</option>
                   </select>
                 </div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {:else if section === 'access'}
+      <div class="rounded-card bg-brand-100 p-4 space-y-3">
+        <h2>{t('admin.joinRequests') ?? 'Join requests'}</h2>
+        {#if accessLoading}
+          <p>{t('common.loading') ?? 'Loading…'}</p>
+        {:else}
+          <ul class="space-y-1">
+            {#each joinRequests as r (r.id)}
+              <li class="flex items-center justify-between gap-2">
+                <span>{r.userId} — {r.status}</span>
+                <span class="flex gap-1">
+                  <button class="btn btn-quiet text-small" onclick={() => approveRequest(r.id)}>{t('admin.approve') ?? 'Approve'}</button>
+                  <button class="btn btn-quiet text-small" onclick={() => rejectRequest(r.id)}>{t('admin.reject') ?? 'Reject'}</button>
+                </span>
+              </li>
+            {/each}
+          </ul>
+
+          <h3 class="border-t border-rule pt-3">{t('admin.invitations') ?? 'Invitations'}</h3>
+          <div class="flex flex-wrap items-center gap-2">
+            <input class="field" bind:value={inviteEmail} placeholder={t('admin.email') ?? 'Email'} />
+            <select class="field" bind:value={inviteRole}>
+              <option value="MEMBER">MEMBER</option>
+              <option value="MODERATOR">MODERATOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <button type="button" class="btn btn-primary text-small" disabled={creatingInvite} onclick={createInvite}>
+              {t('admin.createInvitation') ?? 'Create invitation'}
+            </button>
+          </div>
+          {#if createdInviteLink}
+            <p class="text-small">{t('admin.invitationLink') ?? 'Invitation link'}: <code class="break-all">{createdInviteLink}</code></p>
+          {/if}
+
+          <ul class="space-y-1">
+            {#each invitations as inv ( (inv as { id: string }).id )}
+              <li class="text-small flex items-center justify-between gap-2">
+                <span>{(inv as { status?: string }).status ?? ''}</span>
+                <button class="btn btn-quiet text-small" onclick={() => run(() => admin.revokeInvitation(api, (inv as { id: string }).id, workspace.currentWorkspaceId))}>
+                  {t('admin.revoke') ?? 'Revoke'}
+                </button>
               </li>
             {/each}
           </ul>
