@@ -150,6 +150,13 @@ fail-open: a Redis outage logs a warning and allows the request. Reads default
 to 300 req/min, writes to 30 req/min, and the workspace ceiling is the
 per-actor max × `RATE_LIMIT_WORKSPACE_MULTIPLIER` (default 10).
 
+The chain above is the **resource** route chain. Tenant administration,
+workspace administration, onboarding and session routes use shorter chains
+(`authGuard → tenantGuard → tenantAdminGuard → rateLimit`,
+`authGuard → tenantGuard → workspaceAdminGuard → rateLimit`,
+`authGuard → tenantGuard → rateLimit`); see §12.3 for the full enforcement
+matrix.
+
 ## 4. OIDC validation
 
 The adapter (`OidcProviderClient`) uses `jose` with an explicit issuer and JWKS
@@ -442,7 +449,7 @@ contract for both.
 
 | Role | Column | Values | Default | Notes |
 | --- | --- | --- | --- | --- |
-| Tenant administrator | `auth.users.system_role` (tenant DB) | `USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT` | `USER` | `varchar(30) NOT NULL`, not DB-constrained (`SystemRoleSchema`). Only `ADMIN` holds the tenant scope; `MODERATOR` grants no administration power and stays inert. |
+| Tenant administrator | `auth.users.system_role` (tenant DB) | `USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT` | `USER` | `varchar(30) NOT NULL`, not DB-constrained (`SystemRoleSchema`). Only `ADMIN` holds the tenant scope; `MODERATOR` grants no administration power and stays inert for administration. |
 | Workspace administrator | `auth.workspace_memberships.role` with `status = 'ACTIVE'` | `ADMIN`, `MODERATOR`, `MEMBER`, `GUEST` | `MEMBER` | `varchar(30) NOT NULL`, not DB-constrained (`WorkspaceRoleSchema`). Only `ADMIN` holds the workspace scope. |
 
 `auth.workspace_memberships.status` is `varchar(20) NOT NULL DEFAULT 'ACTIVE'`
@@ -469,8 +476,9 @@ tenant row, and no API route changes `system_role`
 
 ### 12.2 The token carries no role
 
-The access token carries `sub`, `tid`, `jti`, `authorHash`, `type` and the
-standard `iat`/`exp` — no role claim of either kind (§2). Every guard re-reads
+The access token carries `sub`, `tid`, `jti`, `authorHash`, `type` (agents only;
+absent for humans — §2) and the standard `iat`/`exp` — no role claim of either
+kind (§2). Every guard re-reads
 the role from the tenant database on every request, so a demotion takes effect
 on the next request, not on the next login, and a token cannot outlive its
 permissions.
@@ -478,7 +486,11 @@ permissions.
 `GET /auth/me` is how the PWA learns what it may render: it returns
 `systemRole` and one entry per workspace carrying the role to display. The rule
 is one entry per workspace with its strongest `ACTIVE` role; the `tid` claim
-selects the institution, so the same token never spans two of them.
+selects the institution, so the same token never spans two of them. As of
+2026-11-01 the implementation (`DrizzleUserRepository.listWorkspaces`) returns
+one row per `ACTIVE` membership row, so a user holding several roles in one
+workspace (e.g. `MEMBER` + `ADMIN`) appears more than once; T2 dedupes to the
+strongest role per workspace.
 
 Nothing in the login flow attaches a role to the session: the callback, tenant
 selection, the redemption of an invitation and the event join all mint the same
@@ -491,10 +503,10 @@ discovers which surfaces to offer.
 | --- | --- | --- | --- |
 | Public auth: `GET /auth/login`, `GET /auth/callback`, `POST /auth/refresh`, `POST /auth/event-join`, `POST /auth/select-tenant`, `GET /auth/resolve-tenants` | public IP rate limit | none | `429`, OIDC and event-join codes (§14) |
 | Session: `POST /auth/logout` | `authGuard` | valid access token | `401` |
-| Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
+| Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `401 ERR_INVALID_TOKEN`, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` (missing `tid` in `tenantGuard`), `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
 | Tenant switch: `POST /auth/switch-tenant` | `authGuard` → `tenantGuard` → `scoped` rate limit | same | `403`, `429` |
 | Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
-| Workspace administration: `/api/v1/workspaces/:workspaceId/{profile,members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | tenant `ADMIN` (bypass), or `ADMIN` in the union of the `ACTIVE` roles of the header workspace | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace; `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN` |
+| Workspace administration: `GET`/`PATCH /api/v1/workspaces/:workspaceId` (profile), `/api/v1/workspaces/:workspaceId/{members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | tenant `ADMIN` (bypass), or `ADMIN` in the union of the `ACTIVE` roles of the header workspace | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace; `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN`. The legacy `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is intentionally unexposed by either surface. |
 | Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
 | Onboarding: `GET /api/v1/workspace-discovery`, `GET`/`POST /api/v1/workspace-join-requests` | `authGuard` → `tenantGuard` → `rateLimit` | any valid tenant session | `401`/`403` |
 
@@ -557,7 +569,9 @@ The split is a **surface** contract, not a reduction of that authority:
 
 - `/admin` reads the roster of any workspace **read-only** — the workspace row,
   its members and its pending join requests — and offers no member, role,
-  invitation, join-code or event-code control.
+  invitation, join-code or event-code control, from T5 on. As of 2026-11-01
+  the mixed `/admin` page still ships those controls; §12.4 records the
+  build state.
 - To write, the administrator enters the workspace administration surface
   explicitly, with the target workspace named by the entry rather than by the
   per-tab selector. The selector and its `sessionStorage` value are not

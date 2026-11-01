@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-01
 - Amends: ADR-0041 §4 (workspace creation may name its first workspace
-  administrator; every other clause of ADR-0041 stands)
+  administrator; every other clause stands, as already amended by ADR-0045/0046)
 - Related: ADR-0008 (a foreign workspace's resource answers 404), ADR-0045
   (workspace join codes and invitations), ADR-0046 (event-code routing),
   `docs/auth-and-tenancy.md` §12 (the normative role model),
@@ -98,7 +98,8 @@ have: the existence of an `ACTIVE` membership of any role.
 A tenant administrator may, from `/admin`, select any workspace of the tenant —
 including one it does not belong to — and read its roster. That roster is
 **read-only**: no member, role, invitation, join-code or event-code control
-lives on `/admin`. To edit, the administrator uses an explicit "enter workspace
+lives on `/admin` from T5 on; as of 2026-11-01 the mixed `/admin` page still
+ships those controls. To edit, the administrator uses an explicit "enter workspace
 administration" action that opens `/workspace-admin` for that workspace. The
 target workspace travels explicitly with the entry; the PWA's per-tab workspace
 selection is not mutated by it.
@@ -128,8 +129,8 @@ whose own administrators are gone. What changes is that the surface no longer
 ADR-0041 §4's invariant — a workspace is never left without an administrator —
 is preserved: it is created *with* an administrator, possibly a different one.
 The rest of §4 (base ontology in the same transaction) is unchanged. T5 of the
-execution plan implements this route contract; the schema in the repository
-today accepts neither field.
+execution plan implements this route contract; as of 2026-11-01 the schema in
+the repository accepts neither field, and T5 supersedes this paragraph.
 
 ### 5. Event codes belong to the EVENT workspace administrator
 
@@ -148,8 +149,9 @@ tenant whose workspace cannot be reached through the API. `/admin` offers no
 event-code control, and the legacy
 `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is not exposed by
 either surface. T8 of the execution plan implements the `purpose` part of the
-contract; the create route in the repository today stores the column default
-(`WORKSPACE`), and the list route returns every purpose.
+contract; as of 2026-11-01 the create route in the repository stores the column
+default (`WORKSPACE`), and the list route returns every purpose, and T8
+supersedes this paragraph.
 
 ### 6. The role model does not change
 
@@ -159,7 +161,7 @@ No new role, no new column, no new claim. `auth.workspace_memberships` keeps
 workspace, authorization reads the **union of the `ACTIVE` rows**, and the PWA
 displays the **strongest** one (`ADMIN` > `MODERATOR` > `MEMBER` > `GUEST`) of
 the active workspace. `MODERATOR` gains no administration meaning here; it
-stays inert. `system_role` remains per tenant database.
+stays inert for administration. `system_role` remains per tenant database.
 
 ### 7. Non-goals
 

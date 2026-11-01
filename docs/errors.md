@@ -49,6 +49,11 @@ unknown error becomes `500 ERR_INTERNAL_SERVER_ERROR`.
 | `ERR_REFRESH_TOKEN_INVALID` | 401 | Malformed/unknown/expired/reused refresh token, unprovisioned tenant, vanished user, or a `SYSTEM_AGENT` session. Reuse also revokes the family. |
 | `ERR_EMAIL_NOT_VERIFIED` | 403 | The IdP explicitly reports `email_verified: false`. |
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No `tid` claim, or the caller is not a member of the declared `X-Workspace-ID` workspace. System agents skip the membership check. |
+| `ERR_WORKSPACE_NOT_FOUND` | 404 | The workspace does not exist, or the path names another workspace than `X-Workspace-ID` on workspace administration (WorkspaceAdminGuard). |
+| `ERR_WORKSPACE_SLUG_TAKEN` | 409 | A workspace with this slug already exists in the tenant (CreateWorkspaceUseCase). |
+| `ERR_USER_NOT_FOUND` | 404 | The target user does not exist in this tenant (workspace member management). |
+| `ERR_MEMBER_NOT_FOUND` | 404 | The target workspace membership does not exist (member management). |
+| `ERR_ALREADY_MEMBER` | 409 | The user is already an active member of the workspace. |
 | `ERR_AUTHORIZATION_FAILED` | 403 | Authenticated but not allowed: not the node/edge/post author, not the thread creator, not the proposal target maintainer, or not `MODERATOR`/`ADMIN` for auto-apply or class activation. |
 | `ERR_TENANT_NOT_PROVISIONED` | 403 | The JWT `tid`/identity claim has no router tenant row, the tenant has no `tenant_connections` row, or an event code points at a vanished tenant. |
 | `ERR_ACCOUNT_LINK_CONFLICT` | 409 | A concurrent OIDC upsert lost the identity/handle race (DEC-4 removed the email-based link; the code now only marks concurrent-creation conflicts). |
