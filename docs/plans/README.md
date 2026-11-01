@@ -37,6 +37,11 @@ One paragraph. Done means: <observable outcome>.
 
 ## Today
 
+- [frontend-tooling/v1](frontend-tooling/v1.md) — OPEN 2026-10-31: harness
+  readiness for industrial-standard frontend work (MCPs, skills, capture
+  script, AGENTS.md section, plan-example walkthrough). Horizontal slicing;
+  no UI code changes. Goal: make the harness ready to drive frontend work.
+
 - [upgrade-waves/v1](../archive/plans/upgrade-waves/v1.md) — CLOSED 2026-10-31 (waves 0–4 done;
   wave 5 SvelteKit 3 deferred to v2): full dependency upgrade program.
   ADR-0047. Archived at `docs/archive/plans/upgrade-waves/v1.md`.

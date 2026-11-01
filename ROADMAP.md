@@ -931,6 +931,14 @@ Decided, and not to be re-opened without evidence:
   2026-10-30 (ADR-0044; archived plan
   [docs/archive/plans/db-baseline/v1.md](docs/archive/plans/db-baseline/v1.md)).
 
+- **frontend-tooling v1** — OPEN 2026-10-31:
+  [docs/plans/frontend-tooling/v1.md](docs/plans/frontend-tooling/v1.md)
+  — harness readiness for industrial-standard frontend work: enable Chrome
+  DevTools MCP, design-tokens audit, screenshot/HTML capture script, AGENTS.md
+  frontend section, one additional skill/MCP, and a frontend plan-example
+  walkthrough. Horizontal slicing; no UI code changes in this plan. Out of
+  scope: actual view redesigns (future `plans/frontend-ux/v1`).
+
 ## Tracked, not scheduled
 
 Identity/auth survivors (promoted from the archived v5/v6 task trees and
