@@ -83,11 +83,28 @@
    * only place where the full accent is allowed on the navigation, and it
    * is what makes the active row readable at a glance.
    */
+  /**
+   * Whether the signed-in user belongs to at least one workspace of this
+   * tenant. Workspace-scoped destinations (graph, proposals, discussions)
+   * only make sense then; with no membership they are removed from the
+   * navigation entirely (not merely disabled).
+   */
+  const hasWorkspaceMembership = $derived(workspace.workspaces.length > 0);
+
+  /** Platform-level administrators reach the admin surface. */
+  const isSystemAdmin = $derived(session.user?.systemRole === 'ADMIN');
+
   const links = $derived([
-    { href: '/', label: t('sidebar.graph'), icon: 'graph' },
-    { href: '/proposals', label: t('sidebar.proposals'), icon: 'proposals' },
-    { href: '/discussions', label: t('sidebar.discussions'), icon: 'discussions' },
-    { href: '/admin', label: t('admin.title'), icon: 'proposals' },
+    ...(hasWorkspaceMembership
+      ? [
+          { href: '/', label: t('sidebar.graph'), icon: 'graph' },
+          { href: '/proposals', label: t('sidebar.proposals'), icon: 'proposals' },
+          { href: '/discussions', label: t('sidebar.discussions'), icon: 'discussions' }
+        ]
+      : []),
+    ...(isSystemAdmin
+      ? [{ href: '/admin', label: t('admin.title'), icon: 'proposals' }]
+      : []),
     { href: '/request-access', label: t('requestAccess.title'), icon: 'discussions' }
   ]);
 
@@ -101,11 +118,6 @@
   /** The workspace the screen is about. */
   const activeWorkspace = $derived(
     workspace.workspaces.find((item) => item.id === workspace.currentWorkspaceId) ?? null
-  );
-
-  /** The mark of the workspace in the rail: its first letter. */
-  const workspaceMark = $derived(
-    activeWorkspace === null ? '·' : activeWorkspace.name.trim().charAt(0).toUpperCase()
   );
 
   let signingOut = $state(false);
@@ -364,7 +376,22 @@
         aria-expanded={menu === 'workspace'}
         onclick={(event) => openMenu('workspace', event)}
       >
-        <span aria-hidden="true">{workspaceMark}</span>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" />
+          <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" />
+          <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
+          <rect x="9" y="9" width="4.5" height="4.5" rx="1" />
+        </svg>
         <span class="sr-only">
           {t('sidebar.workspaceControl', { name: activeWorkspace?.name ?? t('workspace.noneSelected') })}
         </span>

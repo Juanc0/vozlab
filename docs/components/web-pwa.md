@@ -372,6 +372,13 @@ the other way round.
   selector is a full-width `field` (`w-full`) with the same margins as the
   other navbar controls. Both bottom groups (expanded and rail) carry `pb-4`
   so the logout/session control no longer touches the floor of the navbar.
+- Navigation links are **gated by role/permissions**, structurally (removed
+  from the DOM, not just hidden): graph/proposals/discussions render only
+  with at least one workspace membership; admin renders only for
+  `systemRole === 'ADMIN'`; `request-access` is always visible. The
+  collapsed rail uses a 2×2 grid icon for the workspace selector instead of
+  the workspace's first letter, keeping the active workspace name as the
+  accessible name.
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 

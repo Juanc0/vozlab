@@ -61,6 +61,57 @@ describe('the navigation column', () => {
     ).toBeTruthy();
   });
 
+  it('shows workspace-scoped links and request-access, hides admin, for a member', () => {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.getByRole('link', { name: 'Grafo' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Propuestas' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Debates' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Solicitar acceso' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument();
+  });
+
+  it('shows the admin link only for a system admin', () => {
+    const { client, session, workspace } = governanceHarness({ authorHash: 'hash' });
+    session.user!.systemRole = 'ADMIN';
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.getByRole('link', { name: 'Administración' })).toBeInTheDocument();
+  });
+
+  it('hides workspace-scoped links when there is no membership, keeps request-access', () => {
+    const { client, session, workspace } = governanceHarness();
+    workspace.hydrate([]);
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.queryByRole('link', { name: 'Grafo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Propuestas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Debates' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Solicitar acceso' })).toBeInTheDocument();
+  });
+
   it('keeps the bottom controls in order: workspace, then language, then sign-out', () => {
     const { client, session, workspace } = governanceHarness();
 
