@@ -37,7 +37,7 @@ export const users = authSchema.table(
     provider: varchar('provider', { length: 50 }).notNull(), // 'OIDC_INSTITUTIONAL' | 'ANONYMOUS_EVENT'
     authorHash: varchar('author_hash', { length: 64 }).notNull().unique(),
     anonymousAlias: varchar('anonymous_alias', { length: 100 }),
-    systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT'
+    systemRole: varchar('system_role', { length: 30 }).default('USER').notNull(), // 'USER' | 'ADMIN' | 'MODERATOR' | 'SYSTEM_AGENT' (tenant-wide, not platform-wide)
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
     globalUserId: uuid('global_user_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

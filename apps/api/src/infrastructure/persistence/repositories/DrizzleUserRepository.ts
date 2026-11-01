@@ -22,6 +22,32 @@ type Tx = Parameters<
 
 type UserRow = typeof users.$inferSelect;
 
+/** Role strength for the picker dedup (strongest wins). */
+const ROLE_RANK: Record<WorkspaceRole, number> = {
+  GUEST: 0,
+  MEMBER: 1,
+  MODERATOR: 2,
+  ADMIN: 3,
+};
+
+/**
+ * Collapse multiple ACTIVE membership rows for the same workspace into a
+ * single entry carrying the strongest role (ADMIN > MODERATOR > MEMBER >
+ * GUEST). Pure helper, exported for unit testing.
+ */
+export function collapseWorkspacesByStrongestRole<T extends { id: string; role: WorkspaceRole }>(
+  rows: T[]
+): T[] {
+  const byId = new Map<string, T>();
+  for (const row of rows) {
+    const current = byId.get(row.id);
+    if (!current || ROLE_RANK[row.role] > ROLE_RANK[current.role]) {
+      byId.set(row.id, row);
+    }
+  }
+  return [...byId.values()];
+}
+
 function toAuthUser(row: UserRow): AuthUser {
   return {
     id: row.id,
@@ -266,12 +292,18 @@ export class DrizzleUserRepository implements IUserRepository {
         )
         .orderBy(asc(workspaces.name));
 
-      return rows.map((row) => ({
-        id: row.id,
-        slug: row.slug,
-        name: row.name,
-        role: row.role as WorkspaceRole,
-      }));
+      // v5: a user may hold several roles in one workspace. The picker shows
+      // one entry per workspace with the strongest ACTIVE role.
+      const collapsed = collapseWorkspacesByStrongestRole(
+        rows.map((row) => ({
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          role: row.role as WorkspaceRole,
+        }))
+      );
+
+      return collapsed;
     } catch (error) {
       log.error({ err: error, userId }, 'failed to list user workspaces');
       throw new InfrastructureError('ERR_DATABASE_CONNECTION_FAILED');

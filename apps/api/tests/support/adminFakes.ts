@@ -410,10 +410,18 @@ export function makeRoleLookup(adminOf: string | null = null): {
     workspaceId: string,
     tid: string
   ): Promise<WorkspaceRole | null>;
+  getRoles(
+    userId: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<WorkspaceRole[]>;
 } {
   return {
     async getRole(_userId, workspaceId) {
       return adminOf !== null && workspaceId === adminOf ? 'ADMIN' : null;
+    },
+    async getRoles(_userId, workspaceId) {
+      return adminOf !== null && workspaceId === adminOf ? ['ADMIN'] : [];
     },
   };
 }

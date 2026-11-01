@@ -50,7 +50,7 @@ function makeProposalRepo(existing: EditProposal | null): IProposalRepository {
   };
 }
 
-function build(existing: EditProposal | null, role: WorkspaceRole | null) {
+function build(existing: EditProposal | null, role: WorkspaceRole | null, rolesOverride?: WorkspaceRole[]) {
   const proposalRepo = makeProposalRepo(existing);
   const nodeRepo = makeNodeRepository();
   const edgeRepo = makeEdgeRepository();
@@ -63,7 +63,7 @@ function build(existing: EditProposal | null, role: WorkspaceRole | null) {
       return role;
     },
     async getRoles() {
-      return role ? [role] : [];
+      return rolesOverride ?? (role ? [role] : []);
     },
     async add() {},
     async changeRole() {},
@@ -127,5 +127,21 @@ describe('AutoApplyProposalUseCase', () => {
     expect(nodeRepo.appliedDeltas).toEqual([]);
     expect(ran.count).toBe(0);
     expect(events).toEqual([]);
+  });
+
+  it('lets a user holding MEMBER + MODERATOR auto-apply (union of roles)', async () => {
+    const { useCase } = build(proposal(WS, { score: 0 }), 'MEMBER', ['MEMBER', 'MODERATOR']);
+
+    await expect(useCase.execute(input)).rejects.toMatchObject({
+      code: 'ERR_UNMET_AUTO_APPLY_CRITERIA',
+    });
+  });
+
+  it('rejects a user whose union has no moderator/admin row', async () => {
+    const { useCase } = build(proposal(WS, { score: 0 }), 'MEMBER', ['MEMBER', 'GUEST']);
+
+    await expect(useCase.execute(input)).rejects.toMatchObject({
+      code: 'ERR_AUTHORIZATION_FAILED',
+    });
   });
 });

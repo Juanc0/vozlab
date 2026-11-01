@@ -47,13 +47,15 @@ export class AutoApplyProposalUseCase {
       throw new DomainError('ERR_PROPOSAL_NOT_FOUND');
     }
 
-    // Only MODERATOR / ADMIN may use the override path (FR-13).
-    const role = await this.membershipRepo.getRole(
+    // Only MODERATOR / ADMIN may use the override path (FR-13). A user may
+    // hold several roles in the workspace simultaneously (v5), so the
+    // decision uses the union of all ACTIVE rows rather than a single one.
+    const roles = await this.membershipRepo.getRoles(
       input.resolverUserId,
       input.workspaceId,
       input.tid
     );
-    if (!isModeratorOrAdmin(role)) {
+    if (!roles.some((r) => isModeratorOrAdmin(r))) {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 

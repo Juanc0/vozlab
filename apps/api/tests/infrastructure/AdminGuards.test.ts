@@ -123,4 +123,47 @@ describe('workspaceAdminGuard', () => {
     expect(sent).toEqual({});
     expect(req.workspaceId).toBe(WORKSPACE_ID);
   });
+
+  it('lets a user holding both MEMBER and ADMIN pass (union of roles)', async () => {
+    const unionRepo = {
+      async getRole() {
+        return 'MEMBER';
+      },
+      async getRoles() {
+        return ['MEMBER', 'ADMIN'];
+      },
+    };
+    const guard = workspaceAdminGuard({
+      userRepo: regularUser as never,
+      membershipRepo: unionRepo as never,
+    });
+    const { reply: fake, sent } = reply();
+    const req = request({ header: WORKSPACE_ID, params: { workspaceId: WORKSPACE_ID } });
+
+    await guard(req, fake);
+
+    expect(sent).toEqual({});
+  });
+
+  it('rejects a user whose union has no ADMIN row', async () => {
+    const unionRepo = {
+      async getRole() {
+        return 'MEMBER';
+      },
+      async getRoles() {
+        return ['MEMBER', 'GUEST'];
+      },
+    };
+    const guard = workspaceAdminGuard({
+      userRepo: regularUser as never,
+      membershipRepo: unionRepo as never,
+    });
+    const { reply: fake, sent } = reply();
+    const req = request({ header: WORKSPACE_ID, params: { workspaceId: WORKSPACE_ID } });
+
+    await guard(req, fake);
+
+    expect(sent.code).toBe('ERR_AUTHORIZATION_FAILED');
+    expect(sent.status).toBe(403);
+  });
 });

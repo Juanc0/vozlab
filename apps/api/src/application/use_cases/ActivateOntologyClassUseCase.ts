@@ -32,12 +32,14 @@ export class ActivateOntologyClassUseCase {
   ) {}
 
   async execute(input: ActivateOntologyClassInput): Promise<OntologyClass> {
-    const role = await this.membershipRepo.getRole(
+    // A user may hold several roles in the workspace simultaneously (v5), so
+    // the decision uses the union of all ACTIVE rows rather than a single one.
+    const roles = await this.membershipRepo.getRoles(
       input.resolverUserId,
       input.workspaceId,
       input.tid
     );
-    if (!isModeratorOrAdmin(role)) {
+    if (!roles.some((r) => isModeratorOrAdmin(r))) {
       throw new DomainError('ERR_AUTHORIZATION_FAILED');
     }
 

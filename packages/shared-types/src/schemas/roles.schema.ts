@@ -13,7 +13,8 @@ export const WorkspaceRoleSchema = z.enum(['ADMIN', 'MODERATOR', 'MEMBER', 'GUES
 export type WorkspaceRole = z.infer<typeof WorkspaceRoleSchema>;
 
 /**
- * System roles — platform-level role on `auth.users.system_role`, orthogonal to
+ * System roles — tenant-wide role on `auth.users.system_role` (one row per
+ * user in the tenant's physical database), orthogonal to
  * a workspace membership. Keep in sync with
  * `packages/database/src/schema/tenant.auth.schema.ts`.
  */
