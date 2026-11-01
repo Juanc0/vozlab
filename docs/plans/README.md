@@ -35,12 +35,24 @@ One paragraph. Done means: <observable outcome>.
 - [ ] git mv plans/<area>/v<N>.md docs/archive/plans/<area>/v<N>.md
 ```
 
+## Frontend plans
+
+Frontend plans follow the same template above, but open with the walkthrough
+in [docs/knowledge/frontend-plan-examples.md](../knowledge/frontend-plan-examples.md):
+three worked examples (redesign one primitive, refine one screen section, add
+a new layout shell), each with area name, goal, horizontal slicing, task
+lines (acceptance/layers/evidence/size), out-of-scope and the open-plan
+commit command. Load the frontend skills in `AGENTS.md` §"Frontend work"
+before coding, and ship before/after screenshots in every UI task's evidence.
+
 ## Today
 
-- [frontend-tooling/v1](frontend-tooling/v1.md) — OPEN 2026-10-31: harness
-  readiness for industrial-standard frontend work (MCPs, skills, capture
-  script, AGENTS.md section, plan-example walkthrough). Horizontal slicing;
-  no UI code changes. Goal: make the harness ready to drive frontend work.
+- [frontend-tooling/v1](../archive/plans/frontend-tooling/v1.md) — CLOSED 2026-10-31 (T1-T7 done):
+  harness readiness for industrial-standard frontend work (enabled MCPs
+  Playwright + Chrome DevTools, design-tokens audit, capture script, AGENTS.md
+  §"Frontend work" section, web-quality-audit skill, plan-example walkthrough).
+  Horizontal slicing; no UI code changes. Archived at
+  `docs/archive/plans/frontend-tooling/v1.md`.
 
 - [upgrade-waves/v1](../archive/plans/upgrade-waves/v1.md) — CLOSED 2026-10-31 (waves 0–4 done;
   wave 5 SvelteKit 3 deferred to v2): full dependency upgrade program.

@@ -5,7 +5,7 @@ specification tree, now frozen under `docs/archive/spec-v1/`. If a statement
 here conflicts with code, **the code is authoritative** — please fix the
 document.
 
-Status snapshot: **2026-10-30**. Phases 0–3 are complete and the auth/tenancy
+Status snapshot: **2026-10-31**. Phases 0–3 are complete and the auth/tenancy
 intervention (v5/v6) is closed on code: OIDC with explicit institution
 selection, multiple roles, GUEST/event kinds, ephemeral join codes, one
 invitation mechanism under tenant authority (DEC-9, ADR-0045), direct add by
@@ -28,7 +28,10 @@ errors / ≈39 warnings (ESLint 10 flat config). Dependency upgrade wave
 Node 24); wave 5 (SvelteKit 3) deferred. E2E Playwright: 17 green, 1 opt-in (`E2E_OIDC=1`), 14
 red pending the graph-suite realignment (task 13). **CI green on GitHub
 Actions since run 5 (2026-10-30, `176731a`)**; E2E is manual-dispatch until
-task 13.
+task 13. Frontend tooling baseline (frontend-tooling v1, closed 2026-10-31):
+enabled MCPs Playwright + Chrome DevTools, frontend skills incl.
+web-quality-audit, capture script `pnpm --filter @vozlab/web capture:screenshots`,
+and the AGENTS.md §"Frontend work" section.
 
 ## Structure and lifecycle
 
