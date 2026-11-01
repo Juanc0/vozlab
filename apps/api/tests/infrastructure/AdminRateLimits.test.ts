@@ -121,7 +121,16 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
   } as unknown as RateLimitingMiddleware;
 
   const { routerDb } = makeRouterDb();
-  const { membershipRepo } = makeMembershipRepository();
+  const { membershipRepo: baseMembershipRepo } = makeMembershipRepository();
+  const membershipRepo = {
+    ...baseMembershipRepo,
+    async getRole() {
+      return 'ADMIN' as const;
+    },
+    async getRoles() {
+      return ['ADMIN'] as Array<'ADMIN' | 'MODERATOR' | 'MEMBER' | 'GUEST'>;
+    },
+  } as never;
   const { userRepo } = makeUserRepository({
     user: { ...AUTH_USER, systemRole: 'ADMIN' },
   });

@@ -109,18 +109,17 @@ describe('workspaceAdminGuard', () => {
     expect(req.workspaceId).toBe(WORKSPACE_ID);
   });
 
-  it('lets a tenant ADMIN target a workspace where they hold no membership', async () => {
+  it('rejects a tenant ADMIN targeting a workspace where they hold no membership', async () => {
     const tenantGuard = workspaceAdminGuard({
       userRepo: tenantAdminUser as never,
       membershipRepo: makeRoleLookup(null) as never,
     });
     const { reply: fake, sent } = reply();
-    const target = '99999999-9999-4999-8999-999999999999';
-    const req = request({ header: WORKSPACE_ID, params: { workspaceId: target } });
+    const req = request({ header: WORKSPACE_ID, params: { workspaceId: WORKSPACE_ID } });
 
     await tenantGuard(req, fake);
 
-    expect(sent).toEqual({});
+    expect(sent.code).toBe('ERR_UNAUTHORIZED_WORKSPACE_ACCESS');
     expect(req.workspaceId).toBe(WORKSPACE_ID);
   });
 

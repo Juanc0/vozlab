@@ -27,9 +27,13 @@ function setup(
       return { ...AUTH_USER, systemRole: 'ADMIN' };
     },
   };
+  const ADMIN_ACTOR = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const membershipRepo = {
-    async getRole() {
-      return null;
+    async getRole(userId: string) {
+      return userId === ADMIN_ACTOR ? 'ADMIN' : null;
+    },
+    async getRoles(userId: string) {
+      return userId === ADMIN_ACTOR ? ['ADMIN'] : [];
     },
   } as never;
   const { uow } = makeUnitOfWork();
@@ -325,7 +329,7 @@ describe('ApproveJoinRequestUseCase / RejectJoinRequestUseCase', () => {
     });
 
     await ctx.approve.execute({
-      actorUserId: USER_ID,
+      actorUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       requestId: request.id,
@@ -347,7 +351,7 @@ describe('ApproveJoinRequestUseCase / RejectJoinRequestUseCase', () => {
       workspaceId: ctx.workspace.id,
     });
     const input = {
-      actorUserId: USER_ID,
+      actorUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       requestId: request.id,
@@ -369,7 +373,7 @@ describe('ApproveJoinRequestUseCase / RejectJoinRequestUseCase', () => {
     });
 
     await ctx.reject.execute({
-      actorUserId: USER_ID,
+      actorUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       requestId: request.id,
@@ -389,7 +393,7 @@ describe('ApproveJoinRequestUseCase / RejectJoinRequestUseCase', () => {
 
     await expect(
       ctx.reject.execute({
-        actorUserId: USER_ID,
+        actorUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         tid: TENANT_ID,
         workspaceId: '99999999-9999-4999-8999-999999999999',
         requestId: request.id,
@@ -412,7 +416,7 @@ describe('approved member already inside the workspace', () => {
     );
 
     await ctx.approve.execute({
-      actorUserId: USER_ID,
+      actorUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       tid: TENANT_ID,
       workspaceId: ctx.workspace.id,
       requestId: request.id,

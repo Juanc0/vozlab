@@ -47,10 +47,10 @@ export async function assertTenantAdmin(
 }
 
 /**
- * A tenant ADMIN manages any workspace; a workspace ADMIN only the workspace
- * where the membership is ACTIVE. Returns whether the actor is a tenant admin
- * so the caller can apply tenant-wide rules (for example, allowing the
- * `X-Workspace-ID` header to differ from the path).
+ * Workspace administration authorization. There is no tenant-admin bypass: a
+ * tenant ADMIN is authorized for a workspace only through an ACTIVE workspace
+ * ADMIN membership, exactly like any other user. Resolves only via the union of
+ * ACTIVE membership rows.
  */
 export async function assertWorkspaceAdmin(
   actorUserId: string,
@@ -58,13 +58,10 @@ export async function assertWorkspaceAdmin(
   tid: string,
   userRepo: UserLookup,
   membershipRepo: MembershipRoleLookup
-): Promise<{ isTenantAdmin: boolean }> {
+): Promise<void> {
   const user = await userRepo.findById(actorUserId, tid);
   if (!user) {
     throw new DomainError('ERR_INVALID_TOKEN');
-  }
-  if (user.systemRole === 'ADMIN') {
-    return { isTenantAdmin: true };
   }
 
   // v5: union of all roles; ADMIN in any row grants admin.
@@ -79,7 +76,6 @@ export async function assertWorkspaceAdmin(
   if (!isAdmin) {
     throw new DomainError('ERR_AUTHORIZATION_FAILED');
   }
-  return { isTenantAdmin: false };
 }
 
 /** Re-exported for callers that already hold an `IUserRepository`. */

@@ -8,19 +8,18 @@ import { isValidWorkspaceId } from './workspaceId.js';
 /**
  * WorkspaceAdminGuard: scopes an administration route to one workspace.
  *
- * It replaces `tenantWorkspaceGuard` on the administration routes because
- * the two have different rules:
+ * There is no tenant-admin bypass: a tenant ADMIN is authorized for a
+ * workspace only through an ACTIVE workspace ADMIN membership, exactly like
+ * any other user. The guard replaces `tenantWorkspaceGuard` on the
+ * administration routes because of the path/header rule:
  *
- *   - a **tenant ADMIN** manages every workspace of the institution and
- *     does not need a membership row in the target workspace;
  *   - a **workspace ADMIN** manages only the workspace named by
  *     `X-Workspace-ID`, and a `:workspaceId` path that disagrees with the
  *     header is answered **404** — the existence of the other workspace is
  *     not leaked.
  *
- * The header stays mandatory on workspace-scoped routes, even for a tenant
- * ADMIN: it is the workspace the PWA is acting in. The role is read from the
- * tenant database on every request, never trusted from the JWT.
+ * The header stays mandatory on workspace-scoped routes. The role is read from
+ * the tenant database on every request, never trusted from the JWT.
  */
 export function workspaceAdminGuard(deps: {
   userRepo: IUserRepository;
@@ -51,26 +50,13 @@ export function workspaceAdminGuard(deps: {
     req.workspaceId = headerWorkspaceId;
 
     try {
-      const user = await deps.userRepo.findById(userId, tid);
-      if (!user) {
+      if (!(await deps.userRepo.findById(userId, tid))) {
         const err = buildError('ERR_INVALID_TOKEN');
         return reply.status(err.status).send({ code: err.code, message: err.message });
       }
 
       const params = (req.params ?? {}) as { workspaceId?: string };
       const pathWorkspaceId = params.workspaceId;
-
-      // Tenant ADMIN: every workspace, path and header may differ because
-      // the screen is tenant-wide.
-      if (user.systemRole === 'ADMIN') {
-        if (pathWorkspaceId && !isValidWorkspaceId(pathWorkspaceId)) {
-          const err = buildError('ERR_VALIDATION_FAILED');
-          return reply
-            .status(err.status)
-            .send({ code: err.code, message: err.message });
-        }
-        return;
-      }
 
       if (pathWorkspaceId && pathWorkspaceId !== headerWorkspaceId) {
         const err = buildError('ERR_WORKSPACE_NOT_FOUND');

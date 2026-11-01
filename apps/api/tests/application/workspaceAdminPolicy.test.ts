@@ -22,20 +22,22 @@ async function rejectionOf(promise: Promise<unknown>): Promise<string> {
 }
 
 describe('workspaceAdminPolicy', () => {
-  it('lets a tenant ADMIN through without any membership', async () => {
+  it('rejects a tenant ADMIN without a workspace membership', async () => {
     await expect(
       assertTenantAdmin(USER_ID, TENANT_ID, tenantAdmin)
     ).resolves.toBeUndefined();
 
     await expect(
-      assertWorkspaceAdmin(
-        USER_ID,
-        WORKSPACE_ID,
-        TENANT_ID,
-        tenantAdmin,
-        makeRoleLookup(null)
+      rejectionOf(
+        assertWorkspaceAdmin(
+          USER_ID,
+          WORKSPACE_ID,
+          TENANT_ID,
+          tenantAdmin,
+          makeRoleLookup(null)
+        )
       )
-    ).resolves.toEqual({ isTenantAdmin: true });
+    ).resolves.toBe('ERR_AUTHORIZATION_FAILED');
   });
 
   it('rejects a regular user from tenant administration', async () => {
@@ -53,7 +55,7 @@ describe('workspaceAdminPolicy', () => {
         regularUser,
         makeRoleLookup(WORKSPACE_ID)
       )
-    ).resolves.toEqual({ isTenantAdmin: false });
+    ).resolves.toBeUndefined();
 
     await expect(
       rejectionOf(
