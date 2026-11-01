@@ -905,6 +905,15 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
+- **admin-surfaces v1** — OPEN 2026-11-01:
+  [docs/plans/admin-surfaces/v1.md](docs/plans/admin-surfaces/v1.md)
+  — split the mixed `/admin` into tenant administration (`/admin`: workspace
+  existence/creation, tenant users, cleanup, read-only break-glass) and
+  workspace administration (`/workspace-admin`: profile, members/roles, join
+  requests, invitations, join codes, event codes). Vertical slicing; 9 tasks
+  (T1–T9). Out of scope: workspace deletion/archive, `system_role` UI,
+  `MODERATOR` semantics, event QR scanner, invitation email delivery.
+
 - **upgrade-waves v1** — CLOSED 2026-10-31 (waves 0–4 done; wave 5 SvelteKit 3
   deferred to v2): [docs/archive/plans/upgrade-waves/v1.md](docs/archive/plans/upgrade-waves/v1.md)
   ADR-0047.
