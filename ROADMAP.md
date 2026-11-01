@@ -905,6 +905,13 @@ Decided, and not to be re-opened without evidence:
 
 ## Active plans
 
+- **admin-surfaces v2** — OPEN 2026-11-01:
+  [docs/plans/admin-surfaces/v2.md](docs/plans/admin-surfaces/v2.md)
+  — remove the tenant-admin bypass over workspace administration and trim
+  `/admin` of workspace-scoped edits/break-glass. Vertical slicing; 4 tasks
+  (T1–T4). Out of scope: override grant, workspace deletion, `system_role`
+  UI, `MODERATOR` semantics.
+
 - **admin-surfaces v1** — CLOSED 2026-11-01 (T1–T9 done):
   [docs/archive/plans/admin-surfaces/v1.md](docs/archive/plans/admin-surfaces/v1.md)
   — split the mixed `/admin` into tenant administration (`/admin`: workspace
