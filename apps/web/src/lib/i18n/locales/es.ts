@@ -268,8 +268,6 @@ export const es = {
   app: {
     workspaceAndSections: 'Espacio de trabajo y secciones',
     noWorkspaceHeading: 'Sin acceso a espacios de trabajo',
-    noWorkspaceText:
-      'Tu cuenta es válida, pero no tienes acceso a ningún espacio de trabajo de esta institución. Pide a un administrador que te añada a uno, o únete a un evento con un código.',
     restoreFailedHeading: 'No se pudo restaurar la sesión',
     restoreFailedOffline:
       'El navegador está sin conexión: la sesión necesita la red para restaurarse. Las páginas que requieren el servidor no se pueden cargar hasta que vuelva la conexión.',
