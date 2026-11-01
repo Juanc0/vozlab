@@ -907,6 +907,13 @@ Decided, and not to be re-opened without evidence:
 
 - **admin-surfaces v2** — CLOSED 2026-11-01 (T1–T4 done):
   [docs/archive/plans/admin-surfaces/v2.md](docs/archive/plans/admin-surfaces/v2.md)
+- **tenant-user-management v1** — OPEN 2026-11-01:
+  [docs/plans/tenant-user-management/v1.md](docs/plans/tenant-user-management/v1.md)
+  — tenant user management (promote/demote system_role, suspend/activate via
+  sessionsValidAfter) and tabbed UX for both /admin and /workspace-admin.
+  Vertical slicing; 4 tasks (T1–T4). Out of scope: user creation, deletion/
+  anonymization, status column on auth.users, override grants, workspace
+  deletion, MODERATOR semantics.
   — remove the tenant-admin bypass over workspace administration and trim
   `/admin` of workspace-scoped edits/break-glass. Vertical slicing; 4 tasks
   (T1–T4). Out of scope: override grant, workspace deletion, `system_role`
