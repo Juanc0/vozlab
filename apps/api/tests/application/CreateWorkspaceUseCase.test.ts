@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CreateWorkspaceUseCase } from '../../src/application/use_cases/CreateWorkspaceUseCase.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import { AUTH_USER, TENANT_ID, USER_ID } from '../support/authFakes.js';
+
+const TARGET_USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 import { makeUnitOfWork } from '../support/fakes.js';
 import {
   makeJoinCodeRepository,
@@ -12,13 +14,14 @@ import {
 
 function setup(
   actor: { systemRole: string } = { systemRole: 'ADMIN' },
-  workspaces = makeWorkspaceRepository()
+  workspaces = makeWorkspaceRepository(),
+  userRepoOverride?: { findById: (userId: string, tid: string) => Promise<{ systemRole: string; provider: string } | null> }
 ) {
   const memberships = makeMembershipAdminRepository();
   const joinCodes = makeJoinCodeRepository();
-  const userRepo = {
+  const userRepo = userRepoOverride ?? {
     async findById() {
-      return { ...AUTH_USER, systemRole: actor.systemRole };
+      return { ...AUTH_USER, systemRole: actor.systemRole, provider: 'OIDC_INSTITUTIONAL' };
     },
   };
   const { uow } = makeUnitOfWork();
@@ -101,6 +104,79 @@ describe('CreateWorkspaceUseCase', () => {
         isPublic: true,
       })
     ).rejects.toMatchObject({ code: 'ERR_WORKSPACE_SLUG_TAKEN' });
+  });
+
+  it('appoints an initial admin and gives the creator no membership', async () => {
+    const { useCase, memberships } = setup();
+
+    const result = await useCase.execute({
+      actorUserId: USER_ID,
+      actorAuthorHash: AUTH_USER.authorHash,
+      tid: TENANT_ID,
+      name: 'Research',
+      slug: 'research',
+      description: null,
+      isPublic: true,
+      initialAdminUserId: TARGET_USER_ID,
+    });
+
+    const created = result.workspace;
+    expect(memberships.members.get(`${created.id}:${TARGET_USER_ID}`)?.role).toBe('ADMIN');
+    expect(memberships.members.has(`${created.id}:${USER_ID}`)).toBe(false);
+  });
+
+  it('rejects an unknown initial admin', async () => {
+    const { useCase } = setup(
+      { systemRole: 'ADMIN' },
+      makeWorkspaceRepository(),
+      {
+        async findById(userId: string) {
+          if (userId === TARGET_USER_ID) return null;
+          return { ...AUTH_USER, systemRole: 'ADMIN', provider: 'OIDC_INSTITUTIONAL' };
+        },
+      }
+    );
+
+    await expect(
+      useCase.execute({
+        actorUserId: USER_ID,
+        actorAuthorHash: AUTH_USER.authorHash,
+        tid: TENANT_ID,
+        name: 'Research',
+        slug: 'research',
+        description: null,
+        isPublic: true,
+        initialAdminUserId: TARGET_USER_ID,
+      })
+    ).rejects.toMatchObject({ code: 'ERR_USER_NOT_FOUND' });
+  });
+
+  it('rejects an anonymous-event initial admin', async () => {
+    const { useCase } = setup(
+      { systemRole: 'ADMIN' },
+      makeWorkspaceRepository(),
+      {
+        async findById(userId: string) {
+          if (userId === TARGET_USER_ID) {
+            return { ...AUTH_USER, id: TARGET_USER_ID, systemRole: 'USER', provider: 'ANONYMOUS_EVENT' };
+          }
+          return { ...AUTH_USER, systemRole: 'ADMIN', provider: 'OIDC_INSTITUTIONAL' };
+        },
+      }
+    );
+
+    await expect(
+      useCase.execute({
+        actorUserId: USER_ID,
+        actorAuthorHash: AUTH_USER.authorHash,
+        tid: TENANT_ID,
+        name: 'Research',
+        slug: 'research',
+        description: null,
+        isPublic: true,
+        initialAdminUserId: TARGET_USER_ID,
+      })
+    ).rejects.toMatchObject({ code: 'ERR_USER_NOT_FOUND' });
   });
 
   it('refuses a caller who is not a tenant ADMIN', async () => {

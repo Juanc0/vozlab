@@ -25,6 +25,8 @@ export const CreateWorkspaceSchema = z.object({
   slug: WorkspaceSlugSchema,
   description: z.string().trim().max(500).nullish(),
   isPublic: z.boolean().default(true),
+  kind: z.enum(['PRIVATE', 'PUBLIC', 'EVENT']).default('PRIVATE'),
+  initialAdminUserId: z.string().uuid().optional(),
 });
 export type CreateWorkspaceInput = z.infer<typeof CreateWorkspaceSchema>;
 

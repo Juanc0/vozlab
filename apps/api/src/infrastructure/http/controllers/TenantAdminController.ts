@@ -68,6 +68,8 @@ export class TenantAdminController {
         slug: parsed.data.slug,
         description: parsed.data.description ?? null,
         isPublic: parsed.data.isPublic,
+        kind: parsed.data.kind,
+        initialAdminUserId: parsed.data.initialAdminUserId,
         reqId: ctx.reqId,
       });
       // The raw default join code is revealed exactly here, once (ADR-0045).

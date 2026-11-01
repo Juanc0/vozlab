@@ -27,6 +27,9 @@
   let newSlug = $state('');
   let newDesc = $state('');
   let newPublic = $state(true);
+  let newKind = $state('PRIVATE');
+  let newInitialAdmin = $state('');
+  let tenantUsers = $state<Array<{ id: string; handle: string | null; fullName: string | null; systemRole: string }>>([]);
   let creating = $state(false);
   let newCodeLabel = $state('');
   let createdCode = $state<string | null>(null);
@@ -59,6 +62,12 @@
     try {
       workspaces = await admin.listAdminWorkspaces(api);
       if (!selectedId && workspaces.length) selectedId = workspaces[0].id;
+      try {
+        const users = await admin.listAdminUsers(api);
+        tenantUsers = users.map((u) => ({ id: u.id, handle: u.handle, fullName: u.fullName, systemRole: u.systemRole }));
+      } catch (e) {
+        // tenant user directory is best-effort on the create form
+      }
     } catch (e) {
       error = describeFailure(e);
       await redirectToLoginOnAuthFailure(error, workspace, '/admin');
@@ -93,7 +102,9 @@
         name: newName,
         slug: newSlug,
         description: newDesc || null,
-        isPublic: newPublic
+        isPublic: newPublic,
+        kind: newKind as 'PRIVATE' | 'PUBLIC' | 'EVENT',
+        initialAdminUserId: newInitialAdmin || undefined
       });
       workspaces = [...workspaces, ws];
       selectedId = ws.id;
@@ -240,14 +251,17 @@
       {:else}
         <ul class="space-y-1">
           {#each workspaces as w (w.id)}
-            <li>
+            <li class="flex items-center justify-between gap-2">
               <button
                 type="button"
-                class="w-full text-left rounded-control px-2 py-1 hover:bg-raised {selectedId === w.id ? 'bg-accent-soft' : ''}"
+                class="flex-1 text-left rounded-control px-2 py-1 hover:bg-raised {selectedId === w.id ? 'bg-accent-soft' : ''}"
                 onclick={() => { selectedId = w.id; revealedJoinCode = null; createdCode = null; }}
               >
                 {w.name} <span class="text-muted text-small">({w.memberCount})</span> <span class="text-small text-accent">{w.kind}</span>
               </button>
+              <a class="btn btn-quiet text-small" href={`/workspace-admin?workspaceId=${w.id}`}>
+                {t('admin.enterWorkspaceAdmin')}
+              </a>
             </li>
           {/each}
         </ul>
@@ -261,6 +275,23 @@
         <label class="flex items-center gap-2">
           <input type="checkbox" bind:checked={newPublic} />
           {t('admin.isPublic')}
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-small text-muted">{t('admin.kind') ?? 'Kind'}</span>
+          <select class="field w-full" bind:value={newKind}>
+            <option value="PRIVATE">PRIVATE</option>
+            <option value="PUBLIC">PUBLIC</option>
+            <option value="EVENT">EVENT</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-small text-muted">{t('admin.initialAdmin') ?? 'Initial admin (optional)'}</span>
+          <select class="field w-full" bind:value={newInitialAdmin}>
+            <option value="">{t('admin.creatorBecomesAdmin') ?? 'Creator becomes admin'}</option>
+            {#each tenantUsers as u (u.id)}
+              <option value={u.id}>{u.fullName ?? u.handle ?? u.id}</option>
+            {/each}
+          </select>
         </label>
         <button type="submit" class="btn btn-primary" disabled={creating}>
           {t('admin.createWorkspace')}
@@ -463,6 +494,22 @@
         <p>{t('admin.noWorkspaces')}</p>
       {/if}
     </div>
+  </div>
+
+  <div class="rounded-card bg-brand-100 p-4 space-y-2">
+    <h2>{t('admin.tenantUsers')}</h2>
+    {#if tenantUsers.length === 0}
+      <p class="text-small text-muted">{t('admin.noWorkspaces')}</p>
+    {:else}
+      <ul class="space-y-1">
+        {#each tenantUsers as u (u.id)}
+          <li class="text-small flex items-center justify-between gap-2">
+            <span>{u.fullName ?? u.handle ?? u.id}</span>
+            <span class="text-muted">{u.systemRole}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </div>
 </section>
 {/if}

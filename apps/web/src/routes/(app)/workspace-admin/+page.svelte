@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
@@ -12,7 +13,20 @@
   const workspace = getWorkspaceState();
   const t = locale.t;
 
-  const canAdmin = $derived(workspace.isAdmin && workspace.currentWorkspaceId !== '');
+  const isTenantAdmin = $derived(session.user?.systemRole === 'ADMIN');
+
+  // Break-glass: a tenant admin may target a workspace they do not belong to
+  // via ?workspaceId=, without mutating the per-tab selector.
+  const targetWorkspaceId = $derived(
+    page.url.searchParams.get('workspaceId') || workspace.currentWorkspaceId
+  );
+
+  const canAdmin = $derived(
+    targetWorkspaceId !== '' &&
+      (workspace.isAdmin && targetWorkspaceId === workspace.currentWorkspaceId
+        ? true
+        : isTenantAdmin)
+  );
 
   // Section navigation.
   let section = $state<'general' | 'members'>('general');

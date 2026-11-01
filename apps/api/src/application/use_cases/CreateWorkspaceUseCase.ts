@@ -24,6 +24,7 @@ export interface CreateWorkspaceInput {
   description: string | null;
   isPublic: boolean;
   kind?: string;
+  initialAdminUserId?: string;
   reqId?: string;
 }
 
@@ -62,6 +63,17 @@ export class CreateWorkspaceUseCase {
     }
     await assertTenantAdmin(input.actorUserId, input.tid, this.userRepo);
 
+    // Optional first administrator (T5): when provided, that tenant user
+    // becomes the workspace ADMIN and the creator gets no membership.
+    let adminUserId = input.actorUserId;
+    if (input.initialAdminUserId) {
+      const target = await this.userRepo.findById(input.initialAdminUserId, input.tid);
+      if (!target || target.provider === 'ANONYMOUS_EVENT') {
+        throw new DomainError('ERR_USER_NOT_FOUND');
+      }
+      adminUserId = input.initialAdminUserId;
+    }
+
     const existing = await this.workspaceRepo.findBySlug(input.slug, input.tid);
     if (existing) {
       throw new DomainError('ERR_WORKSPACE_SLUG_TAKEN');
@@ -96,7 +108,7 @@ export class CreateWorkspaceUseCase {
 
       await this.membershipAdminRepo.upsertMember(
         {
-          userId: input.actorUserId,
+          userId: adminUserId,
           workspaceId: created.id,
           role: 'ADMIN',
         },
@@ -117,7 +129,7 @@ export class CreateWorkspaceUseCase {
       await this.membershipAdminRepo.recordEvent(
         {
           workspaceId: created.id,
-          userId: input.actorUserId,
+          userId: adminUserId,
           actorType: 'ADMIN',
           actorId: input.actorUserId,
           action: 'WORKSPACE_CREATED',

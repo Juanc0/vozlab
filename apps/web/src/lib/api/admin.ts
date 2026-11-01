@@ -134,7 +134,7 @@ export async function getAdminWorkspace(
   return client.request<AdminWorkspaceDto>({
     method: 'GET',
     path: `/workspaces/${workspaceId}`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -146,7 +146,7 @@ export async function updateAdminWorkspace(
   return client.request<AdminWorkspaceDto>({
     method: 'PATCH',
     path: `/workspaces/${workspaceId}`,
-    workspace: true,
+    workspace: workspaceId,
     body: input
   });
 }
@@ -159,7 +159,7 @@ export async function createJoinCode(
   return client.request<{ id: string; code: string }>({
     method: 'POST',
     path: `/workspaces/${workspaceId}/join-codes`,
-    workspace: true,
+    workspace: workspaceId,
     body: input
   });
 }
@@ -171,7 +171,7 @@ export async function listJoinCodes(
   const body = await client.request<{ codes: Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }> }>({
     method: 'GET',
     path: `/workspaces/${workspaceId}/join-codes`,
-    workspace: true
+    workspace: workspaceId
   });
   return body.codes;
 }
@@ -195,7 +195,7 @@ export async function updateJoinCode(
   await client.requestVoid({
     method: 'PATCH',
     path: `/workspaces/${workspaceId}/join-codes/${codeId}`,
-    workspace: true,
+    workspace: workspaceId,
     body: patch
   });
 }
@@ -208,7 +208,7 @@ export async function revokeJoinCode(
   await client.request({
     method: 'DELETE',
     path: `/workspaces/${workspaceId}/join-codes/${codeId}`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -223,7 +223,7 @@ export async function rotateJoinCode(
   const body = await client.request<{ joinCode: string }>({
     method: 'POST',
     path: `/workspaces/${workspaceId}/join-code/rotate`,
-    workspace: true
+    workspace: workspaceId
   });
   return body.joinCode;
 }
@@ -235,7 +235,7 @@ export async function listMembers(
   const body = await client.request<{ members: AdminMemberDto[] }>({
     method: 'GET',
     path: `/workspaces/${workspaceId}/members`,
-    workspace: true
+    workspace: workspaceId
   });
   return body.members;
 }
@@ -249,7 +249,7 @@ export async function addMember(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/members`,
-    workspace: true,
+    workspace: workspaceId,
     body: { handle, role }
   });
 }
@@ -263,7 +263,7 @@ export async function changeMemberRole(
   await client.request({
     method: 'PATCH',
     path: `/workspaces/${workspaceId}/members/${userId}`,
-    workspace: true,
+    workspace: workspaceId,
     body: { role }
   });
 }
@@ -277,7 +277,7 @@ export async function assignMemberRole(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/members/${userId}/roles`,
-    workspace: true,
+    workspace: workspaceId,
     body: { role }
   });
 }
@@ -291,7 +291,7 @@ export async function removeMemberRole(
   await client.request({
     method: 'DELETE',
     path: `/workspaces/${workspaceId}/members/${userId}/roles/${role}`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -303,7 +303,7 @@ export async function suspendMember(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/members/${userId}/suspend`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -315,7 +315,7 @@ export async function reactivateMember(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/members/${userId}/reactivate`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -327,7 +327,7 @@ export async function removeMember(
   await client.request({
     method: 'DELETE',
     path: `/workspaces/${workspaceId}/members/${userId}`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -338,7 +338,7 @@ export async function listJoinRequests(
   const body = await client.request<{ requests: JoinRequestDto[] }>({
     method: 'GET',
     path: `/workspaces/${workspaceId}/join-requests`,
-    workspace: true
+    workspace: workspaceId
   });
   return body.requests;
 }
@@ -351,7 +351,7 @@ export async function approveJoinRequest(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/join-requests/${requestId}/approve`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -363,7 +363,7 @@ export async function rejectJoinRequest(
   await client.request({
     method: 'POST',
     path: `/workspaces/${workspaceId}/join-requests/${requestId}/reject`,
-    workspace: true
+    workspace: workspaceId
   });
 }
 
@@ -374,7 +374,7 @@ export async function listInvitations(
   const body = await client.request<{ invitations: unknown[] }>({
     method: 'GET',
     path: `/workspaces/${workspaceId}/invitations`,
-    workspace: true
+    workspace: workspaceId
   });
   return body.invitations;
 }
@@ -387,19 +387,20 @@ export async function createInvitation(
   return client.request<CreateWorkspaceInvitationResultDto>({
     method: 'POST',
     path: `/workspaces/${workspaceId}/invitations`,
-    workspace: true,
+    workspace: workspaceId,
     body: input
   });
 }
 
 export async function revokeInvitation(
   client: ApiClient,
-  invitationId: string
+  invitationId: string,
+  workspaceId?: string
 ): Promise<void> {
   await client.request({
     method: 'DELETE',
     path: `/invitations/${invitationId}`,
-    workspace: true
+    workspace: workspaceId ?? true
   });
 }
 

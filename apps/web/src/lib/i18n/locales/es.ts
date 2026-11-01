@@ -883,7 +883,12 @@ export const es = {
     revoke: 'Revocar',
     invitationLink: 'Enlace de invitación',
     noWorkspaces: 'No hay espacios de trabajo.',
-    noAccess: 'No eres administrador del inquilino.'
+    noAccess: 'No eres administrador del inquilino.',
+    kind: 'Tipo',
+    initialAdmin: 'Administrador inicial (opcional)',
+    creatorBecomesAdmin: 'El creador se convierte en administrador',
+    enterWorkspaceAdmin: 'Entrar a la administración del espacio',
+    tenantUsers: 'Usuarios del inquilino'
   },
 
   workspaceAdmin: {

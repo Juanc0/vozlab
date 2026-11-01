@@ -63,11 +63,15 @@ export interface ApiRequestInit {
    */
   auth?: 'bearer' | 'none';
   /**
-   * `false` omits the `X-Workspace-ID` header — for the routes where the
-   * workspace is the answer and not an input (`GET /auth/me`).
-   * Defaults to `true`.
+   * Controls the `X-Workspace-ID` header:
+   *   - `false` omits it — for the routes where the workspace is the answer
+   *     and not an input (`GET /auth/me`);
+   *   - `true` (default) uses the active workspace;
+   *   - a string uses that workspace id instead — the break-glass path of a
+   *     tenant admin acting on a workspace they do not belong to, without
+   *     mutating the per-tab selector.
    */
-  workspace?: boolean;
+  workspace?: boolean | string;
   /** Aborts the request. */
   signal?: AbortSignal;
   /** Extra headers. The mandatory headers above always win. */
@@ -308,7 +312,8 @@ export class ApiClient {
     }
 
     if (init.workspace !== false) {
-      const workspaceId = this.workspace.currentWorkspaceId;
+      const workspaceId =
+        typeof init.workspace === 'string' ? init.workspace : this.workspace.currentWorkspaceId;
       if (workspaceId !== '') {
         headers.set('X-Workspace-ID', workspaceId);
       }

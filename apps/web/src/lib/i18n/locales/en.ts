@@ -818,7 +818,12 @@ export const en: Dictionary<typeof es> = {
     revoke: 'Revoke',
     invitationLink: 'Invitation link',
     noWorkspaces: 'No workspaces.',
-    noAccess: 'You are not a tenant administrator.'
+    noAccess: 'You are not a tenant administrator.',
+    kind: 'Kind',
+    initialAdmin: 'Initial admin (optional)',
+    creatorBecomesAdmin: 'Creator becomes admin',
+    enterWorkspaceAdmin: 'Enter workspace admin',
+    tenantUsers: 'Tenant users'
   },
 
   workspaceAdmin: {
