@@ -361,9 +361,14 @@ the other way round.
   screens and `lg:mt-7 lg:mr-7 lg:ml-0` on large ones (the page container
   drops its padding in this branch to avoid doubling). Its content is a
   single vertically stacked, horizontally centred block
-  (`flex flex-col items-center`) holding only the heading and the `/join`
-  button; the redundant message text and its `app.noWorkspaceText` key were
-  removed.
+  (`flex flex-col items-center`) holding only the heading; the `/join`
+  action moved to the navigation column and the redundant message text and
+  its `app.noWorkspaceText` key were removed.
+- The navigation column carries a **join with an event code** control next to
+  (below) the workspace selector — in expanded mode a full-width secondary
+  button, in the rail an icon button — and it is always visible. Both bottom
+  groups (expanded and rail) carry `pb-4` so the logout/session control no
+  longer touches the floor of the navbar.
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 

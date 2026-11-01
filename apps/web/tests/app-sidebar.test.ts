@@ -41,6 +41,26 @@ describe('the navigation column', () => {
     expect(screen.queryByRole('banner', { name: 'VozLab' })).not.toBeInTheDocument();
   });
 
+  it('renders the join-with-code control below the workspace selector', () => {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    const workspaceSelect = screen.getByRole('combobox', { name: 'Espacio de trabajo' });
+    const joinLink = screen.getByRole('link', { name: 'Unirse con un código de evento' });
+
+    expect(
+      workspaceSelect.compareDocumentPosition(joinLink) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('keeps the bottom controls in order: workspace, then language, then sign-out', () => {
     const { client, session, workspace } = governanceHarness();
 

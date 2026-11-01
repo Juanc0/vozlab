@@ -355,7 +355,7 @@
       The tenant switcher lives inside the session menu, so it has no icon
       of its own here.
     -->
-    <div class="mt-auto flex flex-col items-center gap-2 border-t border-rule pt-4">
+    <div class="mt-auto flex flex-col items-center gap-2 border-t border-rule pt-4 pb-4">
       <button
         type="button"
         class="grid size-11 place-items-center rounded-control text-body font-semibold text-muted hover:bg-raised hover:text-text"
@@ -369,6 +369,28 @@
           {t('sidebar.workspaceControl', { name: activeWorkspace?.name ?? t('workspace.noneSelected') })}
         </span>
       </button>
+
+      <a
+        href="/join"
+        class="grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
+        title={t('common.joinWithCode')}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M8 3v10" />
+          <path d="M3 8h10" />
+        </svg>
+        <span class="sr-only">{t('common.joinWithCode')}</span>
+      </a>
 
       <button
         type="button"
@@ -433,8 +455,12 @@
       because it is part of the session's identity; the workspace is the
       scope of the work and comes first.
     -->
-    <div class="mt-auto space-y-3 border-t border-rule pt-4">
+    <div class="mt-auto space-y-3 border-t border-rule pt-4 pb-4">
       <WorkspaceSelector />
+
+      <a href="/join" class="btn btn-secondary w-full">
+        {t('common.joinWithCode')}
+      </a>
 
       <TenantSwitcher />
 

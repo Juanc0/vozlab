@@ -231,11 +231,8 @@
         : 'px-4 py-6 sm:px-6 sm:py-8'}">
       {#if status === 'no-membership'}
         <section class="rounded-card border border-brand-200 bg-brand-100 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
-          <div class="flex flex-col items-center gap-y-3 px-7 py-3">
+          <div class="flex flex-col items-center px-7 py-3">
             <h1>{t('app.noWorkspaceHeading')}</h1>
-            <a href="/join" class="btn btn-secondary">
-              {t('common.joinWithCode')}
-            </a>
           </div>
         </section>
       {:else}
