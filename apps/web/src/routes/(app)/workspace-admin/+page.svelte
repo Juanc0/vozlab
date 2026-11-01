@@ -17,8 +17,55 @@
     workspace.isAdmin && workspace.currentWorkspaceId !== ''
   );
 
-  // Section navigation.
-  let section = $state<'general' | 'members' | 'access' | 'codes' | 'eventCodes'>('general');
+  // Tab navigation.
+  type WsTab = 'general' | 'members' | 'access' | 'codes' | 'eventCodes';
+
+  let activeTab = $state<WsTab>('general');
+
+  const tabs = $derived.by(() => {
+    const list: { id: WsTab; label: string }[] = [
+      { id: 'general', label: t('workspaceAdmin.general') },
+      { id: 'members', label: t('workspaceAdmin.members') },
+      { id: 'access', label: t('workspaceAdmin.access') },
+      { id: 'codes', label: t('workspaceAdmin.codes') }
+    ];
+    if (ws?.kind === 'EVENT') {
+      list.push({ id: 'eventCodes', label: t('workspaceAdmin.eventCodes') });
+    }
+    return list;
+  });
+
+  const panelId = 'workspace-admin-panel';
+
+  function tabId(tab: WsTab): string {
+    return `workspace-admin-tab-${tab}`;
+  }
+
+  function selectTab(tab: WsTab): void {
+    activeTab = tab;
+  }
+
+  function onTabKeydown(event: KeyboardEvent, index: number): void {
+    const last = tabs.length - 1;
+    let next: number | null = null;
+    if (event.key === 'ArrowRight') next = index === last ? 0 : index + 1;
+    else if (event.key === 'ArrowLeft') next = index === 0 ? last : index - 1;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = last;
+    if (next === null) return;
+    const tab = tabs[next];
+    if (!tab) return;
+    event.preventDefault();
+    activeTab = tab.id;
+    document.getElementById(tabId(tab.id))?.focus();
+  }
+
+  // Keep activeTab valid when tabs change.
+  $effect(() => {
+    if (!tabs.some((tb) => tb.id === activeTab)) {
+      activeTab = 'general';
+    }
+  });
 
   // General
   let ws = $state<AdminWorkspaceDto | null>(null);
@@ -311,246 +358,273 @@
       <p role="alert" class="text-pill-negative-ink">{error.code}: {error.message}</p>
     {/if}
 
-    <nav aria-label={t('workspaceAdmin.general')} class="flex gap-2 border-b border-rule">
-      <button type="button" class="px-3 py-2 text-body font-medium {section === 'general' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'general')}>
-        {t('workspaceAdmin.general')}
-      </button>
-      <button type="button" class="px-3 py-2 text-body font-medium {section === 'members' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'members')}>
-        {t('workspaceAdmin.members')}
-      </button>
-      <button type="button" class="px-3 py-2 text-body font-medium {section === 'access' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'access')}>
-        {t('workspaceAdmin.access')}
-      </button>
-      <button type="button" class="px-3 py-2 text-body font-medium {section === 'codes' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'codes')}>
-        {t('workspaceAdmin.codes')}
-      </button>
-      {#if ws?.kind === 'EVENT'}
-        <button type="button" class="px-3 py-2 text-body font-medium {section === 'eventCodes' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'eventCodes')}>
-          {t('workspaceAdmin.eventCodes')}
+    <div role="tablist" aria-label={t('workspaceAdmin.title')} class="flex gap-4 border-b border-rule">
+      {#each tabs as tab, index (tab.id)}
+        <button
+          type="button"
+          role="tab"
+          id={tabId(tab.id)}
+          aria-selected={activeTab === tab.id}
+          aria-controls={panelId}
+          tabindex={activeTab === tab.id ? 0 : -1}
+          class="-mb-px border-b-2 border-transparent pb-2 text-body font-medium text-muted hover:text-text aria-[selected=true]:border-accent aria-[selected=true]:text-text"
+          onclick={() => selectTab(tab.id)}
+          onkeydown={(event) => onTabKeydown(event, index)}
+        >
+          {tab.label}
         </button>
-      {/if}
-    </nav>
+      {/each}
+    </div>
 
-    {#if section === 'general'}
-      {#if loading}
-        <p>{t('common.loading') ?? 'Loading…'}</p>
-      {:else if ws}
-        <form class="rounded-card bg-brand-100 p-4 space-y-3 max-w-measure" onsubmit={saveGeneral}>
-          <h2>{t('workspaceAdmin.general')}</h2>
-          <label class="flex flex-col gap-1">
-            <span class="text-small text-muted">{t('admin.name')}</span>
-            <input class="field w-full" bind:value={name} required minlength="2" maxlength="255" />
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-small text-muted">{t('admin.description')}</span>
-            <input class="field w-full" bind:value={description} maxlength="500" />
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" bind:checked={isPublic} />
-            {t('admin.isPublic')}
-          </label>
-          <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn-primary" disabled={saving}>
-              {t('workspaceAdmin.save')}
-            </button>
-            {#if saved}
-              <span class="text-small text-muted">{t('workspaceAdmin.saved')}</span>
+    <div role="tabpanel" id={panelId} aria-labelledby={tabId(activeTab)} tabindex="0" class="mt-3 space-y-4">
+      {#if activeTab === 'general'}
+        {#if loading}
+          <p>{t('common.loading') ?? 'Loading…'}</p>
+        {:else if ws}
+          <div class="rounded-card bg-brand-100 p-4 space-y-3">
+            <h2>{t('workspaceAdmin.general')}</h2>
+            <form class="space-y-3 max-w-measure" onsubmit={saveGeneral}>
+              <label class="flex flex-col gap-1">
+                <span class="text-small text-muted">{t('admin.name')}</span>
+                <input class="field w-full" bind:value={name} required minlength="2" maxlength="255" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-small text-muted">{t('admin.description')}</span>
+                <input class="field w-full" bind:value={description} maxlength="500" />
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" bind:checked={isPublic} />
+                {t('admin.isPublic')}
+              </label>
+              <div class="flex items-center gap-2">
+                <button type="submit" class="btn btn-primary" disabled={saving}>
+                  {t('workspaceAdmin.save')}
+                </button>
+                {#if saved}
+                  <span class="text-small text-muted">{t('workspaceAdmin.saved')}</span>
+                {/if}
+              </div>
+            </form>
+          </div>
+        {:else}
+          <p class="text-muted">{t('workspaceAdmin.loadFailed')}</p>
+        {/if}
+
+      {:else if activeTab === 'members'}
+        <div class="rounded-card bg-brand-100 p-4 space-y-3">
+          <h2>{t('admin.members')}</h2>
+
+          <!-- General action: add member -->
+          <div class="space-y-2 border-b border-rule pb-3">
+            <h3 class="text-small font-medium">{t('admin.addMember') ?? 'Add member directly'}</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <input class="field" bind:value={addHandle} placeholder={t('admin.handle') ?? 'Handle'} />
+              <select class="field" bind:value={addRole}>
+                <option value="MEMBER">MEMBER</option>
+                <option value="MODERATOR">MODERATOR</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <button type="button" class="btn btn-primary text-small" disabled={adding} onclick={addMemberDirect}>
+                {t('admin.addMember') ?? 'Add'}
+              </button>
+            </div>
+          </div>
+
+          <!-- Row actions: member list -->
+          {#if membersLoading}
+            <p>{t('common.loading') ?? 'Loading…'}</p>
+          {:else if grouped.length === 0}
+            <p>{t('admin.noWorkspaces') ?? 'No members.'}</p>
+          {:else}
+            <ul class="space-y-2">
+              {#each grouped as g (g.userId)}
+                <li class="flex flex-col gap-1 border-b border-rule py-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>{g.fullName ?? g.handle ?? g.userId} ({g.status})</span>
+                    <span class="flex gap-1">
+                      {#if g.status === 'ACTIVE'}
+                        <button class="btn btn-quiet text-small" onclick={() => run(() => admin.suspendMember(api, workspace.currentWorkspaceId, g.userId))}>
+                          {t('admin.suspend')}
+                        </button>
+                      {:else if g.status === 'SUSPENDED'}
+                        <button class="btn btn-quiet text-small" onclick={() => run(() => admin.reactivateMember(api, workspace.currentWorkspaceId, g.userId))}>
+                          {t('admin.reactivate')}
+                        </button>
+                      {/if}
+                      <button class="btn btn-quiet text-small" onclick={() => run(() => admin.removeMember(api, workspace.currentWorkspaceId, g.userId))}>
+                        {t('admin.remove')}
+                      </button>
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap gap-1 items-center">
+                    {#each g.roles as r (r)}
+                      <span class="text-small px-2 py-0.5 rounded bg-surface-2">
+                        {r}
+                        <button class="ml-1 text-small" onclick={() => run(() => admin.removeMemberRole(api, workspace.currentWorkspaceId, g.userId, r))}>×</button>
+                      </span>
+                    {/each}
+                    <select class="field text-small" onchange={async (e) => {
+                      const v = (e.target as HTMLSelectElement).value;
+                      if (v) await run(() => admin.assignMemberRole(api, workspace.currentWorkspaceId, g.userId, v));
+                      (e.target as HTMLSelectElement).value = '';
+                    }}>
+                      <option value="">{t('admin.addRole') ?? 'Add role…'}</option>
+                      <option value="MEMBER">MEMBER</option>
+                      <option value="MODERATOR">MODERATOR</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+
+      {:else if activeTab === 'access'}
+        <div class="rounded-card bg-brand-100 p-4 space-y-3">
+          <h2>{t('admin.joinRequests') ?? 'Join requests'}</h2>
+
+          <!-- General action: create invitation -->
+          <div class="space-y-2 border-b border-rule pb-3">
+            <h3 class="text-small font-medium">{t('admin.createInvitation') ?? 'Create invitation'}</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <input class="field" bind:value={inviteEmail} placeholder={t('admin.email') ?? 'Email'} />
+              <select class="field" bind:value={inviteRole}>
+                <option value="MEMBER">MEMBER</option>
+                <option value="MODERATOR">MODERATOR</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <button type="button" class="btn btn-primary text-small" disabled={creatingInvite} onclick={createInvite}>
+                {t('admin.createInvitation') ?? 'Create invitation'}
+              </button>
+            </div>
+            {#if createdInviteLink}
+              <p class="text-small">{t('admin.invitationLink') ?? 'Invitation link'}: <code class="break-all">{createdInviteLink}</code></p>
             {/if}
           </div>
-        </form>
-      {:else}
-        <p class="text-muted">{t('workspaceAdmin.loadFailed')}</p>
-      {/if}
-    {:else if section === 'members'}
-      <div class="rounded-card bg-brand-100 p-4 space-y-3">
-        <h2>{t('admin.members')}</h2>
 
-        <div class="space-y-2 border-b border-rule pb-3">
-          <h3 class="text-small font-medium">{t('admin.addMember') ?? 'Add member directly'}</h3>
-          <div class="flex flex-wrap items-center gap-2">
-            <input class="field" bind:value={addHandle} placeholder={t('admin.handle') ?? 'Handle'} />
-            <select class="field" bind:value={addRole}>
-              <option value="MEMBER">MEMBER</option>
-              <option value="MODERATOR">MODERATOR</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
-            <button type="button" class="btn btn-primary text-small" disabled={adding} onclick={addMemberDirect}>
-              {t('admin.addMember') ?? 'Add'}
-            </button>
-          </div>
-        </div>
-
-        {#if membersLoading}
-          <p>{t('common.loading') ?? 'Loading…'}</p>
-        {:else if grouped.length === 0}
-          <p>{t('admin.noWorkspaces') ?? 'No members.'}</p>
-        {:else}
-          <ul class="space-y-2">
-            {#each grouped as g (g.userId)}
-              <li class="flex flex-col gap-1 border-b border-rule py-2">
-                <div class="flex items-center justify-between gap-2">
-                  <span>{g.fullName ?? g.handle ?? g.userId} ({g.status})</span>
+          {#if accessLoading}
+            <p>{t('common.loading') ?? 'Loading…'}</p>
+          {:else}
+            <ul class="space-y-1">
+              {#each joinRequests as r (r.id)}
+                <li class="flex items-center justify-between gap-2">
+                  <span>{r.userId} — {r.status}</span>
                   <span class="flex gap-1">
-                    {#if g.status === 'ACTIVE'}
-                      <button class="btn btn-quiet text-small" onclick={() => run(() => admin.suspendMember(api, workspace.currentWorkspaceId, g.userId))}>
-                        {t('admin.suspend')}
-                      </button>
-                    {:else if g.status === 'SUSPENDED'}
-                      <button class="btn btn-quiet text-small" onclick={() => run(() => admin.reactivateMember(api, workspace.currentWorkspaceId, g.userId))}>
-                        {t('admin.reactivate')}
-                      </button>
-                    {/if}
-                    <button class="btn btn-quiet text-small" onclick={() => run(() => admin.removeMember(api, workspace.currentWorkspaceId, g.userId))}>
-                      {t('admin.remove')}
-                    </button>
+                    <button class="btn btn-quiet text-small" onclick={() => approveRequest(r.id)}>{t('admin.approve') ?? 'Approve'}</button>
+                    <button class="btn btn-quiet text-small" onclick={() => rejectRequest(r.id)}>{t('admin.reject') ?? 'Reject'}</button>
                   </span>
-                </div>
-                <div class="flex flex-wrap gap-1 items-center">
-                  {#each g.roles as r (r)}
-                    <span class="text-small px-2 py-0.5 rounded bg-surface-2">
-                      {r}
-                      <button class="ml-1 text-small" onclick={() => run(() => admin.removeMemberRole(api, workspace.currentWorkspaceId, g.userId, r))}>×</button>
-                    </span>
-                  {/each}
-                  <select class="field text-small" onchange={async (e) => {
-                    const v = (e.target as HTMLSelectElement).value;
-                    if (v) await run(() => admin.assignMemberRole(api, workspace.currentWorkspaceId, g.userId, v));
-                    (e.target as HTMLSelectElement).value = '';
-                  }}>
-                    <option value="">{t('admin.addRole') ?? 'Add role…'}</option>
-                    <option value="MEMBER">MEMBER</option>
-                    <option value="MODERATOR">MODERATOR</option>
-                    <option value="ADMIN">ADMIN</option>
-                  </select>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {:else if section === 'access'}
-      <div class="rounded-card bg-brand-100 p-4 space-y-3">
-        <h2>{t('admin.joinRequests') ?? 'Join requests'}</h2>
-        {#if accessLoading}
-          <p>{t('common.loading') ?? 'Loading…'}</p>
-        {:else}
-          <ul class="space-y-1">
-            {#each joinRequests as r (r.id)}
-              <li class="flex items-center justify-between gap-2">
-                <span>{r.userId} — {r.status}</span>
-                <span class="flex gap-1">
-                  <button class="btn btn-quiet text-small" onclick={() => approveRequest(r.id)}>{t('admin.approve') ?? 'Approve'}</button>
-                  <button class="btn btn-quiet text-small" onclick={() => rejectRequest(r.id)}>{t('admin.reject') ?? 'Reject'}</button>
-                </span>
-              </li>
-            {/each}
-          </ul>
+                </li>
+              {/each}
+            </ul>
 
-          <h3 class="border-t border-rule pt-3">{t('admin.invitations') ?? 'Invitations'}</h3>
-          <div class="flex flex-wrap items-center gap-2">
-            <input class="field" bind:value={inviteEmail} placeholder={t('admin.email') ?? 'Email'} />
-            <select class="field" bind:value={inviteRole}>
-              <option value="MEMBER">MEMBER</option>
-              <option value="MODERATOR">MODERATOR</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
-            <button type="button" class="btn btn-primary text-small" disabled={creatingInvite} onclick={createInvite}>
-              {t('admin.createInvitation') ?? 'Create invitation'}
-            </button>
-          </div>
-          {#if createdInviteLink}
-            <p class="text-small">{t('admin.invitationLink') ?? 'Invitation link'}: <code class="break-all">{createdInviteLink}</code></p>
+            <h3 class="border-t border-rule pt-3">{t('admin.invitations') ?? 'Invitations'}</h3>
+            <ul class="space-y-1">
+              {#each invitations as inv ( (inv as { id: string }).id )}
+                <li class="text-small flex items-center justify-between gap-2">
+                  <span>{(inv as { status?: string }).status ?? ''}</span>
+                  <button class="btn btn-quiet text-small" onclick={() => run(() => admin.revokeInvitation(api, (inv as { id: string }).id, workspace.currentWorkspaceId))}>
+                    {t('admin.revoke') ?? 'Revoke'}
+                  </button>
+                </li>
+              {/each}
+            </ul>
           {/if}
+        </div>
 
-          <ul class="space-y-1">
-            {#each invitations as inv ( (inv as { id: string }).id )}
-              <li class="text-small flex items-center justify-between gap-2">
-                <span>{(inv as { status?: string }).status ?? ''}</span>
-                <button class="btn btn-quiet text-small" onclick={() => run(() => admin.revokeInvitation(api, (inv as { id: string }).id, workspace.currentWorkspaceId))}>
-                  {t('admin.revoke') ?? 'Revoke'}
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {:else if section === 'codes'}
-      <div class="rounded-card bg-brand-100 p-4 space-y-3">
-        <h2>{t('admin.joinCodes') ?? 'Ephemeral join codes'}</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <input class="field" bind:value={newCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
-          <button type="button" class="btn btn-primary text-small" disabled={creatingCode} onclick={createCode}>
-            {t('admin.createJoinCode') ?? 'Create'}
-          </button>
+      {:else if activeTab === 'codes'}
+        <div class="rounded-card bg-brand-100 p-4 space-y-3">
+          <h2>{t('admin.joinCodes') ?? 'Ephemeral join codes'}</h2>
+
+          <!-- General action: create code -->
+          <div class="space-y-2 border-b border-rule pb-3">
+            <h3 class="text-small font-medium">{t('admin.createJoinCode') ?? 'Create'}</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <input class="field" bind:value={newCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
+              <button type="button" class="btn btn-primary text-small" disabled={creatingCode} onclick={createCode}>
+                {t('admin.createJoinCode') ?? 'Create'}
+              </button>
+            </div>
+            {#if createdCode}
+              <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
+            {/if}
+          </div>
+
+          <!-- Row actions: codes list -->
+          {#if codesLoading}
+            <p>{t('common.loading') ?? 'Loading…'}</p>
+          {:else}
+            <ul class="space-y-2">
+              {#each codes as c (c.id)}
+                <li class="text-small">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''}{c.autoApprove ? ' · auto' : ''} {c.revokedAt ? '(revoked)' : ''}</span>
+                    <span class="flex gap-1">
+                      {#if !c.revokedAt}
+                        <button class="btn btn-quiet text-small" onclick={() => startEditCode(c)}>{t('admin.edit') ?? 'Edit'}</button>
+                        <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadCodes(); } catch (e) { error = describeFailure(e); } }}>
+                          {t('admin.revoke') ?? 'Revoke'}
+                        </button>
+                      {/if}
+                    </span>
+                  </div>
+                  {#if editingCodeId === c.id}
+                    <form class="mt-1 flex flex-wrap items-center gap-2 border border-rule p-2" onsubmit={async (e) => { e.preventDefault(); await saveEditCode(); }}>
+                      <label class="flex items-center gap-1">{t('admin.label') ?? 'Label'} <input class="field" type="text" bind:value={editLabel} /></label>
+                      <label class="flex items-center gap-1">{t('admin.maxUses') ?? 'Max uses'} <input class="field w-20" type="number" min="0" bind:value={editMaxUses} /></label>
+                      <label class="flex items-center gap-1">{t('admin.expiresAt') ?? 'Expires'} <input class="field" type="date" bind:value={editExpiresAt} /></label>
+                      <label class="flex items-center gap-1"><input type="checkbox" bind:checked={editAutoApprove} /> {t('admin.autoApprove') ?? 'Auto-approve'}</label>
+                      <button type="submit" class="btn btn-primary text-small" disabled={savingCode}>{t('admin.save') ?? 'Save'}</button>
+                      <button type="button" class="btn btn-quiet text-small" onclick={() => (editingCodeId = null)}>{t('common.cancel') ?? 'Cancel'}</button>
+                    </form>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
-        {#if createdCode}
-          <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
-        {/if}
-        {#if codesLoading}
-          <p>{t('common.loading') ?? 'Loading…'}</p>
-        {:else}
-          <ul class="space-y-2">
-            {#each codes as c (c.id)}
-              <li class="text-small">
-                <div class="flex items-center justify-between gap-2">
-                  <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''}{c.autoApprove ? ' · auto' : ''} {c.revokedAt ? '(revoked)' : ''}</span>
-                  <span class="flex gap-1">
-                    {#if !c.revokedAt}
-                      <button class="btn btn-quiet text-small" onclick={() => startEditCode(c)}>{t('admin.edit') ?? 'Edit'}</button>
-                      <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadCodes(); } catch (e) { error = describeFailure(e); } }}>
-                        {t('admin.revoke') ?? 'Revoke'}
-                      </button>
-                    {/if}
-                  </span>
-                </div>
-                {#if editingCodeId === c.id}
-                  <form class="mt-1 flex flex-wrap items-center gap-2 border border-rule p-2" onsubmit={async (e) => { e.preventDefault(); await saveEditCode(); }}>
-                    <label class="flex items-center gap-1">{t('admin.label') ?? 'Label'} <input class="field" type="text" bind:value={editLabel} /></label>
-                    <label class="flex items-center gap-1">{t('admin.maxUses') ?? 'Max uses'} <input class="field w-20" type="number" min="0" bind:value={editMaxUses} /></label>
-                    <label class="flex items-center gap-1">{t('admin.expiresAt') ?? 'Expires'} <input class="field" type="date" bind:value={editExpiresAt} /></label>
-                    <label class="flex items-center gap-1"><input type="checkbox" bind:checked={editAutoApprove} /> {t('admin.autoApprove') ?? 'Auto-approve'}</label>
-                    <button type="submit" class="btn btn-primary text-small" disabled={savingCode}>{t('admin.save') ?? 'Save'}</button>
-                    <button type="button" class="btn btn-quiet text-small" onclick={() => (editingCodeId = null)}>{t('common.cancel') ?? 'Cancel'}</button>
-                  </form>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {:else if section === 'eventCodes'}
-      <div class="rounded-card bg-brand-100 p-4 space-y-3">
-        <h2>{t('workspaceAdmin.eventCodes')}</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <input class="field" bind:value={newEventCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
-          <button type="button" class="btn btn-primary text-small" disabled={creatingEventCode} onclick={createEventCode}>
-            {t('admin.createJoinCode') ?? 'Create'}
-          </button>
+
+      {:else if activeTab === 'eventCodes'}
+        <div class="rounded-card bg-brand-100 p-4 space-y-3">
+          <h2>{t('workspaceAdmin.eventCodes')}</h2>
+
+          <!-- General action: create event code -->
+          <div class="space-y-2 border-b border-rule pb-3">
+            <h3 class="text-small font-medium">{t('admin.createJoinCode') ?? 'Create'}</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <input class="field" bind:value={newEventCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
+              <button type="button" class="btn btn-primary text-small" disabled={creatingEventCode} onclick={createEventCode}>
+                {t('admin.createJoinCode') ?? 'Create'}
+              </button>
+            </div>
+            {#if createdEventCode}
+              <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdEventCode}</code></p>
+            {/if}
+          </div>
+
+          <!-- Row actions: event codes list -->
+          {#if eventCodesLoading}
+            <p>{t('common.loading') ?? 'Loading…'}</p>
+          {:else}
+            <ul class="space-y-2">
+              {#each eventCodes as c (c.id)}
+                <li class="text-small">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''} {c.revokedAt ? '(revoked)' : ''}</span>
+                    <span class="flex gap-1">
+                      {#if !c.revokedAt}
+                        <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadEventCodes(); } catch (e) { error = describeFailure(e); } }}>
+                          {t('admin.revoke') ?? 'Revoke'}
+                        </button>
+                      {/if}
+                    </span>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
-        {#if createdEventCode}
-          <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdEventCode}</code></p>
-        {/if}
-        {#if eventCodesLoading}
-          <p>{t('common.loading') ?? 'Loading…'}</p>
-        {:else}
-          <ul class="space-y-2">
-            {#each eventCodes as c (c.id)}
-              <li class="text-small">
-                <div class="flex items-center justify-between gap-2">
-                  <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''} {c.revokedAt ? '(revoked)' : ''}</span>
-                  <span class="flex gap-1">
-                    {#if !c.revokedAt}
-                      <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadEventCodes(); } catch (e) { error = describeFailure(e); } }}>
-                        {t('admin.revoke') ?? 'Revoke'}
-                      </button>
-                    {/if}
-                  </span>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {/if}
+      {/if}
+    </div>
   </section>
 {/if}
