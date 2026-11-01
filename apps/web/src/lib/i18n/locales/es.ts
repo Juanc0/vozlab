@@ -858,6 +858,8 @@ export const es = {
     maxUses: 'Usos máximos',
     expiresAt: 'Caduca',
     autoApprove: 'Aprobación automática',
+    purpose: 'Propósito',
+    uses: 'Usos',
     save: 'Guardar',
     cleanup: 'Higiene del inquilino',
     cleanupDays: 'Ventana de inactividad de invitados (días)',

@@ -793,6 +793,8 @@ export const en: Dictionary<typeof es> = {
     maxUses: 'Max uses',
     expiresAt: 'Expires',
     autoApprove: 'Auto-approve',
+    purpose: 'Purpose',
+    uses: 'Uses',
     save: 'Save',
     cleanup: 'Tenant hygiene',
     cleanupDays: 'Guest inactivity window (days)',
