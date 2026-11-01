@@ -29,7 +29,7 @@
   );
 
   // Section navigation.
-  let section = $state<'general' | 'members' | 'access'>('general');
+  let section = $state<'general' | 'members' | 'access' | 'codes'>('general');
 
   // General
   let ws = $state<AdminWorkspaceDto | null>(null);
@@ -56,6 +56,19 @@
   let creatingInvite = $state(false);
   let createdInviteLink = $state<string | null>(null);
   let invitations = $state<unknown[]>([]);
+
+  // Codes
+  let codes = $state<Array<{ id: string; label: string | null; expiresAt: string | null; maxUses: number | null; usedCount: number; autoApprove: boolean; revokedAt: string | null }>>([]);
+  let codesLoading = $state(false);
+  let newCodeLabel = $state('');
+  let creatingCode = $state(false);
+  let createdCode = $state<string | null>(null);
+  let editingCodeId = $state<string | null>(null);
+  let editLabel = $state('');
+  let editMaxUses = $state('');
+  let editExpiresAt = $state('');
+  let editAutoApprove = $state(false);
+  let savingCode = $state(false);
 
   async function loadWorkspace(): Promise<void> {
     if (!canAdmin) return;
@@ -128,11 +141,66 @@
     await loadAccess();
   }
 
+  async function loadCodes(): Promise<void> {
+    if (!canAdmin) return;
+    codesLoading = true;
+    try {
+      codes = await admin.listJoinCodes(api, workspace.currentWorkspaceId);
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      codesLoading = false;
+    }
+  }
+
+  async function createCode(): Promise<void> {
+    creatingCode = true;
+    error = null;
+    try {
+      const res = await admin.createJoinCode(api, workspace.currentWorkspaceId, { label: newCodeLabel || null, autoApprove: false });
+      createdCode = res.code;
+      newCodeLabel = '';
+      await loadCodes();
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      creatingCode = false;
+    }
+  }
+
+  function startEditCode(c: (typeof codes)[number]): void {
+    editingCodeId = c.id;
+    editLabel = c.label ?? '';
+    editMaxUses = c.maxUses === null ? '' : String(c.maxUses);
+    editExpiresAt = c.expiresAt ? c.expiresAt.slice(0, 10) : '';
+    editAutoApprove = c.autoApprove;
+  }
+
+  async function saveEditCode(): Promise<void> {
+    if (!editingCodeId) return;
+    savingCode = true;
+    try {
+      await admin.updateJoinCode(api, workspace.currentWorkspaceId, editingCodeId, {
+        label: editLabel || null,
+        expiresAt: editExpiresAt ? new Date(`${editExpiresAt}T23:59:59`).toISOString() : null,
+        maxUses: editMaxUses === '' ? null : Number(editMaxUses),
+        autoApprove: editAutoApprove
+      });
+      editingCodeId = null;
+      await loadCodes();
+    } catch (e) {
+      error = describeFailure(e);
+    } finally {
+      savingCode = false;
+    }
+  }
+
   $effect(() => {
     if (canAdmin) {
       loadWorkspace();
       loadMembers();
       loadAccess();
+      loadCodes();
     }
   });
 
@@ -224,6 +292,9 @@
       </button>
       <button type="button" class="px-3 py-2 text-body font-medium {section === 'access' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'access')}>
         {t('workspaceAdmin.access')}
+      </button>
+      <button type="button" class="px-3 py-2 text-body font-medium {section === 'codes' ? 'text-accent border-b-2 border-accent' : 'text-muted'}" onclick={() => (section = 'codes')}>
+        {t('workspaceAdmin.codes')}
       </button>
     </nav>
 
@@ -365,6 +436,50 @@
                 <button class="btn btn-quiet text-small" onclick={() => run(() => admin.revokeInvitation(api, (inv as { id: string }).id, workspace.currentWorkspaceId))}>
                   {t('admin.revoke') ?? 'Revoke'}
                 </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {:else if section === 'codes'}
+      <div class="rounded-card bg-brand-100 p-4 space-y-3">
+        <h2>{t('admin.joinCodes') ?? 'Ephemeral join codes'}</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <input class="field" bind:value={newCodeLabel} placeholder={t('admin.label') ?? 'Label'} />
+          <button type="button" class="btn btn-primary text-small" disabled={creatingCode} onclick={createCode}>
+            {t('admin.createJoinCode') ?? 'Create'}
+          </button>
+        </div>
+        {#if createdCode}
+          <p class="text-small">{t('admin.createdCode') ?? 'Code (shown once)'}: <code>{createdCode}</code></p>
+        {/if}
+        {#if codesLoading}
+          <p>{t('common.loading') ?? 'Loading…'}</p>
+        {:else}
+          <ul class="space-y-2">
+            {#each codes as c (c.id)}
+              <li class="text-small">
+                <div class="flex items-center justify-between gap-2">
+                  <span>{c.label ?? c.id} — uses {c.usedCount}{c.maxUses ? '/' + c.maxUses : ''}{c.autoApprove ? ' · auto' : ''} {c.revokedAt ? '(revoked)' : ''}</span>
+                  <span class="flex gap-1">
+                    {#if !c.revokedAt}
+                      <button class="btn btn-quiet text-small" onclick={() => startEditCode(c)}>{t('admin.edit') ?? 'Edit'}</button>
+                      <button class="btn btn-quiet text-small" onclick={async () => { error = null; try { await admin.revokeJoinCode(api, workspace.currentWorkspaceId, c.id); await loadCodes(); } catch (e) { error = describeFailure(e); } }}>
+                        {t('admin.revoke') ?? 'Revoke'}
+                      </button>
+                    {/if}
+                  </span>
+                </div>
+                {#if editingCodeId === c.id}
+                  <form class="mt-1 flex flex-wrap items-center gap-2 border border-rule p-2" onsubmit={async (e) => { e.preventDefault(); await saveEditCode(); }}>
+                    <label class="flex items-center gap-1">{t('admin.label') ?? 'Label'} <input class="field" type="text" bind:value={editLabel} /></label>
+                    <label class="flex items-center gap-1">{t('admin.maxUses') ?? 'Max uses'} <input class="field w-20" type="number" min="0" bind:value={editMaxUses} /></label>
+                    <label class="flex items-center gap-1">{t('admin.expiresAt') ?? 'Expires'} <input class="field" type="date" bind:value={editExpiresAt} /></label>
+                    <label class="flex items-center gap-1"><input type="checkbox" bind:checked={editAutoApprove} /> {t('admin.autoApprove') ?? 'Auto-approve'}</label>
+                    <button type="submit" class="btn btn-primary text-small" disabled={savingCode}>{t('admin.save') ?? 'Save'}</button>
+                    <button type="button" class="btn btn-quiet text-small" onclick={() => (editingCodeId = null)}>{t('common.cancel') ?? 'Cancel'}</button>
+                  </form>
+                {/if}
               </li>
             {/each}
           </ul>
