@@ -817,7 +817,18 @@ export const en: Dictionary<typeof es> = {
     kind: 'Kind',
     initialAdmin: 'Initial admin (optional)',
     creatorBecomesAdmin: 'Creator becomes admin',
-    tenantUsers: 'Tenant users'
+    tenantUsers: 'Tenant users',
+    tabs: {
+      workspaces: 'Workspaces',
+      users: 'Users',
+      hygiene: 'Hygiene'
+    },
+    activate: 'Activate',
+    promote: 'Promote',
+    demote: 'Demote',
+    memberships: 'Memberships',
+    noMemberships: 'No memberships.',
+    systemRole: 'System role'
   },
 
   workspaceAdmin: {

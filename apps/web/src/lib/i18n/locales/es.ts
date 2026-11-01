@@ -882,7 +882,18 @@ export const es = {
     kind: 'Tipo',
     initialAdmin: 'Administrador inicial (opcional)',
     creatorBecomesAdmin: 'El creador se convierte en administrador',
-    tenantUsers: 'Usuarios del inquilino'
+    tenantUsers: 'Usuarios del inquilino',
+    tabs: {
+      workspaces: 'Espacios de trabajo',
+      users: 'Usuarios',
+      hygiene: 'Higiene'
+    },
+    activate: 'Activar',
+    promote: 'Ascender',
+    demote: 'Degradar',
+    memberships: 'Pertenencias',
+    noMemberships: 'Sin pertenencias.',
+    systemRole: 'Rol del sistema'
   },
 
   workspaceAdmin: {

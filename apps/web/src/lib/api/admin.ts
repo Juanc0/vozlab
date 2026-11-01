@@ -71,6 +71,7 @@ import type {
   DiscoveredWorkspaceDto,
   JoinRequestDto,
   MyJoinRequestDto,
+  SystemRole,
   UpdateWorkspaceInput
 } from '@vozlab/shared-types';
 
@@ -125,6 +126,44 @@ export async function listAdminUsers(
     workspace: false
   });
   return body.users;
+}
+
+/** PATCH /api/v1/admin/users/:userId — change the tenant-wide system role. */
+export async function updateTenantUserSystemRole(
+  client: ApiClient,
+  userId: string,
+  systemRole: SystemRole
+): Promise<{ id: string; systemRole: string }> {
+  return client.request<{ id: string; systemRole: string }>({
+    method: 'PATCH',
+    path: `/admin/users/${userId}`,
+    workspace: false,
+    body: { systemRole }
+  });
+}
+
+/** POST /api/v1/admin/users/:userId/suspend */
+export async function suspendTenantUser(
+  client: ApiClient,
+  userId: string
+): Promise<void> {
+  await client.requestVoid({
+    method: 'POST',
+    path: `/admin/users/${userId}/suspend`,
+    workspace: false
+  });
+}
+
+/** POST /api/v1/admin/users/:userId/activate */
+export async function activateTenantUser(
+  client: ApiClient,
+  userId: string
+): Promise<void> {
+  await client.requestVoid({
+    method: 'POST',
+    path: `/admin/users/${userId}/activate`,
+    workspace: false
+  });
 }
 
 export async function getAdminWorkspace(
