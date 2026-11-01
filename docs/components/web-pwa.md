@@ -356,7 +356,10 @@ the other way round.
   never implies the tenant is empty nor hints at workspace counts); its
   copy lives in `app.noWorkspaceHeading` / `app.noWorkspaceText` (es/en).
   Its container reuses the graph floating bar's chrome: `rounded-card`,
-  `border border-brand-200`, `bg-brand-100`, `shadow-float`, `px-7 py-3`.
+  `border border-brand-200`, `bg-brand-100`, `shadow-float`, `px-7 py-3`,
+  and its outer air matches the bar's placement: `mt-4 mr-4 ml-4` on small
+  screens and `lg:mt-7 lg:mr-7 lg:ml-0` on large ones (the page container
+  drops its padding in this branch to avoid doubling).
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 

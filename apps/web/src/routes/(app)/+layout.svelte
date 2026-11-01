@@ -224,9 +224,13 @@
       used to carry: the column of the navigation is beside it, at the
       edge of the window, and both keep the same air on every route.
     -->
-    <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : 'px-4 py-6 sm:px-6 sm:py-8'}">
+    <div class="min-w-0 {isWorkspace
+      ? 'h-full min-h-0'
+      : status === 'no-membership'
+        ? ''
+        : 'px-4 py-6 sm:px-6 sm:py-8'}">
       {#if status === 'no-membership'}
-        <section class="rounded-card border border-brand-200 bg-brand-100 px-7 py-3 shadow-float">
+        <section class="rounded-card border border-brand-200 bg-brand-100 px-7 py-3 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
           <h1>{t('app.noWorkspaceHeading')}</h1>
           <p class="mt-2 max-w-measure text-body text-muted">
             {t('app.noWorkspaceText')}
