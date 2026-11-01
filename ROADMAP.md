@@ -939,6 +939,14 @@ Decided, and not to be re-opened without evidence:
   walkthrough. Horizontal slicing; no UI code changes in this plan. Out of
   scope: actual view redesigns (future `plans/frontend-ux/v1`).
 
+- **sidebar-reorder v1** — OPEN 2026-10-31:
+  [docs/plans/sidebar-reorder/v1.md](docs/plans/sidebar-reorder/v1.md)
+  — reorder the bottom of `AppSidebar` so the four account/scope controls
+  (Workspace → Tenant → Language → Logout) group together at the foot of the
+  column, in expanded and rail form. Horizontal slicing; 6 tasks (T1–T6),
+  each leaves the gate green. Out of scope: TenantSwitcher logic, relocating
+  the language selector to the shell chrome, dark mode.
+
 ## Tracked, not scheduled
 
 Identity/auth survivors (promoted from the archived v5/v6 task trees and
