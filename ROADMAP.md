@@ -948,8 +948,8 @@ Decided, and not to be re-opened without evidence:
 - **no-workspace-message v2** — CLOSED 2026-10-31 (T1–T4 done):
   [docs/archive/plans/no-workspace-message/v2.md](docs/archive/plans/no-workspace-message/v2.md)
 
-- **no-workspace-message v3** — OPEN 2026-10-31:
-  [docs/plans/no-workspace-message/v3.md](docs/plans/no-workspace-message/v3.md)
+- **no-workspace-message v3** — CLOSED 2026-10-31 (T1–T4 done):
+  [docs/archive/plans/no-workspace-message/v3.md](docs/archive/plans/no-workspace-message/v3.md)
   — restructure the no-membership card into three parts (title / message /
   button) using the graph toolbar's grid, stackable on small screens.
   Horizontal slicing; 4 tasks (T1–T4). Out of scope: wording, FloatingPanel,
