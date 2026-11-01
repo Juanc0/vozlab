@@ -954,8 +954,8 @@ Decided, and not to be re-opened without evidence:
 - **no-workspace-message v4** — CLOSED 2026-10-31 (T1–T5 done):
   [docs/archive/plans/no-workspace-message/v4.md](docs/archive/plans/no-workspace-message/v4.md)
 
-- **navbar-join v1** — OPEN 2026-10-31:
-  [docs/plans/navbar-join/v1.md](docs/plans/navbar-join/v1.md)
+- **navbar-join v1** — CLOSED 2026-10-31 (T1–T7 done):
+  [docs/archive/plans/navbar-join/v1.md](docs/archive/plans/navbar-join/v1.md)
   — move the "join with an event code" action into the navbar (below the
   workspace selector, always visible) and add bottom air between the logout
   button and the navbar floor. Horizontal slicing; 7 tasks (T1–T7). Out of
