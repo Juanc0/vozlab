@@ -442,9 +442,10 @@ VozLab has exactly two administration scopes. They answer different questions
 — the tenant scope asks "what exists in this institution?", the workspace scope
 asks "who belongs to this workspace and what does it look like?" — and
 [ADR-0048](decisions/ADR-0048-split-tenant-and-workspace-administration.md)
-splits the administration UI into one surface per scope. This section is the
-contract for both.
-
+splits the administration UI into one surface per scope, and
+[ADR-0049](decisions/ADR-0049-no-tenant-bypass-over-workspace-administration.md)
+removes the tenant-admin bypass over workspace administration. This section is
+the contract for both.
 ### 12.1 The two roles, exactly
 
 | Role | Column | Values | Default | Notes |
@@ -506,25 +507,29 @@ discovers which surfaces to offer.
 | Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `401 ERR_INVALID_TOKEN`, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` (missing `tid` in `tenantGuard`), `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
 | Tenant switch: `POST /auth/switch-tenant` | `authGuard` → `tenantGuard` → `scoped` rate limit | same | `403`, `429` |
 | Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
-| Workspace administration: `GET`/`PATCH /api/v1/workspaces/:workspaceId` (profile), `/api/v1/workspaces/:workspaceId/{members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | tenant `ADMIN` (bypass), or `ADMIN` in the union of the `ACTIVE` roles of the header workspace | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace; `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN`. The legacy `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is intentionally unexposed by either surface. |
-| Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
+| Workspace administration: `GET`/`PATCH /api/v1/workspaces/:workspaceId` (profile), `/api/v1/workspaces/:workspaceId/{members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | `ADMIN` in the union of the `ACTIVE` roles of the header workspace (no tenant-`ADMIN` bypass; ADR-0049) | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace or disagrees with `X-Workspace-ID` (for every caller, including a tenant `ADMIN`); `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN`. The legacy `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is intentionally unexposed by either surface. || Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
 | Onboarding: `GET /api/v1/workspace-discovery`, `GET`/`POST /api/v1/workspace-join-requests` | `authGuard` → `tenantGuard` → `rateLimit` | any valid tenant session | `401`/`403` |
 
 - `tenantAdminGuard` never reads `X-Workspace-ID`: the tenant is the scope.
-- `workspaceAdminGuard` requires the header even for a tenant administrator,
-  because the header names the workspace the request acts on. For anyone else,
-  a path workspace that disagrees with the header is answered `404`.
+- `workspaceAdminGuard` requires the header for every caller, because the
+  header names the workspace the request acts on. There is no tenant-`ADMIN`
+  bypass and no "path wins over header" rule (ADR-0049): a path workspace that
+  disagrees with the header is answered `404 ERR_WORKSPACE_NOT_FOUND` for every
+  caller, including a tenant `ADMIN`, and a tenant `ADMIN` without an `ACTIVE`
+  workspace `ADMIN` membership is rejected with
+  `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` like any other non-admin.
 - Both guards resolve the role from the tenant database; a client-supplied role
   is never read, and neither is the token's `tid` used as a role source.
-
+- `assertWorkspaceAdmin` returns `void` and resolves only for an `ACTIVE`
+  workspace `ADMIN`; it no longer exposes an `isTenantAdmin` flag, and no use
+  case branches on one (ADR-0049).
 ### 12.4 Surfaces and navigation
 
 | Destination | What it is | Gate in the PWA | API authority |
 | --- | --- | --- | --- |
 | `/`, `/proposals`, `/discussions` | the workspace's graph and governance | an `ACTIVE` membership exists (`workspace.workspaces.length > 0`) | membership, any role |
 | `/admin` | tenant administration | `session.user.systemRole === 'ADMIN'` | tenant administrator |
-| `/workspace-admin` | workspace administration | the active workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`) | workspace administrator, or a tenant administrator who entered explicitly (§12.6) |
-| `/request-access` | ask to enter a workspace | always visible | only a tenant session |
+| `/workspace-admin` | workspace administration | the active workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`) | workspace administrator only (no tenant-`ADMIN` override; ADR-0049) || `/request-access` | ask to enter a workspace | always visible | only a tenant session |
 
 - The role the workspace selector displays is the **active workspace's role**
   from `/auth/me` — never `systemRole`, never the role of another workspace.
@@ -534,12 +539,12 @@ discovers which surfaces to offer.
 - A tenant administrator with zero memberships must still reach `/admin`; the
   no-membership gate of the `(app)` layout belongs to the workspace
   destinations, not to the tenant surface.
-- Build state (2026-11-01): the membership gate, the `/request-access` entry
-  and the `/admin` navigation entry exist. `/admin` still renders the mixed
-  page and is still masked by the no-membership card, and `/workspace-admin`
-  does not exist yet; the mapping above is the contract those surfaces are
-  built against in the [admin-surfaces plan](archive/plans/admin-surfaces/v1.md).
-
+- Build state (2026-11-01): `/admin` is the tenant-only surface (workspace
+  list, create form, tenant user directory, hygiene sweep) and
+  `/workspace-admin` requires an `ACTIVE` workspace `ADMIN` membership in the
+  selected workspace, with no `?workspaceId` override or break-glass entry
+  (admin-surfaces v2, ADR-0049). The role model and enforcement matrix above
+  describe the shipped state.
 ### 12.5 Ownership matrix
 
 | Capability | Tenant administration (`/admin`) | Workspace administration (`/workspace-admin`) |
@@ -547,7 +552,6 @@ discovers which surfaces to offer.
 | Workspace existence, including workspaces the caller does not belong to | Owns | — |
 | Workspace creation, its `kind`, and its first administrator | Owns | — |
 | Tenant user directory and the tenant cleanup sweep | Owns | — |
-| Read-only roster of any workspace and the explicit entry into it (§12.6) | Owns | — |
 | Workspace profile and settings (`name`, `description`, `isPublic`) | — | Owns |
 | Members and roles: add, assign or remove a role, change, suspend, reactivate, remove | — | Owns |
 | Join requests: approve, reject | — | Owns |
@@ -557,30 +561,38 @@ discovers which surfaces to offer.
 | Changing `system_role` | Neither — the ops CLI is the only door (ADR-0041 §9) | — |
 | Workspace deletion or archive; moving a member between workspaces | Neither — not built | Neither — not built |
 
-### 12.6 Break-glass and the tenant administrator's API bypass
+### 12.6 No bypass and no break-glass (ADR-0049)
 
-`workspaceAdminGuard` lets a tenant `ADMIN` through without a membership row in
-the target workspace, and lets the path workspace differ from `X-Workspace-ID`
-because the screen is tenant-wide (ADR-0041 §2). That is deliberate: an
-institution may need its administrator to repair a workspace whose own
-administrators are gone.
+Tenant and workspace administration do not overlap. `workspaceAdminGuard` and
+`assertWorkspaceAdmin` no longer special-case a tenant `ADMIN`: every caller
+needs an `ACTIVE` workspace `ADMIN` membership in the workspace named by
+`X-Workspace-ID`, and a path workspace that disagrees with the header is
+answered `404 ERR_WORKSPACE_NOT_FOUND` for every caller (ADR-0049 §1–§3).
 
-The split is a **surface** contract, not a reduction of that authority:
+Consequences for the surfaces:
 
-- `/admin` reads the roster of any workspace **read-only** — the workspace row,
-  its members and its pending join requests — and offers no member, role,
-  invitation, join-code or event-code control, from T5 on. As of 2026-11-01
-  the mixed `/admin` page still ships those controls; §12.4 records the
-  build state.
-- To write, the administrator enters the workspace administration surface
-  explicitly, with the target workspace named by the entry rather than by the
-  per-tab selector. The selector and its `sessionStorage` value are not
-  mutated by the entry.
+- `/admin` carries no workspace-scoped read or write and no break-glass
+  roster or "enter workspace administration" link. It renders only the
+  workspace list (name, slug, kind, member and pending counts), the create
+  form (name, slug, description, public, kind, initial admin), the tenant user
+  directory (read-only) and the tenant hygiene sweep.
+- `/workspace-admin` is reachable only with an `ACTIVE` workspace `ADMIN`
+  membership in the selected workspace. There is no `?workspaceId` tenant
+  override and no break-glass entry; a tenant administrator who is not a
+  member sees the localized no-access state and makes no API call.
+- A tenant administrator who needs to repair a workspace whose own
+  administrators are gone does so through operator tooling against the tenant
+  database — the same door already used for `system_role` changes
+  (ADR-0041 §9). A time-limited, audited override grant, if ever wanted, is
+  a new feature and needs its own ADR; it is out of scope here.
 - Event codes are managed by the workspace administrator of the
   `kind = 'EVENT'` workspace. The operator CLI (`db:event-code`) remains for
   operations and for a tenant whose workspace cannot be reached through the
   API (§9).
-
+- Creation-time ownership is not a bypass: `CreateWorkspaceUseCase` still calls
+  `assertTenantAdmin` for creation and still bootstraps the creator (or the
+  named `initialAdminUserId`) as workspace `ADMIN` in the same transaction
+  (ADR-0048 §4).
 ### 12.7 Authorization beyond the guards
 
 | Action | Rule | Failure |

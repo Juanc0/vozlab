@@ -735,19 +735,23 @@ from the UI alone: the API re-checks every action.
 
 ## Administration surfaces
 
-Two role-gated surfaces, split in `admin-surfaces v1` (ADR-0048):
+Two role-gated surfaces, split in `admin-surfaces v1` (ADR-0048) and closed in
+`admin-surfaces v2` (ADR-0049):
 
-- **`/admin`** — tenant administration: workspace existence and creation
-  (including workspaces the caller does not belong to), the tenant user
-  directory, the tenant hygiene sweep and a read-only break-glass roster with
-  an explicit entry into a workspace. Reachable only when
+- **`/admin`** — tenant administration only: workspace existence and creation
+  (including workspaces the caller does not belong to, with `kind` and an
+  optional `initialAdminUserId`), the tenant user directory (read-only) and
+  the tenant hygiene sweep. No workspace-scoped edits, no member/role/
+  invitation/join-code/event-code controls, no break-glass roster and no
+  "enter workspace administration" link. Reachable only when
   `session.user.systemRole === 'ADMIN'`.
 - **`/workspace-admin`** — workspace administration: profile, members and
   roles, join requests, invitations, workspace join codes and (for
-  `kind='EVENT'` workspaces) event codes. Reachable when the active
-  workspace role is `ADMIN`, or, for a tenant admin, via
-  `/workspace-admin?workspaceId=<id>` (break-glass, without mutating the
-  per-tab selector).
+  `kind='EVENT'` workspaces) event codes. Reachable only when the active
+  workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`); there is
+  no `?workspaceId` tenant override and no break-glass entry. A tenant
+  administrator who is not a member of the selected workspace sees the
+  localized no-access state and makes no API call.
 
 The navigation renders `admin.title` for a tenant admin and
 `workspaceAdmin.title` for a workspace admin; both render when both hold.
