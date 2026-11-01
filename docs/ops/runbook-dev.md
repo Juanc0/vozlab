@@ -147,6 +147,27 @@ dynamic node form (`sector`, `alcance`, `horizonte`, `costoEstimado`,
 > prints what it removed. The demo is therefore deterministic, and running
 > it before a presentation restores the pristine graph.
 
+**Governance bypass in the seed (ADR-0051, node-governance v1).** The demo
+nodes and edges are written directly with `status = 'ACTIVE'`, bypassing the
+`PENDING → ACTIVE` governance flow that the API enforces for content created
+through `POST /api/v1/nodes` and `POST /api/v1/edges` (which are born
+`PENDING`). This bypass exists so the demo graph is immediately usable and
+reviewable in the graph canvas and inspector without a manual approve step;
+the author of every seeded node/edge is the `maintainer` identity, and the
+seeded proposals still exercise the approve/reject/auto-apply flow.
+
+**Why:** the demo is a presentation surface, not a governance surface — the
+governance screens are exercised by the seeded *proposals* (approve/reject/
+auto-apply), and forcing every seeded node through activation would add a
+step to every re-seed with no pedagogical value.
+
+**TODO (remove this bypass):** once the node/edge activation flow is exercised
+end to end in the demo (node-governance v1 T8/T9), drop the `status: 'ACTIVE'`
+override in `packages/database/scripts/seed-dev.ts` (`insertDemoGraph`) and
+write the demo content as `PENDING`, letting the presenter activate it through
+the inspector. Until then the seed is the only place that creates `ACTIVE`
+content without going through the API.
+
 The nodes are authored by the **maintainer** identity and the proposals are
 put forward by the **member**, so the presenter, signed in as the author, is
 exactly the person who can approve them. One of the pending proposals is

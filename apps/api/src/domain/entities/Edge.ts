@@ -44,6 +44,30 @@ export class Edge {
     this.status = newStatus;
   }
 
+  /**
+   * Moderator override: force-activate a PENDING edge when the auto-apply
+   * criteria are met (community_score >= 10 and age >= 14 days), mirroring
+   * `EditProposal.autoApply` (FR-13).
+   */
+  public autoActivate(moderatorHash: AuthorHash): void {
+    void moderatorHash;
+    if (this.status !== 'PENDING') {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot auto-activate edge in status ${this.status}`
+      );
+    }
+    const daysSinceCreation =
+      (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCreation < 14 || this.communityScore < 10) {
+      throw new DomainError(
+        'ERR_UNMET_AUTO_APPLY_CRITERIA',
+        `Requires score >= 10 (current: ${this.communityScore}) and age >= 14 days (current: ${Math.floor(daysSinceCreation)} days)`
+      );
+    }
+    this.changeStatus('ACTIVE');
+  }
+
   updateAttributes(delta: Record<string, unknown>): void {
     this.attributes = { ...this.attributes, ...delta };
   }

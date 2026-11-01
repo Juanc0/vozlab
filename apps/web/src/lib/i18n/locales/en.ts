@@ -255,6 +255,7 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
+    unreviewed: 'Unreviewed',
     pageTitle: 'Graph — VozLab',
     heading: 'Graph',
     intro:
@@ -439,7 +440,11 @@ export const en: Dictionary<typeof es> = {
     edgeSaving: 'Saving…',
     edgeNothingToSave: 'The form changes nothing yet: change a field before saving it.',
     edgeChanges: 'What this edition changes',
-    edgeFormKept: 'The form keeps what you typed: nothing has been saved.'
+    edgeFormKept: 'The form keeps what you typed: nothing has been saved.',
+     approve: 'Approve',
+     reject: 'Reject',
+     autoActivate: 'Auto-activate',
+     nowStatus: 'It is now {status}.'
   },
 
   node: {

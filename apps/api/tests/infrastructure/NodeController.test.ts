@@ -19,6 +19,9 @@ import { CreateProposalUseCase } from '../../src/application/use_cases/CreatePro
 import { CreateThreadUseCase } from '../../src/application/use_cases/CreateThreadUseCase.js';
 import { CreateWorkspaceUseCase } from '../../src/application/use_cases/CreateWorkspaceUseCase.js';
 import { DeleteEdgeUseCase } from '../../src/application/use_cases/DeleteEdgeUseCase.js';
+import { ActivateEdgeUseCase } from '../../src/application/use_cases/ActivateEdgeUseCase.js';
+import { RejectEdgeUseCase } from '../../src/application/use_cases/RejectEdgeUseCase.js';
+import { AutoActivateEdgeUseCase } from '../../src/application/use_cases/AutoActivateEdgeUseCase.js';
 import { DeleteNodeUseCase } from '../../src/application/use_cases/DeleteNodeUseCase.js';
 import { DeletePostUseCase } from '../../src/application/use_cases/DeletePostUseCase.js';
 import { DiscoverWorkspacesUseCase } from '../../src/application/use_cases/DiscoverWorkspacesUseCase.js';
@@ -57,6 +60,9 @@ import { ResolveSourceUseCase } from '../../src/application/use_cases/ResolveSou
 import { RevokeInvitationUseCase } from '../../src/application/use_cases/RevokeInvitationUseCase.js';
 import { RotateJoinCodeUseCase } from '../../src/application/use_cases/RotateJoinCodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../src/application/use_cases/SetNodeEmbeddingUseCase.js';
+import { ActivateNodeUseCase } from '../../src/application/use_cases/ActivateNodeUseCase.js';
+import { RejectNodeUseCase } from '../../src/application/use_cases/RejectNodeUseCase.js';
+import { AutoActivateNodeUseCase } from '../../src/application/use_cases/AutoActivateNodeUseCase.js';
 import { StartOidcLoginUseCase } from '../../src/application/use_cases/StartOidcLoginUseCase.js';
 import { SuspendMemberUseCase } from '../../src/application/use_cases/SuspendMemberUseCase.js';
 import { UpdateEdgeUseCase } from '../../src/application/use_cases/UpdateEdgeUseCase.js';
@@ -174,7 +180,10 @@ function makeController(nodes: Node[] = [], edges: SubgraphEdge[] = []) {
     new GetSubgraphUseCase(repo, names),
     new GetNodeWindowUseCase(repo, names),
     new DeleteNodeUseCase(repo, publisher),
-    new SetNodeEmbeddingUseCase(repo, 'nomic-embed-text')
+    new SetNodeEmbeddingUseCase(repo, 'nomic-embed-text'),
+    unused(ActivateNodeUseCase.prototype),
+    unused(RejectNodeUseCase.prototype),
+    unused(AutoActivateNodeUseCase.prototype)
   );
 
   return { controller, windowCalls };
@@ -262,6 +271,9 @@ function makeRouteDependencies(
     listNodesUseCase: unused(ListNodesUseCase.prototype),
     deleteNodeUseCase: unused(DeleteNodeUseCase.prototype),
     setNodeEmbeddingUseCase: unused(SetNodeEmbeddingUseCase.prototype),
+    activateNodeUseCase: unused(ActivateNodeUseCase.prototype),
+    rejectNodeUseCase: unused(RejectNodeUseCase.prototype),
+    autoActivateNodeUseCase: unused(AutoActivateNodeUseCase.prototype),
     getSubgraphUseCase: unused(GetSubgraphUseCase.prototype),
     getNodeWindowUseCase: new GetNodeWindowUseCase(nodeRepo.repo, names),
     createProposalUseCase: unused(CreateProposalUseCase.prototype),
@@ -275,6 +287,9 @@ function makeRouteDependencies(
     listEdgesUseCase: unused(ListEdgesUseCase.prototype),
     updateEdgeUseCase: unused(UpdateEdgeUseCase.prototype),
     deleteEdgeUseCase: unused(DeleteEdgeUseCase.prototype),
+    activateEdgeUseCase: unused(ActivateEdgeUseCase.prototype),
+    rejectEdgeUseCase: unused(RejectEdgeUseCase.prototype),
+    autoActivateEdgeUseCase: unused(AutoActivateEdgeUseCase.prototype),
     proposeOntologyClassUseCase: unused(ProposeOntologyClassUseCase.prototype),
     proposeDatatypePropertyUseCase: unused(ProposeDatatypePropertyUseCase.prototype),
     proposeObjectPropertyUseCase: unused(ProposeObjectPropertyUseCase.prototype),

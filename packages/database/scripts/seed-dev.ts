@@ -58,6 +58,12 @@
  *                                    BUILDS_ON, EVIDENCED_BY
  *     - meta.data_sources          : one dev source
  *     - public.nodes / public.edges : the Spanish demo graph (3 clusters)
+ *       NOTE: nodes and edges are written with status='ACTIVE', bypassing the
+ *       PENDING -> ACTIVE governance flow (ADR-0051, node-governance v1). This
+ *       is deliberate so the demo graph is immediately usable and reviewable;
+ *       content created through the API is born PENDING. TODO (node-governance
+ *       v1 T8 / T9): drop this bypass and run the demo content through the
+ *       governance flow once the end-to-end path is exercised.
  *     - public.edit_proposals      : 4 proposals (3 pending, 1 approved)
  *     - social.discussion_*        : 3 threads with 10 posts (3 nested)
  *     - public.interactions_log    : the votes behind the community scores
@@ -359,8 +365,22 @@ async function seed(): Promise<void> {
   try {
     // --- Router DB: tenant registry + physical connection ------------------
     // Multiple tenants share the same dev DB for simplicity.
+    //
+    // The primary (`sabana`) tenant's OIDC claim key is taken from the
+    // environment so a Zitadel-backed deployment (or any IdP whose org id is
+    // carried in `OIDC_SCOPES` as `urn:zitadel:iam:org:id:<id>`) maps
+    // automatically after `setup-zitadel.sh` + a `.env` refresh + re-seed —
+    // no manual `UPDATE tenants SET oidc_tenant_id = …` is required. When no
+    // such claim is present (local dev IdP, or OIDC not configured) we fall
+    // back to the legacy `OIDC_TENANT_ID` ('sabana') so the mock/dev logins
+    // keep resolving.
+    const zitadelOrgId = (process.env.OIDC_SCOPES ?? '').match(
+      /urn:zitadel:iam:org:id:(\S+)/
+    )?.[1];
+    const primaryOidcTenantId = zitadelOrgId ?? OIDC_TENANT_ID;
+
     const devTenants = [
-      { id: TENANT_ID, slug: TENANT_SLUG, oidcTenantId: OIDC_TENANT_ID, name: 'Universidad Sabana (dev)' },
+      { id: TENANT_ID, slug: TENANT_SLUG, oidcTenantId: primaryOidcTenantId, name: 'Universidad Sabana (dev)' },
       { id: GOOGLE_TENANT_ID, slug: GOOGLE_TENANT_SLUG, oidcTenantId: GOOGLE_OIDC_TENANT_ID, name: 'Google Institucional (dev)' },
       { id: ENTRA_TENANT_ID, slug: ENTRA_TENANT_SLUG, oidcTenantId: ENTRA_OIDC_TENANT_ID, name: 'Entra Institucional (dev)' },
       { id: GOOGLE_PERSONAL_TENANT_ID, slug: GOOGLE_PERSONAL_TENANT_SLUG, oidcTenantId: GOOGLE_PERSONAL_OIDC_TENANT_ID, name: 'Google Personal (dev)' },
@@ -1119,6 +1139,11 @@ async function insertDemoGraph(
         description: node.description,
         attributes: node.attributes,
         authorHash: AUTHOR_HASH,
+        // GOVERNANCE BYPASS (ADR-0051, node-governance v1): the demo graph is
+        // written ACTIVE instead of going through PENDING -> ACTIVE. The API
+        // always creates nodes PENDING; only the seed bypasses so the demo is
+        // immediately usable. TODO: remove once the governance flow is exercised
+        // end to end in the demo (node-governance v1 T8/T9).
         status: 'ACTIVE',
         communityScore: scoreOf(graph, 'NODE', node.id),
         createdAt: new Date(node.createdAt),
@@ -1149,6 +1174,8 @@ async function insertDemoGraph(
         targetNodeId: edge.toNodeId,
         relationKey: edge.relationKey,
         attributes: {},
+        // GOVERNANCE BYPASS (ADR-0051, node-governance v1): see the node
+        // insert above. Edges are written ACTIVE instead of PENDING.
         status: 'ACTIVE',
         communityScore: scoreOf(graph, 'EDGE', edge.id),
         authorHash: AUTHOR_HASH,

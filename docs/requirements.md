@@ -74,7 +74,12 @@ The identity model, guard chain and pseudonym rules are in
   that drive the form.)*
 - **FR-07 — Maintainer/author assignment.** Every node, edge and ontology
   proposal records its creator's `author_hash`, granting non-waivable maintainer
-  rights over that object. *(Implemented.)*
+  rights over that object. *(Implemented.)* Node and edge lifecycle activation
+  is the second governance path alongside proposals: `PENDING` content is
+  visible but marked unreviewed, and `PENDING → ACTIVE` / `PENDING → REJECTED`
+  is performed by the author or a moderator/admin, with a moderator
+  force-activate override reusing the FR-13 criteria. Activation/rejection
+  routes land with node-governance v1 (ADR-0051); see T4 of that plan.
 - **FR-08 — Directed edge creation.** Two existing nodes can be connected by a
   typed relationship (`object_properties`), validating domain and range against
   the active ontology. *(Implemented.)*
@@ -91,7 +96,10 @@ The identity model, guard chain and pseudonym rules are in
   *(Implemented: the API and the PWA. The PWA proposes a correction of a node
   or a relation and shows the delta as a diff; the API applies only
   `title`/`description`/`attributes` on a node and `relationKey`/`attributes`
-  on a relation.)*
+  on a relation.)* Proposals are one governance path; the node/edge lifecycle
+  (`PENDING → ACTIVE/REJECTED`, ADR-0051) is the other — proposals edit
+  already-active content, while activation governs whether content is
+  reviewed.
 - **FR-11 — Social linking.** Each edit proposal should open or be linked to a
   thread in `social.discussion_threads` so the community can debate and cast
   informative votes. *(Partial: threads and posts are implemented as separate

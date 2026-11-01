@@ -19,6 +19,9 @@ import { GetSubgraphUseCase } from '../../../application/use_cases/GetSubgraphUs
 import { ListNodesUseCase } from '../../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../../application/use_cases/DeleteNodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../../application/use_cases/SetNodeEmbeddingUseCase.js';
+import { ActivateNodeUseCase } from '../../../application/use_cases/ActivateNodeUseCase.js';
+import { RejectNodeUseCase } from '../../../application/use_cases/RejectNodeUseCase.js';
+import { AutoActivateNodeUseCase } from '../../../application/use_cases/AutoActivateNodeUseCase.js';
 import type { DisplayNames } from '../../../application/use_cases/DisplayNameCatalog.js';
 import type { Node } from '../../../domain/entities/Node.js';
 import type { SubgraphEdge } from '../../../domain/ports/INodeRepository.js';
@@ -99,7 +102,10 @@ export class NodeController {
     private readonly getSubgraphUseCase: GetSubgraphUseCase,
     private readonly getNodeWindowUseCase: GetNodeWindowUseCase,
     private readonly deleteNodeUseCase: DeleteNodeUseCase,
-    private readonly setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase
+    private readonly setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase,
+    private readonly activateNodeUseCase: ActivateNodeUseCase,
+    private readonly rejectNodeUseCase: RejectNodeUseCase,
+    private readonly autoActivateNodeUseCase: AutoActivateNodeUseCase
   ) {}
 
   /**
@@ -356,6 +362,82 @@ export class NodeController {
       return reply.status(204).send();
     } catch (error) {
       return this.handleError(req, reply, error, 'setNodeEmbedding failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/nodes/:id/activate
+   * Transitions a PENDING node to ACTIVE. Author or moderator/admin only.
+   */
+  async activate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      const node = await this.activateNodeUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: node.id, status: node.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'activateNode failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/nodes/:id/reject
+   * Transitions a PENDING node to REJECTED. Author or moderator/admin only.
+   */
+  async reject(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      const node = await this.rejectNodeUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: node.id, status: node.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'rejectNode failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/nodes/:id/auto-activate
+   * Moderator override: force-activates a PENDING node when the auto-apply
+   * criteria (community_score >= 10, age >= 14 days) are met.
+   */
+  async autoActivate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const nodeId = (req.params as { id: string }).id;
+
+    try {
+      const node = await this.autoActivateNodeUseCase.execute({
+        nodeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: node.id, status: node.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'autoActivateNode failed');
     }
   }
 

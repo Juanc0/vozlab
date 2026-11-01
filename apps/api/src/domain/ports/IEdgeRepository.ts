@@ -1,5 +1,6 @@
 import { DbTransaction } from './Transaction.js';
 import { Edge } from '../entities/Edge.js';
+import type { EdgeStatus } from '../entities/Edge.js';
 
 // Naming follows `modules_02 §6.8`.
 /**
@@ -24,6 +25,17 @@ export interface IEdgeRepository {
   ): Promise<{ items: Edge[]; nextCursor: string | null }>;
   save(edge: Edge, tid: string, tx?: DbTransaction): Promise<void>;
   update(edge: Edge, tid: string, tx?: DbTransaction): Promise<void>;
+  /**
+   * Persist a status transition. The adapter is the single writer of the
+   * `status` column for governance transitions; the domain entity owns the
+   * preceding state-machine check.
+   */
+  updateStatus(
+    id: string,
+    status: EdgeStatus,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
   softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void>;
   /**
    * Apply an approved proposal's delta to the edge (RF-10/FR-12), scoped by

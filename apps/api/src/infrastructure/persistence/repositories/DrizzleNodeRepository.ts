@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { edges, nodes } from '@vozlab/database';
 import { Node, NodeStatus } from '../../../domain/entities/Node.js';
 import { EdgeStatus } from '../../../domain/entities/Edge.js';
@@ -180,6 +180,7 @@ export class DrizzleNodeRepository implements INodeRepository {
         WHERE n.id = ${rootId}
           AND n.workspace_id = ${workspaceId}
           AND n.deleted_at IS NULL
+          AND n.status <> 'REJECTED'
         UNION
         (
           SELECT neighbor.id, r.depth + 1, neighbor.score, neighbor.reached_at
@@ -201,6 +202,7 @@ export class DrizzleNodeRepository implements INodeRepository {
                 WHERE e.source_node_id = r.id
                   AND e.workspace_id = ${workspaceId}
                   AND e.deleted_at IS NULL
+                   AND e.status <> 'REJECTED'
                 ORDER BY e.community_score DESC, e.created_at DESC
                 LIMIT ${limit}
               )
@@ -213,6 +215,7 @@ export class DrizzleNodeRepository implements INodeRepository {
                 WHERE e.target_node_id = r.id
                   AND e.workspace_id = ${workspaceId}
                   AND e.deleted_at IS NULL
+                   AND e.status <> 'REJECTED'
                 ORDER BY e.community_score DESC, e.created_at DESC
                 LIMIT ${limit}
               )
@@ -223,6 +226,7 @@ export class DrizzleNodeRepository implements INodeRepository {
             ON n.id = neighbor.id
            AND n.workspace_id = ${workspaceId}
            AND n.deleted_at IS NULL
+            AND n.status <> 'REJECTED'
           WHERE r.depth < ${depth}
           LIMIT ${limit}
         )
@@ -277,6 +281,7 @@ export class DrizzleNodeRepository implements INodeRepository {
         and(
           eq(edges.workspaceId, workspaceId),
           isNull(edges.deletedAt),
+          ne(edges.status, 'REJECTED'),
           inArray(edges.sourceNodeId, ids),
           inArray(edges.targetNodeId, ids)
         )
@@ -328,7 +333,7 @@ export class DrizzleNodeRepository implements INodeRepository {
     const nodeRows = await db
       .select()
       .from(nodes)
-      .where(and(eq(nodes.workspaceId, workspaceId), isNull(nodes.deletedAt)))
+      .where(and(eq(nodes.workspaceId, workspaceId), isNull(nodes.deletedAt), ne(nodes.status, 'REJECTED')))
       .orderBy(desc(nodes.createdAt), desc(nodes.id))
       .limit(limit);
 
@@ -355,6 +360,7 @@ export class DrizzleNodeRepository implements INodeRepository {
         and(
           eq(edges.workspaceId, workspaceId),
           isNull(edges.deletedAt),
+          ne(edges.status, 'REJECTED'),
           inArray(edges.sourceNodeId, ids),
           inArray(edges.targetNodeId, ids)
         )
@@ -506,6 +512,23 @@ export class DrizzleNodeRepository implements INodeRepository {
         updatedAt: node.updatedAt,
       })
       .where(eq(nodes.id, node.id));
+  }
+
+  /**
+   * Persist a governance status transition (FR-07, ADR-0051).
+   *
+   * Mirrors `activateClass` in the ontology adapter: only the `status` column
+   * is written; the domain entity owns the preceding state-machine check and
+   * the `updatedAt` bump.
+   */
+  async updateStatus(
+    id: string,
+    status: NodeStatus,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db.update(nodes).set({ status }).where(eq(nodes.id, id));
   }
 
   /**

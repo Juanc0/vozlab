@@ -166,14 +166,23 @@ DEPRECATED | REJECTED`, default `PENDING`.
 | `ACTIVE` | `MERGED`, `DEPRECATED` |
 | `MERGED`, `DEPRECATED`, `REJECTED` | terminal |
 
-The domain method is `changeStatus`. The API always creates nodes `PENDING` and
-exposes **no endpoint** to advance node status; proposal approval does not
-change it either.
+The domain method is `changeStatus`. The API always creates nodes `PENDING`.
+Activation/rejection routes land with node-governance v1 (ADR-0051,
+T4): `PUT /api/v1/nodes/:id/activate` (`PENDING → ACTIVE`) and
+`PUT /api/v1/nodes/:id/reject` (`PENDING → REJECTED`), plus
+`PUT /api/v1/nodes/:id/auto-activate` (moderator force-activate under the
+FR-13 criteria). `PENDING` content is visible in the graph but marked
+unreviewed (dashed border, status badge); `REJECTED` content is excluded from
+the graph and from the Relator neighbour list. Proposal approval does not
+change node status.
 
 **Edge** (`domain/entities/Edge.ts`): `DRAFT | PENDING | ACTIVE | REJECTED`,
 default `PENDING`. `DRAFT → PENDING | ACTIVE`; `PENDING → ACTIVE | REJECTED`;
-`ACTIVE → REJECTED`; `REJECTED` is terminal. `changeStatus` exists, but no HTTP
-route transitions edges.
+`ACTIVE → REJECTED`; `REJECTED` is terminal. Activation/rejection routes land
+with node-governance v1 (ADR-0051, T4): `PUT /api/v1/edges/:id/activate`,
+`PUT /api/v1/edges/:id/reject`, plus `PUT /api/v1/edges/:id/auto-activate`.
+`PENDING` edges render dashed and marked unreviewed; `REJECTED` edges are
+excluded from the graph.
 
 **EditProposal** (`domain/entities/EditProposal.ts`): `PENDING |
 APPROVED_BY_AUTHOR | REJECTED_BY_AUTHOR | AUTO_APPLIED`, default `PENDING`.

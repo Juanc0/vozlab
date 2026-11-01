@@ -8,6 +8,9 @@ import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCa
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../application/use_cases/SetNodeEmbeddingUseCase.js';
+import { ActivateNodeUseCase } from '../../application/use_cases/ActivateNodeUseCase.js';
+import { RejectNodeUseCase } from '../../application/use_cases/RejectNodeUseCase.js';
+import { AutoActivateNodeUseCase } from '../../application/use_cases/AutoActivateNodeUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
 import { RejectProposalUseCase } from '../../application/use_cases/RejectProposalUseCase.js';
@@ -19,6 +22,9 @@ import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
+import { ActivateEdgeUseCase } from '../../application/use_cases/ActivateEdgeUseCase.js';
+import { RejectEdgeUseCase } from '../../application/use_cases/RejectEdgeUseCase.js';
+import { AutoActivateEdgeUseCase } from '../../application/use_cases/AutoActivateEdgeUseCase.js';
 import { ProposeOntologyClassUseCase } from '../../application/use_cases/ProposeOntologyClassUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
@@ -115,6 +121,9 @@ export interface RouteDependencies {
   listNodesUseCase: ListNodesUseCase;
   deleteNodeUseCase: DeleteNodeUseCase;
   setNodeEmbeddingUseCase: SetNodeEmbeddingUseCase;
+  activateNodeUseCase: ActivateNodeUseCase;
+  rejectNodeUseCase: RejectNodeUseCase;
+  autoActivateNodeUseCase: AutoActivateNodeUseCase;
   getSubgraphUseCase: GetSubgraphUseCase;
   getNodeWindowUseCase: GetNodeWindowUseCase;
   createProposalUseCase: CreateProposalUseCase;
@@ -128,6 +137,9 @@ export interface RouteDependencies {
   listEdgesUseCase: ListEdgesUseCase;
   updateEdgeUseCase: UpdateEdgeUseCase;
   deleteEdgeUseCase: DeleteEdgeUseCase;
+  activateEdgeUseCase: ActivateEdgeUseCase;
+  rejectEdgeUseCase: RejectEdgeUseCase;
+  autoActivateEdgeUseCase: AutoActivateEdgeUseCase;
   proposeOntologyClassUseCase: ProposeOntologyClassUseCase;
   proposeDatatypePropertyUseCase: ProposeDatatypePropertyUseCase;
   proposeObjectPropertyUseCase: ProposeObjectPropertyUseCase;
@@ -206,6 +218,9 @@ export async function registerRoutes(
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
+    activateNodeUseCase,
+    rejectNodeUseCase,
+    autoActivateNodeUseCase,
     getSubgraphUseCase,
     getNodeWindowUseCase,
     createProposalUseCase,
@@ -219,6 +234,9 @@ export async function registerRoutes(
     listEdgesUseCase,
     updateEdgeUseCase,
     deleteEdgeUseCase,
+    activateEdgeUseCase,
+    rejectEdgeUseCase,
+    autoActivateEdgeUseCase,
     proposeOntologyClassUseCase,
     proposeDatatypePropertyUseCase,
     proposeObjectPropertyUseCase,
@@ -251,14 +269,20 @@ export async function registerRoutes(
     getSubgraphUseCase,
     getNodeWindowUseCase,
     deleteNodeUseCase,
-    setNodeEmbeddingUseCase
+    setNodeEmbeddingUseCase,
+    activateNodeUseCase,
+    rejectNodeUseCase,
+    autoActivateNodeUseCase
   );
   const edgeController = new EdgeController(
     createEdgeUseCase,
     getEdgeUseCase,
     listEdgesUseCase,
     updateEdgeUseCase,
-    deleteEdgeUseCase
+    deleteEdgeUseCase,
+    activateEdgeUseCase,
+    rejectEdgeUseCase,
+    autoActivateEdgeUseCase
   );
   const proposalController = new ProposalController(
     createProposalUseCase,
@@ -723,6 +747,18 @@ export async function registerRoutes(
     nodeController.delete(req, reply)
   );
 
+  app.put('/api/v1/nodes/:id/activate', { preHandler: guard }, (req, reply) =>
+    nodeController.activate(req, reply)
+  );
+
+  app.put('/api/v1/nodes/:id/reject', { preHandler: guard }, (req, reply) =>
+    nodeController.reject(req, reply)
+  );
+
+  app.put('/api/v1/nodes/:id/auto-activate', { preHandler: guard }, (req, reply) =>
+    nodeController.autoActivate(req, reply)
+  );
+
   // Embedding write-back (FR-18, ADR-0020): the dedicated embedder worker
   // is the only caller. `requireAgentType` runs after the normal guard chain
   // so a human or another agent type gets 403 ERR_AUTHORIZATION_FAILED.
@@ -751,6 +787,18 @@ export async function registerRoutes(
 
   app.delete('/api/v1/edges/:id', { preHandler: guard }, (req, reply) =>
     edgeController.delete(req, reply)
+  );
+
+  app.put('/api/v1/edges/:id/activate', { preHandler: guard }, (req, reply) =>
+    edgeController.activate(req, reply)
+  );
+
+  app.put('/api/v1/edges/:id/reject', { preHandler: guard }, (req, reply) =>
+    edgeController.reject(req, reply)
+  );
+
+  app.put('/api/v1/edges/:id/auto-activate', { preHandler: guard }, (req, reply) =>
+    edgeController.autoActivate(req, reply)
   );
 
   // --- Proposals (Gobernanza / Pull-Request) ---

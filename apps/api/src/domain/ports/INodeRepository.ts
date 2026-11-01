@@ -1,5 +1,6 @@
 import { DbTransaction } from './Transaction.js';
 import { Node } from '../entities/Node.js';
+import type { NodeStatus } from '../entities/Node.js';
 import { EdgeStatus } from '../entities/Edge.js';
 
 /**
@@ -142,6 +143,18 @@ export interface INodeRepository {
   ): Promise<NearestNeighborsResult>;
   save(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
   update(node: Node, tid: string, tx?: DbTransaction): Promise<void>;
+  /**
+   * Persist a status transition. The adapter is the single writer of the
+   * `status` column for governance transitions; the domain entity owns the
+   * preceding `changeStatus` call (and the `updatedAt` bump that goes with
+   * it).
+   */
+  updateStatus(
+    id: string,
+    status: NodeStatus,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void>;
   /**
    * Soft-delete a node by stamping `deletedAt`. The adapter is the single
    * writer of `deletedAt`; deleted nodes drop out of every read path

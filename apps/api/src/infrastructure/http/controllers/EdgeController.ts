@@ -10,6 +10,9 @@ import { GetEdgeUseCase } from '../../../application/use_cases/GetEdgeUseCase.js
 import { ListEdgesUseCase } from '../../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../../application/use_cases/DeleteEdgeUseCase.js';
+import { ActivateEdgeUseCase } from '../../../application/use_cases/ActivateEdgeUseCase.js';
+import { RejectEdgeUseCase } from '../../../application/use_cases/RejectEdgeUseCase.js';
+import { AutoActivateEdgeUseCase } from '../../../application/use_cases/AutoActivateEdgeUseCase.js';
 import type { DisplayNames } from '../../../application/use_cases/DisplayNameCatalog.js';
 import type { Edge } from '../../../domain/entities/Edge.js';
 import { log } from '../../../shared/logger/index.js';
@@ -55,7 +58,10 @@ export class EdgeController {
     private readonly getEdgeUseCase: GetEdgeUseCase,
     private readonly listEdgesUseCase: ListEdgesUseCase,
     private readonly updateEdgeUseCase: UpdateEdgeUseCase,
-    private readonly deleteEdgeUseCase: DeleteEdgeUseCase
+    private readonly deleteEdgeUseCase: DeleteEdgeUseCase,
+    private readonly activateEdgeUseCase: ActivateEdgeUseCase,
+    private readonly rejectEdgeUseCase: RejectEdgeUseCase,
+    private readonly autoActivateEdgeUseCase: AutoActivateEdgeUseCase
   ) {}
 
   /** POST /api/v1/edges */
@@ -200,6 +206,82 @@ export class EdgeController {
       return reply.status(204).send();
     } catch (error) {
       return this.handleError(req, reply, error, 'deleteEdge failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/edges/:id/activate
+   * Transitions a PENDING edge to ACTIVE. Author or moderator/admin only.
+   */
+  async activate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const edgeId = (req.params as { id: string }).id;
+
+    try {
+      const edge = await this.activateEdgeUseCase.execute({
+        edgeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: edge.id, status: edge.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'activateEdge failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/edges/:id/reject
+   * Transitions a PENDING edge to REJECTED. Author or moderator/admin only.
+   */
+  async reject(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const edgeId = (req.params as { id: string }).id;
+
+    try {
+      const edge = await this.rejectEdgeUseCase.execute({
+        edgeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: edge.id, status: edge.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'rejectEdge failed');
+    }
+  }
+
+  /**
+   * PUT /api/v1/edges/:id/auto-activate
+   * Moderator override: force-activates a PENDING edge when the auto-apply
+   * criteria (community_score >= 10, age >= 14 days) are met.
+   */
+  async autoActivate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    const edgeId = (req.params as { id: string }).id;
+
+    try {
+      const edge = await this.autoActivateEdgeUseCase.execute({
+        edgeId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+      return reply.status(200).send({ id: edge.id, status: edge.status });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'autoActivateEdge failed');
     }
   }
 

@@ -505,7 +505,12 @@ export function toGraphElements(
 
   const elements: GraphElement[] = [];
 
+  // `REJECTED` content is excluded from the picture (ADR-0051).
   for (const node of nodes) {
+    if (node.status === 'REJECTED') {
+      continue;
+    }
+
     elements.push(
       ...toNodeElements(node, {
         expanded: expanded.has(node.id),
@@ -516,6 +521,9 @@ export function toGraphElements(
   }
 
   for (const edge of edges) {
+    if (edge.status === 'REJECTED') {
+      continue;
+    }
     const isExpanded = expandedEdges.has(edge.id);
 
     elements.push(toEdgeElement(edge, { locale, expanded: isExpanded }));

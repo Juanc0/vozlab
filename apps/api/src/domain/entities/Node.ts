@@ -104,6 +104,30 @@ export class Node {
   }
 
   /**
+   * Moderator override: force-activate a PENDING node when the auto-apply
+   * criteria are met (community_score >= 10 and age >= 14 days), mirroring
+   * `EditProposal.autoApply` (FR-13).
+   */
+  public autoActivate(moderatorHash: AuthorHash): void {
+    void moderatorHash;
+    if (this.status !== 'PENDING') {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot auto-activate node in status ${this.status}`
+      );
+    }
+    const daysSinceCreation =
+      (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCreation < 14 || this.communityScore < 10) {
+      throw new DomainError(
+        'ERR_UNMET_AUTO_APPLY_CRITERIA',
+        `Requires score >= 10 (current: ${this.communityScore}) and age >= 14 days (current: ${Math.floor(daysSinceCreation)} days)`
+      );
+    }
+    this.changeStatus('ACTIVE');
+  }
+
+  /**
    * Apply a delta of attribute changes (used by edit proposals).
    */
   updateAttributes(delta: Record<string, unknown>): void {

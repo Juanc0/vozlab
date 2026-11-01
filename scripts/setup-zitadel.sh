@@ -536,6 +536,19 @@ if [ -n "$GOOGLE_CLIENT_ID$MICROSOFT_CLIENT_ID" ]; then
   log "   $ZITADEL_PUBLIC_URL/ui/login/login/externalidp/callback"
 fi
 
+# Remap the dev tenant's OIDC claim key to the new Zitadel org id so logins
+# resolve without a manual UPDATE. The seed (db:seed:dev) now derives the same
+# value from OIDC_SCOPES, so re-seeding after a Zitadel recreate also works.
+# Failures here are non-fatal: the operator can still run the command printed
+# below.
+if docker exec vozlab-postgres psql -U postgres -d vozlab_router -c \
+  "UPDATE public.tenants SET oidc_tenant_id = '$ORG_ID' WHERE slug = '$TENANT_SLUG';" >/dev/null 2>&1; then
+  log "   Router DB remapped: tenant '$TENANT_SLUG' -> oidc_tenant_id '$ORG_ID'."
+else
+  warn "could not auto-remap the router DB (is vozlab-postgres running?). Run manually:"
+  log "     docker exec vozlab-postgres psql -U postgres -d vozlab_router -c \"UPDATE public.tenants SET oidc_tenant_id = '$ORG_ID' WHERE slug = '$TENANT_SLUG';\""
+fi
+
 cat <<EOF
 
 === .env (OIDC) ===
@@ -553,11 +566,7 @@ WEB_ORIGIN=$WEB_ORIGIN
 === Test user ===
 $TEST_USER / $TEST_PASSWORD
 
-=== Update the router DB ===
-docker exec vozlab-postgres psql -U postgres -d vozlab_router -c \\
-  "UPDATE public.tenants SET oidc_tenant_id = '$ORG_ID' WHERE slug = '$TENANT_SLUG';"
-
-Verify:
+=== Verify the router DB mapping ===
 docker exec vozlab-postgres psql -U postgres -d vozlab_router -c \\
   "SELECT slug, oidc_tenant_id FROM public.tenants WHERE slug = '$TENANT_SLUG';"
 

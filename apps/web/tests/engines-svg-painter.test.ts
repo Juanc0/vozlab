@@ -551,6 +551,31 @@ describe('the SVG painter', () => {
     // The path was drawn with the cards, not left at the old place.
     expect(second).not.toBe(first);
   });
+
+  it('marks pending nodes as unreviewed and leaves active nodes solid', () => {
+    draw();
+
+    const pendingBox = card(NODE_B.id).querySelector('rect.vozlab-svg-card-box');
+    const activeBox = card(NODE_A.id).querySelector('rect.vozlab-svg-card-box');
+
+    expect(pendingBox).toHaveAttribute('stroke-dasharray', '6 4');
+    expect(activeBox).not.toHaveAttribute('stroke-dasharray');
+    expect(card(NODE_B.id).querySelector('g.vozlab-svg-unreviewed-badge')).not.toBeNull();
+    expect(card(NODE_A.id).querySelector('g.vozlab-svg-unreviewed-badge')).toBeNull();
+    expect(card(NODE_B.id)).toHaveAccessibleName(/Pendiente/);
+  });
+
+  it('excludes rejected nodes and edges from the picture', () => {
+    painter.setElements({
+      nodes: [{ ...NODE_A, status: 'REJECTED' }, NODE_B],
+      edges: [{ ...EDGE, status: 'REJECTED' }],
+      expandedIds: new Set(),
+      edgeStyle: 'bezier'
+    });
+
+    expect(() => card((NODE_A as { id: string }).id)).toThrow();
+    expect(svg().querySelector(`g.vozlab-svg-edge[data-edge-id="${EDGE.id}"]`)).toBeNull();
+  });
 });
 
 describe('the arrow of the SVG painter', () => {

@@ -24,6 +24,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     save: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),
+    updateStatus: vi.fn(),
     applyDelta: vi.fn(),
     mergeInto: vi.fn(),
     setEmbedding: vi.fn(),
@@ -38,6 +39,7 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     save: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),
+    updateStatus: vi.fn(),
     applyDelta: vi.fn(),
     repointEdges: vi.fn(),
   };

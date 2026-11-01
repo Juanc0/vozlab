@@ -40,6 +40,9 @@ import { GetSubgraphUseCase } from '../../application/use_cases/GetSubgraphUseCa
 import { GetNodeWindowUseCase } from '../../application/use_cases/GetNodeWindowUseCase.js';
 import { ListNodesUseCase } from '../../application/use_cases/ListNodesUseCase.js';
 import { DeleteNodeUseCase } from '../../application/use_cases/DeleteNodeUseCase.js';
+import { ActivateNodeUseCase } from '../../application/use_cases/ActivateNodeUseCase.js';
+import { RejectNodeUseCase } from '../../application/use_cases/RejectNodeUseCase.js';
+import { AutoActivateNodeUseCase } from '../../application/use_cases/AutoActivateNodeUseCase.js';
 import { SetNodeEmbeddingUseCase } from '../../application/use_cases/SetNodeEmbeddingUseCase.js';
 import { CreateProposalUseCase } from '../../application/use_cases/CreateProposalUseCase.js';
 import { ApproveProposalUseCase } from '../../application/use_cases/ApproveProposalUseCase.js';
@@ -52,6 +55,9 @@ import { GetEdgeUseCase } from '../../application/use_cases/GetEdgeUseCase.js';
 import { ListEdgesUseCase } from '../../application/use_cases/ListEdgesUseCase.js';
 import { UpdateEdgeUseCase } from '../../application/use_cases/UpdateEdgeUseCase.js';
 import { DeleteEdgeUseCase } from '../../application/use_cases/DeleteEdgeUseCase.js';
+import { ActivateEdgeUseCase } from '../../application/use_cases/ActivateEdgeUseCase.js';
+import { RejectEdgeUseCase } from '../../application/use_cases/RejectEdgeUseCase.js';
+import { AutoActivateEdgeUseCase } from '../../application/use_cases/AutoActivateEdgeUseCase.js';
 import { ProposeOntologyClassUseCase } from '../../application/use_cases/ProposeOntologyClassUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
@@ -216,6 +222,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   const getSubgraphUseCase = new GetSubgraphUseCase(nodeRepo, displayNames);
   const getNodeWindowUseCase = new GetNodeWindowUseCase(nodeRepo, displayNames);
   const deleteNodeUseCase = new DeleteNodeUseCase(nodeRepo, eventPublisher);
+  const activateNodeUseCase = new ActivateNodeUseCase(nodeRepo, membershipRepo, uow, eventPublisher);
+  const rejectNodeUseCase = new RejectNodeUseCase(nodeRepo, membershipRepo, uow, eventPublisher);
+  const autoActivateNodeUseCase = new AutoActivateNodeUseCase(nodeRepo, membershipRepo, uow, eventPublisher);
   const setNodeEmbeddingUseCase = new SetNodeEmbeddingUseCase(
     nodeRepo,
     env.EMBEDDING_MODEL
@@ -264,6 +273,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   const listEdgesUseCase = new ListEdgesUseCase(edgeRepo, displayNames);
   const updateEdgeUseCase = new UpdateEdgeUseCase(edgeRepo, eventPublisher, displayNames);
   const deleteEdgeUseCase = new DeleteEdgeUseCase(edgeRepo, eventPublisher);
+  const activateEdgeUseCase = new ActivateEdgeUseCase(edgeRepo, membershipRepo, uow, eventPublisher);
+  const rejectEdgeUseCase = new RejectEdgeUseCase(edgeRepo, membershipRepo, uow, eventPublisher);
+  const autoActivateEdgeUseCase = new AutoActivateEdgeUseCase(edgeRepo, membershipRepo, uow, eventPublisher);
   const proposeOntologyClassUseCase = new ProposeOntologyClassUseCase(
     ontologyRepo,
     eventPublisher
@@ -516,6 +528,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     listNodesUseCase,
     deleteNodeUseCase,
     setNodeEmbeddingUseCase,
+    activateNodeUseCase,
+    rejectNodeUseCase,
+    autoActivateNodeUseCase,
     getSubgraphUseCase,
     getNodeWindowUseCase,
     createProposalUseCase,
@@ -529,6 +544,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     listEdgesUseCase,
     updateEdgeUseCase,
     deleteEdgeUseCase,
+    activateEdgeUseCase,
+    rejectEdgeUseCase,
+    autoActivateEdgeUseCase,
     proposeOntologyClassUseCase,
     proposeDatatypePropertyUseCase,
     proposeObjectPropertyUseCase,

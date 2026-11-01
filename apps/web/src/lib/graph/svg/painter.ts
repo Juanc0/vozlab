@@ -82,6 +82,8 @@ import type { EdgeStyle } from '$lib/graph/explore/edge-style';
 import { observeContainerSize } from '$lib/graph/resize';
 import { displayName } from '$lib/i18n/display-name';
 import { DEFAULT_LOCALE } from '$lib/i18n/dictionary';
+import { dictionaries } from '$lib/i18n/locale.svelte';
+import { statusLabel } from '$lib/i18n/statuses';
 import {
   EDGE_DASH,
   EDGE_LABEL_FONT_SIZE,
@@ -790,7 +792,11 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       tabindex: '0',
       focusable: 'true',
       role: 'button',
-      'aria-label': `${node.title} — ${content.meta}`,
+      'aria-label': `${node.title} — ${content.meta} — ${statusLabel(locale, 'node', node.status)}${
+        node.status === 'PENDING'
+          ? ` — ${dictionaries[locale as keyof typeof dictionaries]?.['graph.unreviewed'] ?? 'Unreviewed'}`
+          : ''
+      }`,
       'aria-pressed': selected ? 'true' : 'false',
       'aria-expanded': String(expanded)
     });
@@ -820,7 +826,8 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       rx: CARD_RADIUS,
       fill: CARD_COLOR,
       stroke: selected ? SELECTION_COLOR : status.width === 0 ? 'none' : status.color,
-      'stroke-width': selected ? 3 : status.width === 0 ? undefined : status.width
+      'stroke-width': selected ? 3 : status.width === 0 ? undefined : status.width,
+      'stroke-dasharray': node.status === 'PENDING' ? '6 4' : undefined
     });
 
     // The hover mark is a rule of the control, and it is only there when
@@ -958,6 +965,44 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     );
 
     group.append(badge);
+
+    // The mark of an unreviewed card: a small badge that says so, in the
+    // language of the interface. It is only there while the node is pending.
+    if (node.status === 'PENDING') {
+      const unreviewedLabel =
+        dictionaries[locale as keyof typeof dictionaries]?.['graph.unreviewed'] ??
+        statusLabel(locale, 'node', 'PENDING');
+
+      const unreviewedBadge = element('g', {
+        class: 'vozlab-svg-unreviewed-badge vozlab-svg-unreviewed vozlab-svg-status-badge vozlab-svg-pending-badge',
+        transform: `translate(${-halfWidth + BADGE_GAP + BADGE_RADIUS} ${
+          -halfHeight + BADGE_GAP + BADGE_RADIUS
+        })`,
+        'aria-hidden': 'true'
+      });
+
+      unreviewedBadge.append(
+        element('circle', {
+          r: BADGE_RADIUS,
+          fill: '#6d5fa3',
+          stroke: 'none'
+        })
+      );
+
+      const unreviewedText = element('text', {
+        class: 'vozlab-svg-unreviewed-badge-label',
+        'text-anchor': 'middle',
+        'dominant-baseline': 'central',
+        'font-family': TITLE_FONT_FAMILY,
+        'font-size': 8,
+        'font-weight': 600,
+        fill: '#ffffff'
+      });
+      unreviewedText.textContent = unreviewedLabel;
+      unreviewedBadge.append(unreviewedText);
+
+      group.append(unreviewedBadge);
+    }
 
     badge.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -1179,14 +1224,17 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     clearCards();
     clearEdges();
 
-    for (const edge of elements.edges) {
+    const visibleNodes = elements.nodes.filter((node) => node.status !== 'REJECTED');
+    const visibleEdges = elements.edges.filter((edge) => edge.status !== 'REJECTED');
+
+    for (const edge of visibleEdges) {
       const view = createEdge(edge);
 
       edges.set(edge.id, view);
       edgesGroup.append(view.group);
     }
 
-    for (const node of elements.nodes) {
+    for (const node of visibleNodes) {
       const view = createCard(node);
 
       cards.set(node.id, view);
@@ -1196,7 +1244,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     buildMs = now() - began;
 
     spring = createForceLayout(
-      elements.nodes.map((node): ForceNodeInput => {
+      visibleNodes.map((node): ForceNodeInput => {
         const place = previous.get(node.id);
 
         return {
@@ -1206,7 +1254,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
           ...(place === undefined ? {} : { x: place.x, y: place.y })
         };
       }),
-      elements.edges.map(
+      visibleEdges.map(
         (edge): ForceEdgeInput => ({
           source: edge.sourceNodeId,
           target: edge.targetNodeId,

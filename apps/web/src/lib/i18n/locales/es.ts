@@ -277,6 +277,7 @@ export const es = {
 
   /** The graph screen: the root picker, the canvas, the list and the panel. */
   graph: {
+    unreviewed: 'Sin revisar',
     pageTitle: 'Grafo — VozLab',
     heading: 'Grafo',
     intro:
@@ -466,7 +467,11 @@ export const es = {
     edgeNothingToSave:
       'El formulario no cambia nada todavía: cambia un campo antes de guardarlo.',
     edgeChanges: 'Qué cambia esta edición',
-    edgeFormKept: 'El formulario conserva lo que has escrito: no se ha guardado nada.'
+    edgeFormKept: 'El formulario conserva lo que has escrito: no se ha guardado nada.',
+     approve: 'Aprobar',
+     reject: 'Rechazar',
+     autoActivate: 'Activar automáticamente',
+     nowStatus: 'Está ahora en {status}.'
   },
 
   /** The node: its form, its details and its history. */

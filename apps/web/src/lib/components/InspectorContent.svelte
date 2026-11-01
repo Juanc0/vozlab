@@ -15,7 +15,11 @@
   import type { VoteLedger } from '$lib/governance/vote.svelte';
   import { displayName } from '$lib/i18n/display-name';
   import { formatDate, formatNumber } from '$lib/i18n';
-  import { getLocaleState } from '$lib/state/context';
+  import { getLocaleState, getSessionState, getWorkspaceState, getApiClient } from '$lib/state/context';
+  import { connectivityState } from '$lib/pwa/connectivity.svelte';
+  import { OfflineError } from '$lib/api/errors';
+  import { describeFailure, type ApiFailure } from '$lib/api/failure';
+  import { activateEdge, activateNode, autoActivateEdge, autoActivateNode, rejectEdge, rejectNode } from '$lib/api/graph';
   import VoteButtons from './VoteButtons.svelte';
 
   interface Props {
@@ -48,8 +52,8 @@
   }
 
   let {
-    node = null,
-    edge = null,
+    node: nodeProp = null,
+    edge: edgeProp = null,
     nodes = [],
     ledger,
     reconcileEdge,
@@ -57,8 +61,110 @@
     onrelate
   }: Props = $props();
 
+  // Local copies so the governance actions can update the status optimistically.
+  // svelte-ignore state_referenced_locally
+  let node = $state<NodeDto | null>(nodeProp);
+  // svelte-ignore state_referenced_locally
+  let edge = $state<EdgeDto | null>(edgeProp);
+  $effect(() => {
+    node = nodeProp;
+  });
+  $effect(() => {
+    edge = edgeProp;
+  });
+
+  const session = getSessionState();
+  const workspace = getWorkspaceState();
+  const api = getApiClient();
   const locale = getLocaleState();
   const t = locale.t;
+
+  const authorHash = $derived(session.user?.authorHash ?? null);
+
+  const isAuthorNode = $derived(
+    node !== null && authorHash !== null && authorHash !== '' && node.authorHash === authorHash
+  );
+  const isAuthorEdge = $derived(
+    edge !== null && authorHash !== null && authorHash !== '' && edge.authorHash === authorHash
+  );
+
+  const canGovernNode = $derived(isAuthorNode || workspace.isModerator);
+  const canGovernEdge = $derived(isAuthorEdge || workspace.isModerator);
+
+  const canAutoNode = $derived(workspace.isModerator && (node?.communityScore ?? 0) >= 10);
+  const canAutoEdge = $derived(workspace.isModerator && (edge?.communityScore ?? 0) >= 10);
+
+  let resolving = $state(false);
+  let actionError = $state<ApiFailure | null>(null);
+  let notice = $state<string | null>(null);
+
+  async function governNode(action: 'approve' | 'reject' | 'auto'): Promise<void> {
+    if (node === null) return;
+    await govern('node', action, node.id);
+  }
+  async function governEdge(action: 'approve' | 'reject' | 'auto'): Promise<void> {
+    if (edge === null) return;
+    await govern('edge', action, edge.id);
+  }
+
+  async function govern(kind: 'node' | 'edge', action: 'approve' | 'reject' | 'auto', id: string): Promise<void> {
+    if (resolving) return;
+    resolving = true;
+    actionError = null;
+    notice = null;
+
+    if (connectivityState.offline) {
+      actionError = describeFailure(new OfflineError(), t);
+      resolving = false;
+      return;
+    }
+
+    const previousNodeStatus = node?.status;
+    const previousEdgeStatus = edge?.status;
+    const optimisticStatus = action === 'reject' ? 'REJECTED' : 'ACTIVE';
+
+    if (kind === 'node' && node !== null) {
+      node = { ...node, status: optimisticStatus as NodeDto['status'] };
+    }
+    if (kind === 'edge' && edge !== null) {
+      edge = { ...edge, status: optimisticStatus as EdgeDto['status'] };
+    }
+
+    try {
+      const result =
+        kind === 'node'
+          ? action === 'approve'
+            ? await activateNode(api, id)
+            : action === 'reject'
+              ? await rejectNode(api, id)
+              : await autoActivateNode(api, id)
+          : action === 'approve'
+            ? await activateEdge(api, id)
+            : action === 'reject'
+              ? await rejectEdge(api, id)
+              : await autoActivateEdge(api, id);
+
+      if (kind === 'node' && node !== null) {
+        node = { ...node, status: result.status as NodeDto['status'] };
+      }
+      if (kind === 'edge' && edge !== null) {
+        edge = { ...edge, status: result.status as EdgeDto['status'] };
+      }
+      notice = t('inspector.nowStatus', {
+        status: locale.status(kind === 'node' ? 'node' : 'edge', result.status)
+      });
+    } catch (caught) {
+      if (kind === 'node' && node !== null && previousNodeStatus !== undefined) {
+        node = { ...node, status: previousNodeStatus };
+      }
+      if (kind === 'edge' && edge !== null && previousEdgeStatus !== undefined) {
+        edge = { ...edge, status: previousEdgeStatus };
+      }
+      actionError = describeFailure(caught, t);
+    } finally {
+      resolving = false;
+    }
+  }
 
   /** The title of a node of the view — the ends of a relation are among them. */
   function titleOf(nodeId: string): string {
@@ -113,8 +219,8 @@
           targetId={node.id}
           targetType="NODE"
           score={node.communityScore}
-          label={node.title}
-          reconcile={reconcileNode ? () => reconcileNode(node.id) : undefined}
+          label={node!.title}
+          reconcile={reconcileNode ? () => reconcileNode(node!.id) : undefined}
         />
       </div>
     </section>
@@ -123,10 +229,54 @@
       <button
         type="button"
         class="btn btn-secondary"
-        onclick={() => onrelate(node)}
+        onclick={() => onrelate(node!)}
       >
         {t('inspector.relate')}
       </button>
+    {/if}
+
+    {#if canGovernNode}
+      <section aria-labelledby="inspector-node-governance-heading">
+        <h3 id="inspector-node-governance-heading">{t('inspector.actionsHeading')}</h3>
+        <div class="mt-1 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-primary"
+            disabled={resolving}
+            onclick={() => void governNode('approve')}
+          >
+            {t('inspector.approve')}
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            disabled={resolving}
+            onclick={() => void governNode('reject')}
+          >
+            {t('inspector.reject')}
+          </button>
+          {#if canAutoNode}
+            <button
+              type="button"
+              class="btn btn-secondary"
+              disabled={resolving}
+              onclick={() => void governNode('auto')}
+            >
+              {t('proposals.autoApply')}
+            </button>
+          {/if}
+        </div>
+        {#if notice}
+          <p role="status" class="mt-1 rounded-control bg-raised p-2 text-body">
+            {notice}
+          </p>
+        {/if}
+        {#if actionError}
+          <p role="alert" class="mt-1 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
+            <span class="font-mono">{actionError.code}</span> — {actionError.message}
+          </p>
+        {/if}
+      </section>
     {/if}
   </article>
 {:else if edge !== null}
@@ -180,10 +330,54 @@
           label={t('graph.voteRelationLabel', {
             relationKey: displayName(edge.relationDisplayNames, locale.locale, edge.relationKey)
           })}
-          reconcile={reconcileEdge ? () => reconcileEdge(edge.id) : undefined}
+          reconcile={reconcileEdge ? () => reconcileEdge(edge!.id) : undefined}
         />
       </div>
     </section>
+
+    {#if canGovernEdge}
+      <section aria-labelledby="inspector-edge-governance-heading">
+        <h3 id="inspector-edge-governance-heading">{t('inspector.actionsHeading')}</h3>
+        <div class="mt-1 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-primary"
+            disabled={resolving}
+            onclick={() => void governEdge('approve')}
+          >
+            {t('inspector.approve')}
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            disabled={resolving}
+            onclick={() => void governEdge('reject')}
+          >
+            {t('inspector.reject')}
+          </button>
+          {#if canAutoEdge}
+            <button
+              type="button"
+              class="btn btn-secondary"
+              disabled={resolving}
+              onclick={() => void governEdge('auto')}
+            >
+              {t('proposals.autoApply')}
+            </button>
+          {/if}
+        </div>
+        {#if notice}
+          <p role="status" class="mt-1 rounded-control bg-raised p-2 text-body">
+            {notice}
+          </p>
+        {/if}
+        {#if actionError}
+          <p role="alert" class="mt-1 rounded-control bg-pill-negative-bg p-2 text-body text-pill-negative-ink">
+            <span class="font-mono">{actionError.code}</span> — {actionError.message}
+          </p>
+        {/if}
+      </section>
+    {/if}
   </article>
 {:else}
   <p class="text-body text-muted">{t('inspector.emptySelection')}</p>

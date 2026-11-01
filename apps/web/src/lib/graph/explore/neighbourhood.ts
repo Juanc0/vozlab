@@ -36,10 +36,18 @@ export function pictureOf(
   nodes: readonly NodeDto[],
   edges: readonly SubgraphEdgeDto[]
 ): Neighbourhood {
-  const ids = new Set(nodes.map((node) => node.id));
+  // `REJECTED` content is excluded from the picture (ADR-0051): it stays
+  // readable by id but never appears on the canvas.
+  const visibleNodes = nodes.filter((node) => node.status !== 'REJECTED');
+  const ids = new Set(visibleNodes.map((node) => node.id));
 
   return {
-    nodes: [...nodes],
-    edges: edges.filter((edge) => ids.has(edge.sourceNodeId) && ids.has(edge.targetNodeId))
+    nodes: visibleNodes,
+    edges: edges.filter(
+      (edge) =>
+        edge.status !== 'REJECTED' &&
+        ids.has(edge.sourceNodeId) &&
+        ids.has(edge.targetNodeId)
+    )
   };
 }

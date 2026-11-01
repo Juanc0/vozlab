@@ -60,6 +60,7 @@ export interface FakeNodeRepository {
   appliedDeltas: Array<{ targetId: string; workspaceId: string; tx: DbTransaction | undefined }>;
   embeddings: EmbeddingWrite[];
   merges: Array<{ sourceId: string; targetId: string; tx: DbTransaction | undefined }>;
+  statusUpdates: Array<{ id: string; status: string; tid: string; tx: DbTransaction | undefined }>;
   nearestCalls: Array<{
     sourceId: string;
     workspaceId: string;
@@ -88,6 +89,7 @@ export function makeNodeRepository(
   const appliedDeltas: FakeNodeRepository['appliedDeltas'] = [];
   const embeddings: EmbeddingWrite[] = [];
   const merges: FakeNodeRepository['merges'] = [];
+  const statusUpdates: FakeNodeRepository['statusUpdates'] = [];
   const nearestCalls: FakeNodeRepository['nearestCalls'] = [];
   const windowCalls: FakeNodeRepository['windowCalls'] = [];
   const repo: INodeRepository = {
@@ -241,6 +243,9 @@ export function makeNodeRepository(
     async mergeInto(source, target, _tid, tx) {
       merges.push({ sourceId: source.id, targetId: target.id, tx });
     },
+    async updateStatus(id, status, tid, tx) {
+      statusUpdates.push({ id, status: String(status), tid, tx });
+    },
     // Mirrors the adapter: a missing node, a foreign workspace or a
     // soft-deleted row is never updated.
     async setEmbedding(id, workspaceId, embedding, model) {
@@ -254,7 +259,7 @@ export function makeNodeRepository(
       return nearest;
     },
   };
-  return { repo, softDeleted, appliedDeltas, embeddings, merges, nearestCalls, windowCalls };
+  return { repo, softDeleted, appliedDeltas, embeddings, merges, statusUpdates, nearestCalls, windowCalls };
 }
 
 export interface FakeEdgeRepository {
@@ -267,14 +272,16 @@ export interface FakeEdgeRepository {
     workspaceId: string;
     tx: DbTransaction | undefined;
   }>;
+  statusUpdates: Array<{ id: string; status: string; tid: string; tx: DbTransaction | undefined }>;
 }
 
 /** In-memory `IEdgeRepository` recording saves and applied deltas. */
-export function makeEdgeRepository(): FakeEdgeRepository {
-  const saved: Edge[] = [];
+export function makeEdgeRepository(edges: Edge[] = []): FakeEdgeRepository {
+  const saved: Edge[] = [...edges];
   const appliedDeltas: FakeEdgeRepository['appliedDeltas'] = [];
   const repointed: FakeEdgeRepository['repointed'] = [];
-  const byId = new Map<string, Edge>();
+  const statusUpdates: FakeEdgeRepository['statusUpdates'] = [];
+  const byId = new Map(edges.map((e) => [e.id, e]));
   const repo: IEdgeRepository = {
     async findById(id) {
       return byId.get(id) ?? null;
@@ -298,6 +305,9 @@ export function makeEdgeRepository(): FakeEdgeRepository {
     },
     async update() {},
     async softDelete() {},
+    async updateStatus(id, status, tid, tx) {
+      statusUpdates.push({ id, status: String(status), tid, tx });
+    },
     async applyDelta(targetId, _changes, workspaceId, _tid, tx) {
       appliedDeltas.push({ targetId, workspaceId, tx });
     },
@@ -306,7 +316,7 @@ export function makeEdgeRepository(): FakeEdgeRepository {
       repointed.push({ nodeId, replacementId, workspaceId, tx });
     },
   };
-  return { repo, saved, appliedDeltas, repointed };
+  return { repo, saved, appliedDeltas, repointed, statusUpdates };
 }
 
 export interface FakeOntologyRepository {

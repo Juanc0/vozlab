@@ -124,6 +124,16 @@ export class DrizzleEdgeRepository implements IEdgeRepository {
       .where(eq(edges.id, edge.id));
   }
 
+  async updateStatus(
+    id: string,
+    status: EdgeStatus,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    await db.update(edges).set({ status }).where(eq(edges.id, id));
+  }
+
   async softDelete(id: string, tid: string, tx?: DbTransaction): Promise<void> {
     const db = await this.client(tid, tx);
     await db.update(edges).set({ deletedAt: new Date() }).where(eq(edges.id, id));

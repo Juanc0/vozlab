@@ -53,6 +53,12 @@ import { CreateProposalUseCase } from '../../src/application/use_cases/CreatePro
 import { CreateThreadUseCase } from '../../src/application/use_cases/CreateThreadUseCase.js';
 import { DeleteEdgeUseCase } from '../../src/application/use_cases/DeleteEdgeUseCase.js';
 import { DeleteNodeUseCase } from '../../src/application/use_cases/DeleteNodeUseCase.js';
+import { ActivateNodeUseCase } from '../../src/application/use_cases/ActivateNodeUseCase.js';
+import { RejectNodeUseCase } from '../../src/application/use_cases/RejectNodeUseCase.js';
+import { AutoActivateNodeUseCase } from '../../src/application/use_cases/AutoActivateNodeUseCase.js';
+import { ActivateEdgeUseCase } from '../../src/application/use_cases/ActivateEdgeUseCase.js';
+import { RejectEdgeUseCase } from '../../src/application/use_cases/RejectEdgeUseCase.js';
+import { AutoActivateEdgeUseCase } from '../../src/application/use_cases/AutoActivateEdgeUseCase.js';
 import { DeletePostUseCase } from '../../src/application/use_cases/DeletePostUseCase.js';
 import { GetEdgeUseCase } from '../../src/application/use_cases/GetEdgeUseCase.js';
 import { GetNodeUseCase } from '../../src/application/use_cases/GetNodeUseCase.js';
@@ -144,6 +150,9 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     listNodesUseCase: unused(ListNodesUseCase.prototype),
     deleteNodeUseCase: unused(DeleteNodeUseCase.prototype),
     setNodeEmbeddingUseCase: unused(SetNodeEmbeddingUseCase.prototype),
+    activateNodeUseCase: unused(ActivateNodeUseCase.prototype),
+    rejectNodeUseCase: unused(RejectNodeUseCase.prototype),
+    autoActivateNodeUseCase: unused(AutoActivateNodeUseCase.prototype),
     getSubgraphUseCase: unused(GetSubgraphUseCase.prototype),
     getNodeWindowUseCase: unused(GetNodeWindowUseCase.prototype),
     createProposalUseCase: unused(CreateProposalUseCase.prototype),
@@ -157,6 +166,9 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     listEdgesUseCase: unused(ListEdgesUseCase.prototype),
     updateEdgeUseCase: unused(UpdateEdgeUseCase.prototype),
     deleteEdgeUseCase: unused(DeleteEdgeUseCase.prototype),
+    activateEdgeUseCase: unused(ActivateEdgeUseCase.prototype),
+    rejectEdgeUseCase: unused(RejectEdgeUseCase.prototype),
+    autoActivateEdgeUseCase: unused(AutoActivateEdgeUseCase.prototype),
     proposeOntologyClassUseCase: unused(ProposeOntologyClassUseCase.prototype),
     proposeDatatypePropertyUseCase: unused(ProposeDatatypePropertyUseCase.prototype),
     proposeObjectPropertyUseCase: unused(ProposeObjectPropertyUseCase.prototype),

@@ -151,6 +151,9 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
+| `PUT` | `/api/v1/nodes/:id/activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-author/non-moderator; `404 ERR_NODE_NOT_FOUND`; `422` invalid state transition |
+| `PUT` | `/api/v1/nodes/:id/reject` | no body | `200 { id, status: "REJECTED" }` | `403` non-author/non-moderator; `404 ERR_NODE_NOT_FOUND`; `422` invalid state transition |
+| `PUT` | `/api/v1/nodes/:id/auto-activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-moderator/non-admin; `404 ERR_NODE_NOT_FOUND`; `422 ERR_UNMET_AUTO_APPLY_CRITERIA` or invalid state |
 | `PUT` | `/api/v1/nodes/:id/embedding` | `embedding` 768 finite numbers; `model` string | `204`, empty body | `403 ERR_AUTHORIZATION_FAILED` (not `AGENT_EMBEDDER`); `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `422 ERR_VALIDATION_FAILED` bad vector or unknown model |
 
 Notes:
@@ -204,6 +207,9 @@ Notes:
 | `GET` | `/api/v1/edges/:id` | path UUID | `200 { "edge": EdgeDto }` | `404 ERR_EDGE_NOT_FOUND` |
 | `PATCH` | `/api/v1/edges/:id` | optional `relationKey`, optional `attributes` | `200 { "edge": EdgeDto }` | `403` non-author; `404 ERR_EDGE_NOT_FOUND` |
 | `DELETE` | `/api/v1/edges/:id` | path UUID | `204` | `403` non-author; `404 ERR_EDGE_NOT_FOUND` |
+| `PUT` | `/api/v1/edges/:id/activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-author/non-moderator; `404 ERR_EDGE_NOT_FOUND`; `422` invalid state transition |
+| `PUT` | `/api/v1/edges/:id/reject` | no body | `200 { id, status: "REJECTED" }` | `403` non-author/non-moderator; `404 ERR_EDGE_NOT_FOUND`; `422` invalid state transition |
+| `PUT` | `/api/v1/edges/:id/auto-activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-moderator/non-admin; `404 ERR_EDGE_NOT_FOUND`; `422 ERR_UNMET_AUTO_APPLY_CRITERIA` or invalid state |
 
 If an object property with `relationKey` exists, its domain/range rules are
 enforced; endpoint node status is not checked. The list returns all
