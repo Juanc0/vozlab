@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
   import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto } from '@vozlab/shared-types';
@@ -9,23 +8,13 @@
 
   const api = getApiClient();
   const locale = getLocaleState();
-  const session = getSessionState();
   const workspace = getWorkspaceState();
   const t = locale.t;
 
-  const isTenantAdmin = $derived(session.user?.systemRole === 'ADMIN');
-
-  // Break-glass: a tenant admin may target a workspace they do not belong to
-  // via ?workspaceId=, without mutating the per-tab selector.
-  const targetWorkspaceId = $derived(
-    page.url.searchParams.get('workspaceId') || workspace.currentWorkspaceId
-  );
+  const targetWorkspaceId = $derived(workspace.currentWorkspaceId);
 
   const canAdmin = $derived(
-    targetWorkspaceId !== '' &&
-      (workspace.isAdmin && targetWorkspaceId === workspace.currentWorkspaceId
-        ? true
-        : isTenantAdmin)
+    workspace.isAdmin && workspace.currentWorkspaceId !== ''
   );
 
   // Section navigation.
@@ -82,7 +71,7 @@
     loading = true;
     error = null;
     try {
-      const loaded = await admin.getAdminWorkspace(api, workspace.currentWorkspaceId);
+      const loaded = await admin.getAdminWorkspace(api, targetWorkspaceId);
       ws = loaded;
       name = loaded.name;
       description = loaded.description ?? '';

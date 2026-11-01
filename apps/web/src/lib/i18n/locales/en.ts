@@ -784,11 +784,6 @@ export const en: Dictionary<typeof es> = {
     members: 'Members',
     joinRequests: 'Join requests',
     invitations: 'Invitations',
-    joinCode: 'Join code',
-    joinCodeShownOnce: 'Join code (shown once)',
-    joinCodeHidden: 'Only the hash is stored — the code is shown once. Rotate to get a new one.',
-    copyCode: 'Copy',
-    rotateJoinCode: 'Rotate code',
     selectTenantTitle: 'Select tenant',
     selectTenantNone: 'No tenants linked',
     addRole: 'Add role…',
@@ -822,7 +817,6 @@ export const en: Dictionary<typeof es> = {
     kind: 'Kind',
     initialAdmin: 'Initial admin (optional)',
     creatorBecomesAdmin: 'Creator becomes admin',
-    enterWorkspaceAdmin: 'Enter workspace admin',
     tenantUsers: 'Tenant users'
   },
 

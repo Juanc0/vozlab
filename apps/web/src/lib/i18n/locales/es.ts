@@ -849,11 +849,6 @@ export const es = {
     members: 'Miembros',
     joinRequests: 'Solicitudes de acceso',
     invitations: 'Invitaciones',
-    joinCode: 'Código de acceso',
-    joinCodeShownOnce: 'Código de acceso (se muestra una vez)',
-    joinCodeHidden: 'Solo se guarda el hash — el código se muestra una vez. Rótalo para obtener uno nuevo.',
-    copyCode: 'Copiar',
-    rotateJoinCode: 'Rotar código',
     selectTenantTitle: 'Seleccionar inquilino',
     selectTenantNone: 'Sin inquilinos vinculados',
     addRole: 'Añadir rol…',
@@ -887,7 +882,6 @@ export const es = {
     kind: 'Tipo',
     initialAdmin: 'Administrador inicial (opcional)',
     creatorBecomesAdmin: 'El creador se convierte en administrador',
-    enterWorkspaceAdmin: 'Entrar a la administración del espacio',
     tenantUsers: 'Usuarios del inquilino'
   },
 
