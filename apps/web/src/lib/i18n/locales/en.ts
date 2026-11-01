@@ -121,6 +121,7 @@ export const en: Dictionary<typeof es> = {
     optional: '(optional)',
     tryAgain: 'Try again',
     joinWithCode: 'Join with an event code',
+    joinEvent: 'Join an event',
     emptyValue: '—'
   },
 

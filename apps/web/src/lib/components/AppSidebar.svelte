@@ -373,7 +373,7 @@
       <a
         href="/join"
         class="grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
-        title={t('common.joinWithCode')}
+        title={t('common.joinEvent')}
       >
         <svg
           width="18"
@@ -389,7 +389,7 @@
           <path d="M8 3v10" />
           <path d="M3 8h10" />
         </svg>
-        <span class="sr-only">{t('common.joinWithCode')}</span>
+        <span class="sr-only">{t('common.joinEvent')}</span>
       </a>
 
       <button
@@ -458,8 +458,8 @@
     <div class="mt-auto space-y-3 border-t border-rule pt-4 pb-4">
       <WorkspaceSelector />
 
-      <a href="/join" class="btn btn-secondary w-full">
-        {t('common.joinWithCode')}
+      <a href="/join" class="btn btn-secondary h-auto w-full whitespace-normal leading-tight">
+        {t('common.joinEvent')}
       </a>
 
       <TenantSwitcher />

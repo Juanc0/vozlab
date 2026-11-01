@@ -53,7 +53,7 @@ describe('the navigation column', () => {
     });
 
     const workspaceSelect = screen.getByRole('combobox', { name: 'Espacio de trabajo' });
-    const joinLink = screen.getByRole('link', { name: 'Unirse con un código de evento' });
+    const joinLink = screen.getByRole('link', { name: 'Unirse a un evento' });
 
     expect(
       workspaceSelect.compareDocumentPosition(joinLink) &

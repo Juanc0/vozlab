@@ -44,7 +44,7 @@
 <select
   id="locale-select"
   aria-label={t('locale.label')}
-  class="field w-auto py-0"
+  class="field w-full"
   value={locale.locale}
   onchange={handleChange}
 >

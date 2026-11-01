@@ -131,6 +131,7 @@ export const es = {
     optional: '(opcional)',
     tryAgain: 'Intentar de nuevo',
     joinWithCode: 'Unirse con un código de evento',
+    joinEvent: 'Unirse a un evento',
     emptyValue: '—'
   },
 
