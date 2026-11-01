@@ -218,10 +218,14 @@ that distinction.
   cannot create duplicate identities (the retired
   `UNIQUE(provider, provider_user_id)` users-level guard moved here);
   `auth.workspace_memberships`
-  has `UNIQUE(workspace_id, user_id, role)` so the role lookup sees one row
-  per role.
+  has `UNIQUE(workspace_id, user_id, role)`, so a user may hold several role
+  rows in one workspace and authorization reads the union of the `ACTIVE` ones
+  (§12.1).
+- Who may grant a membership, and from which surface, is the administration
+  contract in §12. It never changes this rule: authentication alone grants no
+  workspace.
 - Event join is the deliberate exception: the event code authorizes one
-  `MEMBER` membership in the code's workspace (see §9).
+  `GUEST` membership in the code's workspace (see §9).
 - **Invitations are one mechanism (DEC-9, ADR-0045).** `POST
   /api/v1/workspaces/:id/invitations` writes the tenant `auth.invitations`
   row (72 h, single-use, re-send invalidates; email bound as the peppered
@@ -425,7 +429,145 @@ calling `/auth/refresh` and keeping the returned access token in memory.
   the family or delete the rows for a full logout-all.
 - There is no “log out all devices” endpoint; each refresh family is independent.
 
-## 12. Authorization beyond the guards
+## 12. Tenant administration and workspace administration
+
+VozLab has exactly two administration scopes. They answer different questions
+— the tenant scope asks "what exists in this institution?", the workspace scope
+asks "who belongs to this workspace and what does it look like?" — and
+[ADR-0048](decisions/ADR-0048-split-tenant-and-workspace-administration.md)
+splits the administration UI into one surface per scope. This section is the
+contract for both.
+
+### 12.1 The two roles, exactly
+
+| Role | Column | Values | Default | Notes |
+| --- | --- | --- | --- | --- |
+| Tenant administrator | `auth.users.system_role` (tenant DB) | `USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT` | `USER` | `varchar(30) NOT NULL`, not DB-constrained (`SystemRoleSchema`). Only `ADMIN` holds the tenant scope; `MODERATOR` grants no administration power and stays inert. |
+| Workspace administrator | `auth.workspace_memberships.role` with `status = 'ACTIVE'` | `ADMIN`, `MODERATOR`, `MEMBER`, `GUEST` | `MEMBER` | `varchar(30) NOT NULL`, not DB-constrained (`WorkspaceRoleSchema`). Only `ADMIN` holds the workspace scope. |
+
+`auth.workspace_memberships.status` is `varchar(20) NOT NULL DEFAULT 'ACTIVE'`
+and carries `INVITED`, `ACTIVE`, `SUSPENDED` or `REMOVED`; it is not
+DB-constrained either. Only `ACTIVE` rows count for authorization and for
+`GET /auth/me`; the administration roster of a workspace reads **every**
+status, because a suspended member must stay visible to be reactivated or
+removed.
+
+**Union rule.** `UNIQUE(workspace_id, user_id, role)`
+(`uniq_memberships_workspace_user_role`) lets one user hold several rows in one
+workspace — `MEMBER` and `ADMIN`, for example. The administration decision is
+the **union of the `ACTIVE` rows**: `ADMIN` in any of them grants the workspace
+scope, and removing one role leaves the others. A read that inspects a single
+arbitrary row is non-conforming. The role displayed is the strongest of the
+active ones (`ADMIN` > `MODERATOR` > `MEMBER` > `GUEST`).
+
+**Scope is the institution.** `system_role` lives in the tenant database, not
+in the router: each institution has its own administrators, a global user
+linked to two institutions can be `ADMIN` in one and `USER` in the other, and
+there is no platform-wide role to hold. `db:grant-tenant-admin` writes that
+tenant row, and no API route changes `system_role`
+([ADR-0041](decisions/ADR-0041-tenant-and-workspace-administration.md) §9).
+
+### 12.2 The token carries no role
+
+The access token carries `sub`, `tid`, `jti`, `authorHash`, `type` and the
+standard `iat`/`exp` — no role claim of either kind (§2). Every guard re-reads
+the role from the tenant database on every request, so a demotion takes effect
+on the next request, not on the next login, and a token cannot outlive its
+permissions.
+
+`GET /auth/me` is how the PWA learns what it may render: it returns
+`systemRole` and one entry per workspace carrying the role to display. The rule
+is one entry per workspace with its strongest `ACTIVE` role; the `tid` claim
+selects the institution, so the same token never spans two of them.
+
+Nothing in the login flow attaches a role to the session: the callback, tenant
+selection, the redemption of an invitation and the event join all mint the same
+role-less token, and the first `/auth/me` of the session is where the PWA
+discovers which surfaces to offer.
+
+### 12.3 Enforcement matrix
+
+| Route family | Guard chain | Required | Failure |
+| --- | --- | --- | --- |
+| Public auth: `GET /auth/login`, `GET /auth/callback`, `POST /auth/refresh`, `POST /auth/event-join`, `POST /auth/select-tenant`, `GET /auth/resolve-tenants` | public IP rate limit | none | `429`, OIDC and event-join codes (§14) |
+| Session: `POST /auth/logout` | `authGuard` | valid access token | `401` |
+| Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
+| Tenant switch: `POST /auth/switch-tenant` | `authGuard` → `tenantGuard` → `scoped` rate limit | same | `403`, `429` |
+| Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
+| Workspace administration: `/api/v1/workspaces/:workspaceId/{profile,members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | tenant `ADMIN` (bypass), or `ADMIN` in the union of the `ACTIVE` roles of the header workspace | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace; `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN` |
+| Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
+| Onboarding: `GET /api/v1/workspace-discovery`, `GET`/`POST /api/v1/workspace-join-requests` | `authGuard` → `tenantGuard` → `rateLimit` | any valid tenant session | `401`/`403` |
+
+- `tenantAdminGuard` never reads `X-Workspace-ID`: the tenant is the scope.
+- `workspaceAdminGuard` requires the header even for a tenant administrator,
+  because the header names the workspace the request acts on. For anyone else,
+  a path workspace that disagrees with the header is answered `404`.
+- Both guards resolve the role from the tenant database; a client-supplied role
+  is never read, and neither is the token's `tid` used as a role source.
+
+### 12.4 Surfaces and navigation
+
+| Destination | What it is | Gate in the PWA | API authority |
+| --- | --- | --- | --- |
+| `/`, `/proposals`, `/discussions` | the workspace's graph and governance | an `ACTIVE` membership exists (`workspace.workspaces.length > 0`) | membership, any role |
+| `/admin` | tenant administration | `session.user.systemRole === 'ADMIN'` | tenant administrator |
+| `/workspace-admin` | workspace administration | the active workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`) | workspace administrator, or a tenant administrator who entered explicitly (§12.6) |
+| `/request-access` | ask to enter a workspace | always visible | only a tenant session |
+
+- The role the workspace selector displays is the **active workspace's role**
+  from `/auth/me` — never `systemRole`, never the role of another workspace.
+  Switching workspace re-derives it.
+- A user holding both roles sees both entries: they are two powers, not one
+  page with two tabs.
+- A tenant administrator with zero memberships must still reach `/admin`; the
+  no-membership gate of the `(app)` layout belongs to the workspace
+  destinations, not to the tenant surface.
+- Build state (2026-11-01): the membership gate, the `/request-access` entry
+  and the `/admin` navigation entry exist. `/admin` still renders the mixed
+  page and is still masked by the no-membership card, and `/workspace-admin`
+  does not exist yet; the mapping above is the contract those surfaces are
+  built against in the [admin-surfaces plan](plans/admin-surfaces/v1.md).
+
+### 12.5 Ownership matrix
+
+| Capability | Tenant administration (`/admin`) | Workspace administration (`/workspace-admin`) |
+| --- | --- | --- |
+| Workspace existence, including workspaces the caller does not belong to | Owns | — |
+| Workspace creation, its `kind`, and its first administrator | Owns | — |
+| Tenant user directory and the tenant cleanup sweep | Owns | — |
+| Read-only roster of any workspace and the explicit entry into it (§12.6) | Owns | — |
+| Workspace profile and settings (`name`, `description`, `isPublic`) | — | Owns |
+| Members and roles: add, assign or remove a role, change, suspend, reactivate, remove | — | Owns |
+| Join requests: approve, reject | — | Owns |
+| Invitations: create, revoke | — | Owns |
+| Workspace join codes (`purpose = 'WORKSPACE'`) | — | Owns |
+| Event codes (`purpose = 'EVENT'`, for a workspace with `kind = 'EVENT'`) | — | Owns |
+| Changing `system_role` | Neither — the ops CLI is the only door (ADR-0041 §9) | — |
+| Workspace deletion or archive; moving a member between workspaces | Neither — not built | Neither — not built |
+
+### 12.6 Break-glass and the tenant administrator's API bypass
+
+`workspaceAdminGuard` lets a tenant `ADMIN` through without a membership row in
+the target workspace, and lets the path workspace differ from `X-Workspace-ID`
+because the screen is tenant-wide (ADR-0041 §2). That is deliberate: an
+institution may need its administrator to repair a workspace whose own
+administrators are gone.
+
+The split is a **surface** contract, not a reduction of that authority:
+
+- `/admin` reads the roster of any workspace **read-only** — the workspace row,
+  its members and its pending join requests — and offers no member, role,
+  invitation, join-code or event-code control.
+- To write, the administrator enters the workspace administration surface
+  explicitly, with the target workspace named by the entry rather than by the
+  per-tab selector. The selector and its `sessionStorage` value are not
+  mutated by the entry.
+- Event codes are managed by the workspace administrator of the
+  `kind = 'EVENT'` workspace. The operator CLI (`db:event-code`) remains for
+  operations and for a tenant whose workspace cannot be reached through the
+  API (§9).
+
+### 12.7 Authorization beyond the guards
 
 | Action | Rule | Failure |
 | --- | --- | --- |
@@ -473,6 +615,7 @@ redirect URL.
 | `ERR_MISSING_WORKSPACE_HEADER` | 400 | No `X-Workspace-ID` on a resource route |
 | `ERR_INVALID_WORKSPACE_HEADER` | 400 | Header is not a valid UUID |
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No membership, or missing `tid` in `tenantGuard` |
+| `ERR_WORKSPACE_NOT_FOUND` | 404 | The workspace does not exist, or the path names another workspace than `X-Workspace-ID` on workspace administration |
 | `ERR_TENANT_NOT_PROVISIONED` | 403 | `tid` absent from the router DB, or no connection row |
 | `ERR_AUTHORIZATION_FAILED` | 403 | Authenticated but not the author/moderator for this action |
 | `ERR_RATE_LIMIT_EXCEEDED` | 429 | Either Redis bucket is over its cap, including public auth endpoints per IP |

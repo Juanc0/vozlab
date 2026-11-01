@@ -59,9 +59,9 @@ simply continues without redemption.
 
 | Table | Key columns | Constraints / notes |
 | --- | --- | --- |
-| `auth.workspaces` | `id`, `slug`, `name`, `description`, `is_public`, `created_at` | `slug` UNIQUE; `is_public` defaults `true`; no `updated_at`. |
-| `auth.users` | `id`, `handle`, `full_name`, `provider`, `author_hash`, `anonymous_alias`, `system_role`, `sessions_valid_after`, `global_user_id`, `created_at` | `author_hash` varchar(64) NOT NULL UNIQUE; `handle` varchar(64) UNIQUE (lookup alias, nullable); partial UNIQUE on `global_user_id` (`uniq_users_global_user`). `provider`: `OIDC_INSTITUTIONAL` or `ANONYMOUS_EVENT` — the sole guest discriminator (T7/D-4: `is_anonymous` dropped). No `email`, `provider_user_id` or `is_anonymous` (DEC-4/DEC-5 D4, ADR-0045): the identity key is `auth.external_identities(issuer, subject)`. `system_role` defaults `USER` (`USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT`, not DB-constrained). |
-| `auth.workspace_memberships` | `id`, `workspace_id`, `user_id`, `role`, `created_at` | FKs to workspaces/users, ON DELETE CASCADE. `role` defaults `MEMBER` (`ADMIN`, `MODERATOR`, `MEMBER`). `UNIQUE(workspace_id, user_id, role)` (`uniq_memberships_workspace_user_role`); the role lookup returns one row. |
+| `auth.workspaces` | `id`, `slug`, `name`, `description`, `is_public`, `kind`, `created_at` | `slug` UNIQUE; `is_public` defaults `true`; `kind` defaults `PRIVATE` (`PRIVATE`, `PUBLIC`, `EVENT`, not DB-constrained) — `EVENT` is the workspace class the anonymous event-code join (`POST /auth/event-join`, [ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)) resolves to; no `updated_at`. |
+| `auth.users` | `id`, `handle`, `full_name`, `provider`, `author_hash`, `anonymous_alias`, `system_role`, `sessions_valid_after`, `global_user_id`, `created_at` | `author_hash` varchar(64) NOT NULL UNIQUE; `handle` varchar(64) UNIQUE (lookup alias, nullable); partial UNIQUE on `global_user_id` (`uniq_users_global_user`). `provider`: `OIDC_INSTITUTIONAL` or `ANONYMOUS_EVENT` — the sole guest discriminator (T7/D-4: `is_anonymous` dropped). No `email`, `provider_user_id` or `is_anonymous` (DEC-4/DEC-5 D4, ADR-0045): the identity key is `auth.external_identities(issuer, subject)`. `system_role` defaults `USER` (`USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT`, not DB-constrained); it is **tenant-wide, not platform-wide** — the column lives in this per-institution database, each tenant has its own administrators, and no router table records a global one. |
+| `auth.workspace_memberships` | `id`, `workspace_id`, `user_id`, `role`, `status`, `created_at` | FKs to workspaces/users, ON DELETE CASCADE. `role` defaults `MEMBER` (`ADMIN`, `MODERATOR`, `MEMBER`, `GUEST`); `status` defaults `ACTIVE` (`INVITED`, `ACTIVE`, `SUSPENDED`, `REMOVED`); neither union is DB-constrained. `UNIQUE(workspace_id, user_id, role)` (`uniq_memberships_workspace_user_role`): a user may hold several rows in one workspace, authorization reads the union of the `ACTIVE` rows, and only `ACTIVE` rows reach `/auth/me` — the administration roster reads every status. |
 | `auth.workspace_join_codes` | `id`, `workspace_id`, `code_hash`, `purpose`, `label`, `expires_at`, `max_uses`, `used_count`, `auto_approve`, `revoked_at`, `created_by_hash`, `created_at` | FK `workspace_id` ON DELETE CASCADE; `code_hash` varchar(64) UNIQUE; `purpose` CHECK IN (`WORKSPACE`,`EVENT`) default `WORKSPACE` — the credential class (DEC-3): the authenticated join path redeems only WORKSPACE, the anonymous QR path only EVENT (with `auto_approve`). One conditional `UPDATE … RETURNING` claims a use atomically ([ADR-0045](decisions/ADR-0045-credential-consolidation-and-peppered-email.md), [ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)). |
 | `auth.refresh_tokens` | `id`, `user_id`, `family_id`, `token_hash`, `expires_at`, `created_at`, `revoked_at` | FK `user_id` → `auth.users` ON DELETE CASCADE; `token_hash` varchar(64) UNIQUE (SHA-256 only); indexes on user, family and expiry. Rotation revokes the old row and inserts a sibling; reuse revokes the family ([ADR-0018](decisions/ADR-0018-oidc-jit-hybrid-sessions.md)). |
 
@@ -70,6 +70,15 @@ does **not** create a membership. Event join creates an `ANONYMOUS_EVENT` user
 and a `GUEST` membership in the kind-EVENT workspace inside one tenant
 transaction (the corrected claim of ADR-0019, recorded by ADR-0046). These rules are described in
 [auth-and-tenancy.md](auth-and-tenancy.md).
+
+`auth.workspace_memberships` is a **set of role rows, not one role per user**:
+`UNIQUE(workspace_id, user_id, role)` lets `MEMBER` and `ADMIN` coexist, a role
+check succeeds when any `ACTIVE` row grants the role, and removing one row
+leaves the others. `auth.users.system_role` is the **tenant-wide** role of this
+institution's database — never a platform-wide one — so the same person may be
+`ADMIN` in one tenant and `USER` in another
+([auth-and-tenancy.md](auth-and-tenancy.md) §12,
+[ADR-0048](decisions/ADR-0048-split-tenant-and-workspace-administration.md)).
 
 `author_hash` is an **opaque 64-hex pseudonym assigned once per user**. It is
 stored on `auth.users`, carried verbatim in the JWT `authorHash` claim and
