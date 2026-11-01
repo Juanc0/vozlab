@@ -359,7 +359,10 @@ the other way round.
   `border border-brand-200`, `bg-brand-100`, `shadow-float`, `px-7 py-3`,
   and its outer air matches the bar's placement: `mt-4 mr-4 ml-4` on small
   screens and `lg:mt-7 lg:mr-7 lg:ml-0` on large ones (the page container
-  drops its padding in this branch to avoid doubling).
+  drops its padding in this branch to avoid doubling). Its content is a
+  3-part grid — title (left), message (centre), button (right) — using
+  `grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)_auto]` with
+  `gap-x-6 gap-y-2`, stacking title → message → button on small screens.
 - The touch targets are at least 44 × 44 px on a touch device — the hit
   area of a canvas badge grows while the dot stays small.
 

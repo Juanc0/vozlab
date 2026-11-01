@@ -230,14 +230,16 @@
         ? ''
         : 'px-4 py-6 sm:px-6 sm:py-8'}">
       {#if status === 'no-membership'}
-        <section class="rounded-card border border-brand-200 bg-brand-100 px-7 py-3 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
-          <h1>{t('app.noWorkspaceHeading')}</h1>
-          <p class="mt-2 max-w-measure text-body text-muted">
-            {t('app.noWorkspaceText')}
-          </p>
-          <a href="/join" class="btn btn-secondary mt-4">
-            {t('common.joinWithCode')}
-          </a>
+        <section class="rounded-card border border-brand-200 bg-brand-100 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
+          <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 px-7 py-3">
+            <h1 class="self-center">{t('app.noWorkspaceHeading')}</h1>
+            <p class="min-w-0 text-body text-muted">
+              {t('app.noWorkspaceText')}
+            </p>
+            <a href="/join" class="btn btn-secondary self-center sm:justify-self-end">
+              {t('common.joinWithCode')}
+            </a>
+          </div>
         </section>
       {:else}
         {@render children?.()}
