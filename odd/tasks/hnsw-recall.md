@@ -23,3 +23,4 @@ T4 | S4 | inline | commit: docs(data): record F-04 fix and measured recall
 
 L1: abrimos el plan hnsw-recall v1 y ejecutamos con subagent-driven-development (elegido por el usuario).
 L2: plan abierto en docs/plans/hnsw-recall/v1.md; registrado en ROADMAP "Tracked, not scheduled".
+L3: implementación completada. Commit 31f1d65 (5 archivos, 302 insertions, 13 deletions). T1 test creado (pasa, no RED en dev env); T2 fix aplicado (iterative scan en transacción); T3 pgvector pin en Dockerfile (build-time check); T4 §4 actualizado. neighbors + neighbors-recall integration tests pass (7 tests). Type-check/build de src/ limpio para DrizzleNodeRepository.ts; gate global rojo por WIP tenant-user-management (no causado por este cambio). Slice boundary: 532 líneas en 4 commits desde origin/main (past ~400).
