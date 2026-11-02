@@ -27,7 +27,9 @@ export class OntologyClass {
     public status: OntologyStatus = 'PROPOSED',
     // no maintainer: an empty hash can never equal a resolved pseudonym
     public readonly proposedBy: string = '',
-    public readonly createdAt: Date = new Date()
+    public readonly createdAt: Date = new Date(),
+    public migrationTargetKey: string | null = null,
+    public readonly communityScore: number = 0
   ) {}
 
   /** Institutional/community approval promotes a proposal to the active ontology. */
@@ -49,5 +51,33 @@ export class OntologyClass {
       );
     }
     this.status = 'REJECTED';
+  }
+
+  /** Mark an active class as deprecated, naming its replacement (G5/G6). */
+  deprecate(migrationTargetKey: string): void {
+    if (this.status !== 'ACTIVE') {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot deprecate class in status ${this.status}`
+      );
+    }
+    if (!migrationTargetKey || migrationTargetKey.trim() === '') {
+      throw new DomainError(
+        'ERR_VALIDATION_FAILED',
+        'migrationTargetKey is required'
+      );
+    }
+    this.status = 'DEPRECATED';
+    this.migrationTargetKey = migrationTargetKey;
+  }
+
+  /**
+   * Quorum check (G3): activation requires at least `threshold` distinct
+   * institutional supporters. Anonymous event members are excluded by the
+   * caller (they never appear in `supporterHashes`). Distinctness is by
+   * `author_hash` (the counting unit), so duplicate hashes collapse.
+   */
+  canActivate(supporterHashes: string[], threshold = 3): boolean {
+    return new Set(supporterHashes).size >= threshold;
   }
 }

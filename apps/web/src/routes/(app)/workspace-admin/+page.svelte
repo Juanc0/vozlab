@@ -3,10 +3,12 @@
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
   import * as ontologyApi from '$lib/api/ontology';
-  import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto } from '@vozlab/shared-types';
+  import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto, OntologyResponseDto } from '@vozlab/shared-types';
   import { UpdateWorkspaceSchema } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
   import ModalDialog from '$lib/components/ModalDialog.svelte';
+  import VoteButtons from '$lib/components/VoteButtons.svelte';
+  import { VoteLedger } from '$lib/governance/vote.svelte';
 
   const api = getApiClient();
   const locale = getLocaleState();
@@ -19,8 +21,12 @@
   const canAdmin = $derived(
     workspace.isAdmin && workspace.currentWorkspaceId !== ''
   );
+  // Any workspace member may review ontology proposals (the proposer or a
+  // moderator acts on them); full workspace administration stays admin-only.
+  const canViewOntology = $derived(workspace.currentWorkspaceId !== '');
   const isModerator = $derived(workspace.role === 'MODERATOR' || workspace.role === 'ADMIN');
   const currentAuthorHash = $derived(session.user?.authorHash ?? null);
+  const ontologyVoteLedger = new VoteLedger();
 
   // Tab navigation.
   type WsTab = 'general' | 'members' | 'access' | 'codes' | 'eventCodes' | 'ontology';
@@ -28,14 +34,15 @@
   let activeTab = $state<WsTab>('general');
 
   const tabs = $derived.by(() => {
-    const list: { id: WsTab; label: string }[] = [
-      { id: 'general', label: t('workspaceAdmin.general') },
-      { id: 'members', label: t('workspaceAdmin.members') },
-      { id: 'access', label: t('workspaceAdmin.access') },
-      { id: 'codes', label: t('workspaceAdmin.codes') }
-    ];
-    if (ws?.kind === 'EVENT') {
-      list.push({ id: 'eventCodes', label: t('workspaceAdmin.eventCodes') });
+    const list: { id: WsTab; label: string }[] = [];
+    if (canAdmin) {
+      list.push({ id: 'general', label: t('workspaceAdmin.general') });
+      list.push({ id: 'members', label: t('workspaceAdmin.members') });
+      list.push({ id: 'access', label: t('workspaceAdmin.access') });
+      list.push({ id: 'codes', label: t('workspaceAdmin.codes') });
+      if (ws?.kind === 'EVENT') {
+        list.push({ id: 'eventCodes', label: t('workspaceAdmin.eventCodes') });
+      }
     }
     list.push({ id: 'ontology', label: t('workspaceAdmin.ontology') });
     return list;
@@ -387,8 +394,19 @@
   let ontologyError = $state<ApiFailure | null>(null);
   let ontologyActing = $state<string | null>(null);
 
+  // Active ontology (for deprecation).
+  let activeOntology = $state<OntologyResponseDto | null>(null);
+  let activeOntologyLoading = $state(false);
+
+  // Deprecate modal state.
+  let deprecateOpen = $state(false);
+  let deprecateKind = $state<'class' | 'datatype' | 'object'>('class');
+  let deprecateId = $state<string | null>(null);
+  let deprecateKey = $state('');
+  let deprecateTarget = $state('');
+
   async function loadOntologyProposals(): Promise<void> {
-    if (!canAdmin) return;
+    if (!canViewOntology) return;
     ontologyLoading = true;
     ontologyError = null;
     try {
@@ -397,6 +415,16 @@
       ontologyError = describeFailure(e);
     } finally {
       ontologyLoading = false;
+    }
+    // Active metamodel (for deprecation).
+    activeOntologyLoading = true;
+    try {
+      activeOntology = await ontologyApi.loadOntology(api);
+    } catch (e) {
+      // Non-fatal: keep proposals usable.
+      ontologyError = ontologyError ?? describeFailure(e);
+    } finally {
+      activeOntologyLoading = false;
     }
   }
 
@@ -413,13 +441,15 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.datatypeProperties;
+    ontologyProposals = {
+      ...ontologyProposals,
+      datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
+    };
     try {
       await ontologyApi.activateDatatypeProperty(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, datatypeProperties: previous };
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -433,13 +463,15 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.datatypeProperties;
+    ontologyProposals = {
+      ...ontologyProposals,
+      datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
+    };
     try {
       await ontologyApi.rejectDatatypeProperty(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, datatypeProperties: previous };
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -453,13 +485,15 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.objectProperties;
+    ontologyProposals = {
+      ...ontologyProposals,
+      objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
+    };
     try {
       await ontologyApi.activateObjectProperty(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, objectProperties: previous };
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -473,13 +507,15 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.objectProperties;
+    ontologyProposals = {
+      ...ontologyProposals,
+      objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
+    };
     try {
       await ontologyApi.rejectObjectProperty(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, objectProperties: previous };
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -493,13 +529,15 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.classes;
+    ontologyProposals = {
+      ...ontologyProposals,
+      classes: ontologyProposals.classes.filter((c) => c.id !== id)
+    };
     try {
       await ontologyApi.activateOntologyClass(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        classes: ontologyProposals.classes.filter((c) => c.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, classes: previous };
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -513,13 +551,76 @@
     }
     ontologyActing = id;
     ontologyError = null;
+    const previous = ontologyProposals.classes;
+    ontologyProposals = {
+      ...ontologyProposals,
+      classes: ontologyProposals.classes.filter((c) => c.id !== id)
+    };
     try {
       await ontologyApi.rejectOntologyClass(api, id);
-      ontologyProposals = {
-        ...ontologyProposals,
-        classes: ontologyProposals.classes.filter((c) => c.id !== id)
-      };
     } catch (e) {
+      ontologyProposals = { ...ontologyProposals, classes: previous };
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  function openDeprecate(kind: 'class' | 'datatype' | 'object', id: string, systemKey: string): void {
+    deprecateKind = kind;
+    deprecateId = id;
+    deprecateKey = systemKey;
+    deprecateTarget = '';
+    deprecateOpen = true;
+  }
+
+  const deprecateCandidates = $derived.by(() => {
+    if (!activeOntology) return [];
+    if (deprecateKind === 'class') {
+      return (activeOntology.classes ?? [])
+        .map((c) => c.systemKey)
+        .filter((k) => k !== deprecateKey);
+    }
+    if (deprecateKind === 'datatype') {
+      return (activeOntology.datatypeProperties ?? [])
+        .map((p) => p.systemKey)
+        .filter((k) => k !== deprecateKey);
+    }
+    return (activeOntology.objectProperties ?? [])
+      .map((p) => p.systemKey)
+      .filter((k) => k !== deprecateKey);
+  });
+
+  async function confirmDeprecate(): Promise<void> {
+    if (!deprecateId || !deprecateTarget) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.migrationTargetRequired') ?? 'Migration target is required'));
+      return;
+    }
+    ontologyActing = deprecateId;
+    ontologyError = null;
+    const previousActive = activeOntology;
+    // Optimistic: remove the deprecated item from the active list first.
+    if (activeOntology) {
+      if (deprecateKind === 'class') {
+        activeOntology = { ...activeOntology, classes: activeOntology.classes.filter((c) => c.id !== deprecateId) };
+      } else if (deprecateKind === 'datatype') {
+        activeOntology = { ...activeOntology, datatypeProperties: activeOntology.datatypeProperties.filter((p) => p.id !== deprecateId) };
+      } else {
+        activeOntology = { ...activeOntology, objectProperties: activeOntology.objectProperties.filter((p) => p.id !== deprecateId) };
+      }
+    }
+    try {
+      if (deprecateKind === 'class') {
+        await ontologyApi.deprecateOntologyClass(api, deprecateId, deprecateTarget);
+      } else if (deprecateKind === 'datatype') {
+        await ontologyApi.deprecateDatatypeProperty(api, deprecateId, deprecateTarget);
+      } else {
+        await ontologyApi.deprecateObjectProperty(api, deprecateId, deprecateTarget);
+      }
+      deprecateOpen = false;
+      await loadOntologyProposals();
+    } catch (e) {
+      activeOntology = previousActive;
       ontologyError = describeFailure(e);
     } finally {
       ontologyActing = null;
@@ -527,7 +628,7 @@
   }
 
   $effect(() => {
-    if (canAdmin && activeTab === 'ontology') {
+    if (canViewOntology && activeTab === 'ontology') {
       void loadOntologyProposals();
     }
   });
@@ -537,7 +638,7 @@
   <title>{t('workspaceAdmin.title')}</title>
 </svelte:head>
 
-{#if !canAdmin}
+{#if !canViewOntology}
   <section class="rounded-card bg-brand-100 p-6" role="status">
     <h1>{t('workspaceAdmin.title')}</h1>
     <p class="mt-2 text-body text-muted">{t('workspaceAdmin.noAccess')}</p>
@@ -979,7 +1080,15 @@
                           <th scope="row" class="px-2 py-1 font-normal">{cls.systemKey}</th>
                           <td class="px-2 py-1 text-small text-muted">{cls.proposedBy}</td>
                           <td class="px-2 py-1 text-small">{cls.status}</td>
-                          <td class="px-2 py-1 flex gap-2">
+                          <td class="px-2 py-1 flex flex-wrap items-center gap-2">
+                            <VoteButtons
+                              ledger={ontologyVoteLedger}
+                              targetId={cls.id}
+                              targetType="ONTOLOGY"
+                              score={(cls as any).communityScore ?? 0}
+                              label={cls.systemKey}
+                            />
+                            <a class="text-small text-accent-ink underline" href={`/discussions?target=${cls.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === cls.id || !canActOnProposed(cls.proposedBy)} onclick={() => activateClass(cls.id, cls.proposedBy)}>{t('ontologyAdmin.activate')}</button>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === cls.id || !canActOnProposed(cls.proposedBy)} onclick={() => rejectClass(cls.id, cls.proposedBy)}>{t('ontologyAdmin.reject')}</button>
                           </td>
@@ -1016,7 +1125,15 @@
                           <td class="px-2 py-1 text-small">{p.datatype}</td>
                           <td class="px-2 py-1 text-small text-muted">{p.proposedBy}</td>
                           <td class="px-2 py-1 text-small">{p.status}</td>
-                          <td class="px-2 py-1 flex gap-2">
+                          <td class="px-2 py-1 flex flex-wrap items-center gap-2">
+                            <VoteButtons
+                              ledger={ontologyVoteLedger}
+                              targetId={p.id}
+                              targetType="ONTOLOGY"
+                              score={(p as any).communityScore ?? 0}
+                              label={p.systemKey}
+                            />
+                            <a class="text-small text-accent-ink underline" href={`/discussions?target=${p.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => activateDatatypeProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.activate')}</button>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => rejectDatatypeProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.reject')}</button>
                           </td>
@@ -1053,7 +1170,15 @@
                           <td class="px-2 py-1 text-small text-muted">{p.rangeClassKey}</td>
                           <td class="px-2 py-1 text-small text-muted">{p.proposedBy}</td>
                           <td class="px-2 py-1 text-small">{p.status}</td>
-                          <td class="px-2 py-1 flex gap-2">
+                          <td class="px-2 py-1 flex flex-wrap items-center gap-2">
+                            <VoteButtons
+                              ledger={ontologyVoteLedger}
+                              targetId={p.id}
+                              targetType="ONTOLOGY"
+                              score={(p as any).communityScore ?? 0}
+                              label={p.systemKey}
+                            />
+                            <a class="text-small text-accent-ink underline" href={`/discussions?target=${p.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => activateObjectProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.activate')}</button>
                             <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => rejectObjectProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.reject')}</button>
                           </td>
@@ -1065,6 +1190,70 @@
               {/if}
             </section>
           {/if}
+
+            <!-- Active ontology (deprecation) -->
+            <section class="space-y-2">
+              <h3 class="text-body font-medium">{t('ontologyAdmin.activeItems') ?? 'Active items'}</h3>
+              {#if activeOntologyLoading}
+                <p class="text-small text-muted">{t('common.loading') ?? 'Loading…'}</p>
+              {:else if !activeOntology}
+                <p class="text-small text-muted">{t('ontologyAdmin.emptyActive') ?? 'No active items.'}</p>
+              {:else}
+                {#each (activeOntology.classes ?? []) as c (c.id)}
+                  <div class="flex items-center gap-2 border-t border-rule py-1">
+                    <span class="font-normal">{c.systemKey}</span>
+                    <span class="text-small text-muted">{c.status}</span>
+                    <a class="text-small text-accent-ink underline" href={`/discussions?target=${c.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
+                    {#if isModerator}
+                      <button class="btn btn-quiet text-small" disabled={ontologyActing === c.id} onclick={() => openDeprecate('class', c.id, c.systemKey)}>{t('ontologyAdmin.deprecate')}</button>
+                    {/if}
+                  </div>
+                {/each}
+                {#each (activeOntology.datatypeProperties ?? []) as p (p.id)}
+                  <div class="flex items-center gap-2 border-t border-rule py-1">
+                    <span class="font-normal">{p.systemKey}</span>
+                    <span class="text-small text-muted">{p.status}</span>
+                    <a class="text-small text-accent-ink underline" href={`/discussions?target=${p.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
+                    {#if isModerator}
+                      <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id} onclick={() => openDeprecate('datatype', p.id, p.systemKey)}>{t('ontologyAdmin.deprecate')}</button>
+                    {/if}
+                  </div>
+                {/each}
+                {#each (activeOntology.objectProperties ?? []) as p (p.id)}
+                  <div class="flex items-center gap-2 border-t border-rule py-1">
+                    <span class="font-normal">{p.systemKey}</span>
+                    <span class="text-small text-muted">{p.status}</span>
+                    <a class="text-small text-accent-ink underline" href={`/discussions?target=${p.id}&type=ONTOLOGY`}>{t('ontologyAdmin.discussionThread') ?? 'Discussion'}</a>
+                    {#if isModerator}
+                      <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id} onclick={() => openDeprecate('object', p.id, p.systemKey)}>{t('ontologyAdmin.deprecate')}</button>
+                    {/if}
+                  </div>
+                {/each}
+              {/if}
+            </section>
+
+            <ModalDialog open={deprecateOpen} title={t('ontologyAdmin.deprecate')} onclose={() => (deprecateOpen = false)}>
+              <div class="space-y-2">
+                <p class="text-small text-muted">{t('ontologyAdmin.migrationTarget') ?? 'Migration target'}</p>
+                <select class="field w-full" bind:value={deprecateTarget}>
+                  <option value="">{t('ontologyAdmin.selectMigrationTarget') ?? 'Select…'}</option>
+                  {#each deprecateCandidates as k (k)}
+                    <option value={k}>{k}</option>
+                  {/each}
+                </select>
+                <div class="flex items-center gap-2">
+                  <button type="button" class="btn btn-primary" disabled={!deprecateTarget || ontologyActing === deprecateId} onclick={() => void confirmDeprecate()}>
+                    {t('ontologyAdmin.deprecate')}
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick={() => (deprecateOpen = false)}>
+                    {t('common.cancel')}
+                  </button>
+                </div>
+                {#if ontologyError}
+                  <p role="alert" class="text-pill-negative-ink">{ontologyError.code}: {ontologyError.message}</p>
+                {/if}
+              </div>
+            </ModalDialog>
         </div>
 
       {/if}

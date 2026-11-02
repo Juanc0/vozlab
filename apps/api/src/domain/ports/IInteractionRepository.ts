@@ -42,4 +42,19 @@ export interface IInteractionRepository {
     tid: string,
     tx?: DbTransaction
   ): Promise<void>;
+  /**
+   * Distinct institutional supporters of a target (G3). Counts distinct
+   * `author_hash` values among `interactions_log` rows with the given
+   * `targetType`/`interactionType = 'SUPPORT'`. Anonymous event members
+   * (`ANONYMOUS_EVENT` users) are excluded.
+   *
+   * Returns either the count (number) or, when the caller prefers, the
+   * list of distinct hashes — fakes may return either form.
+   */
+  countDistinctSupporters(
+    targetId: string,
+    targetType: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<number | string[]>;
 }

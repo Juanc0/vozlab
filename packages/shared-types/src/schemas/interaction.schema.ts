@@ -11,6 +11,7 @@ export const InteractionTargetTypeSchema = z.enum([
   'EDGE',
   'PROPOSAL',
   'POST',
+  'ONTOLOGY',
 ]);
 export type InteractionTargetType = z.infer<typeof InteractionTargetTypeSchema>;
 

@@ -28,7 +28,8 @@ export const CLASS_PROBLEM: OntologyClassDto = {
   parentClassKey: null,
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 export const CLASS_IDEA: OntologyClassDto = {
@@ -40,7 +41,8 @@ export const CLASS_IDEA: OntologyClassDto = {
   parentClassKey: null,
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 export const CLASS_RESOURCE: OntologyClassDto = {
@@ -52,7 +54,8 @@ export const CLASS_RESOURCE: OntologyClassDto = {
   parentClassKey: null,
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** The `title` property of `Problem` — it re-declares a field of the node. */
@@ -69,7 +72,8 @@ export const PROPERTY_TITLE: DatatypePropertyDto = {
   domainClassKey: 'Problem',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** The `description` property of `Problem` — it re-declares one too. */
@@ -86,7 +90,8 @@ export const PROPERTY_DESCRIPTION: DatatypePropertyDto = {
   domainClassKey: 'Problem',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** A required number with a default value. */
@@ -103,7 +108,8 @@ export const PROPERTY_SEVERITY: DatatypePropertyDto = {
   domainClassKey: 'Problem',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** An optional text with a default value. */
@@ -120,7 +126,8 @@ export const PROPERTY_SOURCE: DatatypePropertyDto = {
   domainClassKey: 'Problem',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** A boolean of `Idea`. */
@@ -137,7 +144,8 @@ export const PROPERTY_RESOLVED: DatatypePropertyDto = {
   domainClassKey: 'Idea',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** A date of `Idea`. */
@@ -154,7 +162,8 @@ export const PROPERTY_DUE_DATE: DatatypePropertyDto = {
   domainClassKey: 'Idea',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** An enum of `Idea`. */
@@ -171,7 +180,8 @@ export const PROPERTY_STATE: DatatypePropertyDto = {
   domainClassKey: 'Idea',
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** The relation of the dev seed: a `Problem` points at an `Idea`. */
@@ -188,7 +198,8 @@ export const PROPERTY_RELATES_TO: ObjectPropertyDto = {
   allowsSelfRelation: false,
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** A relation that starts at an `Idea` — it must not be offered for a `Problem`. */
@@ -205,7 +216,8 @@ export const PROPERTY_SUGGESTS: ObjectPropertyDto = {
   allowsSelfRelation: false,
   status: 'ACTIVE',
   proposedBy: AUTHOR,
-  createdAt: CREATED_AT
+  createdAt: CREATED_AT,
+  communityScore: 0
 };
 
 /** The whole active metamodel of the fixture workspace. */

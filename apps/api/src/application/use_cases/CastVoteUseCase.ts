@@ -106,6 +106,8 @@ function notFoundCode(targetType: InteractionTargetType): DomainErrorCode {
       return 'ERR_PROPOSAL_NOT_FOUND';
     case 'POST':
       return 'ERR_POST_NOT_FOUND';
+    case 'ONTOLOGY':
+      return 'ERR_ONTOLOGY_NOT_FOUND';
     case 'NODE':
     default:
       return 'ERR_NODE_NOT_FOUND';

@@ -14,7 +14,7 @@ import { z } from 'zod';
  * vocabulary `OntologyStatus` and imports it from here — the values are
  * declared once.
  */
-export const PropertyStatusSchema = z.enum(['PROPOSED', 'ACTIVE', 'REJECTED']);
+export const PropertyStatusSchema = z.enum(['PROPOSED', 'ACTIVE', 'REJECTED', 'DEPRECATED']);
 export type PropertyStatus = z.infer<typeof PropertyStatusSchema>;
 
 export const DatatypeKindSchema = z.enum([
@@ -82,8 +82,12 @@ export interface OntologyClassDto {
   proposedBy: string;
   /** ISO-8601 instant. */
   createdAt: string;
+  /** Set when the item has been deprecated (G5/G6); `null` otherwise. */
+  migrationTargetKey?: string | null;
+  /** Community vote score (RF-14/RF-15). */
+  communityScore: number;
 }
-
+ 
 /**
  * Stable JSON projection of an ObjectProperty (domain/range typed relation)
  * — the element returned by `GET /api/v1/ontology`.
@@ -107,6 +111,10 @@ export interface ObjectPropertyDto {
   proposedBy: string;
   /** ISO-8601 instant. */
   createdAt: string;
+  /** Set when the item has been deprecated (G5/G6); `null` otherwise. */
+  migrationTargetKey?: string | null;
+  /** Community vote score (RF-14/RF-15). */
+  communityScore: number;
 }
 
 /**
@@ -139,6 +147,10 @@ export interface DatatypePropertyDto {
   proposedBy: string;
   /** ISO-8601 instant. */
   createdAt: string;
+  /** Set when the item has been deprecated (G5/G6); `null` otherwise. */
+  migrationTargetKey?: string | null;
+  /** Community vote score (RF-14/RF-15). */
+  communityScore: number;
 }
 
 /**

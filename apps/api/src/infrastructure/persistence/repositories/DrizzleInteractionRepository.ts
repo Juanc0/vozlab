@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import { InteractionTargetTypeSchema } from '@vozlab/shared-types';
 import {
   nodes,
@@ -7,6 +7,10 @@ import {
   discussionPosts,
   discussionThreads,
   interactionsLog,
+  users,
+  ontologyClasses,
+  datatypeProperties,
+  objectProperties,
 } from '@vozlab/database';
 import {
   Interaction,
@@ -107,6 +111,42 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
           .limit(1);
         return !!row;
       }
+      case 'ONTOLOGY': {
+        // Ontology elements live in three separate tables; check all of them.
+        const [cls] = await db
+          .select({ id: ontologyClasses.id })
+          .from(ontologyClasses)
+          .where(
+            and(
+              eq(ontologyClasses.id, targetId),
+              eq(ontologyClasses.workspaceId, workspaceId)
+            )
+          )
+          .limit(1);
+        if (cls) return true;
+        const [dp] = await db
+          .select({ id: datatypeProperties.id })
+          .from(datatypeProperties)
+          .where(
+            and(
+              eq(datatypeProperties.id, targetId),
+              eq(datatypeProperties.workspaceId, workspaceId)
+            )
+          )
+          .limit(1);
+        if (dp) return true;
+        const [op] = await db
+          .select({ id: objectProperties.id })
+          .from(objectProperties)
+          .where(
+            and(
+              eq(objectProperties.id, targetId),
+              eq(objectProperties.workspaceId, workspaceId)
+            )
+          )
+          .limit(1);
+        return !!op;
+      }
       case 'POST': {
         // `discussion_posts` has no `workspaceId`: scope it through its thread.
         const [row] = await db
@@ -188,6 +228,26 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
           })
           .where(eq(editProposals.id, targetId));
         break;
+      case 'ONTOLOGY':
+        await db
+          .update(ontologyClasses)
+          .set({
+            communityScore: sql`${ontologyClasses.communityScore} + ${delta}`,
+          })
+          .where(eq(ontologyClasses.id, targetId));
+        await db
+          .update(datatypeProperties)
+          .set({
+            communityScore: sql`${datatypeProperties.communityScore} + ${delta}`,
+          })
+          .where(eq(datatypeProperties.id, targetId));
+        await db
+          .update(objectProperties)
+          .set({
+            communityScore: sql`${objectProperties.communityScore} + ${delta}`,
+          })
+          .where(eq(objectProperties.id, targetId));
+        break;
       case 'POST': {
         // Single source of truth for post counters. A duplicate updater used
         // to live on the discussion repository but was never called; it was
@@ -209,6 +269,31 @@ export class DrizzleInteractionRepository implements IInteractionRepository {
       default:
         return assertNever(target, 'interaction targetType');
     }
+  }
+
+  async countDistinctSupporters(
+    targetId: string,
+    targetType: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<number> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select({
+        count: sql<number>`count(distinct ${interactionsLog.userHash})`,
+      })
+      .from(interactionsLog)
+      .innerJoin(users, eq(users.authorHash, interactionsLog.userHash))
+      .where(
+        and(
+          eq(interactionsLog.targetId, targetId),
+          eq(interactionsLog.targetType, targetType),
+          eq(interactionsLog.workspaceId, workspaceId),
+          eq(interactionsLog.interactionType, 'SUPPORT'),
+          ne(users.provider, 'ANONYMOUS_EVENT')
+        )
+      );
+    return Number(row?.count ?? 0);
   }
 }
 

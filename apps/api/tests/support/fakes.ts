@@ -9,6 +9,7 @@ import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js'
 import type { INodeRepository } from '../../src/domain/ports/INodeRepository.js';
 import type { NearestNeighborsResult, SubgraphEdge } from '../../src/domain/ports/INodeRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
+import type { IInteractionRepository } from '../../src/domain/ports/IInteractionRepository.js';
 import type { IUnitOfWork } from '../../src/domain/ports/IUnitOfWork.js';
 import { DisplayNameCatalog } from '../../src/application/use_cases/DisplayNameCatalog.js';
 
@@ -44,6 +45,30 @@ export function makeUnitOfWork(): { uow: IUnitOfWork; ran: { count: number } } {
     },
   };
   return { uow, ran };
+}
+
+/**
+ * In-memory `IInteractionRepository`. `supporters` configures the value
+ * returned by `countDistinctSupporters` (a number or a list of hashes),
+ * so a test can drive the quorum check either way.
+ */
+export function makeInteractionRepository(
+  supporters: number | string[] = 0
+): { repo: IInteractionRepository } {
+  const repo: IInteractionRepository = {
+    async findByUserAndTarget() {
+      return null;
+    },
+    async existsInWorkspace() {
+      return true;
+    },
+    async save() {},
+    async applyScoreDelta() {},
+    async countDistinctSupporters() {
+      return supporters;
+    },
+  };
+  return { repo };
 }
 
 export interface EmbeddingWrite {
@@ -323,6 +348,7 @@ export interface FakeOntologyRepository {
   repo: IOntologyRepository;
   activated: string[];
   rejected: string[];
+  deprecated: string[];
   deltasApplied: string[];
   /**
    * The reads of the active metamodel.
@@ -354,6 +380,7 @@ export function makeOntologyRepository(
 ): FakeOntologyRepository {
   const activated: string[] = [];
   const rejected: string[] = [];
+  const deprecated: string[] = [];
   const deltasApplied: string[] = [];
   const reads = { classes: 0, properties: 0, workspaces: [] as string[] };
   const repo: IOntologyRepository = {
@@ -448,8 +475,17 @@ export function makeOntologyRepository(
     async rejectObjectProperty(targetId) {
       rejected.push(targetId);
     },
+    async deprecateClass(targetId) {
+      deprecated.push(targetId);
+    },
+    async deprecateDatatypeProperty(targetId) {
+      deprecated.push(targetId);
+    },
+    async deprecateObjectProperty(targetId) {
+      deprecated.push(targetId);
+    },
   };
-  return { repo, activated, rejected, deltasApplied, reads };
+  return { repo, activated, rejected, deprecated, deltasApplied, reads };
 }
 
 /**

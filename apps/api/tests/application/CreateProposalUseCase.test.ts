@@ -1,6 +1,6 @@
 import { testHash } from '../support/hash.js';
 import { describe, expect, it } from 'vitest';
-import { makeNodeRepository } from '../support/fakes.js';
+import { makeNodeRepository, makeUnitOfWork, TX_SENTINEL } from '../support/fakes.js';
 
 import { CreateProposalUseCase } from '../../src/application/use_cases/CreateProposalUseCase.js';
 import { EditProposal } from '../../src/domain/entities/EditProposal.js';
@@ -8,6 +8,7 @@ import type { IProposalRepository } from '../../src/domain/ports/IProposalReposi
 import type { IInteractionRepository } from '../../src/domain/ports/IInteractionRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import type { IEventPublisher } from '../../src/domain/ports/IEventPublisher.js';
+import type { IDiscussionRepository } from '../../src/domain/ports/IDiscussionRepository.js';
 import type { OntologyClass } from '../../src/domain/entities/OntologyClass.js';
 
 function makeProposalRepo(): {
@@ -46,6 +47,9 @@ function makeInteractionRepo(existingTargets: Set<string>): IInteractionReposito
     },
     async save() {},
     async applyScoreDelta() {},
+    async countDistinctSupporters() {
+      return 0;
+    },
   };
 }
 
@@ -96,6 +100,9 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
     async activateObjectProperty() {},
     async rejectObjectProperty() {},
     async rejectClass() {},
+    async deprecateClass() {},
+    async deprecateDatatypeProperty() {},
+    async deprecateObjectProperty() {},
     async saveDatatypeProperty() {},
     async saveObjectProperty() {},
   };
@@ -111,6 +118,27 @@ function makeEventPublisher(): { publisher: IEventPublisher; events: string[] } 
   return { publisher, events };
 }
 
+function makeDiscussionRepo(): IDiscussionRepository {
+  return {
+    async findThreadById() {
+      return null;
+    },
+    async listThreads() {
+      return { items: [], nextCursor: null };
+    },
+    async saveThread() {},
+    async update() {},
+    async listPosts() {
+      return { items: [], nextCursor: null };
+    },
+    async findPostById() {
+      return null;
+    },
+    async savePost() {},
+    async softDelete() {},
+  };
+}
+
 describe('CreateProposalUseCase', () => {
   it('saves proposal when target exists in the same workspace (NODE)', async () => {
     const { repo, saved } = makeProposalRepo();
@@ -118,13 +146,16 @@ describe('CreateProposalUseCase', () => {
     const interactionRepo = makeInteractionRepo(existingTargets);
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
 
     const useCase = new CreateProposalUseCase(
       repo,
       interactionRepo,
       ontologyRepo,
       makeNodeRepository().repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
 
     const proposal = await useCase.execute({
@@ -147,13 +178,16 @@ describe('CreateProposalUseCase', () => {
     const interactionRepo = makeInteractionRepo(new Set());
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
 
     const useCase = new CreateProposalUseCase(
       repo,
       interactionRepo,
       ontologyRepo,
       makeNodeRepository().repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
 
     await expect(
@@ -178,13 +212,16 @@ describe('CreateProposalUseCase', () => {
     const interactionRepo = makeInteractionRepo(existingTargets);
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher, events } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
 
     const useCase = new CreateProposalUseCase(
       repo,
       interactionRepo,
       ontologyRepo,
       makeNodeRepository().repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
 
     await expect(
@@ -207,13 +244,16 @@ describe('CreateProposalUseCase', () => {
     const interactionRepo = makeInteractionRepo(new Set());
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
 
     const useCase = new CreateProposalUseCase(
       repo,
       interactionRepo,
       ontologyRepo,
       makeNodeRepository().repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
 
     await expect(
@@ -235,13 +275,16 @@ describe('CreateProposalUseCase', () => {
     const interactionRepo = makeInteractionRepo(new Set());
     const ontologyRepo = makeOntologyRepo(new Map());
     const { publisher } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
 
     const useCase = new CreateProposalUseCase(
       repo,
       interactionRepo,
       ontologyRepo,
       makeNodeRepository().repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
 
     await expect(
@@ -259,5 +302,53 @@ describe('CreateProposalUseCase', () => {
     });
 
     expect(saved).toHaveLength(0);
+  });
+
+  it('rolls back the proposal when saveThread throws', async () => {
+    const { repo, saved } = makeProposalRepo();
+    const existingTargets = new Set(['ws-1:NODE:node-123']);
+    const interactionRepo = makeInteractionRepo(existingTargets);
+    const ontologyRepo = makeOntologyRepo(new Map());
+    const { publisher, events } = makeEventPublisher();
+    const discussionRepo = makeDiscussionRepo();
+    discussionRepo.saveThread = async () => {
+      throw new Error('saveThread boom');
+    };
+
+    const uow = {
+      async runInTransaction(_tid: string, work: (tx: typeof TX_SENTINEL) => Promise<unknown>) {
+        const before = saved.length;
+        try {
+          return await work(TX_SENTINEL);
+        } catch (e) {
+          saved.length = before;
+          throw e;
+        }
+      },
+    };
+
+    const useCase = new CreateProposalUseCase(
+      repo,
+      interactionRepo,
+      ontologyRepo,
+      makeNodeRepository().repo,
+      publisher,
+      discussionRepo,
+      uow as never
+    );
+
+    await expect(
+      useCase.execute({
+        targetId: 'node-123',
+        targetType: 'NODE',
+        proposedChanges: { title: 'Updated' },
+        workspaceId: 'ws-1',
+        tid: 'tenant-1',
+        proposerHash: testHash('proposer-1').toString(),
+      })
+    ).rejects.toThrow('saveThread boom');
+
+    expect(saved).toHaveLength(0);
+    expect(events).toHaveLength(0);
   });
 });

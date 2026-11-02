@@ -644,7 +644,10 @@ export const es = {
     autoApplyBlockedRole:
       'el rol en este espacio de trabajo no es de moderación ni de administración.',
     autoApplyBlockedClosed: 'la propuesta no está abierta.',
-    discussionHeading: 'Debate de esta propuesta'
+    discussionHeading: 'Debate de esta propuesta',
+    discussionThread: 'Hilo de debate',
+    openDiscussion: 'Abrir el debate',
+    openDiscussionInPage: 'Abrir el debate en la página de debates'
   },
 
   /** The delta of a proposal. */
@@ -947,6 +950,18 @@ export const es = {
     reject: 'Rechazar',
     activated: 'Activado',
     rejected: 'Rechazado',
+    deprecate: 'Deprecar',
+    deprecated: 'Deprecado',
+    migrationTarget: 'Objetivo de migración',
+    migrationTargetKey: 'Clave del objetivo de migración',
+    selectMigrationTarget: 'Selecciona un objetivo de migración',
+    migrationTargetRequired: 'Se requiere un objetivo de migración.',
+    activeItems: 'Elementos activos',
+    activeClasses: 'Clases activas',
+    activeDatatypeProperties: 'Propiedades de datos activas',
+    activeObjectProperties: 'Propiedades de objeto activas',
+    emptyActive: 'No hay elementos activos.',
+    discussionThread: 'Discusión',
     proposerOrModeratorOnly: 'Solo el proponente o un moderador puede actuar sobre esta propuesta.'
   }
 } as const;

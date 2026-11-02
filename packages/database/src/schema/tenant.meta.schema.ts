@@ -5,6 +5,7 @@ import {
   jsonb,
   boolean,
   timestamp,
+  integer,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -31,11 +32,13 @@ export const ontologyClasses = metaSchema.table(
     displayNames: jsonb('display_names').notNull(), // { "es": "Problema", "en": "Problem" }
     descriptions: jsonb('descriptions').default({}),
     parentClassKey: varchar('parent_class_key', { length: 100 }),
-    status: varchar('status', { length: 20 }).default('PROPOSED').notNull(), // PROPOSED | ACTIVE | REJECTED
+    status: varchar('status', { length: 20 }).default('PROPOSED').notNull(), // PROPOSED | ACTIVE | REJECTED | DEPRECATED
+    migrationTargetKey: varchar('migration_target_key', { length: 100 }),
     proposedBy: varchar('proposed_by', { length: 64 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
+    communityScore: integer('community_score').default(0).notNull(),
   },
   (table) => [
     // One class key per workspace; classes are resolved by `system_key`.
@@ -70,10 +73,12 @@ export const datatypeProperties = metaSchema.table(
     // Owning class (references ontology_classes.system_key).
     domainClassKey: varchar('domain_class_key', { length: 100 }).notNull(),
     status: varchar('status', { length: 20 }).default('PROPOSED').notNull(),
+    migrationTargetKey: varchar('migration_target_key', { length: 100 }),
     proposedBy: varchar('proposed_by', { length: 64 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
+    communityScore: integer('community_score').default(0).notNull(),
   },
   (table) => [
     index('idx_datatype_properties_domain_class').on(
@@ -109,10 +114,12 @@ export const objectProperties = metaSchema.table(
     // Allows the self-loop / same-class relations to be flagged explicitly.
     allowsSelfRelation: boolean('allows_self_relation').default(false).notNull(),
     status: varchar('status', { length: 20 }).default('PROPOSED').notNull(),
+    migrationTargetKey: varchar('migration_target_key', { length: 100 }),
     proposedBy: varchar('proposed_by', { length: 64 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
+    communityScore: integer('community_score').default(0).notNull(),
   },
   (table) => [
     index('idx_object_properties_domain_range').on(

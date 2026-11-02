@@ -113,11 +113,11 @@ describe('RejectDatatypePropertyUseCase', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('reports a missing property as ERR_VALIDATION_FAILED', async () => {
+  it('reports a missing property as ERR_DATATYPE_PROPERTY_NOT_FOUND', async () => {
     const { useCase, ontology } = build([], []);
     await expect(
       useCase.execute({ ...baseInput, resolverHash: 'author-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_DATATYPE_PROPERTY_NOT_FOUND' });
     expect(ontology.rejected).toHaveLength(0);
   });
 
@@ -132,6 +132,6 @@ describe('RejectDatatypePropertyUseCase', () => {
     const { useCase } = build([property('prop-1', 'ws-other', 'author-hash')], ['MODERATOR']);
     await expect(
       useCase.execute({ ...baseInput, resolverHash: 'mod-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_DATATYPE_PROPERTY_NOT_FOUND' });
   });
 });

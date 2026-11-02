@@ -87,6 +87,7 @@ Redis serves four independent concerns: the JWT blacklist (`vozlab:blacklist:<jt
 | `NODE_MERGED` | `stream:node_merged` |
 | `EDGE_CREATED`, `EDGE_UPDATED`, `EDGE_DELETED` | `stream:edge_created`, `stream:edge_updated`, `stream:edge_deleted` |
 | Ontology, discussion, interaction and deletion events | `stream:<event-lowercase>` |
+| `ONTOLOGY_CLASS_DEPRECATED`, `ONTOLOGY_PROPERTY_DEPRECATED` | `stream:ontology_class_deprecated`, `stream:ontology_property_deprecated` |
 
 `NODE_CREATED` carries `reqId`, `nodeId`, `workspaceId`, `typeKey` and `title`. Two workers consume it, each with its own consumer group so both see every event:
 

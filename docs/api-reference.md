@@ -290,6 +290,9 @@ Notes:
 | `PUT` | `/api/v1/ontology/datatype-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
 | `PUT` | `/api/v1/ontology/object-properties/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign, not `PROPOSED`, or locale incomplete |
 | `PUT` | `/api/v1/ontology/object-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
+| `PUT` | `/api/v1/ontology/classes/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` class missing/foreign, not `ACTIVE`, or empty target |
+| `PUT` | `/api/v1/ontology/datatype-properties/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` property missing/foreign, not `ACTIVE`, or empty target |
+| `PUT` | `/api/v1/ontology/object-properties/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` property missing/foreign, not `ACTIVE`, or empty target |
 | `GET` | `/api/v1/ontology` | — | `200 { classes: OntologyClassDto[], objectProperties: ObjectPropertyDto[], datatypeProperties: DatatypePropertyDto[] }` | — |
 
 `OntologyClassDto`: `id`, `workspaceId`, `systemKey`, `displayNames`,
@@ -299,18 +302,14 @@ Notes:
 
 - `ontology_classes` is UNIQUE(`workspace_id`, `system_key`); duplicate
   `systemKey` is `422`.
+- Deprecation publishes `ONTOLOGY_CLASS_DEPRECATED` (class) and
+  `ONTOLOGY_PROPERTY_DEPRECATED` (datatype/object property) to the
+  corresponding Redis Streams after commit (best-effort).
 - `GET /ontology` returns only `ACTIVE` classes and object properties, plus
   the `ACTIVE` datatype properties. A property still awaiting approval never
   reaches the consumer. `datatypeProperties` is what drives the dynamic
   node-creation form (FR-06); it carries `datatype`, `allowedValues`,
   `isRequired` and `defaultValue` per property.
-- **Only classes have an activation route.** A datatype or object property
-  created through the API stays `PROPOSED` forever — `POST
-  /ontology/datatype-properties` and `POST /ontology/object-properties` hard-code
-  `PROPOSED` and nothing promotes them. A workspace can therefore only grow
-  its metamodel through the API for *classes*; the properties that exist are
-  the ones an operator inserted directly. The PWA's dynamic form is built
-  from what is `ACTIVE`.
 - Activating a missing/foreign class returns **422**, not 404.
 
 ## 7. Discussions
@@ -340,7 +339,7 @@ Notes:
 
 | Method | Path | Input | Success | Route errors |
 | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/interactions` | `targetId` UUID; `targetType` `NODE\|EDGE\|PROPOSAL\|POST`; `interactionType` `UPVOTE\|DOWNVOTE\|SUPPORT\|VALIDATE` | `201 { id, targetId, targetType, interactionType, value }` | `409 ERR_DUPLICATE_INTERACTION`; target `404`; `422` |
+| `POST` | `/api/v1/interactions` | `targetId` UUID; `targetType` `NODE\|EDGE\|PROPOSAL\|POST\|ONTOLOGY`; `interactionType` `UPVOTE\|DOWNVOTE\|SUPPORT\|VALIDATE` | `201 { id, targetId, targetType, interactionType, value }` | `409 ERR_DUPLICATE_INTERACTION`; target `404`; `422` |
 
 - `value` is server-derived: `-1` for `DOWNVOTE`, `+1` otherwise. Clients must
   not send it.

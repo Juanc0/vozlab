@@ -26,6 +26,11 @@ export interface CreateProposalInput {
   kind?: ProposalKind;
 }
 
+export interface CreateProposalResult {
+  proposal: EditProposal;
+  threadId: string;
+}
+
 /**
  * Use Case: open a Pull-Request style edit proposal (RF-10).
  *
@@ -46,8 +51,8 @@ export class CreateProposalUseCase {
   private interactionRepo!: IInteractionRepository;
   private ontologyRepo!: IOntologyRepository;
   private nodeRepo!: INodeRepository;
-  private discussionRepo: IDiscussionRepository | null = null;
-  private uow: IUnitOfWork | null = null;
+  private discussionRepo!: IDiscussionRepository;
+  private uow!: IUnitOfWork;
   private eventPublisher!: IEventPublisher;
 
   constructor(...deps: unknown[]) {
@@ -166,20 +171,10 @@ export class CreateProposalUseCase {
       AuthorHash.fromString(input.proposerHash)
     );
 
-    const persist = async (tx: DbTransaction | undefined): Promise<void> => {
+    await this.uow.runInTransaction(input.tid, async (tx: DbTransaction) => {
       await this.proposalRepo.save(proposal, input.tid, tx);
-      if (this.discussionRepo) {
-        await this.discussionRepo.saveThread(thread, input.tid, tx);
-      }
-    };
-
-    if (this.uow) {
-      await this.uow.runInTransaction(input.tid, async (tx) => {
-        await persist(tx);
-      });
-    } else {
-      await persist(undefined);
-    }
+      await this.discussionRepo.saveThread(thread, input.tid, tx);
+    });
 
     await this.eventPublisher.publish('PROPOSAL_CREATED', {
       reqId: input.reqId ?? '',

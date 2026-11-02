@@ -90,7 +90,7 @@ never throws and a broker failure only produces an error log.
 | `stream:proposal_created`, `stream:proposal_approved`, `stream:proposal_rejected`, `stream:proposal_auto_applied` | Proposals |
 | `stream:thread_created`, `stream:thread_closed`, `stream:post_created`, `stream:post_deleted` | Discussions |
 | `stream:interaction_cast` | Votes |
-| `stream:ontology_class_proposed`, `stream:ontology_class_activated`, `stream:ontology_property_proposed` | Ontology |
+| `stream:ontology_class_proposed`, `stream:ontology_class_activated`, `stream:ontology_class_deprecated`, `stream:ontology_property_proposed`, `stream:ontology_property_deprecated` | Ontology |
 
 There are **three consumer groups** today: `embedder` and `relator` on
 `stream:node_created`, and `extractor` on `stream:source_raw`. The shared

@@ -2,6 +2,7 @@ import { isModeratorOrAdmin } from '@vozlab/shared-types';
 import { OntologyClass } from '../../domain/entities/OntologyClass.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
+import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IMembershipRepository } from '../../domain/ports/IMembershipRepository.js';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
@@ -22,18 +23,22 @@ export type ActivateOntologyClassInput = {
  * membership table (never trusted from the request body). The domain state
  * machine (`OntologyClass.activate`) runs before the write so an invalid
  * transition surfaces as `ERR_INVALID_STATE_TRANSITION`.
+ *
+ * Quorum (G3): activation also requires at least `quorumThreshold` distinct
+ * institutional supporters (anonymous event members are excluded from the
+ * count).
  */
 export class ActivateOntologyClassUseCase {
   constructor(
     private readonly ontologyRepo: IOntologyRepository,
+    private readonly interactionRepo: IInteractionRepository,
     private readonly membershipRepo: IMembershipRepository,
     private readonly uow: IUnitOfWork,
-    private readonly eventPublisher: IEventPublisher
+    private readonly eventPublisher: IEventPublisher,
+    private readonly quorumThreshold: number = 3
   ) {}
 
   async execute(input: ActivateOntologyClassInput): Promise<OntologyClass> {
-    // A user may hold several roles in the workspace simultaneously (v5), so
-    // the decision uses the union of all ACTIVE rows rather than a single one.
     const roles = await this.membershipRepo.getRoles(
       input.resolverUserId,
       input.workspaceId,
@@ -53,6 +58,21 @@ export class ActivateOntologyClassUseCase {
         'ERR_VALIDATION_FAILED',
         `ontology class ${input.classId} not found`
       );
+    }
+
+    // Quorum (G3): at least `quorumThreshold` distinct institutional
+    // supporters. Anonymous event members are excluded by the repository.
+    const result = await this.interactionRepo.countDistinctSupporters(
+      input.classId,
+      'ONTOLOGY',
+      input.workspaceId,
+      input.tid
+    );
+    const supporterHashes = Array.isArray(result)
+      ? result
+      : Array.from({ length: result }, (_, i) => `supporter-${i}`);
+    if (!cls.canActivate(supporterHashes, this.quorumThreshold)) {
+      throw new DomainError('ERR_UNMET_QUORUM');
     }
 
     // Domain state machine: throws ERR_INVALID_STATE_TRANSITION when the

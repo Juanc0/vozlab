@@ -8,6 +8,7 @@ import { Node } from '../../src/domain/entities/Node.js';
 import type { IProposalRepository } from '../../src/domain/ports/IProposalRepository.js';
 import type { IInteractionRepository } from '../../src/domain/ports/IInteractionRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
+import type { IDiscussionRepository } from '../../src/domain/ports/IDiscussionRepository.js';
 import {
   makeEdgeRepository,
   makeEventPublisher,
@@ -89,11 +90,35 @@ function makeInteractionRepo(): IInteractionRepository {
     },
     async save() {},
     async applyScoreDelta() {},
+    async countDistinctSupporters() {
+      return 0;
+    },
   };
 }
 
 function makeOntologyRepo(): IOntologyRepository {
   return makeOntologyRepository().repo;
+}
+
+function makeDiscussionRepo(): IDiscussionRepository {
+  return {
+    async findThreadById() {
+      return null;
+    },
+    async listThreads() {
+      return { items: [], nextCursor: null };
+    },
+    async saveThread() {},
+    async update() {},
+    async listPosts() {
+      return { items: [], nextCursor: null };
+    },
+    async findPostById() {
+      return null;
+    },
+    async savePost() {},
+    async softDelete() {},
+  };
 }
 
 describe('CreateProposalUseCase — a MERGE proposal', () => {
@@ -115,12 +140,15 @@ describe('CreateProposalUseCase — a MERGE proposal', () => {
       },
     };
     const { publisher, events } = makeEventPublisher();
+    const { uow } = makeUnitOfWork();
     const useCase = new CreateProposalUseCase(
       proposalRepo,
       makeInteractionRepo(),
       makeOntologyRepo(),
       makeNodeRepository(nodes).repo,
-      publisher
+      publisher,
+      makeDiscussionRepo(),
+      uow
     );
     return { useCase, saved, events };
   }

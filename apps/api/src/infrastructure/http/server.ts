@@ -67,6 +67,9 @@ import { ActivateDatatypePropertyUseCase } from '../../application/use_cases/Act
 import { RejectDatatypePropertyUseCase } from '../../application/use_cases/RejectDatatypePropertyUseCase.js';
 import { ActivateObjectPropertyUseCase } from '../../application/use_cases/ActivateObjectPropertyUseCase.js';
 import { RejectObjectPropertyUseCase } from '../../application/use_cases/RejectObjectPropertyUseCase.js';
+import { DeprecateOntologyClassUseCase } from '../../application/use_cases/DeprecateOntologyClassUseCase.js';
+import { DeprecateDatatypePropertyUseCase } from '../../application/use_cases/DeprecateDatatypePropertyUseCase.js';
+import { DeprecateObjectPropertyUseCase } from '../../application/use_cases/DeprecateObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { DisplayNameCatalog } from '../../application/use_cases/DisplayNameCatalog.js';
 import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
@@ -297,6 +300,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   const activateOntologyClassUseCase = new ActivateOntologyClassUseCase(
     ontologyRepo,
+    interactionRepo,
     membershipRepo,
     uow,
     eventPublisher
@@ -326,6 +330,24 @@ export async function buildServer(): Promise<FastifyInstance> {
     eventPublisher
   );
   const rejectObjectPropertyUseCase = new RejectObjectPropertyUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const deprecateOntologyClassUseCase = new DeprecateOntologyClassUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const deprecateDatatypePropertyUseCase = new DeprecateDatatypePropertyUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const deprecateObjectPropertyUseCase = new DeprecateObjectPropertyUseCase(
     ontologyRepo,
     membershipRepo,
     uow,
@@ -593,6 +615,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     rejectDatatypePropertyUseCase,
     activateObjectPropertyUseCase,
     rejectObjectPropertyUseCase,
+    deprecateOntologyClassUseCase,
+    deprecateDatatypePropertyUseCase,
+    deprecateObjectPropertyUseCase,
     getOntologyUseCase,
     createThreadUseCase,
     addPostUseCase,

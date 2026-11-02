@@ -115,11 +115,11 @@ describe('ActivateObjectPropertyUseCase', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('reports a missing property as ERR_VALIDATION_FAILED', async () => {
+  it('reports a missing property as ERR_OBJECT_PROPERTY_NOT_FOUND', async () => {
     const { useCase } = build(objectProperty('obj-2', WS, 'other-hash'), ['MODERATOR']);
     await expect(
       useCase.execute({ ...baseInput, propertyId: 'obj-1', resolverHash: 'mod-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_OBJECT_PROPERTY_NOT_FOUND' });
   });
 
   it('rejects activating an already-active property with ERR_INVALID_STATE_TRANSITION', async () => {
@@ -136,7 +136,7 @@ describe('ActivateObjectPropertyUseCase', () => {
     const { useCase } = build(objectProperty('obj-1', 'ws-other', 'author-hash'), ['MODERATOR']);
     await expect(
       useCase.execute({ ...baseInput, resolverHash: 'mod-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_OBJECT_PROPERTY_NOT_FOUND' });
   });
 
   it('rejects activation with locale incomplete as ERR_LOCALE_INCOMPLETE', async () => {

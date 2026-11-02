@@ -393,6 +393,20 @@
     {/if}
   </section>
 
+  <section aria-labelledby={`proposal-discussion-link-heading-${uid}`}>
+    <h3 id={`proposal-discussion-link-heading-${uid}`}>
+      {t('proposals.discussionThread')}
+    </h3>
+    <p class="mt-1 text-body text-muted">
+      <a
+        class="text-accent-ink underline underline-offset-2 hover:no-underline"
+        href={`/discussions?target=${proposal.id}&type=PROPOSAL`}
+      >
+        {t('proposals.openDiscussionInPage')}
+      </a>
+    </p>
+  </section>
+
   {#if discussion}
     <DiscussionPanel
       targetId={proposal.id}

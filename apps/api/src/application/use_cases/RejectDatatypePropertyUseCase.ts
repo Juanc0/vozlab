@@ -30,7 +30,7 @@ export class RejectDatatypePropertyUseCase {
       input.tid
     );
     if (!prop) {
-      throw new DomainError('ERR_VALIDATION_FAILED', `datatype property ${input.propertyId} not found`);
+      throw new DomainError('ERR_DATATYPE_PROPERTY_NOT_FOUND', `datatype property ${input.propertyId} not found`);
     }
 
     const roles = await this.membershipRepo.getRoles(

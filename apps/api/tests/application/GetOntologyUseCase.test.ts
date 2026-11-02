@@ -83,6 +83,9 @@ function makeRepo(datatypeProperties: DatatypeProperty[]): IOntologyRepository {
     async activateObjectProperty() {},
     async rejectObjectProperty() {},
     async rejectClass() {},
+    async deprecateClass() {},
+    async deprecateDatatypeProperty() {},
+    async deprecateObjectProperty() {},
   };
 }
 

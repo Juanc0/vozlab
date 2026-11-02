@@ -609,7 +609,10 @@ export const en: Dictionary<typeof es> = {
     autoApplyBlockedRole:
       'the role in this workspace is not a moderator or an administrator.',
     autoApplyBlockedClosed: 'the proposal is not open.',
-    discussionHeading: 'Discussion of this proposal'
+    discussionHeading: 'Discussion of this proposal',
+    discussionThread: 'Discussion thread',
+    openDiscussion: 'Open discussion',
+    openDiscussionInPage: 'Open discussion in the discussions page'
   },
 
   delta: {
@@ -882,6 +885,18 @@ export const en: Dictionary<typeof es> = {
     reject: 'Reject',
     activated: 'Activated',
     rejected: 'Rejected',
+    deprecate: 'Deprecate',
+    deprecated: 'Deprecated',
+    migrationTarget: 'Migration target',
+    migrationTargetKey: 'Migration target key',
+    selectMigrationTarget: 'Select a migration target',
+    migrationTargetRequired: 'A migration target is required.',
+    activeItems: 'Active items',
+    activeClasses: 'Active classes',
+    activeDatatypeProperties: 'Active datatype properties',
+    activeObjectProperties: 'Active object properties',
+    emptyActive: 'No active items.',
+    discussionThread: 'Discussion',
     proposerOrModeratorOnly: 'Only the proposer or a moderator can act on this proposal.'
   }
 };

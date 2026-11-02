@@ -243,6 +243,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       status: cls.status,
       proposedBy: cls.proposedBy,
       createdAt: cls.createdAt,
+      communityScore: cls.communityScore,
     });
   }
 
@@ -262,6 +263,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       status: prop.status,
       proposedBy: prop.proposedBy,
       createdAt: prop.createdAt,
+      communityScore: prop.communityScore,
     });
   }
 
@@ -281,6 +283,7 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       status: prop.status,
       proposedBy: prop.proposedBy,
       createdAt: prop.createdAt,
+      communityScore: prop.communityScore,
     });
   }
 
@@ -509,6 +512,90 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
         and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
       );
   }
+
+  async deprecateClass(
+    targetId: string,
+    workspaceId: string,
+    migrationTargetKey: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(ontologyClasses)
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      )
+      .limit(1);
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `ontology class ${targetId} not found`);
+    }
+    const cls = classToDomain(row);
+    cls.deprecate(migrationTargetKey);
+    await db
+      .update(ontologyClasses)
+      .set({ status: cls.status, migrationTargetKey: cls.migrationTargetKey })
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      );
+  }
+
+  async deprecateDatatypeProperty(
+    targetId: string,
+    workspaceId: string,
+    migrationTargetKey: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(datatypeProperties)
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `datatype property ${targetId} not found`);
+    }
+    const prop = datatypeToDomain(row);
+    prop.deprecate(migrationTargetKey);
+    await db
+      .update(datatypeProperties)
+      .set({ status: prop.status, migrationTargetKey: prop.migrationTargetKey })
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      );
+  }
+
+  async deprecateObjectProperty(
+    targetId: string,
+    workspaceId: string,
+    migrationTargetKey: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(objectProperties)
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `object property ${targetId} not found`);
+    }
+    const prop = objectToDomain(row);
+    prop.deprecate(migrationTargetKey);
+    await db
+      .update(objectProperties)
+      .set({ status: prop.status, migrationTargetKey: prop.migrationTargetKey })
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
+      );
+  }
 }
 
 function classToDomain(row: typeof ontologyClasses.$inferSelect): OntologyClass {
@@ -521,7 +608,9 @@ function classToDomain(row: typeof ontologyClasses.$inferSelect): OntologyClass 
     row.parentClassKey ?? null,
     row.status as OntologyStatus,
     row.proposedBy,
-    row.createdAt
+    row.createdAt,
+    (row as { migrationTargetKey?: string | null }).migrationTargetKey ?? null,
+    row.communityScore ?? 0
   );
 }
 
@@ -539,7 +628,9 @@ function datatypeToDomain(row: typeof datatypeProperties.$inferSelect): Datatype
     row.domainClassKey,
     row.status as OntologyStatus,
     row.proposedBy,
-    row.createdAt
+    row.createdAt,
+    (row as { migrationTargetKey?: string | null }).migrationTargetKey ?? null,
+    row.communityScore ?? 0
   );
 }
 
@@ -557,6 +648,8 @@ function objectToDomain(row: typeof objectProperties.$inferSelect): ObjectProper
     row.allowsSelfRelation,
     row.status as OntologyStatus,
     row.proposedBy,
-    row.createdAt
+    row.createdAt,
+    (row as { migrationTargetKey?: string | null }).migrationTargetKey ?? null,
+    row.communityScore ?? 0
   );
 }

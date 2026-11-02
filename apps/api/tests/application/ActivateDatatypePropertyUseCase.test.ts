@@ -115,11 +115,11 @@ describe('ActivateDatatypePropertyUseCase', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('reports a missing property as ERR_VALIDATION_FAILED', async () => {
+  it('reports a missing property as ERR_DATATYPE_PROPERTY_NOT_FOUND', async () => {
     const { useCase, ontology } = build([], ['MODERATOR']);
     await expect(
       useCase.execute({ ...baseInput, resolverHash: 'mod-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_DATATYPE_PROPERTY_NOT_FOUND' });
     expect(ontology.activated).toHaveLength(0);
   });
 
@@ -140,7 +140,7 @@ describe('ActivateDatatypePropertyUseCase', () => {
     const { useCase } = build([property('prop-1', 'ws-other', 'author-hash')], ['MODERATOR']);
     await expect(
       useCase.execute({ ...baseInput, resolverHash: 'mod-hash' })
-    ).rejects.toMatchObject({ code: 'ERR_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'ERR_DATATYPE_PROPERTY_NOT_FOUND' });
   });
 
   it('rejects activation with locale incomplete as ERR_LOCALE_INCOMPLETE', async () => {

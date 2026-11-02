@@ -59,4 +59,7 @@ export interface IOntologyRepository {
   rejectDatatypeProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
   activateObjectProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
   rejectObjectProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  deprecateClass(targetId: string, workspaceId: string, migrationTargetKey: string, tid: string, tx?: DbTransaction): Promise<void>;
+  deprecateDatatypeProperty(targetId: string, workspaceId: string, migrationTargetKey: string, tid: string, tx?: DbTransaction): Promise<void>;
+  deprecateObjectProperty(targetId: string, workspaceId: string, migrationTargetKey: string, tid: string, tx?: DbTransaction): Promise<void>;
 }

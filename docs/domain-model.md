@@ -96,7 +96,7 @@ rotate. See [ADR-0013](decisions/ADR-0013-random-opaque-pseudonym.md).
 | `meta.object_properties` | `id`, `workspace_id`, `system_key`, `display_names`, `descriptions`, `domain_class_key`, `range_class_key`, `is_directional`, `is_symmetric`, `allows_self_relation`, `status`, `proposed_by`, `created_at` | Domain/range keys are logical, not FKs. Index on (`workspace_id`, `domain_class_key`, `range_class_key`). `system_key` is **not** unique. |
 
 `workspace_id` is nullable in all three tables, but every application write
-supplies it. Lifecycle is status-based (`PROPOSED`, `ACTIVE`, `REJECTED`), not
+supplies it. Lifecycle is status-based (`PROPOSED`, `ACTIVE`, `REJECTED`, `DEPRECATED`), not
 soft deletion. `display_names` and `descriptions` are JSONB locale maps, e.g.
 `{"es":"...","en":"..."}`.
 
@@ -198,11 +198,14 @@ Approval and auto-apply apply the delta and update the status in one
 `UnitOfWork` transaction; rejection only updates the status.
 
 **Ontology** (`OntologyClass`, `DatatypeProperty`, `ObjectProperty`):
-`PROPOSED | ACTIVE | REJECTED`, default `PROPOSED`. `PROPOSED → ACTIVE` via
-`PUT /ontology/classes/:id/activate`; `PROPOSED → REJECTED` exists only in the
-domain. `ACTIVE` and `REJECTED` are terminal. Only classes have an activation
-route, so properties proposed through the API stay `PROPOSED`; `GET /ontology`
-returns only `ACTIVE` object properties.
+`PROPOSED | ACTIVE | REJECTED | DEPRECATED`, default `PROPOSED`. `PROPOSED → ACTIVE` via
+`PUT /ontology/{classes,datatype-properties,object-properties}/:id/activate`
+(moderator/admin or proposer; locale completeness required for properties); `PROPOSED → REJECTED` via
+`PUT /ontology/{classes,datatype-properties,object-properties}/:id/reject` (same actors).
+`ACTIVE → DEPRECATED` via `PUT /ontology/{classes,datatype-properties,object-properties}/:id/deprecate`
+(moderator/admin, requires a non-empty `migrationTargetKey`). `ACTIVE` and `REJECTED` are terminal for
+activation/rejection; `DEPRECATED` is terminal. `GET /ontology` returns only `ACTIVE` object properties
+(and active classes/datatype properties as applicable).
 
 **DiscussionThread** (`domain/entities/DiscussionThread.ts`): `OPEN | CLOSED`,
 default `OPEN`. `OPEN → CLOSED` via the creator-only

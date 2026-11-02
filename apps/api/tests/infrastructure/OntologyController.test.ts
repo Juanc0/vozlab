@@ -7,6 +7,9 @@ import { ActivateDatatypePropertyUseCase } from '../../src/application/use_cases
 import { RejectDatatypePropertyUseCase } from '../../src/application/use_cases/RejectDatatypePropertyUseCase.js';
 import { ActivateObjectPropertyUseCase } from '../../src/application/use_cases/ActivateObjectPropertyUseCase.js';
 import { RejectObjectPropertyUseCase } from '../../src/application/use_cases/RejectObjectPropertyUseCase.js';
+import { DeprecateOntologyClassUseCase } from '../../src/application/use_cases/DeprecateOntologyClassUseCase.js';
+import { DeprecateDatatypePropertyUseCase } from '../../src/application/use_cases/DeprecateDatatypePropertyUseCase.js';
+import { DeprecateObjectPropertyUseCase } from '../../src/application/use_cases/DeprecateObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../src/application/use_cases/GetOntologyUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../src/application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../src/application/use_cases/ProposeObjectPropertyUseCase.js';
@@ -17,7 +20,7 @@ import { ObjectProperty } from '../../src/domain/entities/ObjectProperty.js';
 import type { IMembershipRepository } from '../../src/domain/ports/IMembershipRepository.js';
 import type { IOntologyRepository } from '../../src/domain/ports/IOntologyRepository.js';
 import { OntologyController } from '../../src/infrastructure/http/controllers/OntologyController.js';
-import { makeEventPublisher, makeOntologyRepository, makeUnitOfWork } from '../support/fakes.js';
+import { makeEventPublisher, makeInteractionRepository, makeOntologyRepository, makeUnitOfWork } from '../support/fakes.js';
 
 const WS = 'ws-1';
 const TID = 'tenant-1';
@@ -113,12 +116,15 @@ function makeController(datatypeProperties: DatatypeProperty[]): OntologyControl
     new ProposeOntologyClassUseCase(repo, publisher),
     new ProposeDatatypePropertyUseCase(repo, publisher),
     new ProposeObjectPropertyUseCase(repo, publisher),
-    new ActivateOntologyClassUseCase(repo, membershipRepo, uow, publisher),
+    new ActivateOntologyClassUseCase(repo, makeInteractionRepository().repo, membershipRepo, uow, publisher),
     new RejectOntologyClassUseCase(repo, membershipRepo, uow, publisher),
     new ActivateDatatypePropertyUseCase(repo, membershipRepo, uow, publisher),
     new RejectDatatypePropertyUseCase(repo, membershipRepo, uow, publisher),
     new ActivateObjectPropertyUseCase(repo, membershipRepo, uow, publisher),
     new RejectObjectPropertyUseCase(repo, membershipRepo, uow, publisher),
+    new DeprecateOntologyClassUseCase(repo, membershipRepo, uow, publisher),
+    new DeprecateDatatypePropertyUseCase(repo, membershipRepo, uow, publisher),
+    new DeprecateObjectPropertyUseCase(repo, membershipRepo, uow, publisher),
     new GetOntologyUseCase(repo)
   );
 }
@@ -176,6 +182,7 @@ describe('OntologyController — GET /api/v1/ontology', () => {
         status: 'ACTIVE',
         proposedBy: 'author-hash',
         createdAt: CREATED_AT.toISOString(),
+        communityScore: 0,
       },
     ]);
   });

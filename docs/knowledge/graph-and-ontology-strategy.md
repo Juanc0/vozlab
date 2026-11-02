@@ -44,22 +44,21 @@ exists yet. [repo] ROADMAP 3.8; ADR-0027
 - **It is not formal.** There are no OWL axioms, no SHACL shapes, no subclass reasoning (the `parent_class_key` is
   logical, not interpreted), and no cardinality rules. Validation is domain and range on relations and
   required-field checks in the form. That is adequate for a community tool. It is not an ontology in the formal sense.
-- **Its lifecycle is partly built.** Classes: `PROPOSED → ACTIVE` through a moderator route. Properties: `PROPOSED`
-  and nothing else. [repo] `domain-model.md` §5
+- **Its lifecycle is built.** Classes and properties: `PROPOSED → ACTIVE` (moderator/admin or proposer, locale completeness for properties) and `PROPOSED → REJECTED`; `ACTIVE → DEPRECATED` with a migration target. [repo] `domain-model.md` §5 (ontology-governance v1).
 
 ## 4. Ontology governance: the gaps that block community growth (F-16)
 
-| # | Gap | Effect on "grows through community input" |
+| # | Gap | Status (closed by ontology-governance v1) |
 | --- | --- | --- |
-| G1 | Properties cannot be activated; no route exists. | A community can propose a relation type or an attribute, and it never becomes usable. The vocabulary cannot grow beyond classes. **Blocking.** |
-| G2 | Ontology proposals are not votable. Votes target nodes, edges, edit proposals and posts only. | Community input on the vocabulary is limited to discussion threads, which are not linked to the proposal (FR-11 partial). |
-| G3 | Only moderators and admins activate classes. | Reasonable as a default; the rule for distinct supporters and quorum is missing. |
-| G4 | No rejection route from `PROPOSED`. The transition exists in the domain only. | Rejected ideas stay in limbo. |
-| G5 | No deprecation, merge or rename of classes or properties. | Synonyms accumulate ("Problem", "Problema", "Issue"). The graph fragments. |
-| G6 | No versioning and no migration of nodes when a class changes or is deprecated. | Historical data becomes unreadable under a changed vocabulary. |
-| G7 | Property `system_key` is not unique. `findObjectProperty` returns the first match. | Ambiguity at the moment of relation creation. |
-| G8 | Locale completeness does not appear to be checked on activation (judgment from the use case; confirm with a test). | A class can be activated with one language only, and the interface falls back. |
-| G9 | Ontology events are published (`ontology_class_proposed`, `ontology_class_activated`, `ontology_property_proposed`), but no consumer reads them and there is no event for deprecation or migration. | Downstream processes (embedding refresh, Relator rules, reports) cannot react to a change in the vocabulary. |
+| G1 | Properties cannot be activated; no route exists. | **Closed** — `PUT /ontology/{datatype,object}-properties/:id/activate` (T1–T3). |
+| G2 | Ontology proposals are not votable. | **Closed** — `POST /interactions` with `targetType = 'ONTOLOGY'` casts a vote; `community_score` updates atomically (T8). |
+| G3 | Only moderators and admins activate classes. | **Closed** — `canActivate(supporterHashes)` checks ≥ N (default 3) distinct institutional supporters; anonymous event members excluded (T9). |
+| G4 | No rejection route from `PROPOSED`. | **Closed** — `PUT /ontology/{classes,datatype-properties,object-properties}/:id/reject` (T7, T1–T3). |
+| G5 | No deprecation, merge or rename. | **Closed (deprecation)** — `PUT /ontology/.../:id/deprecate` with `migrationTargetKey` (T10); merge/rename deferred. |
+| G6 | No versioning / migration of nodes. | **Partial** — deprecation requires a migration target; re-typing by proposal only, no silent script (T10). Harder cousin (cross-workspace mapping) deferred. |
+| G7 | Property `system_key` not unique. | **Closed** — `UNIQUE(workspace_id, system_key)` on both property tables (T1). |
+| G8 | Locale completeness not checked on activation. | **Closed** — activation throws `ERR_LOCALE_INCOMPLETE` if `es`/`en` display name missing (T2). |
+| G9 | Ontology events published but no consumer; no deprecation event. | **Partial** — `ONTOLOGY_CLASS_DEPRECATED` / `ONTOLOGY_PROPERTY_DEPRECATED` published post-commit; event catalogue updated. A runtime consumer is deferred (no consumer shipped in v1). |
 
 **Proposed ontology lifecycle (judgment, to decide as D-12):**
 

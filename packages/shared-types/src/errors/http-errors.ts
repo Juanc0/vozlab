@@ -162,6 +162,18 @@ export const ERROR_CODES = {
     status: 404,
     message: 'Discussion post not found',
   },
+  ERR_ONTOLOGY_NOT_FOUND: {
+    status: 404,
+    message: 'Ontology element not found',
+  },
+  ERR_DATATYPE_PROPERTY_NOT_FOUND: {
+    status: 404,
+    message: 'Datatype property not found',
+  },
+  ERR_OBJECT_PROPERTY_NOT_FOUND: {
+    status: 404,
+    message: 'Object property not found',
+  },
   ERR_DUPLICATE_INTERACTION: {
     status: 409,
     message: 'A vote already exists for this user and target',
@@ -189,6 +201,10 @@ export const ERROR_CODES = {
   ERR_LOCALE_INCOMPLETE: {
     status: 422,
     message: 'Locale completeness required for activation',
+  },
+  ERR_UNMET_QUORUM: {
+    status: 422,
+    message: 'Quorum of distinct supporters not met',
   },
   ERR_RATE_LIMIT_EXCEEDED: {
     status: 429,

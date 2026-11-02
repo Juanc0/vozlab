@@ -40,6 +40,9 @@ function makeInteractionRepo(
       calls.push('applyScoreDelta');
       appliedDeltas.push({ delta, tx });
     },
+    async countDistinctSupporters() {
+      return 0;
+    },
   };
   return { repo, calls, appliedDeltas };
 }

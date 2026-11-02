@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import {
   ProposeOntologyClassSchema,
   ProposeDatatypePropertySchema,
@@ -17,6 +18,9 @@ import { ActivateDatatypePropertyUseCase } from '../../../application/use_cases/
 import { RejectDatatypePropertyUseCase } from '../../../application/use_cases/RejectDatatypePropertyUseCase.js';
 import { ActivateObjectPropertyUseCase } from '../../../application/use_cases/ActivateObjectPropertyUseCase.js';
 import { RejectObjectPropertyUseCase } from '../../../application/use_cases/RejectObjectPropertyUseCase.js';
+import { DeprecateOntologyClassUseCase } from '../../../application/use_cases/DeprecateOntologyClassUseCase.js';
+import { DeprecateDatatypePropertyUseCase } from '../../../application/use_cases/DeprecateDatatypePropertyUseCase.js';
+import { DeprecateObjectPropertyUseCase } from '../../../application/use_cases/DeprecateObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../../application/use_cases/GetOntologyUseCase.js';
 import { IOntologyRepository } from '../../../domain/ports/IOntologyRepository.js';
 import { OntologyClass } from '../../../domain/entities/OntologyClass.js';
@@ -44,6 +48,7 @@ function toOntologyClassDto(cls: OntologyClass): OntologyClassDto {
     status: cls.status,
     proposedBy: cls.proposedBy,
     createdAt: cls.createdAt.toISOString(),
+    communityScore: cls.communityScore,
   };
 }
 
@@ -68,6 +73,7 @@ function toObjectPropertyDto(prop: ObjectProperty): ObjectPropertyDto {
     status: prop.status,
     proposedBy: prop.proposedBy,
     createdAt: prop.createdAt.toISOString(),
+    communityScore: prop.communityScore,
   };
 }
 
@@ -95,6 +101,7 @@ function toDatatypePropertyDto(prop: DatatypeProperty): DatatypePropertyDto {
     status: prop.status,
     proposedBy: prop.proposedBy,
     createdAt: prop.createdAt.toISOString(),
+    communityScore: prop.communityScore,
   };
 }
 
@@ -103,19 +110,76 @@ function toDatatypePropertyDto(prop: DatatypeProperty): DatatypePropertyDto {
  * (FR-06 datatype properties, FR-08 object properties, FR-09 classes).
  */
 export class OntologyController {
-  constructor(
-    private readonly proposeClass: ProposeOntologyClassUseCase,
-    private readonly proposeDatatypeProperty: ProposeDatatypePropertyUseCase,
-    private readonly proposeObjectProperty: ProposeObjectPropertyUseCase,
-    private readonly activateOntologyClass: ActivateOntologyClassUseCase,
-    private readonly rejectOntologyClass: RejectOntologyClassUseCase,
-    private readonly activateDatatypeProperty: ActivateDatatypePropertyUseCase,
-    private readonly rejectDatatypeProperty: RejectDatatypePropertyUseCase,
-    private readonly activateObjectProperty: ActivateObjectPropertyUseCase,
-    private readonly rejectObjectProperty: RejectObjectPropertyUseCase,
-    private readonly getOntology: GetOntologyUseCase,
-    private readonly ontologyRepo?: IOntologyRepository
-  ) {}
+  private proposeClass!: ProposeOntologyClassUseCase;
+  private proposeDatatypeProperty!: ProposeDatatypePropertyUseCase;
+  private proposeObjectProperty!: ProposeObjectPropertyUseCase;
+  private activateOntologyClass!: ActivateOntologyClassUseCase;
+  private rejectOntologyClass!: RejectOntologyClassUseCase;
+  private deprecateOntologyClass!: DeprecateOntologyClassUseCase;
+  private activateDatatypeProperty!: ActivateDatatypePropertyUseCase;
+  private rejectDatatypeProperty!: RejectDatatypePropertyUseCase;
+  private deprecateDatatypeProperty!: DeprecateDatatypePropertyUseCase;
+  private activateObjectProperty!: ActivateObjectPropertyUseCase;
+  private rejectObjectProperty!: RejectObjectPropertyUseCase;
+  private deprecateObjectProperty!: DeprecateObjectPropertyUseCase;
+  private getOntology!: GetOntologyUseCase;
+  private ontologyRepo?: IOntologyRepository;
+
+  constructor(...args: unknown[]) {
+    for (const arg of args) {
+      if (!arg || typeof arg !== 'object') continue;
+      const name = (arg as { constructor?: { name?: string } }).constructor?.name;
+      switch (name) {
+        case 'ProposeOntologyClassUseCase':
+          this.proposeClass = arg as ProposeOntologyClassUseCase;
+          break;
+        case 'ProposeDatatypePropertyUseCase':
+          this.proposeDatatypeProperty = arg as ProposeDatatypePropertyUseCase;
+          break;
+        case 'ProposeObjectPropertyUseCase':
+          this.proposeObjectProperty = arg as ProposeObjectPropertyUseCase;
+          break;
+        case 'ActivateOntologyClassUseCase':
+          this.activateOntologyClass = arg as ActivateOntologyClassUseCase;
+          break;
+        case 'RejectOntologyClassUseCase':
+          this.rejectOntologyClass = arg as RejectOntologyClassUseCase;
+          break;
+        case 'DeprecateOntologyClassUseCase':
+          this.deprecateOntologyClass = arg as DeprecateOntologyClassUseCase;
+          break;
+        case 'ActivateDatatypePropertyUseCase':
+          this.activateDatatypeProperty = arg as ActivateDatatypePropertyUseCase;
+          break;
+        case 'RejectDatatypePropertyUseCase':
+          this.rejectDatatypeProperty = arg as RejectDatatypePropertyUseCase;
+          break;
+        case 'DeprecateDatatypePropertyUseCase':
+          this.deprecateDatatypeProperty = arg as DeprecateDatatypePropertyUseCase;
+          break;
+        case 'ActivateObjectPropertyUseCase':
+          this.activateObjectProperty = arg as ActivateObjectPropertyUseCase;
+          break;
+        case 'RejectObjectPropertyUseCase':
+          this.rejectObjectProperty = arg as RejectObjectPropertyUseCase;
+          break;
+        case 'DeprecateObjectPropertyUseCase':
+          this.deprecateObjectProperty = arg as DeprecateObjectPropertyUseCase;
+          break;
+        case 'GetOntologyUseCase':
+          this.getOntology = arg as GetOntologyUseCase;
+          break;
+        default:
+          if (
+            typeof (arg as { findClassById?: unknown }).findClassById ===
+            'function'
+          ) {
+            this.ontologyRepo = arg as IOntologyRepository;
+          }
+          break;
+      }
+    }
+  }
 
   /** POST /api/v1/ontology/classes */
   async proposeClassHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -369,6 +433,105 @@ export class OntologyController {
       });
     } catch (error) {
       return this.handleError(req, reply, error, 'rejectObjectProperty failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/classes/:id/deprecate */
+  async deprecateClassHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const classId = (req.params as { id: string }).id;
+    const parsed = z.object({ migrationTargetKey: z.string().min(1) }).safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const cls = await this.deprecateOntologyClass.execute({
+        id: classId,
+        migrationTargetKey: parsed.data.migrationTargetKey,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: cls.id,
+        systemKey: cls.systemKey,
+        status: cls.status,
+        migrationTargetKey: cls.migrationTargetKey,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'deprecateOntologyClass failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/datatype-properties/:id/deprecate */
+  async deprecateDatatypePropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+    const parsed = z.object({ migrationTargetKey: z.string().min(1) }).safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.deprecateDatatypeProperty.execute({
+        id: propertyId,
+        migrationTargetKey: parsed.data.migrationTargetKey,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+        migrationTargetKey: prop.migrationTargetKey,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'deprecateDatatypeProperty failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/object-properties/:id/deprecate */
+  async deprecateObjectPropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+    const parsed = z.object({ migrationTargetKey: z.string().min(1) }).safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(reply, 'ERR_VALIDATION_FAILED', { issues: parsed.error.issues });
+    }
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.deprecateObjectProperty.execute({
+        id: propertyId,
+        migrationTargetKey: parsed.data.migrationTargetKey,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+        migrationTargetKey: prop.migrationTargetKey,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'deprecateObjectProperty failed');
     }
   }
 

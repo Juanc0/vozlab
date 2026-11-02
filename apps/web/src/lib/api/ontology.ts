@@ -17,6 +17,7 @@ export interface OntologyActionResult {
   readonly id: string;
   readonly systemKey: string;
   readonly status: string;
+  readonly migrationTargetKey?: string | null;
 }
 
 /**
@@ -114,4 +115,43 @@ export async function listOntologyProposals(client: ApiClient): Promise<Ontology
     datatypeProperties: Array.isArray(body?.datatypeProperties) ? body.datatypeProperties : [],
     objectProperties: Array.isArray(body?.objectProperties) ? body.objectProperties : []
   };
+}
+
+export async function deprecateOntologyClass(
+  client: ApiClient,
+  classId: string,
+  migrationTargetKey: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/classes/${encodeURIComponent(classId)}/deprecate`,
+    body: { migrationTargetKey }
+  });
+  return body;
+}
+
+export async function deprecateDatatypeProperty(
+  client: ApiClient,
+  propertyId: string,
+  migrationTargetKey: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/datatype-properties/${encodeURIComponent(propertyId)}/deprecate`,
+    body: { migrationTargetKey }
+  });
+  return body;
+}
+
+export async function deprecateObjectProperty(
+  client: ApiClient,
+  propertyId: string,
+  migrationTargetKey: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/object-properties/${encodeURIComponent(propertyId)}/deprecate`,
+    body: { migrationTargetKey }
+  });
+  return body;
 }

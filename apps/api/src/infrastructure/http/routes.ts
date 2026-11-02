@@ -34,6 +34,9 @@ import { ActivateDatatypePropertyUseCase } from '../../application/use_cases/Act
 import { RejectDatatypePropertyUseCase } from '../../application/use_cases/RejectDatatypePropertyUseCase.js';
 import { ActivateObjectPropertyUseCase } from '../../application/use_cases/ActivateObjectPropertyUseCase.js';
 import { RejectObjectPropertyUseCase } from '../../application/use_cases/RejectObjectPropertyUseCase.js';
+import { DeprecateOntologyClassUseCase } from '../../application/use_cases/DeprecateOntologyClassUseCase.js';
+import { DeprecateDatatypePropertyUseCase } from '../../application/use_cases/DeprecateDatatypePropertyUseCase.js';
+import { DeprecateObjectPropertyUseCase } from '../../application/use_cases/DeprecateObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
 import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
@@ -83,6 +86,7 @@ import { IUserRepository } from '../../domain/ports/IUserRepository.js';
 import { IWorkspaceJoinCodeRepository } from '../../domain/ports/IWorkspaceJoinCodeRepository.js';
 import { IDataSourceRepository } from '../../domain/ports/IDataSourceRepository.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { IngestSourceUseCase } from '../../application/use_cases/IngestSourceUseCase.js';
 import { RedisTokenBlacklist } from '../events/RedisTokenBlacklist.js';
 import { authGuard } from './middlewares/AuthGuard.js';
@@ -154,6 +158,9 @@ export interface RouteDependencies {
   rejectDatatypePropertyUseCase: RejectDatatypePropertyUseCase;
   activateObjectPropertyUseCase: ActivateObjectPropertyUseCase;
   rejectObjectPropertyUseCase: RejectObjectPropertyUseCase;
+  deprecateOntologyClassUseCase: DeprecateOntologyClassUseCase;
+  deprecateDatatypePropertyUseCase: DeprecateDatatypePropertyUseCase;
+  deprecateObjectPropertyUseCase: DeprecateObjectPropertyUseCase;
   getOntologyUseCase: GetOntologyUseCase;
   createThreadUseCase: CreateThreadUseCase;
   addPostUseCase: AddPostUseCase;
@@ -218,7 +225,7 @@ export interface RouteDependencies {
  */
 export async function registerRoutes(
   app: FastifyInstance,
-  deps: RouteDependencies & { ontologyRepository?: any; ontologyRepo?: any }
+  deps: RouteDependencies & { ontologyRepository?: unknown; ontologyRepo?: unknown }
 ): Promise<void> {
   const {
     createNodeUseCase,
@@ -256,6 +263,9 @@ export async function registerRoutes(
     rejectDatatypePropertyUseCase,
     activateObjectPropertyUseCase,
     rejectObjectPropertyUseCase,
+    deprecateOntologyClassUseCase,
+    deprecateDatatypePropertyUseCase,
+    deprecateObjectPropertyUseCase,
     getOntologyUseCase,
     createThreadUseCase,
     addPostUseCase,
@@ -275,7 +285,7 @@ export async function registerRoutes(
     tokenBlacklist,
     rateLimiter,
   } = deps;
-  const ontologyRepository = (deps as any).ontologyRepository ?? (deps as any).ontologyRepo;
+  const ontologyRepository = (deps as { ontologyRepository?: unknown; ontologyRepo?: unknown }).ontologyRepository ?? (deps as { ontologyRepository?: unknown; ontologyRepo?: unknown }).ontologyRepo;
 
   const nodeController = new NodeController(
     createNodeUseCase,
@@ -318,8 +328,11 @@ export async function registerRoutes(
     rejectDatatypePropertyUseCase,
     activateObjectPropertyUseCase,
     rejectObjectPropertyUseCase,
+    deprecateOntologyClassUseCase,
+    deprecateDatatypePropertyUseCase,
+    deprecateObjectPropertyUseCase,
     getOntologyUseCase,
-    ontologyRepository
+    ontologyRepository as IOntologyRepository | undefined
   );
   const healthController = new HealthController(routerDb, tokenBlacklist);
   const discussionController = new DiscussionController(
@@ -883,6 +896,16 @@ export async function registerRoutes(
 
   app.put('/api/v1/ontology/object-properties/:id/reject', { preHandler: guard }, (req, reply) =>
     ontologyController.rejectObjectPropertyHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/classes/:id/deprecate', { preHandler: guard }, (req, reply) =>
+    ontologyController.deprecateClassHandler(req, reply)
+  );
+  app.put('/api/v1/ontology/datatype-properties/:id/deprecate', { preHandler: guard }, (req, reply) =>
+    ontologyController.deprecateDatatypePropertyHandler(req, reply)
+  );
+  app.put('/api/v1/ontology/object-properties/:id/deprecate', { preHandler: guard }, (req, reply) =>
+    ontologyController.deprecateObjectPropertyHandler(req, reply)
   );
 
   app.get('/api/v1/ontology', { preHandler: guard }, (req, reply) =>

@@ -67,6 +67,9 @@ describe('proposalAuthorization.resolveTargetAuthorHash', () => {
     activateObjectProperty: vi.fn(),
     rejectObjectProperty: vi.fn(),
     rejectClass: vi.fn(),
+    deprecateClass: vi.fn(),
+    deprecateDatatypeProperty: vi.fn(),
+    deprecateObjectProperty: vi.fn(),
   };
 
   const repos = { nodeRepo, edgeRepo, ontologyRepo };

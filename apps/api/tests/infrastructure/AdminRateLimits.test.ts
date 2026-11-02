@@ -47,6 +47,9 @@ import { ActivateDatatypePropertyUseCase } from '../../src/application/use_cases
 import { RejectDatatypePropertyUseCase } from '../../src/application/use_cases/RejectDatatypePropertyUseCase.js';
 import { ActivateObjectPropertyUseCase } from '../../src/application/use_cases/ActivateObjectPropertyUseCase.js';
 import { RejectObjectPropertyUseCase } from '../../src/application/use_cases/RejectObjectPropertyUseCase.js';
+import { DeprecateOntologyClassUseCase } from '../../src/application/use_cases/DeprecateOntologyClassUseCase.js';
+import { DeprecateDatatypePropertyUseCase } from '../../src/application/use_cases/DeprecateDatatypePropertyUseCase.js';
+import { DeprecateObjectPropertyUseCase } from '../../src/application/use_cases/DeprecateObjectPropertyUseCase.js';
 import { AddPostUseCase } from '../../src/application/use_cases/AddPostUseCase.js';
 import { ApproveProposalUseCase } from '../../src/application/use_cases/ApproveProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../src/application/use_cases/AutoApplyProposalUseCase.js';
@@ -183,6 +186,9 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     rejectDatatypePropertyUseCase: unused(RejectDatatypePropertyUseCase.prototype),
     activateObjectPropertyUseCase: unused(ActivateObjectPropertyUseCase.prototype),
     rejectObjectPropertyUseCase: unused(RejectObjectPropertyUseCase.prototype),
+    deprecateOntologyClassUseCase: unused(DeprecateOntologyClassUseCase.prototype),
+    deprecateDatatypePropertyUseCase: unused(DeprecateDatatypePropertyUseCase.prototype),
+    deprecateObjectPropertyUseCase: unused(DeprecateObjectPropertyUseCase.prototype),
     getOntologyUseCase: unused(GetOntologyUseCase.prototype),
     createThreadUseCase: unused(CreateThreadUseCase.prototype),
     addPostUseCase: unused(AddPostUseCase.prototype),

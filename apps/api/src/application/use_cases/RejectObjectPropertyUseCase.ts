@@ -30,7 +30,7 @@ export class RejectObjectPropertyUseCase {
       input.tid
     );
     if (!prop) {
-      throw new DomainError('ERR_VALIDATION_FAILED', `object property ${input.propertyId} not found`);
+      throw new DomainError('ERR_OBJECT_PROPERTY_NOT_FOUND', `object property ${input.propertyId} not found`);
     }
 
     const roles = await this.membershipRepo.getRoles(

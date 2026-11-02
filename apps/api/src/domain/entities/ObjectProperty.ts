@@ -21,7 +21,9 @@ export class ObjectProperty {
     public status: OntologyStatus = 'PROPOSED',
     // no maintainer: an empty hash can never equal a resolved pseudonym
     public readonly proposedBy: string = '',
-    public readonly createdAt: Date = new Date()
+    public readonly createdAt: Date = new Date(),
+    public migrationTargetKey: string | null = null,
+    public readonly communityScore: number = 0
   ) {}
 
   /**
@@ -64,5 +66,22 @@ export class ObjectProperty {
       );
     }
     this.status = 'REJECTED';
+  }
+
+  deprecate(migrationTargetKey: string): void {
+    if (this.status !== 'ACTIVE') {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot deprecate property in status ${this.status}`
+      );
+    }
+    if (!migrationTargetKey || migrationTargetKey.trim() === '') {
+      throw new DomainError(
+        'ERR_VALIDATION_FAILED',
+        'migrationTargetKey is required'
+      );
+    }
+    this.status = 'DEPRECATED';
+    this.migrationTargetKey = migrationTargetKey;
   }
 }
