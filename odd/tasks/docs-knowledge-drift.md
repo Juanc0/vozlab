@@ -34,3 +34,4 @@ T6 | S8 | inline | commit: docs(hygiene): verify links and debris after knowledg
 L1: usa tu propio flujo que consideres para abordar todas las tareas que indicaste.
 L2: (exploration) revisar docs/knowledge/ y comparar contra código de api y web; verificar actualización; sugerencias de secciones a actualizar/ajustar/acotar; sin cambios internos.
 L3: autorización de implementación concedida; rama chore/docs-knowledge-drift creada; feature doc odd/tasks/docs-knowledge-drift.md creado.
+L4: implementación completada. Commit f16a049 (10 archivos, 110 insertions, 62 deletions). docs-hygiene.sh verde (links, heredoc, dead refs, debris). Todos los T1-T6 cerrados. Gate: bash scripts/docs-hygiene.sh OK.
