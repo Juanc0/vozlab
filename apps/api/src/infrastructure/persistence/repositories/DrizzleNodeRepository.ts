@@ -398,7 +398,13 @@ export class DrizzleNodeRepository implements INodeRepository {
     const db = await this.client(tid);
     const limit = Math.min(Math.max(Math.trunc(opts.limit), 1), MAX_NEIGHBORS);
 
-    const sourceResult = await db.execute(sql`
+    // Run inside a transaction so SET LOCAL applies to the same connection
+    // that executes the neighbour query (F-04 filtered-recall defect).
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`);
+      await tx.execute(sql`SET LOCAL hnsw.ef_search = 100`);
+
+      const sourceResult = await tx.execute(sql`
       SELECT n.id::text AS id,
              n.type_key,
              n.title,
@@ -430,7 +436,7 @@ export class DrizzleNodeRepository implements INodeRepository {
       return { status: 'NOT_EMBEDDED' };
     }
 
-    const neighborsResult = await db.execute(sql`
+    const neighborsResult = await tx.execute(sql`
       SELECT n.id::text AS id,
              n.type_key,
              n.title,
@@ -477,6 +483,7 @@ export class DrizzleNodeRepository implements INodeRepository {
       },
       neighbors,
     };
+    });
   }
 
   async save(node: Node, tid: string, tx?: DbTransaction): Promise<void> {

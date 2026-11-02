@@ -89,6 +89,26 @@ after an index scan over the **whole** table. Three consequences:
 - Later, if one workspace dominates a tenant, consider partitioning the nodes table by workspace or a partial index
   for very large workspaces. Not needed yet.
 
+**Status (2026-11-02, plan `docs/plans/hnsw-recall/v1.md`):**
+
+- Fix applied: `DrizzleNodeRepository.findNearestInWorkspace` now runs inside a
+  Drizzle transaction with `SET LOCAL hnsw.iterative_scan = 'relaxed_order'` and
+  `SET LOCAL hnsw.ef_search = 100` on the same connection, before the source and
+  neighbour queries. Filters (workspace, status `ACTIVE`/`PENDING`, `deleted_at IS NULL`),
+  cosine `ORDER BY` and `LIMIT` are unchanged; public contract unchanged.
+- Test added: `apps/api/tests/integration/neighbors-recall.integration.test.ts` seeds a
+  dominant 2000-node workspace plus a 50-node workspace and compares the API (HNSW)
+  top-5 against an exact result (`SET enable_indexscan = off`), asserting recall ≥ 0.95.
+  Observed result: the test passes in the dev environment (the planner resolves the
+  small workspace with an exact scan), so no RED failure was captured; the fix is
+  defence-in-depth for environments where the planner chooses the HNSW path.
+- pgvector pinned: `docker/postgres/Dockerfile` now verifies `default_version >= 0.8.0`
+  at build time and fails the build otherwise (see `dependency-lifecycle.md` §2).
+- Verification command: `pnpm --filter @vozlab/api test:integration` (neighbors-recall +
+  neighbors suites: 7 tests pass). Type-check/build of `src/` is green for
+  `DrizzleNodeRepository.ts`; the global gate is currently red due to unrelated WIP in
+  `tenant-user-management` (DrizzleWorkspace/TenantAdmin repos), not this change.
+
 **Dimension change (if the embedding model changes, see `06`):** the column type is fixed at `vector(768)`. A
 change to 1024 dimensions is a migration that drops the HNSW index, alters the column, rebuilds the index and
 re-embeds every node. Storage for vectors is about 3 KB per 768-dimension float32 vector and about 4 KB for 1024
