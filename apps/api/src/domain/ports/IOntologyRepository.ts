@@ -11,6 +11,9 @@ export interface IOntologyRepository {
   findClassById(id: string, workspaceId: string, tid: string): Promise<OntologyClass | null>;
   findClassByKey(systemKey: string, workspaceId: string, tid: string): Promise<OntologyClass | null>;
   findActiveClasses(workspaceId: string, tid: string): Promise<OntologyClass[]>;
+  findProposedClasses(workspaceId: string, tid: string): Promise<OntologyClass[]>;
+  findDatatypePropertyById(id: string, workspaceId: string, tid: string): Promise<DatatypeProperty | null>;
+  findObjectPropertyById(id: string, workspaceId: string, tid: string): Promise<ObjectProperty | null>;
   findDatatypeProperties(
     domainClassKey: string,
     workspaceId: string,
@@ -24,12 +27,14 @@ export interface IOntologyRepository {
    * same rule as `findActiveObjectProperties` (governance invariant).
    */
   findActiveDatatypeProperties(workspaceId: string, tid: string): Promise<DatatypeProperty[]>;
+  findProposedDatatypeProperties(workspaceId: string, tid: string): Promise<DatatypeProperty[]>;
   findObjectProperty(
     relationKey: string,
     workspaceId: string,
     tid: string
   ): Promise<ObjectProperty | null>;
   findActiveObjectProperties(workspaceId: string, tid: string): Promise<ObjectProperty[]>;
+  findProposedObjectProperties(workspaceId: string, tid: string): Promise<ObjectProperty[]>;
   saveClass(cls: OntologyClass, tid: string, tx?: DbTransaction): Promise<void>;
   saveDatatypeProperty(prop: DatatypeProperty, tid: string, tx?: DbTransaction): Promise<void>;
   saveObjectProperty(prop: ObjectProperty, tid: string, tx?: DbTransaction): Promise<void>;
@@ -49,4 +54,9 @@ export interface IOntologyRepository {
    * `OntologyClass` state machine.
    */
   activateClass(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  rejectClass(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  activateDatatypeProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  rejectDatatypeProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  activateObjectProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
+  rejectObjectProperty(targetId: string, workspaceId: string, tid: string, tx?: DbTransaction): Promise<void>;
 }

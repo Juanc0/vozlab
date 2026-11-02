@@ -42,6 +42,11 @@ import { UpdateWorkspaceUseCase } from '../../src/application/use_cases/UpdateWo
 import { UpdateEdgeUseCase } from '../../src/application/use_cases/UpdateEdgeUseCase.js';
 // Graph routes are never hit here, but RouteDependencies requires them.
 import { ActivateOntologyClassUseCase } from '../../src/application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../src/application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../src/application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../src/application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../src/application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../src/application/use_cases/RejectObjectPropertyUseCase.js';
 import { AddPostUseCase } from '../../src/application/use_cases/AddPostUseCase.js';
 import { ApproveProposalUseCase } from '../../src/application/use_cases/ApproveProposalUseCase.js';
 import { AutoApplyProposalUseCase } from '../../src/application/use_cases/AutoApplyProposalUseCase.js';
@@ -173,6 +178,11 @@ async function hit(limitedBuckets: Set<string>, route: Hit) {
     proposeDatatypePropertyUseCase: unused(ProposeDatatypePropertyUseCase.prototype),
     proposeObjectPropertyUseCase: unused(ProposeObjectPropertyUseCase.prototype),
     activateOntologyClassUseCase: unused(ActivateOntologyClassUseCase.prototype),
+    rejectOntologyClassUseCase: unused(RejectOntologyClassUseCase.prototype),
+    activateDatatypePropertyUseCase: unused(ActivateDatatypePropertyUseCase.prototype),
+    rejectDatatypePropertyUseCase: unused(RejectDatatypePropertyUseCase.prototype),
+    activateObjectPropertyUseCase: unused(ActivateObjectPropertyUseCase.prototype),
+    rejectObjectPropertyUseCase: unused(RejectObjectPropertyUseCase.prototype),
     getOntologyUseCase: unused(GetOntologyUseCase.prototype),
     createThreadUseCase: unused(CreateThreadUseCase.prototype),
     addPostUseCase: unused(AddPostUseCase.prototype),

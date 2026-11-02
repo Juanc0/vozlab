@@ -285,6 +285,11 @@ Notes:
 | `POST` | `/api/v1/ontology/datatype-properties` | `systemKey`; `displayNames`; `descriptions?`; `datatype` (`string\|number\|boolean\|date\|enum`, default `string`); `allowedValues?`; `isRequired?`; `defaultValue?`; `domainClassKey` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown `domainClassKey` |
 | `POST` | `/api/v1/ontology/object-properties` | `systemKey`; `displayNames`; `descriptions?`; `domainClassKey`; `rangeClassKey`; `isDirectional?`; `isSymmetric?`; `allowsSelfRelation?` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown domain/range key |
 | `PUT` | `/api/v1/ontology/classes/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not MODERATOR/ADMIN; `422` class missing/foreign or not `PROPOSED` |
+| `PUT` | `/api/v1/ontology/classes/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` class missing/foreign or not `PROPOSED` |
+| `PUT` | `/api/v1/ontology/datatype-properties/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign, not `PROPOSED`, or locale incomplete |
+| `PUT` | `/api/v1/ontology/datatype-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
+| `PUT` | `/api/v1/ontology/object-properties/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign, not `PROPOSED`, or locale incomplete |
+| `PUT` | `/api/v1/ontology/object-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
 | `GET` | `/api/v1/ontology` | — | `200 { classes: OntologyClassDto[], objectProperties: ObjectPropertyDto[], datatypeProperties: DatatypePropertyDto[] }` | — |
 
 `OntologyClassDto`: `id`, `workspaceId`, `systemKey`, `displayNames`,

@@ -46,11 +46,23 @@ function makeRepo(datatypeProperties: DatatypeProperty[]): IOntologyRepository {
     async findActiveClasses() {
       return [];
     },
+    async findProposedClasses() {
+      return [];
+    },
+    async findDatatypePropertyById() {
+      return null;
+    },
+    async findObjectPropertyById() {
+      return null;
+    },
     async findDatatypeProperties() {
       return datatypeProperties;
     },
     async findActiveDatatypeProperties() {
       return datatypeProperties;
+    },
+    async findProposedDatatypeProperties() {
+      return [];
     },
     async findObjectProperty() {
       return null;
@@ -58,11 +70,19 @@ function makeRepo(datatypeProperties: DatatypeProperty[]): IOntologyRepository {
     async findActiveObjectProperties() {
       return [];
     },
+    async findProposedObjectProperties() {
+      return [];
+    },
     async saveClass() {},
     async saveDatatypeProperty() {},
     async saveObjectProperty() {},
     async applyClassDelta() {},
     async activateClass() {},
+    async activateDatatypeProperty() {},
+    async rejectDatatypeProperty() {},
+    async activateObjectProperty() {},
+    async rejectObjectProperty() {},
+    async rejectClass() {},
   };
 }
 

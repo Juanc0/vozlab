@@ -13,6 +13,12 @@
 import type { ApiClient } from './client';
 import type { OntologyResponseDto } from './types';
 
+export interface OntologyActionResult {
+  readonly id: string;
+  readonly systemKey: string;
+  readonly status: string;
+}
+
 /**
  * Reads the active ontology of the workspace.
  *
@@ -26,5 +32,86 @@ export async function loadOntology(client: ApiClient): Promise<OntologyResponseD
     classes: Array.isArray(body?.classes) ? body.classes : [],
     objectProperties: Array.isArray(body?.objectProperties) ? body.objectProperties : [],
     datatypeProperties: Array.isArray(body?.datatypeProperties) ? body.datatypeProperties : []
+  };
+}
+
+export async function activateDatatypeProperty(
+  client: ApiClient,
+  propertyId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/datatype-properties/${encodeURIComponent(propertyId)}/activate`
+  });
+  return body;
+}
+
+export async function rejectDatatypeProperty(
+  client: ApiClient,
+  propertyId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/datatype-properties/${encodeURIComponent(propertyId)}/reject`
+  });
+  return body;
+}
+
+export async function activateObjectProperty(
+  client: ApiClient,
+  propertyId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/object-properties/${encodeURIComponent(propertyId)}/activate`
+  });
+  return body;
+}
+
+export async function rejectObjectProperty(
+  client: ApiClient,
+  propertyId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/object-properties/${encodeURIComponent(propertyId)}/reject`
+  });
+  return body;
+}
+
+export async function activateOntologyClass(
+  client: ApiClient,
+  classId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/classes/${encodeURIComponent(classId)}/activate`
+  });
+  return body;
+}
+
+export async function rejectOntologyClass(
+  client: ApiClient,
+  classId: string
+): Promise<OntologyActionResult> {
+  const body = await client.request<OntologyActionResult>({
+    method: 'PUT',
+    path: `/ontology/classes/${encodeURIComponent(classId)}/reject`
+  });
+  return body;
+}
+
+export interface OntologyProposalsDto {
+  readonly classes: import('./types').OntologyClassDto[];
+  readonly datatypeProperties: import('./types').DatatypePropertyDto[];
+  readonly objectProperties: import('./types').ObjectPropertyDto[];
+}
+
+export async function listOntologyProposals(client: ApiClient): Promise<OntologyProposalsDto> {
+  const body = await client.request<OntologyProposalsDto>({ path: '/ontology/proposals' });
+  return {
+    classes: Array.isArray(body?.classes) ? body.classes : [],
+    datatypeProperties: Array.isArray(body?.datatypeProperties) ? body.datatypeProperties : [],
+    objectProperties: Array.isArray(body?.objectProperties) ? body.objectProperties : []
   };
 }

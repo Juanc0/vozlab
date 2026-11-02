@@ -3,6 +3,11 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 import type { NodeWindowResponseDto, SubgraphResponseDto } from '@vozlab/shared-types';
 import { ActivateOntologyClassUseCase } from '../../src/application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../src/application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../src/application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../src/application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../src/application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../src/application/use_cases/RejectObjectPropertyUseCase.js';
 import { AddPostUseCase } from '../../src/application/use_cases/AddPostUseCase.js';
 import { AddWorkspaceMemberUseCase } from '../../src/application/use_cases/AddWorkspaceMemberUseCase.js';
 import { ApproveJoinRequestUseCase } from '../../src/application/use_cases/ApproveJoinRequestUseCase.js';
@@ -294,6 +299,11 @@ function makeRouteDependencies(
     proposeDatatypePropertyUseCase: unused(ProposeDatatypePropertyUseCase.prototype),
     proposeObjectPropertyUseCase: unused(ProposeObjectPropertyUseCase.prototype),
     activateOntologyClassUseCase: unused(ActivateOntologyClassUseCase.prototype),
+    rejectOntologyClassUseCase: unused(RejectOntologyClassUseCase.prototype),
+    activateDatatypePropertyUseCase: unused(ActivateDatatypePropertyUseCase.prototype),
+    rejectDatatypePropertyUseCase: unused(RejectDatatypePropertyUseCase.prototype),
+    activateObjectPropertyUseCase: unused(ActivateObjectPropertyUseCase.prototype),
+    rejectObjectPropertyUseCase: unused(RejectObjectPropertyUseCase.prototype),
     getOntologyUseCase: unused(GetOntologyUseCase.prototype),
     createThreadUseCase: unused(CreateThreadUseCase.prototype),
     addPostUseCase: unused(AddPostUseCase.prototype),

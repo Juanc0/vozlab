@@ -322,6 +322,7 @@ export function makeEdgeRepository(edges: Edge[] = []): FakeEdgeRepository {
 export interface FakeOntologyRepository {
   repo: IOntologyRepository;
   activated: string[];
+  rejected: string[];
   deltasApplied: string[];
   /**
    * The reads of the active metamodel.
@@ -352,14 +353,21 @@ export function makeOntologyRepository(
   objectProperties: ObjectProperty[] = []
 ): FakeOntologyRepository {
   const activated: string[] = [];
+  const rejected: string[] = [];
   const deltasApplied: string[] = [];
   const reads = { classes: 0, properties: 0, workspaces: [] as string[] };
   const repo: IOntologyRepository = {
-    async findClassById() {
-      return null;
+    async findClassById(id, workspaceId) {
+      return (
+        classes.find((cls) => cls.id === id && cls.workspaceId === workspaceId) ?? null
+      );
     },
-    async findClassByKey() {
-      return null;
+    async findClassByKey(systemKey, workspaceId) {
+      return (
+        classes.find(
+          (cls) => cls.systemKey === systemKey && cls.workspaceId === workspaceId
+        ) ?? null
+      );
     },
     async findActiveClasses(workspaceId) {
       reads.classes += 1;
@@ -368,11 +376,36 @@ export function makeOntologyRepository(
         (cls) => cls.status === 'ACTIVE' && cls.workspaceId === workspaceId
       );
     },
+    async findProposedClasses(workspaceId) {
+      reads.classes += 1;
+      reads.workspaces.push(workspaceId);
+      return classes.filter(
+        (cls) => cls.status === 'PROPOSED' && cls.workspaceId === workspaceId
+      );
+    },
+    async findDatatypePropertyById(id, workspaceId) {
+      return (
+        datatypeProperties.find((prop) => prop.id === id && prop.workspaceId === workspaceId) ?? null
+      );
+    },
+    async findObjectPropertyById(id, workspaceId) {
+      if (objectProperty && objectProperty.id === id && objectProperty.workspaceId === workspaceId) {
+        return objectProperty;
+      }
+      return (
+        objectProperties.find((prop) => prop.id === id && prop.workspaceId === workspaceId) ?? null
+      );
+    },
     async findDatatypeProperties() {
       return datatypeProperties;
     },
     async findActiveDatatypeProperties() {
       return datatypeProperties.filter((prop) => prop.status === 'ACTIVE');
+    },
+    async findProposedDatatypeProperties(workspaceId) {
+      return datatypeProperties.filter(
+        (prop) => prop.status === 'PROPOSED' && prop.workspaceId === workspaceId
+      );
     },
     async findObjectProperty() {
       return objectProperty;
@@ -384,6 +417,13 @@ export function makeOntologyRepository(
         (property) => property.status === 'ACTIVE' && property.workspaceId === workspaceId
       );
     },
+    async findProposedObjectProperties(workspaceId) {
+      reads.properties += 1;
+      reads.workspaces.push(workspaceId);
+      return objectProperties.filter(
+        (property) => property.status === 'PROPOSED' && property.workspaceId === workspaceId
+      );
+    },
     async saveClass() {},
     async saveDatatypeProperty() {},
     async saveObjectProperty() {},
@@ -393,8 +433,23 @@ export function makeOntologyRepository(
     async activateClass(targetId) {
       activated.push(targetId);
     },
+    async rejectClass(targetId) {
+      rejected.push(targetId);
+    },
+    async activateDatatypeProperty(targetId) {
+      activated.push(targetId);
+    },
+    async rejectDatatypeProperty(targetId) {
+      rejected.push(targetId);
+    },
+    async activateObjectProperty(targetId) {
+      activated.push(targetId);
+    },
+    async rejectObjectProperty(targetId) {
+      rejected.push(targetId);
+    },
   };
-  return { repo, activated, deltasApplied, reads };
+  return { repo, activated, rejected, deltasApplied, reads };
 }
 
 /**

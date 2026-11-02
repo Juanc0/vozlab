@@ -80,6 +80,10 @@ export const datatypeProperties = metaSchema.table(
       table.workspaceId,
       table.domainClassKey
     ),
+    uniqueIndex('uniq_datatype_properties_workspace_key').on(
+      table.workspaceId,
+      table.systemKey
+    ),
   ]
 );
 
@@ -115,6 +119,10 @@ export const objectProperties = metaSchema.table(
       table.workspaceId,
       table.domainClassKey,
       table.rangeClassKey
+    ),
+    uniqueIndex('uniq_object_properties_workspace_key').on(
+      table.workspaceId,
+      table.systemKey
     ),
   ]
 );

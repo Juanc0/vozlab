@@ -54,7 +54,16 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
     async findActiveClasses() {
       return [];
     },
+    async findProposedClasses() {
+      return [];
+    },
     async findActiveObjectProperties() {
+      return [];
+    },
+    async findProposedDatatypeProperties() {
+      return [];
+    },
+    async findProposedObjectProperties() {
       return [];
     },
     async findClassByKey() {
@@ -63,6 +72,12 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
     async findClassById(id, workspaceId) {
       const cls = classes.get(`${workspaceId}:${id}`);
       return cls ?? null;
+    },
+    async findDatatypePropertyById() {
+      return null;
+    },
+    async findObjectPropertyById() {
+      return null;
     },
     async findDatatypeProperties() {
       return [];
@@ -76,6 +91,11 @@ function makeOntologyRepo(classes: Map<string, OntologyClass>): IOntologyReposit
     async saveClass() {},
     async applyClassDelta() {},
     async activateClass() {},
+    async activateDatatypeProperty() {},
+    async rejectDatatypeProperty() {},
+    async activateObjectProperty() {},
+    async rejectObjectProperty() {},
+    async rejectClass() {},
     async saveDatatypeProperty() {},
     async saveObjectProperty() {},
   };

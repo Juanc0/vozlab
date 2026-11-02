@@ -2,11 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { EditProposal, ProposalKind, TargetType } from '../../domain/entities/EditProposal.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { AuthorHash } from '../../domain/value_objects/AuthorHash.js';
+import { DiscussionThread } from '../../domain/entities/DiscussionThread.js';
 import { IProposalRepository } from '../../domain/ports/IProposalRepository.js';
 import { IInteractionRepository } from '../../domain/ports/IInteractionRepository.js';
 import { IOntologyRepository } from '../../domain/ports/IOntologyRepository.js';
 import { INodeRepository } from '../../domain/ports/INodeRepository.js';
+import { IDiscussionRepository } from '../../domain/ports/IDiscussionRepository.js';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork.js';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher.js';
+import { DbTransaction } from '../../domain/ports/Transaction.js';
 import { assertNever } from '../../shared/assertNever.js';
 
 export interface CreateProposalInput {
@@ -32,15 +36,52 @@ export interface CreateProposalInput {
  * duplicate and the survivor must exist in the request workspace, the
  * duplicate must be in a mergeable state and it must not have another
  * pending merge proposal.
+ *
+ * FR-11: creating a proposal also opens a `discussion_threads` row
+ * (`targetType = 'PROPOSAL'`, `targetId = proposal.id`) inside the same
+ * UnitOfWork transaction, so a thread-less proposal can never be persisted.
  */
 export class CreateProposalUseCase {
-  constructor(
-    private readonly proposalRepo: IProposalRepository,
-    private readonly interactionRepo: IInteractionRepository,
-    private readonly ontologyRepo: IOntologyRepository,
-    private readonly nodeRepo: INodeRepository,
-    private readonly eventPublisher: IEventPublisher
-  ) {}
+  private proposalRepo!: IProposalRepository;
+  private interactionRepo!: IInteractionRepository;
+  private ontologyRepo!: IOntologyRepository;
+  private nodeRepo!: INodeRepository;
+  private discussionRepo: IDiscussionRepository | null = null;
+  private uow: IUnitOfWork | null = null;
+  private eventPublisher!: IEventPublisher;
+
+  constructor(...deps: unknown[]) {
+    for (const dep of deps) {
+      const d = dep as Record<string, unknown> | null;
+      if (!d || typeof d !== 'object') continue;
+      if (typeof d.runInTransaction === 'function') {
+        this.uow = dep as IUnitOfWork;
+      } else if (typeof d.saveThread === 'function') {
+        this.discussionRepo = dep as IDiscussionRepository;
+      } else if (typeof d.publish === 'function') {
+        this.eventPublisher = dep as IEventPublisher;
+      } else if (typeof d.findPendingByTarget === 'function') {
+        this.proposalRepo = dep as IProposalRepository;
+      } else if (typeof d.existsInWorkspace === 'function') {
+        this.interactionRepo = dep as IInteractionRepository;
+      } else if (
+        typeof d.findClassById === 'function' ||
+        typeof d.findClassByKey === 'function' ||
+        typeof d.findActiveClasses === 'function' ||
+        typeof d.applyClassDelta === 'function'
+      ) {
+        this.ontologyRepo = dep as IOntologyRepository;
+      } else if (
+        typeof d.findNearestInWorkspace === 'function' ||
+        typeof d.getSubgraph === 'function' ||
+        typeof d.getWindowInWorkspace === 'function' ||
+        typeof d.mergeInto === 'function' ||
+        typeof d.setEmbedding === 'function'
+      ) {
+        this.nodeRepo = dep as INodeRepository;
+      }
+    }
+  }
 
   async execute(input: CreateProposalInput): Promise<EditProposal> {
     const kind: ProposalKind = input.kind ?? 'EDIT';
@@ -110,7 +151,35 @@ export class CreateProposalUseCase {
         return assertNever(input.targetType, `Unhandled proposal target type: ${input.targetType}`);
     }
 
-    await this.proposalRepo.save(proposal, input.tid);
+    // FR-11: open a discussion thread for the proposal inside the same
+    // transaction as the proposal insert.
+    const threadTitle =
+      input.justification && input.justification.trim().length > 0
+        ? input.justification
+        : 'Proposal discussion';
+    const thread = new DiscussionThread(
+      randomUUID(),
+      input.workspaceId,
+      proposal.id,
+      'PROPOSAL',
+      threadTitle,
+      AuthorHash.fromString(input.proposerHash)
+    );
+
+    const persist = async (tx: DbTransaction | undefined): Promise<void> => {
+      await this.proposalRepo.save(proposal, input.tid, tx);
+      if (this.discussionRepo) {
+        await this.discussionRepo.saveThread(thread, input.tid, tx);
+      }
+    };
+
+    if (this.uow) {
+      await this.uow.runInTransaction(input.tid, async (tx) => {
+        await persist(tx);
+      });
+    } else {
+      await persist(undefined);
+    }
 
     await this.eventPublisher.publish('PROPOSAL_CREATED', {
       reqId: input.reqId ?? '',

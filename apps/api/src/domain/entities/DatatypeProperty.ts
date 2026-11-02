@@ -58,4 +58,14 @@ export class DatatypeProperty {
     }
     this.status = 'ACTIVE';
   }
+
+  reject(): void {
+    if (this.status !== 'PROPOSED') {
+      throw new DomainError(
+        'ERR_INVALID_STATE_TRANSITION',
+        `cannot reject property in status ${this.status}`
+      );
+    }
+    this.status = 'REJECTED';
+  }
 }

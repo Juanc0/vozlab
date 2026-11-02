@@ -913,6 +913,7 @@ export const es = {
     access: 'Acceso',
     codes: 'Códigos',
     eventCodes: 'Códigos de evento',
+    ontology: 'Ontología',
     save: 'Guardar cambios',
     saved: 'Guardado.',
     loadFailed: 'No se pudo cargar el espacio de trabajo.'
@@ -927,5 +928,25 @@ export const es = {
     request: 'Solicitar',
     myRequests: 'Mis solicitudes',
     noWorkspaces: 'No hay espacios públicos disponibles.'
+  },
+
+  ontologyAdmin: {
+    title: 'Propuestas de ontología',
+    classes: 'Clases',
+    datatypeProperties: 'Propiedades de datos',
+    objectProperties: 'Propiedades de objeto',
+    empty: 'No hay elementos de ontología propuestos.',
+    systemKey: 'Clave del sistema',
+    domain: 'Dominio',
+    range: 'Rango',
+    datatype: 'Tipo de dato',
+    proposedBy: 'Propuesto por',
+    status: 'Estado',
+    actions: 'Acciones',
+    activate: 'Activar',
+    reject: 'Rechazar',
+    activated: 'Activado',
+    rejected: 'Rechazado',
+    proposerOrModeratorOnly: 'Solo el proponente o un moderador puede actuar sobre esta propuesta.'
   }
 } as const;

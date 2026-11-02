@@ -848,6 +848,7 @@ export const en: Dictionary<typeof es> = {
     access: 'Access',
     codes: 'Codes',
     eventCodes: 'Event codes',
+    ontology: 'Ontology',
     save: 'Save changes',
     saved: 'Saved.',
     loadFailed: 'Could not load the workspace.'
@@ -862,5 +863,25 @@ export const en: Dictionary<typeof es> = {
     request: 'Request',
     myRequests: 'My requests',
     noWorkspaces: 'No public workspaces available.'
+  },
+
+  ontologyAdmin: {
+    title: 'Ontology proposals',
+    classes: 'Classes',
+    datatypeProperties: 'Datatype properties',
+    objectProperties: 'Object properties',
+    empty: 'No proposed ontology items.',
+    systemKey: 'System key',
+    domain: 'Domain',
+    range: 'Range',
+    datatype: 'Datatype',
+    proposedBy: 'Proposed by',
+    status: 'Status',
+    actions: 'Actions',
+    activate: 'Activate',
+    reject: 'Reject',
+    activated: 'Activated',
+    rejected: 'Rejected',
+    proposerOrModeratorOnly: 'Only the proposer or a moderator can act on this proposal.'
   }
 };

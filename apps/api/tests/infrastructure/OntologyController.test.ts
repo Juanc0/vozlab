@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { OntologyResponseDto } from '@vozlab/shared-types';
 import { ActivateOntologyClassUseCase } from '../../src/application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../src/application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../src/application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../src/application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../src/application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../src/application/use_cases/RejectObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../src/application/use_cases/GetOntologyUseCase.js';
 import { ProposeDatatypePropertyUseCase } from '../../src/application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../src/application/use_cases/ProposeObjectPropertyUseCase.js';
@@ -109,6 +114,11 @@ function makeController(datatypeProperties: DatatypeProperty[]): OntologyControl
     new ProposeDatatypePropertyUseCase(repo, publisher),
     new ProposeObjectPropertyUseCase(repo, publisher),
     new ActivateOntologyClassUseCase(repo, membershipRepo, uow, publisher),
+    new RejectOntologyClassUseCase(repo, membershipRepo, uow, publisher),
+    new ActivateDatatypePropertyUseCase(repo, membershipRepo, uow, publisher),
+    new RejectDatatypePropertyUseCase(repo, membershipRepo, uow, publisher),
+    new ActivateObjectPropertyUseCase(repo, membershipRepo, uow, publisher),
+    new RejectObjectPropertyUseCase(repo, membershipRepo, uow, publisher),
     new GetOntologyUseCase(repo)
   );
 }

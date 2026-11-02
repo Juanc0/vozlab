@@ -29,6 +29,11 @@ import { ProposeOntologyClassUseCase } from '../../application/use_cases/Propose
 import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../application/use_cases/RejectObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
 import { AddPostUseCase } from '../../application/use_cases/AddPostUseCase.js';
@@ -144,6 +149,11 @@ export interface RouteDependencies {
   proposeDatatypePropertyUseCase: ProposeDatatypePropertyUseCase;
   proposeObjectPropertyUseCase: ProposeObjectPropertyUseCase;
   activateOntologyClassUseCase: ActivateOntologyClassUseCase;
+  rejectOntologyClassUseCase: RejectOntologyClassUseCase;
+  activateDatatypePropertyUseCase: ActivateDatatypePropertyUseCase;
+  rejectDatatypePropertyUseCase: RejectDatatypePropertyUseCase;
+  activateObjectPropertyUseCase: ActivateObjectPropertyUseCase;
+  rejectObjectPropertyUseCase: RejectObjectPropertyUseCase;
   getOntologyUseCase: GetOntologyUseCase;
   createThreadUseCase: CreateThreadUseCase;
   addPostUseCase: AddPostUseCase;
@@ -208,7 +218,7 @@ export interface RouteDependencies {
  */
 export async function registerRoutes(
   app: FastifyInstance,
-  deps: RouteDependencies
+  deps: RouteDependencies & { ontologyRepository?: any; ontologyRepo?: any }
 ): Promise<void> {
   const {
     createNodeUseCase,
@@ -241,6 +251,11 @@ export async function registerRoutes(
     proposeDatatypePropertyUseCase,
     proposeObjectPropertyUseCase,
     activateOntologyClassUseCase,
+    rejectOntologyClassUseCase,
+    activateDatatypePropertyUseCase,
+    rejectDatatypePropertyUseCase,
+    activateObjectPropertyUseCase,
+    rejectObjectPropertyUseCase,
     getOntologyUseCase,
     createThreadUseCase,
     addPostUseCase,
@@ -260,6 +275,7 @@ export async function registerRoutes(
     tokenBlacklist,
     rateLimiter,
   } = deps;
+  const ontologyRepository = (deps as any).ontologyRepository ?? (deps as any).ontologyRepo;
 
   const nodeController = new NodeController(
     createNodeUseCase,
@@ -297,7 +313,13 @@ export async function registerRoutes(
     proposeDatatypePropertyUseCase,
     proposeObjectPropertyUseCase,
     activateOntologyClassUseCase,
-    getOntologyUseCase
+    rejectOntologyClassUseCase,
+    activateDatatypePropertyUseCase,
+    rejectDatatypePropertyUseCase,
+    activateObjectPropertyUseCase,
+    rejectObjectPropertyUseCase,
+    getOntologyUseCase,
+    ontologyRepository
   );
   const healthController = new HealthController(routerDb, tokenBlacklist);
   const discussionController = new DiscussionController(
@@ -843,8 +865,32 @@ export async function registerRoutes(
     ontologyController.activateClassHandler(req, reply)
   );
 
+  app.put('/api/v1/ontology/classes/:id/reject', { preHandler: guard }, (req, reply) =>
+    ontologyController.rejectClassHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/datatype-properties/:id/activate', { preHandler: guard }, (req, reply) =>
+    ontologyController.activateDatatypePropertyHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/datatype-properties/:id/reject', { preHandler: guard }, (req, reply) =>
+    ontologyController.rejectDatatypePropertyHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/object-properties/:id/activate', { preHandler: guard }, (req, reply) =>
+    ontologyController.activateObjectPropertyHandler(req, reply)
+  );
+
+  app.put('/api/v1/ontology/object-properties/:id/reject', { preHandler: guard }, (req, reply) =>
+    ontologyController.rejectObjectPropertyHandler(req, reply)
+  );
+
   app.get('/api/v1/ontology', { preHandler: guard }, (req, reply) =>
     ontologyController.getOntologyHandler(req, reply)
+  );
+
+  app.get('/api/v1/ontology/proposals', { preHandler: guard }, (req, reply) =>
+    ontologyController.listProposalsHandler(req, reply)
   );
 
   // --- Discussions (RF-11/FR-16) ---

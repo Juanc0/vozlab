@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { describeFailure, type ApiFailure } from '$lib/api/failure';
   import * as admin from '$lib/api/admin';
+  import * as ontologyApi from '$lib/api/ontology';
   import type { AdminMemberDto, AdminWorkspaceDto, JoinRequestDto } from '@vozlab/shared-types';
   import { UpdateWorkspaceSchema } from '@vozlab/shared-types';
   import { redirectToLoginOnAuthFailure } from '$lib/auth/require-session';
@@ -9,6 +10,7 @@
 
   const api = getApiClient();
   const locale = getLocaleState();
+  const session = getSessionState();
   const workspace = getWorkspaceState();
   const t = locale.t;
 
@@ -17,9 +19,11 @@
   const canAdmin = $derived(
     workspace.isAdmin && workspace.currentWorkspaceId !== ''
   );
+  const isModerator = $derived(workspace.role === 'MODERATOR' || workspace.role === 'ADMIN');
+  const currentAuthorHash = $derived(session.user?.authorHash ?? null);
 
   // Tab navigation.
-  type WsTab = 'general' | 'members' | 'access' | 'codes' | 'eventCodes';
+  type WsTab = 'general' | 'members' | 'access' | 'codes' | 'eventCodes' | 'ontology';
 
   let activeTab = $state<WsTab>('general');
 
@@ -33,6 +37,7 @@
     if (ws?.kind === 'EVENT') {
       list.push({ id: 'eventCodes', label: t('workspaceAdmin.eventCodes') });
     }
+    list.push({ id: 'ontology', label: t('workspaceAdmin.ontology') });
     return list;
   });
 
@@ -367,6 +372,165 @@
       error = describeFailure(e);
     }
   }
+
+  // Ontology proposals
+  let ontologyProposals = $state<{
+    classes: ontologyApi.OntologyProposalsDto['classes'];
+    datatypeProperties: ontologyApi.OntologyProposalsDto['datatypeProperties'];
+    objectProperties: ontologyApi.OntologyProposalsDto['objectProperties'];
+  }>({
+    classes: [],
+    datatypeProperties: [],
+    objectProperties: []
+  });
+  let ontologyLoading = $state(false);
+  let ontologyError = $state<ApiFailure | null>(null);
+  let ontologyActing = $state<string | null>(null);
+
+  async function loadOntologyProposals(): Promise<void> {
+    if (!canAdmin) return;
+    ontologyLoading = true;
+    ontologyError = null;
+    try {
+      ontologyProposals = await ontologyApi.listOntologyProposals(api);
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyLoading = false;
+    }
+  }
+
+  function canActOnProposed(proposedBy: string): boolean {
+    if (isModerator) return true;
+    if (currentAuthorHash && proposedBy && currentAuthorHash === proposedBy) return true;
+    return false;
+  }
+
+  async function activateDatatypeProperty(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.activateDatatypeProperty(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  async function rejectDatatypeProperty(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.rejectDatatypeProperty(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        datatypeProperties: ontologyProposals.datatypeProperties.filter((p) => p.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  async function activateObjectProperty(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.activateObjectProperty(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  async function rejectObjectProperty(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.rejectObjectProperty(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        objectProperties: ontologyProposals.objectProperties.filter((p) => p.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  async function activateClass(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.activateOntologyClass(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        classes: ontologyProposals.classes.filter((c) => c.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  async function rejectClass(id: string, proposedBy: string): Promise<void> {
+    if (!canActOnProposed(proposedBy)) {
+      ontologyError = describeFailure(new Error(t('ontologyAdmin.proposerOrModeratorOnly')));
+      return;
+    }
+    ontologyActing = id;
+    ontologyError = null;
+    try {
+      await ontologyApi.rejectOntologyClass(api, id);
+      ontologyProposals = {
+        ...ontologyProposals,
+        classes: ontologyProposals.classes.filter((c) => c.id !== id)
+      };
+    } catch (e) {
+      ontologyError = describeFailure(e);
+    } finally {
+      ontologyActing = null;
+    }
+  }
+
+  $effect(() => {
+    if (canAdmin && activeTab === 'ontology') {
+      void loadOntologyProposals();
+    }
+  });
 </script>
 
 <svelte:head>
@@ -784,6 +948,124 @@
             </div>
           </form>
         </ModalDialog>
+
+      {:else if activeTab === 'ontology'}
+        <div class="rounded-card bg-brand-100 p-4 space-y-3">
+          <h2>{t('ontologyAdmin.title')}</h2>
+          {#if ontologyError}
+            <p role="alert" class="text-pill-negative-ink">{ontologyError.code}: {ontologyError.message}</p>
+          {/if}
+          {#if ontologyLoading}
+            <p>{t('common.loading') ?? 'Loading…'}</p>
+          {:else}
+            <section class="space-y-2">
+              <h3 class="text-body font-medium">{t('ontologyAdmin.classes')}</h3>
+              {#if ontologyProposals.classes.length === 0}
+                <p class="text-small text-muted">{t('ontologyAdmin.empty')}</p>
+              {:else}
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[40rem] border-collapse text-left text-body">
+                    <thead class="text-small text-muted">
+                      <tr>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.systemKey')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.proposedBy')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.status')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each ontologyProposals.classes as cls (cls.id)}
+                        <tr class="border-t border-rule">
+                          <th scope="row" class="px-2 py-1 font-normal">{cls.systemKey}</th>
+                          <td class="px-2 py-1 text-small text-muted">{cls.proposedBy}</td>
+                          <td class="px-2 py-1 text-small">{cls.status}</td>
+                          <td class="px-2 py-1 flex gap-2">
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === cls.id || !canActOnProposed(cls.proposedBy)} onclick={() => activateClass(cls.id, cls.proposedBy)}>{t('ontologyAdmin.activate')}</button>
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === cls.id || !canActOnProposed(cls.proposedBy)} onclick={() => rejectClass(cls.id, cls.proposedBy)}>{t('ontologyAdmin.reject')}</button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+            </section>
+
+            <section class="space-y-2">
+              <h3 class="text-body font-medium">{t('ontologyAdmin.datatypeProperties')}</h3>
+              {#if ontologyProposals.datatypeProperties.length === 0}
+                <p class="text-small text-muted">{t('ontologyAdmin.empty')}</p>
+              {:else}
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[44rem] border-collapse text-left text-body">
+                    <thead class="text-small text-muted">
+                      <tr>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.systemKey')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.domain')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.datatype')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.proposedBy')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.status')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each ontologyProposals.datatypeProperties as p (p.id)}
+                        <tr class="border-t border-rule">
+                          <th scope="row" class="px-2 py-1 font-normal">{p.systemKey}</th>
+                          <td class="px-2 py-1 text-small text-muted">{p.domainClassKey}</td>
+                          <td class="px-2 py-1 text-small">{p.datatype}</td>
+                          <td class="px-2 py-1 text-small text-muted">{p.proposedBy}</td>
+                          <td class="px-2 py-1 text-small">{p.status}</td>
+                          <td class="px-2 py-1 flex gap-2">
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => activateDatatypeProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.activate')}</button>
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => rejectDatatypeProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.reject')}</button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+            </section>
+
+            <section class="space-y-2">
+              <h3 class="text-body font-medium">{t('ontologyAdmin.objectProperties')}</h3>
+              {#if ontologyProposals.objectProperties.length === 0}
+                <p class="text-small text-muted">{t('ontologyAdmin.empty')}</p>
+              {:else}
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[44rem] border-collapse text-left text-body">
+                    <thead class="text-small text-muted">
+                      <tr>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.systemKey')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.domain')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.range')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.proposedBy')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.status')}</th>
+                        <th scope="col" class="px-2 py-1">{t('ontologyAdmin.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each ontologyProposals.objectProperties as p (p.id)}
+                        <tr class="border-t border-rule">
+                          <th scope="row" class="px-2 py-1 font-normal">{p.systemKey}</th>
+                          <td class="px-2 py-1 text-small text-muted">{p.domainClassKey}</td>
+                          <td class="px-2 py-1 text-small text-muted">{p.rangeClassKey}</td>
+                          <td class="px-2 py-1 text-small text-muted">{p.proposedBy}</td>
+                          <td class="px-2 py-1 text-small">{p.status}</td>
+                          <td class="px-2 py-1 flex gap-2">
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => activateObjectProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.activate')}</button>
+                            <button class="btn btn-quiet text-small" disabled={ontologyActing === p.id || !canActOnProposed(p.proposedBy)} onclick={() => rejectObjectProperty(p.id, p.proposedBy)}>{t('ontologyAdmin.reject')}</button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+            </section>
+          {/if}
+        </div>
 
       {/if}
     </div>

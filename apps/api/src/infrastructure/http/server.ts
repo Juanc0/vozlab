@@ -62,6 +62,11 @@ import { ProposeOntologyClassUseCase } from '../../application/use_cases/Propose
 import { ProposeDatatypePropertyUseCase } from '../../application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ActivateOntologyClassUseCase } from '../../application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../application/use_cases/RejectObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../application/use_cases/GetOntologyUseCase.js';
 import { DisplayNameCatalog } from '../../application/use_cases/DisplayNameCatalog.js';
 import { CreateThreadUseCase } from '../../application/use_cases/CreateThreadUseCase.js';
@@ -234,7 +239,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     interactionRepo,
     ontologyRepo,
     nodeRepo,
-    eventPublisher
+    eventPublisher,
+    discussionRepo,
+    uow
   );
   const approveProposalUseCase = new ApproveProposalUseCase(
     nodeRepo,
@@ -289,6 +296,36 @@ export async function buildServer(): Promise<FastifyInstance> {
     eventPublisher
   );
   const activateOntologyClassUseCase = new ActivateOntologyClassUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const rejectOntologyClassUseCase = new RejectOntologyClassUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const activateDatatypePropertyUseCase = new ActivateDatatypePropertyUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const rejectDatatypePropertyUseCase = new RejectDatatypePropertyUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const activateObjectPropertyUseCase = new ActivateObjectPropertyUseCase(
+    ontologyRepo,
+    membershipRepo,
+    uow,
+    eventPublisher
+  );
+  const rejectObjectPropertyUseCase = new RejectObjectPropertyUseCase(
     ontologyRepo,
     membershipRepo,
     uow,
@@ -551,6 +588,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     proposeDatatypePropertyUseCase,
     proposeObjectPropertyUseCase,
     activateOntologyClassUseCase,
+    rejectOntologyClassUseCase,
+    activateDatatypePropertyUseCase,
+    rejectDatatypePropertyUseCase,
+    activateObjectPropertyUseCase,
+    rejectObjectPropertyUseCase,
     getOntologyUseCase,
     createThreadUseCase,
     addPostUseCase,
@@ -576,6 +618,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     updateWorkspaceUseCase,
     rotateJoinCodeUseCase,
     listWorkspacesUseCase,
+    ontologyRepo,
     listTenantUsersUseCase,
     updateTenantUserSystemRoleUseCase,
     suspendTenantUserUseCase,

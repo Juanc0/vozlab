@@ -186,6 +186,10 @@ export const ERROR_CODES = {
     status: 422,
     message: 'Validation failed for the request payload',
   },
+  ERR_LOCALE_INCOMPLETE: {
+    status: 422,
+    message: 'Locale completeness required for activation',
+  },
   ERR_RATE_LIMIT_EXCEEDED: {
     status: 429,
     message: 'Rate limit exceeded, please try again later',

@@ -12,7 +12,13 @@ import { ProposeOntologyClassUseCase } from '../../../application/use_cases/Prop
 import { ProposeDatatypePropertyUseCase } from '../../../application/use_cases/ProposeDatatypePropertyUseCase.js';
 import { ProposeObjectPropertyUseCase } from '../../../application/use_cases/ProposeObjectPropertyUseCase.js';
 import { ActivateOntologyClassUseCase } from '../../../application/use_cases/ActivateOntologyClassUseCase.js';
+import { RejectOntologyClassUseCase } from '../../../application/use_cases/RejectOntologyClassUseCase.js';
+import { ActivateDatatypePropertyUseCase } from '../../../application/use_cases/ActivateDatatypePropertyUseCase.js';
+import { RejectDatatypePropertyUseCase } from '../../../application/use_cases/RejectDatatypePropertyUseCase.js';
+import { ActivateObjectPropertyUseCase } from '../../../application/use_cases/ActivateObjectPropertyUseCase.js';
+import { RejectObjectPropertyUseCase } from '../../../application/use_cases/RejectObjectPropertyUseCase.js';
 import { GetOntologyUseCase } from '../../../application/use_cases/GetOntologyUseCase.js';
+import { IOntologyRepository } from '../../../domain/ports/IOntologyRepository.js';
 import { OntologyClass } from '../../../domain/entities/OntologyClass.js';
 import { DatatypeProperty } from '../../../domain/entities/DatatypeProperty.js';
 import { ObjectProperty } from '../../../domain/entities/ObjectProperty.js';
@@ -102,7 +108,13 @@ export class OntologyController {
     private readonly proposeDatatypeProperty: ProposeDatatypePropertyUseCase,
     private readonly proposeObjectProperty: ProposeObjectPropertyUseCase,
     private readonly activateOntologyClass: ActivateOntologyClassUseCase,
-    private readonly getOntology: GetOntologyUseCase
+    private readonly rejectOntologyClass: RejectOntologyClassUseCase,
+    private readonly activateDatatypeProperty: ActivateDatatypePropertyUseCase,
+    private readonly rejectDatatypeProperty: RejectDatatypePropertyUseCase,
+    private readonly activateObjectProperty: ActivateObjectPropertyUseCase,
+    private readonly rejectObjectProperty: RejectObjectPropertyUseCase,
+    private readonly getOntology: GetOntologyUseCase,
+    private readonly ontologyRepo?: IOntologyRepository
   ) {}
 
   /** POST /api/v1/ontology/classes */
@@ -225,6 +237,141 @@ export class OntologyController {
     }
   }
 
+  /** PUT /api/v1/ontology/classes/:id/reject */
+  async rejectClassHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const classId = (req.params as { id: string }).id;
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const cls = await this.rejectOntologyClass.execute({
+        classId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: cls.id,
+        systemKey: cls.systemKey,
+        status: cls.status,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'rejectOntologyClass failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/datatype-properties/:id/activate */
+  async activateDatatypePropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.activateDatatypeProperty.execute({
+        propertyId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'activateDatatypeProperty failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/datatype-properties/:id/reject */
+  async rejectDatatypePropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.rejectDatatypeProperty.execute({
+        propertyId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'rejectDatatypeProperty failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/object-properties/:id/activate */
+  async activateObjectPropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.activateObjectProperty.execute({
+        propertyId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'activateObjectProperty failed');
+    }
+  }
+
+  /** PUT /api/v1/ontology/object-properties/:id/reject */
+  async rejectObjectPropertyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const propertyId = (req.params as { id: string }).id;
+
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+
+    try {
+      const prop = await this.rejectObjectProperty.execute({
+        propertyId,
+        workspaceId: ctx.workspaceId,
+        tid: ctx.tid,
+        resolverUserId: ctx.userId,
+        resolverHash: ctx.authorHash,
+        reqId: ctx.reqId,
+      });
+
+      return reply.status(200).send({
+        id: prop.id,
+        systemKey: prop.systemKey,
+        status: prop.status,
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'rejectObjectProperty failed');
+    }
+  }
+
   /** GET /api/v1/ontology */
   async getOntologyHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const ctx = getRequestContext(req);
@@ -243,6 +390,29 @@ export class OntologyController {
       } satisfies OntologyResponseDto);
     } catch (error) {
       return this.handleError(req, reply, error, 'getOntology failed');
+    }
+  }
+
+  /** GET /api/v1/ontology/proposals */
+  async listProposalsHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const ctx = getRequestContext(req);
+    if (!ctx) return sendError(reply, 'ERR_INVALID_TOKEN');
+    if (!this.ontologyRepo) return sendError(reply, 'ERR_SERVICE_UNAVAILABLE');
+
+    try {
+      const [classes, datatypeProperties, objectProperties] = await Promise.all([
+        this.ontologyRepo.findProposedClasses(ctx.workspaceId, ctx.tid),
+        this.ontologyRepo.findProposedDatatypeProperties(ctx.workspaceId, ctx.tid),
+        this.ontologyRepo.findProposedObjectProperties(ctx.workspaceId, ctx.tid),
+      ]);
+
+      return reply.status(200).send({
+        classes: classes.map(toOntologyClassDto),
+        datatypeProperties: datatypeProperties.map(toDatatypePropertyDto),
+        objectProperties: objectProperties.map(toObjectPropertyDto),
+      });
+    } catch (error) {
+      return this.handleError(req, reply, error, 'listOntologyProposals failed');
     }
   }
 

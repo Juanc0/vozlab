@@ -77,6 +77,48 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return rows.map(classToDomain);
   }
 
+  async findProposedClasses(workspaceId: string, tid: string): Promise<OntologyClass[]> {
+    const db = await this.client(tid);
+    const rows = await db
+      .select()
+      .from(ontologyClasses)
+      .where(
+        and(
+          eq(ontologyClasses.workspaceId, workspaceId),
+          eq(ontologyClasses.status, 'PROPOSED')
+        )
+      );
+    return rows.map(classToDomain);
+  }
+
+  async findDatatypePropertyById(
+    id: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<DatatypeProperty | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(datatypeProperties)
+      .where(and(eq(datatypeProperties.id, id), eq(datatypeProperties.workspaceId, workspaceId)))
+      .limit(1);
+    return row ? datatypeToDomain(row) : null;
+  }
+
+  async findObjectPropertyById(
+    id: string,
+    workspaceId: string,
+    tid: string
+  ): Promise<ObjectProperty | null> {
+    const db = await this.client(tid);
+    const [row] = await db
+      .select()
+      .from(objectProperties)
+      .where(and(eq(objectProperties.id, id), eq(objectProperties.workspaceId, workspaceId)))
+      .limit(1);
+    return row ? objectToDomain(row) : null;
+  }
+
   async findDatatypeProperties(
     domainClassKey: string,
     workspaceId: string,
@@ -119,6 +161,23 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
     return rows.map(datatypeToDomain);
   }
 
+  async findProposedDatatypeProperties(
+    workspaceId: string,
+    tid: string
+  ): Promise<DatatypeProperty[]> {
+    const db = await this.client(tid);
+    const rows = await db
+      .select()
+      .from(datatypeProperties)
+      .where(
+        and(
+          eq(datatypeProperties.workspaceId, workspaceId),
+          eq(datatypeProperties.status, 'PROPOSED')
+        )
+      );
+    return rows.map(datatypeToDomain);
+  }
+
   async findObjectProperty(
     relationKey: string,
     workspaceId: string,
@@ -150,6 +209,23 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
         and(
           eq(objectProperties.workspaceId, workspaceId),
           eq(objectProperties.status, 'ACTIVE')
+        )
+      );
+    return rows.map(objectToDomain);
+  }
+
+  async findProposedObjectProperties(
+    workspaceId: string,
+    tid: string
+  ): Promise<ObjectProperty[]> {
+    const db = await this.client(tid);
+    const rows = await db
+      .select()
+      .from(objectProperties)
+      .where(
+        and(
+          eq(objectProperties.workspaceId, workspaceId),
+          eq(objectProperties.status, 'PROPOSED')
         )
       );
     return rows.map(objectToDomain);
@@ -280,6 +356,157 @@ export class DrizzleOntologyRepository implements IOntologyRepository {
       .set({ status: cls.status })
       .where(
         and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      );
+  }
+
+  async rejectClass(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(ontologyClasses)
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `ontology class ${targetId} not found`);
+    }
+
+    // Domain state machine: throws ERR_INVALID_STATE_TRANSITION when not PROPOSED.
+    const cls = classToDomain(row);
+    cls.reject();
+
+    await db
+      .update(ontologyClasses)
+      .set({ status: cls.status })
+      .where(
+        and(eq(ontologyClasses.id, targetId), eq(ontologyClasses.workspaceId, workspaceId))
+      );
+  }
+
+  async activateDatatypeProperty(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(datatypeProperties)
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `datatype property ${targetId} not found`);
+    }
+
+    const prop = datatypeToDomain(row);
+    prop.activate();
+
+    await db
+      .update(datatypeProperties)
+      .set({ status: prop.status })
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      );
+  }
+
+  async rejectDatatypeProperty(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(datatypeProperties)
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `datatype property ${targetId} not found`);
+    }
+
+    const prop = datatypeToDomain(row);
+    prop.reject();
+
+    await db
+      .update(datatypeProperties)
+      .set({ status: prop.status })
+      .where(
+        and(eq(datatypeProperties.id, targetId), eq(datatypeProperties.workspaceId, workspaceId))
+      );
+  }
+
+  async activateObjectProperty(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(objectProperties)
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `object property ${targetId} not found`);
+    }
+
+    const prop = objectToDomain(row);
+    prop.activate();
+
+    await db
+      .update(objectProperties)
+      .set({ status: prop.status })
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
+      );
+  }
+
+  async rejectObjectProperty(
+    targetId: string,
+    workspaceId: string,
+    tid: string,
+    tx?: DbTransaction
+  ): Promise<void> {
+    const db = await this.client(tid, tx);
+    const [row] = await db
+      .select()
+      .from(objectProperties)
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError('ERR_VALIDATION_FAILED', `object property ${targetId} not found`);
+    }
+
+    const prop = objectToDomain(row);
+    prop.reject();
+
+    await db
+      .update(objectProperties)
+      .set({ status: prop.status })
+      .where(
+        and(eq(objectProperties.id, targetId), eq(objectProperties.workspaceId, workspaceId))
       );
   }
 }

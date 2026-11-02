@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "uniq_datatype_properties_workspace_key" ON "meta"."datatype_properties" USING btree ("workspace_id","system_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "uniq_object_properties_workspace_key" ON "meta"."object_properties" USING btree ("workspace_id","system_key");
