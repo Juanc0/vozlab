@@ -2,7 +2,7 @@
 
 > **STATUS: BUILT — living component doc** (was the Phase 3 normative spec;
 > migrated from `docs/spec/` 2026-10-29). Phase 3 is complete: state layer,
-> route groups, Cytoscape canvas, governance UI, admin UI, tenant selector,
+> route groups, SVG canvas (d3-force), governance UI, admin UI, tenant selector,
 > offline shell, i18n (es/en) and the Playwright E2E suite ship today.
 > Known remaining gaps: the graph E2E journeys need realignment to the
 > toolbar redesign (task 13, `docs/analysis/auth-onboarding-committee-review.md`
@@ -17,8 +17,8 @@
 
 ## Stack
 
-SvelteKit 5 with runes, TypeScript, Tailwind CSS, Cytoscape.js with the `dagre`
-layout, and `vite-plugin-pwa` (Workbox + manifest). The PWA is the co-creation
+SvelteKit 5 with runes, TypeScript, Tailwind CSS, an SVG painter with a
+`d3-force` layout, and `vite-plugin-pwa` (Workbox + manifest). The PWA is the co-creation
 client: graph exploration, proposals, discussions and votes. It is online-first;
 offline mode is read-only.
 
@@ -253,10 +253,12 @@ the messages the web app owns are translated.
 
 ## Graph canvas
 
-`GraphCanvas.svelte` initializes Cytoscape once, updates elements when props
-change, and destroys the instance on unmount. Render bounded subgraphs only
-(API limit: 200 nodes), with a deterministic `dagre` layout — no continuous
-physics.
+`SvgGraphCanvas.svelte` renders the graph to SVG, updates elements when props
+change, and cleans up on unmount. Render bounded subgraphs only (API limit:
+200 nodes), with a deterministic `d3-force` layout — no continuous physics.
+(Historical note: an earlier implementation used Cytoscape.js + `dagre`; it
+was removed in Wave 0. The layout-comparison and benchmark sections below
+retain those measurements as evidence of the decision.)
 
 ```svelte
 <script lang="ts">
@@ -830,10 +832,10 @@ applied only when the user accepts it.
 - [x] Workspace changes are isolated per tab via `sessionStorage`.
 - [x] `(app)` routes redirect to `/login` without a session. *(3.3 — four
   guard states: `restoring`, `ready`, `no-membership`, `failed`.)*
-- [x] Cytoscape renders a bounded subgraph with `dagre` and cleans up. *(3.4 —
+- [x] SVG canvas renders a bounded subgraph with `d3-force` and cleans up. *(3.4 —
   the instance is created once, the elements are patched on a change and the
-  instance is destroyed on unmount; `dagre` is registered once at module
-  level and the layout is deterministic, with no physics.)*
+  instance is destroyed on unmount; the layout is deterministic, with no physics.)*
+- [x] (historical) Cytoscape canvas superseded by the SVG painter in Wave 0.
 - [x] Proposals/discussions/votes use the real API, including optimistic vote
   rollback. *(3.5 — the score moves before the request leaves and a refusal
   restores the exact previous value; the server stays the authority and the

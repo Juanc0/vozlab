@@ -29,7 +29,7 @@ trade-offs before coding.
 - Phase 3 done: `apps/web` is a working SvelteKit 5 PWA. It builds, serves
   SSR and ships a manifest and a service worker (3.1); the runes state, the
   per-tab workspace and the HTTP client (3.2); the route groups, the session
-  guard and the workspace selector (3.3); the Cytoscape canvas with its
+  guard and the workspace selector (3.3); the SVG canvas with its
   bounded subgraph (3.4); the ontology-driven creation forms, the proposal
   review, the discussions and the optimistic voting (3.5); the offline shell,
   the install and update prompts and the accessibility pass (3.6); a
@@ -172,7 +172,7 @@ Milestones:
       per-tab workspace selector, and `/auth/callback` lands the OIDC
       failures outside both groups. The workspace is never a path segment.
       81 web tests.
-- [x] 3.4 Cytoscape graph canvas + subgraph loading. Result: the instance is
+- [x] 3.4 SVG graph canvas + subgraph loading. Result: the instance is
       created once, the elements are patched on a change and the instance is
       destroyed on unmount; `dagre` is registered once at module level with a
       deterministic layout and no physics. The subgraph is bounded (3 hops,

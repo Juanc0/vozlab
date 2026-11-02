@@ -11,28 +11,28 @@ This file answers two questions: which versions does VozLab run, and how far are
 Installed versions are from `node_modules` and `uv.lock` on 2026-10-23. "Latest" is from the npm registry (dist-tags)
 on the same date, or from the vendor's page where noted. [run][web]
 
-## 1. The headline
+## 1. The headline (updated 2026-11-02, post Waves 0-4)
 
-- **The runtime and framework choices are mainstream; several versions are not supported.** Fastify 4 has been out of
-  LTS since 30 June 2025. The `redis` package is on its v4 maintenance line. Zod is on v3 while v4 is the current
-  major. Node 22 is in maintenance and reaches end of life on 30 April 2027.
-- **The security cost is real, not cosmetic.** Unsupported framework lines do not receive fixes unless the community
-  supplies them. For an institutional platform, that is an audit finding waiting to happen.
-- **Most upgrades are mechanical,** and the test suite (195 API tests, 515 web tests, 105 Python tests) is a good
-  safety net. Plan them as waves, one component at a time, as `AGENTS.md` already requires.
-- **There is dead weight to remove first:** a Cytoscape-based canvas that nothing imports, two Cytoscape packages still
-  in `package.json`, and production imports listed as development dependencies.
+- **Waves 0-4 are executed.** Fastify 5, node-redis 6, Zod 4, jose 6, Valkey 9, ESLint 10 (flat config), Node 24,
+  pgvector >=0.8.0, dead Cytoscape removed, Ollama pinned to 0.5.4. The remaining lag is Wave 5 (SvelteKit 2 -> 3,
+  deferred) plus minor version drift on Drizzle/Svelte/Tailwind/Python.
+- **The runtime is healthy.** Node 24 is Active LTS until 30 April 2028; PostgreSQL 18 until 14 November 2030;
+  Python 3.12 security support to 2028.
+- **Most upgrades are mechanical,** and the test suite (≈352 API unit tests, ≈521 web tests, 105 Python tests) is a
+  good safety net. Plan them as waves, one component at a time, as `AGENTS.md` already requires.
+- **Dead weight removed.** The Cytoscape canvas, its packages and its tests are gone (Wave 0); d3 moved to
+  `dependencies`. Remaining cleanup: AGE removal from the postgres image (`05` §13, still open).
 
 ## 2. Platform and runtime
 
 | Component | In use | Latest or supported | Lifecycle (verified) | Action |
 | --- | --- | --- | --- | --- |
-| Node.js | CI and README: **22**. Developer machine used for this review: **v24.22.0**. | Node 24 is Active LTS until 30 April 2028. Node 26 becomes LTS in October 2026. Node 22 Maintenance LTS until 30 April 2027. Node 20 ended 30 April 2026. [web] | Node 22 is already in maintenance and has about six months of supported life left. | Move CI and `engines` to **Node 24** in Wave 0. Pin with `.nvmrc`. |
+| Node.js | **24** (CI, `.nvmrc`, `engines.node >=24`). Developer machine used for this review: v24.22.0. | Node 24 is Active LTS until 30 April 2028. Node 26 becomes LTS in October 2026. Node 22 Maintenance LTS until 30 April 2027 (ended support for 20 on 30 April 2026). [web] | Done in Wave 0: CI and engines moved to Node 24; `.nvmrc` pinned. | Keep 24; track minor releases monthly. (Updated 2026-11-02, post-Wave 0.) |
 | PostgreSQL | **18.6** (`docker/postgres`; target) | Current minor **18.6**. PostgreSQL 18 supported until **14 November 2030**. PostgreSQL 14 ends **12 November 2026**. PostgreSQL 19 release candidate 1 was published 15 October 2026. [web] | Healthy. | Keep 18; plan the 19 evaluation after the first pilot. Track minor releases monthly. |
 | pgvector | Taken from the PGDG apt repository, **not pinned** | Must be **0.8.0 or later** for iterative scans (F-04). [web] | Verify in every environment. | Pin the version in the image; test the iterative-scan setting. |
-| Apache AGE | `release_PG18_1.8.0` base image | Not used by the code (ADR-0027). Not offered by Amazon RDS (issue #998). [web] | A dependency that buys nothing. | Remove from the default image (`05` §13). |
-| Redis | `redis:7-alpine` locally. Production not defined. | Redis OSS 7.2 was the last BSD release; Redis 8 is available under AGPLv3, RSALv2 or SSPLv1. Valkey 9.1 is the BSD-3-licensed fork under the Linux Foundation. Amazon ElastiCache supports Valkey and sells it at a lower price per AWS. [web] | Licence choice matters for an institution. | Adopt **Valkey** for local and managed use (`11` §5). Streams are supported. Verify client compatibility in the integration suite. |
-| Ollama | `ollama/ollama:latest` | Unpinned | Any upgrade can change model behaviour. | Pin the image tag; pin model digests (`06` §4). |
+| Apache AGE | `release_PG18_1.8.0` base image | Still present in `vozlab/postgres:18-age-pgvector` (not removed). Not used by the code (ADR-0027). Not offered by Amazon RDS (issue #998). [web] | A dependency that buys nothing; pending removal. | Remove from the default image (`05` §13). (Still open 2026-11-02.) |
+| Redis / Valkey | `valkey/valkey:9-alpine` locally (Wave 3). Production not defined. | Redis OSS 7.2 was the last BSD release; Redis 8 is available under AGPLv3, RSALv2 or SSPLv1. Valkey 9.1 is the BSD-3-licensed fork under the Linux Foundation. Amazon ElastiCache supports Valkey. [web] | Done in Wave 3: local compose switched to Valkey 9; client (`node-redis` 6) verified against it. | Keep Valkey; managed choice (RDS Proxy / PgBouncer) still open (`05` §7). (Updated 2026-11-02.) |
+| Ollama | `ollama/ollama:0.5.4` | Pinned (Wave 3) | Digest pinning still recommended for models (`06` §4). | Keep pinned tag; add digest pin for models. (Updated 2026-11-02.) |
 | Python | 3.12 (uv, `.python-version`) | Project target; 3.12 security support runs to 2028 [juicio] | Healthy. | No action now. |
 | uv | 0.11.8 pinned in Dockerfiles and CI | Pinned | Healthy. | Keep pinned. |
 | pnpm | `packageManager` 12.11.2 | 12.15.0 is the latest version on the registry [run] | Behind by a few releases. | Update in Wave 0. |
@@ -45,10 +45,10 @@ Declared ranges are from `package.json`. "Installed" is what `node_modules` reso
 
 | Package (where) | Declared | Installed | Latest | Status | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| `fastify` (api) | `^4.27.0` | **4.29.1** | **5.12.7** (6.0.0-alpha.5 on `next`) | v4 LTS ended 30 June 2025 [web] | **P1** | Migration guide: Node 20 minimum; full JSON Schema for query, params, body and responses; `getDefaultRoute` removed. Our Zod validation may limit the impact. Check plugin majors. |
-| `redis` (api) | `^4.7.0` | **4.7.1** | **6.3.0** | Installed version is the `maintenance-v4` line [run] | **P1** | Rewrite the client calls; the Streams code path in the API (publisher, blacklist, rate limiter, OIDC state) needs integration tests against Valkey or Redis. |
-| `zod` (api, shared-types, database) | `^3.23.0` | **3.25.76** | **4.6.7** | v3 is still shipped; v4 is the current major | **P2** | Shared-types is the choke point: one migration covers every consumer. Use `zod/v4` as a bridge if needed. |
-| `jose` (api) | `^5.10.0` | **5.10.0** | **6.2.13** | Behind one major | **P2** | Used for ID token validation; test the OIDC fixtures carefully. |
+| `fastify` (api) | `^5.x` | **5.x** (Wave 1) | 5.12.7 (6.0.0-alpha.5 on `next`) | v4 LTS ended 30 June 2025 [web]; migrated in Wave 1. | **Done** | Migration complete (plugins aligned). Keep tracking 6.x. (Updated 2026-11-02.) |
+| `redis` / `node-redis` (api) | `^6.x` | **6.x** (Wave 1) | 6.3.0 | Migrated in Wave 1; integration suite green against Valkey. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
+| `zod` (api, shared-types, database) | `^4.x` | **4.x** (Wave 2) | 4.6.7 | Migrated in Wave 2 via shared-types choke point. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
+| `jose` (api) | `^6.x` | **6.x** (Wave 2) | 6.2.13 | Migrated in Wave 2; OIDC fixtures green. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
 | `jsonwebtoken` (api, database) | `^9.0.2` | 9.0.3 | 9.0.3 | Current, but a second JWT library | **P3** | Consolidate on `jose` (`09` S-18). |
 | `pino` (api) | `^9.0.0` | **9.14.0** | **10.4.0** | Behind one major | **P3** | Redaction paths must still work. |
 | `@fastify/cookie`, `@fastify/cors` (api) | `^9.4.0`, `^9.0.1` | not checked | not checked | Plugin majors must match Fastify 5 | **P2** | Check compatibility when Fastify moves. |
@@ -57,14 +57,14 @@ Declared ranges are from `package.json`. "Installed" is what `node_modules` reso
 | `@sveltejs/kit` (web) | `^2.70.3` | **2.70.3** | **3.1.0** | A new major exists | **P2** | Plan after the pilot; read the migration guide. Adapter-node compatibility to verify. |
 | `svelte` (web) | `^5.57.2` | 5.57.2 | 5.57.2 | Current | — | No action. |
 | `vite` (web) | `^8.3.4` | 8.3.4 | 8.3.5 | Patch lag | P3 | Wave 0. |
-| `vitest` (api, web) | api `^2.0.0`; web `^5.0.5` | — | 5.0.5 | **Two majors in one repository** | **P3** | Align on 5. |
+| `vitest` (api, web) | `^5.x` both | **5.x** (Wave 0) | 5.0.5 | Aligned on 5 in Wave 0. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
 | `tailwindcss`, `@tailwindcss/vite` | `^4.3.3` | — | 4.3.3 | Current | — | No action. |
 | `typescript` (root and packages) | `^5.0.0` | — | **7.0.2** | A major exists | **P3** | Evaluate after the lint wave; check that `svelte-check`, Drizzle and Vitest support it. |
-| `eslint` (root) | `^8.0.0` | — | **10.13.0** | ESLint 8 is past its end of life [juicio] | **P2** | This is why lint is red in part. Move to flat config. |
+| `eslint` (root) | `^10.x` | **10.x** (Wave 4, flat config) | 10.13.0 | Migrated in Wave 4 to flat config. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
 | `@typescript-eslint/*` (root) | `^6.0.0` | — | parser **8.72.0** | Two majors behind | **P2** | Wave 4 with ESLint. |
-| `turbo` (root) | `2.11.9` | — | 2.11.10 | Patch lag | P3 | Wave 0. |
-| `cytoscape`, `cytoscape-dagre` (web) | `^3.34.4`, `^4.0.1` | — | — | **Unused by the production app** | **P3** | Remove (section 4). |
-| `d3-selection`, `d3-zoom`, `d3-drag` (web) | in **devDependencies** | — | — | **Imported by the production painter** [repo] | **P3** | Move to `dependencies` (a packaging error that does not break the build today). |
+| `turbo` (root) | `2.11.10` | **2.11.10** (Wave 0) | 2.11.10 | Patched in Wave 0. | **Done** | Keep tracking minors. (Updated 2026-11-02.) |
+| `cytoscape`, `cytoscape-dagre` (web) | *removed* | **removed** (Wave 0) | — | Unused production app; deleted with dead canvas files. | **Done** | No longer in package.json (verified 2026-11-02). |
+| `d3-selection`, `d3-zoom`, `d3-drag`, `d3-force` (web) | in **dependencies** | **dependencies** (Wave 0) | — | Moved to dependencies in Wave 0; verified in package.json (2026-11-02). | **Done** | — |
 | `@playwright/test` (web) | `^1.64.1` | — | — | Current range | — | No action. |
 
 Python packages (from `uv.lock`, verified): `httpx` 0.28.1, `pydantic` 2.14.1, `pydantic-settings` 2.16.0, `redis` (redis-py)
@@ -73,17 +73,18 @@ no vulnerability scan is run in CI (`09` S-12).
 
 ## 4. Dead code and dead dependencies
 
-| Item | Evidence | Action |
+**Status (2026-11-02): the Cytoscape cleanup is complete.** Verified by grep: no `cytoscape` references remain in
+`apps/web/src` or `apps/web/package.json` (only historical mentions in archive/ and research docs).
+
+| Item | Status | Notes |
 | --- | --- | --- |
-| `apps/web/src/lib/components/ExplorationCanvas.svelte` (Cytoscape canvas) | No file imports it. Its only dynamic import is `graph/explore/instance`, which is reachable only from this file. | Delete with its dependants. |
-| `apps/web/src/lib/graph/explore/instance.ts`, `cytoscape-runtime.ts` | Imported only by the dead canvas. | Delete. |
-| `cytoscape`, `cytoscape-dagre` packages | Listed as dependencies; the production app uses the SVG painter (ROADMAP 3.52). | Remove after the files above. |
-| Cytoscape tests and fixtures (`tests/canvas-stylesheet.test.ts`, `tests/fixtures/StubCytoscapeCanvas.svelte`, `tests/harness/cytoscape.ts`) | Test the dead code. | Remove. |
+| `ExplorationCanvas.svelte` + `graph/explore/instance.ts` + `cytoscape-runtime.ts` | **Removed** (Wave 0) | Dead canvas and its dependants deleted. |
+| `cytoscape`, `cytoscape-dagre` packages | **Removed** (Wave 0) | No longer in `apps/web/package.json`. |
+| Cytoscape tests and fixtures | **Removed** (Wave 0) | — |
 
 **Why this matters beyond tidiness:** dead code is attack surface, costs build time and misleads the next reader. The
-ROADMAP item 3.64 says the Cytoscape engine was removed. The last commit removed `GraphCanvas.svelte`, `graph/cytoscape.ts`
-and their tests, but not this second set of files. The roadmap statement is therefore only partly true, which is a
-small example of the documentation drift described in `14` §4.
+ROADMAP item 3.64 ("Cytoscape engine removed") is now fully true. Remaining drift: `docs/components/web-pwa.md` and
+`ROADMAP.md` still describe the canvas as "Cytoscape.js" in prose — tracked as task T3 of this feature.
 
 ## 5. Upgrade plan, in waves
 

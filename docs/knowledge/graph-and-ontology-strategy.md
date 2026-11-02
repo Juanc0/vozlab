@@ -60,7 +60,10 @@ exists yet. [repo] ROADMAP 3.8; ADR-0027
 | G8 | Locale completeness not checked on activation. | **Closed** — activation throws `ERR_LOCALE_INCOMPLETE` if `es`/`en` display name missing (T2). |
 | G9 | Ontology events published but no consumer; no deprecation event. | **Partial** — `ONTOLOGY_CLASS_DEPRECATED` / `ONTOLOGY_PROPERTY_DEPRECATED` published post-commit; event catalogue updated. A runtime consumer is deferred (no consumer shipped in v1). |
 
-**Proposed ontology lifecycle (judgment, to decide as D-12):**
+**Proposed ontology lifecycle (judgment, to decide as D-12) — NOT IMPLEMENTED.**
+The state machine below is a proposal; the code (ontology-governance v1) implements only
+`PROPOSED → ACTIVE / REJECTED` and `ACTIVE → DEPRECATED`, with `canActivate()` quorum.
+`UNDER_DISCUSSION` and automatic discussion-thread linkage are not built.
 
 ```mermaid
 stateDiagram-v2

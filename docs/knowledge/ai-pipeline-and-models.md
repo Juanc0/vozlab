@@ -11,7 +11,11 @@ and agents reach the database only through the API. [repo] ADR-0020, ADR-0023, A
 Four things stop it from delivering value today, and none of them is the model:
 
 1. **No live input.** The Extractor is idle because nothing publishes its records (F-03).
-2. **Output cannot be governed.** Agent-created items cannot be accepted by people (F-01).
+2. **Output governance is partial.** Approval paths exist in the API (`PUT /nodes/:id/activate`,
+   `PUT /edges/:id/activate`, and proposal approve/reject, which applies a `MERGE`), so a human *can*
+   accept or reject agent-created `PENDING` artefacts. The remaining gap (F-01) is policy and UI:
+   who approves agent output, the review queue surface, and the S-15 rule that an agent must not
+   approve its own output. The endpoints are there; the governance decision is not.
 3. **Nobody knows whether the output is good.** There is no evaluation set, no metric and no regression test for
    model behaviour (F-09, section 7).
 4. **The models are chosen by default, not by evidence.** The embedder is English-centred and the chat model dates
@@ -22,8 +26,9 @@ Four things stop it from delivering value today, and none of them is the model:
 | Agent | Role | Trigger | Reads | Writes | Identity (JWT `type`) | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | **Embedder** (utility, ADR-0020) | Turns a node's text into a 768-dimension vector | `NODE_CREATED`, group `embedder` | Node title and description, through `GET /nodes/:id` | Vector through `PUT /nodes/:id/embedding` | `AGENT_EMBEDDER` | Implemented; end to end verified (roadmap 2.4). |
-| **Relator** (Agent 2, FR-19) | Compares a new node with its five nearest neighbours and decides | `NODE_CREATED`, group `relator` | `GET /nodes/:id/neighbors` (409 until embedded) | `POST /edges` (`PENDING`) for `EDGE`; `POST /proposals` (`kind: MERGE`) for `MERGE`; nothing for `INDEPENDENT` | `AGENT_RELACIONADOR` | Implemented; recall issue (F-04); verdicts cannot be accepted (F-01). |
-| **Extractor** (Agent 1, FR-17) | Turns a listening record into a node draft | `stream:source_raw`, group `extractor` | The record; source resolution through `GET /ingestion/resolve-source` | `POST /nodes` (`PENDING`) | `AGENT_EXTRACTOR` | Implemented; **no producer** (F-03). |
+| **Relator** (Agent 2, FR-19) | Compares a new node with its five nearest neighbours and decides | `NODE_CREATED`, group `relator` | `GET /nodes/:id/neighbors` (409 until embedded) | `POST /edges` (`PENDING`) for `EDGE`; `POST /proposals` (`kind: MERGE`) for `MERGE`; nothing for `INDEPENDENT` | `AGENT_RELACIONADOR` | Implemented; recall issue (F-04); verdicts are approvable via `PUT /edges/:id/activate` and
+   `POST /proposals` approve (MERGE applies the merge); governance policy (S-15) still open. |
+| **Extractor** (Agent 1, FR-17) | Turns a listening record into a node draft | `stream:source_raw`, group `extractor` | The record; source resolution through `GET /ingestion/resolve-source` | `POST /nodes` (`PENDING`) | `AGENT_EXTRACTOR` | Implemented; **no producer** (F-03); draft nodes approvable via `PUT /nodes/:id/activate`. |
 | **Consolidator** (Agent 3, FR-20) | Finds dense clusters of interest and drafts an "improvement opportunity" | Schedule (planned) | Subgraphs, interactions (planned) | Opportunity (planned; no endpoint) | `AGENT_CONSOLIDADOR` | **Not built.** Open design questions in `spec/consolidator.md`. |
 
 Identity facts that matter: the three AI agents use one seeded system-agent user, and the Relator and Extractor
@@ -175,7 +180,7 @@ produce proposals, but it is real. What exists and what is missing:
 | Output validated against an allow-list (`action`, `targetId` must be a neighbour, `typeKey` must be an active class) | Yes | The strongest control. Keep it. |
 | Structured output requested from the runtime (`format: json`) | Yes | Requests JSON only; it does not constrain the fields. A JSON schema per output is stronger. |
 | Agents cannot execute tools or call arbitrary endpoints | Yes | The agent's routes are the ones listed above. |
-| Verdicts create only `PENDING` artefacts | Yes | But see F-01: people cannot accept them. |
+| Verdicts create only `PENDING` artefacts | Yes | Acceptance paths exist (activate endpoints); governance policy (F-01, S-15) still open. |
 | Separation of instructions and data | Partly | Records are placed in the user message. Use clear delimiters and state that the record is data. |
 | Detection of instruction-like text | No | Flag and route to a human; do not silently drop. |
 | Rate and volume limits on agent output | Partly | The rate limiter counts requests per actor. |

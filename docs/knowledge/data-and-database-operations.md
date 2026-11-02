@@ -32,7 +32,7 @@ host, port, database, user, password, …)`, `credential_routes(credential_hash 
 | Schema | Tables | Notes |
 | --- | --- | --- |
 | `auth` | `users`, `workspaces`, `workspace_memberships`, `refresh_tokens` | `users.author_hash` is unique and random (ADR-0013). Memberships are unique per user and workspace. Refresh tokens are stored as SHA-256 hashes. |
-| `meta` | `ontology_classes`, `datatype_properties`, `object_properties`, `data_sources` | Lifecycle by `status`, not deletion. Display names are locale maps (`{"en":…,"es":…}`). Property `system_key` is not unique (F-16). |
+| `meta` | `ontology_classes`, `datatype_properties`, `object_properties`, `data_sources` | Lifecycle by `status`, not deletion. Display names are locale maps (`{"en":…,"es":…}`). Property `system_key` is unique per workspace (G7 closed). |
 | `public` | `nodes`, `edges`, `edit_proposals`, `interactions_log` | Soft delete on nodes and edges (`deleted_at`). `nodes.embedding vector(768)` with an HNSW index. Edges reference nodes with cascade. Proposal targets are polymorphic and have no foreign key (M-12). |
 | `social` | `discussion_threads`, `discussion_posts` | Posts are scoped through the thread; they carry no `workspace_id`. |
 
@@ -43,7 +43,7 @@ Integrity gaps that are known and accepted, plus two that are not written down:
 | Polymorphic `target_id` in proposals and threads, no foreign key | An orphaned target is possible; proposals validate at creation and re-resolve before approval; threads do not validate at all. | Accepted (M-12). Threads inconsistent with proposals. |
 | `discussion_posts.parent_post_id` has no foreign key and no same-thread check | A reply can point into another thread. | **Not in the known-gaps list.** |
 | `meta.*.workspace_id` nullable | A row can exist without a workspace, although the application always writes it. | Known. |
-| `meta.*.system_key` not unique for properties | `findObjectProperty` returns the first match. | Known (F-16). |
+| `meta.*.system_key` not unique for properties | `findObjectProperty` returns the first match. | **Closed (G7)** — `UNIQUE(workspace_id, system_key)` on both property tables; `findObjectProperty` is now deterministic. (Updated 2026-11-02.) |
 | Refresh-token cleanup is opportunistic (during rotation, for the same user) | Rows of inactive users are never removed. Table growth is unbounded. | Known. |
 | `router.credential_routes.credential_hash` has no cross-DB FK to the tenant credential | A stale route is inert (routing is not authority); the tenant redemption is the gate. | By design (ADR-0046). |
 
