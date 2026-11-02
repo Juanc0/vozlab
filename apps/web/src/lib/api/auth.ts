@@ -28,27 +28,9 @@ export const DEFAULT_REDIRECT_PATH = '/';
  * protocol-relative path would let the identity provider bounce the user to
  * another site, so an unsafe value falls back to {@link DEFAULT_REDIRECT_PATH}.
  */
-export interface LoginUrlOptions {
-  redirectPath?: string;
-  institution?: string;
-  kcIdpHint?: string;
-  invitation?: string;
-}
-
-export function loginUrl(
-  client: ApiClient,
-  optionsOrPath: LoginUrlOptions | string = {}
-): string {
-  const options: LoginUrlOptions =
-    typeof optionsOrPath === 'string' ? { redirectPath: optionsOrPath } : optionsOrPath;
-  const safePath = isSafeRedirectPath(options.redirectPath ?? DEFAULT_REDIRECT_PATH)
-    ? (options.redirectPath ?? DEFAULT_REDIRECT_PATH)
-    : DEFAULT_REDIRECT_PATH;
-  const params = new URLSearchParams({ redirect: safePath });
-  if (options.institution) params.set('institution', options.institution);
-  if (options.kcIdpHint) params.set('kc_idp_hint', options.kcIdpHint);
-  if (options.invitation) params.set('invitation', options.invitation);
-  return client.url(`/auth/login?${params.toString()}`);
+export function loginUrl(client: ApiClient, redirectPath: string = DEFAULT_REDIRECT_PATH): string {
+  const safePath = isSafeRedirectPath(redirectPath) ? redirectPath : DEFAULT_REDIRECT_PATH;
+  return client.url(`/auth/login?redirect=${encodeURIComponent(safePath)}`);
 }
 
 /**
@@ -104,14 +86,11 @@ export async function fetchMe(client: ApiClient): Promise<AuthMeDto> {
   });
 }
 
-/** Ends the session: the access token is blacklisted and the cookie cleared.
- *  Returns the identity provider's end_session URL (if any) so the caller can
- *  terminate the SSO session too. */
-export async function logout(client: ApiClient): Promise<string | null> {
-  const body = await client.request<{ endSessionUrl?: string }>({
+/** Ends the session: the access token is blacklisted and the cookie cleared. */
+export async function logout(client: ApiClient): Promise<void> {
+  await client.requestVoid({
     method: 'POST',
     path: '/auth/logout',
     workspace: false
   });
-  return body?.endSessionUrl ?? null;
 }

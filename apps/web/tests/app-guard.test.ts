@@ -7,7 +7,6 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
-import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import type { AuthUserDto, WorkspaceSummaryDto } from '@vozlab/shared-types';
@@ -33,6 +32,7 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 
 const USER: AuthUserDto = {
   id: '44444444-4444-4444-8444-444444444444',
+  email: 'ada@example.edu',
   fullName: 'Ada Lovelace',
   anonymousAlias: null,
   provider: 'OIDC_INSTITUTIONAL',
@@ -92,7 +92,7 @@ function renderLayout(): { session: SessionState; workspace: WorkspaceState } {
   const children = createRawSnippet(() => ({ render: () => '<p>Page of the app</p>' }));
 
   render(AppLayout, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES }, children },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' }, children },
     context
   });
 
@@ -149,29 +149,10 @@ describe('the (app) guard', () => {
     renderLayout();
 
     await waitFor(() => {
-      expect(screen.getByText(/sin acceso a espacios de trabajo/i)).toBeInTheDocument();
+      expect(screen.getByText(/no hay ningún espacio de trabajo en esta institución/i)).toBeInTheDocument();
     });
 
     // A valid account without a membership is not a redirect loop.
-    expect(goto).not.toHaveBeenCalled();
-  });
-
-  it('renders the request-access page even without a membership', async () => {
-    pageState.url = new URL('http://localhost:5173/request-access');
-
-    stubFetch({
-      refresh: () =>
-        json({ accessToken: 'token', expiresAt: '2026-10-19T12:15:00.000Z', user: USER }),
-      me: () => json({ ...USER, workspaces: [] })
-    });
-
-    renderLayout();
-
-    await waitFor(() => {
-      expect(screen.getByText('Page of the app')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByText(/sin acceso a espacios de trabajo/i)).not.toBeInTheDocument();
     expect(goto).not.toHaveBeenCalled();
   });
 

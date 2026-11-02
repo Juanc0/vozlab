@@ -13,11 +13,8 @@ export const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1';
  * Normalises a configured API base URL.
  *
  * - blank / missing values fall back to {@link DEFAULT_API_BASE_URL};
- * - values that are not absolute `http(s)` URLs are rejected — relative bases
- *   (the old same-origin `/api/v1` behind `demo-proxy.mjs`) are deliberately
- *   not supported: the approved production topology is T2, three origins
- *   behind Caddy (docs/analysis/production-topology-b11.md; ADR-0040, T3
- *   rejected);
+ * - values that are not absolute `http(s)` URLs are rejected (a relative URL
+ *   would silently resolve against the app origin);
  * - trailing slashes are removed so path joining stays predictable.
  */
 export function normalizeApiBaseUrl(value: string | null | undefined): string {

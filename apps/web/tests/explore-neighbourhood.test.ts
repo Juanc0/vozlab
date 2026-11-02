@@ -1,13 +1,13 @@
 /**
- * The merge and the picture — the two pure rules of the walk.
+ * The merge and the neighbourhood — the two pure rules of the walk.
  *
  * The walk merges what the API answers into the working set, and the
- * picture is the whole working set: everything that has been seen stays on
- * it. Both are pure: no DOM, no API call, no Cytoscape.
+ * reader can narrow the picture to the neighbourhood of the focus. Both
+ * are pure: no DOM, no API call, no Cytoscape.
  */
 
 import { describe, expect, it } from 'vitest';
-import { pictureOf } from '$lib/graph/explore/neighbourhood';
+import { filterNeighbourhood, neighbourhoodIds } from '$lib/graph/explore/neighbourhood';
 import { mergeEdges, mergeNodes, sameIds } from '$lib/graph/merge';
 import { EDGE, EDGE_B, EDGE_C, NODE_A, NODE_B, NODE_C } from './fixtures/graph';
 
@@ -40,26 +40,35 @@ describe('the merge', () => {
   });
 });
 
-describe('the picture of the working set', () => {
-  it('holds every node of the working set', () => {
-    const picture = pictureOf([NODE_A, NODE_B, NODE_C], [EDGE, EDGE_B, EDGE_C]);
+describe('the neighbourhood of the focus', () => {
+  const nodes = [NODE_A, NODE_B, NODE_C];
+  const edges = [EDGE, EDGE_B, EDGE_C];
 
-    expect(picture.nodes.map((node) => node.id)).toEqual([
-      NODE_A.id,
-      NODE_B.id,
-      NODE_C.id
-    ]);
+  it('is the node itself at depth zero', () => {
+    const ids = neighbourhoodIds(nodes, edges, NODE_A.id, 0);
+
+    expect([...ids]).toEqual([NODE_A.id]);
+  });
+
+  it('is the node and its neighbours at depth one', () => {
+    const ids = neighbourhoodIds(nodes, edges, NODE_A.id, 1);
+
+    expect([...ids].sort()).toEqual([NODE_A.id, NODE_B.id, NODE_C.id].sort());
+  });
+
+  it('is empty when the focus is not in the set', () => {
+    expect(neighbourhoodIds(nodes, edges, 'not-a-node', 2).size).toBe(0);
   });
 
   it('keeps only the relations whose two ends are inside', () => {
-    const picture = pictureOf([NODE_A, NODE_B], [EDGE]);
+    const picture = filterNeighbourhood([NODE_A, NODE_B], [EDGE], NODE_A.id, 1);
 
     expect(picture.nodes.map((node) => node.id)).toEqual([NODE_A.id, NODE_B.id]);
     expect(picture.edges.map((edge) => edge.id)).toEqual([EDGE.id]);
   });
 
   it('drops a relation whose other end is outside', () => {
-    const picture = pictureOf([NODE_A], [EDGE]);
+    const picture = filterNeighbourhood([NODE_A], [EDGE], NODE_A.id, 1);
 
     expect(picture.nodes.map((node) => node.id)).toEqual([NODE_A.id]);
     expect(picture.edges).toHaveLength(0);

@@ -37,11 +37,10 @@ test.describe('the event-code join', () => {
     );
 
     // The role of the user is shown — it comes from the membership, never
-    // from the UI. The join of an event code grants a GUEST in the EVENT
-    // workspace (v6/TASK-02: anonymous attendees never land as MEMBER).
+    // from the UI.
     const role = page.getByText('Tu rol aquí:');
     await expect(role).toBeVisible();
-    await expect(role).toContainText('GUEST');
+    await expect(role).toContainText('MEMBER');
   });
 
   test('an invalid code shows the API code and message and stays on the page', async ({

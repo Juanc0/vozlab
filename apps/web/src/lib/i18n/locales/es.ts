@@ -22,116 +22,17 @@ import type {
   ThreadStatus,
 } from '@vozlab/shared-types';
 
-/**
- * The copy of the **development surface** — the comparison of the engines.
- *
- * The comparison exists only in a development build, and its copy follows
- * the same rule: `import.meta.env.DEV` folds to `false` in a production
- * build, the object becomes `{}` and the names, the notes and the findings
- * of the engines do not travel to a bundle that never shows them. The type
- * keeps the keys, so `t()` remains checked.
- */
-const engines = {
-  heading: 'Los motores, de uno en uno',
-  intro:
-    'Un mismo espacio para los dos dibujos del resorte vivo: se elige uno de las pestañas y ocupa la pantalla. La disposición es la misma —el resorte de la aplicación— y cada motor trae su propio dibujo, sus propias medidas y su propio cromo. Es una superficie de desarrollo: en una compilación de producción no existe.',
-  pageTitle: 'Los motores, de uno en uno',
-  tabsLabel: 'Los motores, de uno en uno',
-  toolbarLabel: 'La barra de los motores',
-  readoutLabel: 'Las medidas del motor',
-  readoutToggle: 'Todas las medidas',
-  essayToggle: '¿Qué es esto?',
-  panelD3Name: 'Cytoscape + d3-force',
-  panelD3Note:
-    'El resorte vivo de la aplicación: una simulación con semilla, una fuerza de colisión rectangular y un reposo que respira.',
-  panelSvgName: 'SVG + d3',
-  panelSvgNote:
-    'El pintor propio: cada tarjeta es un solo <g> —el rectángulo, el título partido, la línea de tipo y el cuerpo— y cada relación un <path>. No trae disposición propia: lo reparte el resorte vivo, y la lectura mide lo que cuesta la imagen. Sus cinco formas son aproximaciones de las curvas de Cytoscape, y todo lo que Cytoscape resuelve por dentro aquí está escrito a mano.',
-  canvasLabel: 'El lienzo de la comparación',
-  pictureLabel: 'La imagen de la comparación',
-  sizeLabel: 'Tamaño de la imagen',
-  sizeDemo: 'La demostración ({count} nodos)',
-  sizeStress: 'El techo de la API ({count} nodos)',
-  sizeCurrent: 'El tamaño actual ({count} nodos)',
-  edgeStyleLabel: 'Forma de las flechas',
-  measure: 'Medir el motor',
-  measuring: 'Midiendo…',
-  noMeasurement: 'Todavía no se ha medido.',
-  rerun: 'Repetir la disposición',
-  listToggle: 'Ver la lista',
-  listHeading: 'La imagen en forma de lista',
-  counts: '{nodes} nodos · {edges} relaciones',
-  frameLabel: 'Marco',
-  kpiMs: '{value} ms',
-  frameValue: '{value} ms (mediana)',
-  framePeak: 'El más lento: {value} ms',
-  frameCount: 'Cuadros medidos: {count}',
-  layoutLabel: 'Disposición',
-  layoutValue: '{value} ms en total',
-  buildLabel: 'Construcción de la imagen',
-  buildValue: '{value} ms en construirla',
-  domLabel: 'Elementos de la imagen',
-  domValue: '{count} elementos',
-  settledLabel: 'Asentada',
-  settledYes: 'Sí',
-  settledNo: 'Todavía no',
-  motionLabel: 'Movimiento',
-  aliveAwake: 'Despierta: la mano la movió',
-  aliveIdle: 'Viva: se mueve en reposo',
-  shapeLabel: 'Forma',
-  shapeReached: 'Alcanzada por debajo de {threshold} px por paso',
-  shapeMoving: 'Todavía buscándola',
-  aliveNote:
-    'El resorte vivo no se asienta: en reposo sigue moviéndose por debajo de {threshold} px por paso, y despierta cuando la mano lo toca. La forma se alcanza cuando el movimiento queda por debajo de ese umbral; la simulación no se detiene.',
-  overlapsLabel: 'Tarjetas encima',
-  edgeCrossingsLabel: 'Aristas cruzadas',
-  overlapsValue: '{count} pares',
-  edgeCrossingsValue: '{count} cruces',
-  overlapsOne: '{count} par',
-  stateLabel: 'Estado',
-  stateAlive: 'Viva',
-  stateSeeking: 'Buscando',
-  stateSettled: 'Asentada',
-  stateUnsettled: 'Sin asentar',
-  ticksLabel: 'Pasos de la simulación',
-  ticksValue: '{count} pasos',
-  tickLabel: 'Un paso del resorte',
-  tickValue: '{value} ms por paso',
-  layoutFrameLabel: 'Cuadro de la disposición',
-  frameLayoutValue: '{value} ms por cuadro',
-  reproducibleLabel: 'Sale igual dos veces',
-  reproducibleD3: 'Sí: la semilla es fija',
-  reproducibleSvg: 'Sí: la semilla es fija',
-  loading: 'Cargando la ventana…',
-  empty: 'La ventana está vacía: no hay nada que comparar.',
-  svgPainterError: 'El pintor SVG no pudo dibujar la imagen.',
-  badgesLabel: 'Los nodos de la ventana',
-  findingsHeading: 'Lo que este motor hace distinto',
-  findingSvgCard:
-    'La tarjeta es un solo objeto: el rectángulo, el título, la línea de tipo y el cuerpo son hijos del mismo <g>. Cytoscape los dibuja como elementos separados, y un arrastre tiene que volver a sincronizar el texto en cada cuadro.',
-  findingSvgLimits:
-    'El pintor es nuestro: no trae disposición ni renderizador WebGL, sus cinco formas son aproximaciones de las curvas de Cytoscape y la imagen no está virtualizada: doscientas tarjetas son miles de elementos en el DOM. La lectura dice cuántos y cuánto tardó el SVG en construirse.',
-  findingD3Collision:
-    'El resorte de d3-force lleva una fuerza de colisión rectangular: dos tarjetas que se pisan se separan por el eje de menor penetración, y la imagen termina sin un solo par de tarjetas encima de otro.',
-  findingD3Seed:
-    'El resorte de d3-force tiene semilla: la misma imagen sale igual dos veces, y con menos movimiento la imagen es la misma.',
-  findingD3Living:
-    'El resorte de d3-force no se asienta: el reposo es una temperatura distinta de cero, así que sigue moviéndose por debajo del umbral y despierta cuando la mano lo toca. Las relaciones con más peso acercan sus tarjetas.',
-};
-
 export const es = {
   /** The copy several screens share. */
   common: {
     cancel: 'Cancelar',
     close: 'Cerrar',
-    hide: 'Ocultar',
     loading: 'Cargando…',
     all: 'Todos',
     required: '(obligatorio)',
     optional: '(opcional)',
     tryAgain: 'Intentar de nuevo',
     joinWithCode: 'Unirse con un código de evento',
-    joinEvent: 'Unirse a un evento',
     emptyValue: '—'
   },
 
@@ -166,13 +67,7 @@ export const es = {
     signedInFallback: 'Sesión iniciada',
     signOut: 'Cerrar sesión',
     signingOut: 'Cerrando sesión…',
-    signOutFailed: 'No se pudo cerrar la sesión.',
-    collapseNavigation: 'Contraer la navegación',
-    expandNavigation: 'Expandir la navegación',
-    workspaceControl: 'Espacio de trabajo: {name}',
-    sessionControl: 'Sesión de {name}',
-    workspaceMenu: 'El espacio de trabajo',
-    sessionMenu: 'La sesión'
+    signOutFailed: 'No se pudo cerrar la sesión.'
   },
 
   /** The selector of the workspace. */
@@ -180,13 +75,6 @@ export const es = {
     label: 'Espacio de trabajo',
     yourRole: 'Tu rol aquí:',
     noneSelected: 'No hay ningún espacio de trabajo seleccionado.'
-  },
-
-  /** El selector de institución (cambio de tenant sin re-autenticar). */
-  tenant: {
-    label: 'Institución',
-    switching: 'Cambiando de institución…',
-    switchFailed: 'No se pudo cambiar de institución.'
   },
 
   /** The selector of the language. */
@@ -206,9 +94,6 @@ export const es = {
     continue: 'Continuar con tu institución',
     continueHelp:
       'El navegador lleva al proveedor de identidad y vuelve aquí cuando ha terminado.',
-    providerLocal: 'Cuenta local (Zitadel)',
-    providerGoogle: 'Continuar con Google',
-    providerMicrosoft: 'Continuar con Microsoft Entra',
     joiningHeading: '¿Vas a participar en un evento?',
     joiningText:
       'Un código de evento es una credencial de un solo uso para un único espacio de trabajo. No necesita cuenta ni proveedor de identidad.',
@@ -233,7 +118,7 @@ export const es = {
     localCommandLabel: 'El comando que genera un token de desarrollo',
     localNote:
       'Ese token pertenece a la API (scripts, workers, `curl`). La aplicación en sí necesita un proveedor de identidad o un código de evento.',
-    localRunbook: 'El runbook describe el flujo completo: `docs/ops/runbook-dev.md`.'
+    localRunbook: 'El runbook describe el flujo completo: `docs/runbook-dev.md`.'
   },
 
   /** The join of an event with a code. */
@@ -268,7 +153,9 @@ export const es = {
   /** The shell of the application: the guard and the empty states. */
   app: {
     workspaceAndSections: 'Espacio de trabajo y secciones',
-    noWorkspaceHeading: 'Sin acceso a espacios de trabajo',
+    noWorkspaceHeading: 'No hay ningún espacio de trabajo en esta institución',
+    noWorkspaceText:
+      'Tu cuenta es válida, pero no eres miembro de ningún espacio de trabajo de esta institución. Pide a un administrador que te añada a uno, o únete a un evento con un código.',
     restoreFailedHeading: 'No se pudo restaurar la sesión',
     restoreFailedOffline:
       'El navegador está sin conexión: la sesión necesita la red para restaurarse. Las páginas que requieren el servidor no se pueden cargar hasta que vuelva la conexión.',
@@ -277,7 +164,6 @@ export const es = {
 
   /** The graph screen: the root picker, the canvas, the list and the panel. */
   graph: {
-    unreviewed: 'Sin revisar',
     pageTitle: 'Grafo — VozLab',
     heading: 'Grafo',
     intro:
@@ -300,11 +186,6 @@ export const es = {
     rootHeading: 'Nodo raíz',
     rootHelp:
       'Los nodos más recientes de este espacio de trabajo. Elige uno para dibujar el subgrafo a su alrededor.',
-    rootSearchLabel: 'Buscar un nodo',
-    rootSearchPlaceholder: 'Buscar por título…',
-    rootSearchCount: 'Nodos que coinciden: {count}',
-    rootSearchIdle: 'Nodos en la lista: {count}',
-    rootSearchEmpty: 'Ningún nodo coincide con «{query}».',
     loadingNodes: 'Cargando los nodos…',
     noNodes:
       'Este espacio de trabajo todavía no tiene ningún nodo. No se puede dibujar nada hasta que exista uno.',
@@ -367,7 +248,7 @@ export const es = {
     windowNote:
       'La ventana es un grafo **cerrado**, viene en orden de **creación** y la API la acota a {max} nodos, sin paginación.',
     hint:
-      'Arrastra el fondo para mover el lienzo, usa la rueda para acercar o alejar y haz clic en un nodo para caminar hacia él: la imagen se centra en el nodo sin cambiar el zoom.',
+      'Arrastra el fondo para mover el lienzo, usa la rueda para acercar o alejar y haz clic en un nodo para caminar hacia él.',
     focusLabel: 'Nodo presentado',
     focusRecent: 'El más reciente',
     focusRelated: 'El más relacionado',
@@ -377,18 +258,17 @@ export const es = {
     depthLabel: 'Profundidad',
     depthHelp:
       'Cuántos saltos se recuperan alrededor del nodo en el que haces clic. Es la misma profundidad que usa el subgrafo.',
-    scopeAll:
-      'La imagen tiene {nodes} nodos y {relations} relaciones: todo lo que se ha visto.',
-    zoomLabel: 'El zoom de la imagen',
-    zoomTitle: 'Zoom de la imagen',
-    zoomIn: 'Acercar la imagen',
-    zoomOut: 'Alejar la imagen',
-    zoomFit: 'Ver el grafo entero',
-    zoomFitShort: 'Ajustar',
+    onlyNeighbourhoodLabel: 'Solo el entorno del nodo',
+    onlyNeighbourhoodHelp:
+      'Con el interruptor activado, la imagen muestra solo el entorno del nodo presentado, a la profundidad elegida. El resto queda oculto.',
+    scopeAll: 'La imagen tiene {shown} nodos: todo lo que se ha visto.',
+    scopeFocused:
+      'La imagen tiene {shown} nodos; {hidden} quedan fuera del entorno del nodo presentado.',
     walking: 'Recuperando el entorno de «{title}»…',
     isolated: '«{title}» no tiene relaciones: su entorno está vacío.',
     edgeStyleLabel: 'Forma de las flechas',
     edgeStraight: 'Una línea recta',
+    edgeOrthogonal: 'En ángulo recto',
     edgeBezier: 'Curva suave',
     edgeUnbundled: 'Curva abierta',
     edgeArc: 'Arco',
@@ -401,7 +281,7 @@ export const es = {
     relationBadgesLabel: 'Las relaciones de la ventana',
     canvasLabel: 'Lienzo de la ventana de exploración',
     canvasDescription:
-      '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con un resorte de d3-force con colisión rectangular.',
+      '{nodes} nodos y {edges} relaciones de la ventana de exploración, dibujados con una disposición dagre determinista.',
     previewNoDescription: 'Sin descripción.',
     previewNoAttributes: 'Sin atributos.',
     previewEndpoints: 'De «{source}» a «{target}»',
@@ -417,7 +297,53 @@ export const es = {
    * The copy of the names of the engines is the same in the two languages:
    * they are proper nouns, and a proper noun is not translated.
    */
-  engines: import.meta.env.DEV ? engines : ({} as typeof engines),
+  engines: {
+    heading: 'Los motores, lado a lado',
+    intro:
+      'La misma ventana, los mismos nodos y las mismas relaciones en los tres motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
+    pageTitle: 'Los motores, lado a lado',
+    panelDagreName: 'Cytoscape + dagre',
+    panelDagreNote:
+      'El motor que ya está: una disposición jerárquica y determinista, calculada de una vez.',
+    panelFcoseName: 'Cytoscape + fcose',
+    panelFcoseNote:
+      'El mismo lienzo con la fuerza de CoSE: una simulación que se asienta y se detiene.',
+    panelSigmaName: 'Sigma.js + Graphology',
+    panelSigmaNote:
+      'El motor que dibuja con WebGL y guarda el grafo en el cliente, con la fuerza de ForceAtlas2.',
+    canvasLabel: 'El lienzo de la comparación',
+    sizeLabel: 'Tamaño de la imagen',
+    sizeDemo: 'La demostración ({count} nodos)',
+    sizeStress: 'El techo de la API ({count} nodos)',
+    edgeStyleLabel: 'Forma de las flechas',
+    measure: 'Medir los tres motores',
+    measuring: 'Midiendo…',
+    rerun: 'Repetir la disposición',
+    listToggle: 'Ver la lista',
+    listHeading: 'La imagen en forma de lista',
+    counts: 'La imagen tiene {nodes} nodos y {edges} relaciones.',
+    frameLabel: 'Marco',
+    frameValue: '{value} ms (mediana)',
+    framePeak: 'El más lento: {value} ms',
+    frameCount: 'Cuadros medidos: {count}',    layoutLabel: 'Disposición',
+    layoutValue: '{value} ms en total',
+    settledLabel: 'Asentada',
+    settledYes: 'Sí',
+    settledNo: 'Todavía no',
+    loading: 'Cargando la ventana…',
+    empty: 'La ventana está vacía: no hay nada que comparar.',
+    badgesLabel: 'Los nodos de la ventana',
+    sigmaUnavailable: 'Este navegador no pudo dibujar el lienzo WebGL.',
+    findingsHeading: 'Lo que los motores no hacen igual',
+    findingSigmaLabel:
+      'Sigma no escribe un título de varias líneas dentro de la figura de un nodo: la tarjeta es una imagen pintada sobre un lienzo 2D, con el mismo módulo puro de la tarjeta.',
+    findingSigmaEdges:
+      'Los programas de arista de Sigma no aceptan puntos de paso: la ruta en ángulo recto la calcula el mismo enrutador puro y la dibuja el lienzo 2D.',
+    findingSigmaDashes:
+      'Sigma no tiene programa de arista discontinua: el estado pendiente de una relación se ve solo en el color.',
+    findingFcoseSeed:
+      'fcose no tiene randomSeed: su paso espectral sortea las posiciones de partida, y la misma imagen no sale igual dos veces.'
+  },
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
@@ -467,11 +393,7 @@ export const es = {
     edgeNothingToSave:
       'El formulario no cambia nada todavía: cambia un campo antes de guardarlo.',
     edgeChanges: 'Qué cambia esta edición',
-    edgeFormKept: 'El formulario conserva lo que has escrito: no se ha guardado nada.',
-     approve: 'Aprobar',
-     reject: 'Rechazar',
-     autoActivate: 'Activar automáticamente',
-     nowStatus: 'Está ahora en {status}.'
+    edgeFormKept: 'El formulario conserva lo que has escrito: no se ha guardado nada.'
   },
 
   /** The node: its form, its details and its history. */
@@ -644,10 +566,7 @@ export const es = {
     autoApplyBlockedRole:
       'el rol en este espacio de trabajo no es de moderación ni de administración.',
     autoApplyBlockedClosed: 'la propuesta no está abierta.',
-    discussionHeading: 'Debate de esta propuesta',
-    discussionThread: 'Hilo de debate',
-    openDiscussion: 'Abrir el debate',
-    openDiscussionInPage: 'Abrir el debate en la página de debates'
+    discussionHeading: 'Debate de esta propuesta'
   },
 
   /** The delta of a proposal. */
@@ -748,11 +667,11 @@ export const es = {
 
   /** The state of the PWA itself. */
   pwa: {
-    errorTitle: 'No se ha podido guardar la aplicación en caché',
+    errorTitle: 'No se ha podido activar el soporte sin conexión',
     errorHint:
-      'VozLab sigue funcionando con conexión; sin ella, la aplicación no se abre.',
-    shellCached:
-      'VozLab ya está en la caché de este dispositivo: la aplicación se abre al instante. Los datos necesitan conexión.',
+      'La aplicación sigue funcionando, pero no estará disponible sin conexión.',
+    offlineReady:
+      'VozLab está listo para funcionar sin conexión: la aplicación está en la caché de este dispositivo.',
     dismiss: 'Entendido'
   },
 
@@ -844,124 +763,5 @@ export const es = {
       OPEN: 'Abierto',
       CLOSED: 'Cerrado'
     } satisfies Record<ThreadStatus, string>
-  },
-
-  admin: {
-    title: 'Administración',
-    workspaces: 'Espacios de trabajo',
-    createWorkspace: 'Crear espacio de trabajo',
-    name: 'Nombre',
-    slug: 'Identificador',
-    description: 'Descripción',
-    isPublic: 'Público',
-    members: 'Miembros',
-    joinRequests: 'Solicitudes de acceso',
-    invitations: 'Invitaciones',
-    selectTenantTitle: 'Seleccionar inquilino',
-    selectTenantNone: 'Sin inquilinos vinculados',
-    addRole: 'Añadir rol…',
-    createJoinCode: 'Crear código efímero',
-    joinCodes: 'Códigos efímeros',
-    edit: 'Editar',
-    maxUses: 'Usos máximos',
-    expiresAt: 'Caduca',
-    autoApprove: 'Aprobación automática',
-    purpose: 'Propósito',
-    uses: 'Usos',
-    save: 'Guardar',
-    cleanup: 'Higiene del inquilino',
-    cleanupDays: 'Ventana de inactividad de invitados (días)',
-    runCleanup: 'Ejecutar limpieza',
-    cleanupResult: '{invitations} invitaciones caducadas · {guests} invitados eliminados',
-    label: 'Etiqueta',
-    createdCode: 'Código (se muestra una vez)',
-    addMember: 'Añadir miembro',
-    email: 'Correo',
-    handle: 'Alias de usuario',
-    role: 'Rol',
-    status: 'Estado',
-    suspend: 'Suspender',
-    reactivate: 'Reactivar',
-    remove: 'Eliminar',
-    approve: 'Aprobar',
-    reject: 'Rechazar',
-    createInvitation: 'Crear invitación',
-    revoke: 'Revocar',
-    invitationLink: 'Enlace de invitación',
-    noWorkspaces: 'No hay espacios de trabajo.',
-    noAccess: 'No eres administrador del inquilino.',
-    kind: 'Tipo',
-    initialAdmin: 'Administrador inicial (opcional)',
-    creatorBecomesAdmin: 'El creador se convierte en administrador',
-    tenantUsers: 'Usuarios del inquilino',
-    tabs: {
-      workspaces: 'Espacios de trabajo',
-      users: 'Usuarios',
-      hygiene: 'Higiene'
-    },
-    activate: 'Activar',
-    promote: 'Ascender',
-    demote: 'Degradar',
-    memberships: 'Pertenencias',
-    noMemberships: 'Sin pertenencias.',
-    systemRole: 'Rol del sistema',
-    actions: 'Acciones'
-  },
-
-  workspaceAdmin: {
-    title: 'Administración del espacio de trabajo',
-    noAccess: 'No administras este espacio de trabajo.',
-    general: 'General',
-    members: 'Miembros',
-    access: 'Acceso',
-    codes: 'Códigos',
-    eventCodes: 'Códigos de evento',
-    ontology: 'Ontología',
-    save: 'Guardar cambios',
-    saved: 'Guardado.',
-    loadFailed: 'No se pudo cargar el espacio de trabajo.'
-  },
-
-  requestAccess: {
-    title: 'Solicitar acceso',
-    discover: 'Descubrir espacios públicos',
-    joinByCode: 'Unirse con código',
-    code: 'Código',
-    message: 'Mensaje',
-    request: 'Solicitar',
-    myRequests: 'Mis solicitudes',
-    noWorkspaces: 'No hay espacios públicos disponibles.'
-  },
-
-  ontologyAdmin: {
-    title: 'Propuestas de ontología',
-    classes: 'Clases',
-    datatypeProperties: 'Propiedades de datos',
-    objectProperties: 'Propiedades de objeto',
-    empty: 'No hay elementos de ontología propuestos.',
-    systemKey: 'Clave del sistema',
-    domain: 'Dominio',
-    range: 'Rango',
-    datatype: 'Tipo de dato',
-    proposedBy: 'Propuesto por',
-    status: 'Estado',
-    actions: 'Acciones',
-    activate: 'Activar',
-    reject: 'Rechazar',
-    activated: 'Activado',
-    rejected: 'Rechazado',
-    deprecate: 'Deprecar',
-    deprecated: 'Deprecado',
-    migrationTarget: 'Objetivo de migración',
-    migrationTargetKey: 'Clave del objetivo de migración',
-    selectMigrationTarget: 'Selecciona un objetivo de migración',
-    migrationTargetRequired: 'Se requiere un objetivo de migración.',
-    activeItems: 'Elementos activos',
-    activeClasses: 'Clases activas',
-    activeDatatypeProperties: 'Propiedades de datos activas',
-    activeObjectProperties: 'Propiedades de objeto activas',
-    emptyActive: 'No hay elementos activos.',
-    discussionThread: 'Discusión',
-    proposerOrModeratorOnly: 'Solo el proponente o un moderador puede actuar sobre esta propuesta.'
   }
 } as const;

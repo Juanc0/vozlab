@@ -10,7 +10,6 @@
   import { registerServiceWorker } from '$lib/pwa/register';
   import { pwaState } from '$lib/pwa/state.svelte';
   import { provideAppState } from '$lib/state/context';
-  import { PanelsState } from '$lib/state/panels.svelte';
   import { SessionState } from '$lib/state/session.svelte';
   import { WorkspaceState } from '$lib/state/workspace.svelte';
   import { isWorkspacePath } from '$lib/layout/workspace';
@@ -31,13 +30,7 @@
   // through the state, not through the data of the page.
   const locale = new LocaleState(untrack(() => data.locale));
 
-  // The state of the panels comes from the server too: the `handle` hook
-  // read the cookie of the visitor, so the first paint is already the state
-  // the reader left behind — the navigation folded into its rail, the
-  // inspector away, the root picker closed.
-  const panels = new PanelsState(untrack(() => data.panels));
-
-  provideAppState({ session, workspace, api, locale, panels });
+  provideAppState({ session, workspace, api, locale });
 
   /**
    * Whether the page has a navigation.
@@ -57,6 +50,17 @@
    */
   const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
 
+  /**
+   * The name of the active workspace — the **scope** of the screen.
+   *
+   * It is shown in the bar of the shell: every read and every write of the
+   * application is made in it, and the reader must never wonder which one.
+   * It is `null` until the session is restored and the memberships arrive.
+   */
+  const scope = $derived(
+    workspace.workspaces.find((item) => item.id === workspace.currentWorkspaceId)?.name ?? null
+  );
+
   onMount(() => {
     // The connectivity drives the offline banner and the block of the
     // writes: both are read from the browser, never from the server.
@@ -70,12 +74,12 @@
     // prompt of the shell.
     void registerServiceWorker({
       onNeedRefresh: (applyUpdate) => pwaState.setNeedRefresh(applyUpdate),
-      onOfflineReady: () => pwaState.markShellCached(),
+      onOfflineReady: () => pwaState.setOfflineReady(),
       onRegisterError: (error) => pwaState.setError(error)
     });
   });
 </script>
 
-<AppShell {navigation} workspace={isWorkspace}>
+<AppShell title="VozLab" {navigation} {scope} workspace={isWorkspace}>
   {@render children?.()}
 </AppShell>

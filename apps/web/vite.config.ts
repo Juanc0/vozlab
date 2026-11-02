@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => {
                 short_name: 'VozLab',
                 start_url: '/',
                 display: 'standalone',
-                theme_color: '#183d6c',
+                theme_color: '#1e3a8a',
                 icons: [
                   { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
                   { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
@@ -186,8 +186,6 @@ export default defineConfig(({ mode }) => {
         }
       : undefined,
     server: {
-      host: '0.0.0.0',
-      allowedHosts: true,
       fs: {
         // The workspace package `@vozlab/shared-types` is served to the
         // browser as source in dev mode; SvelteKit's allow list does not
@@ -198,18 +196,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       include: ['tests/**/*.test.ts'],
-      setupFiles: ['./tests/setup.ts'],
-      coverage: {
-        provider: 'v8',
-        reporter: ['text', 'lcov'],
-        reportsDirectory: './coverage',
-        thresholds: {
-          lines: 50,
-          functions: 50,
-          branches: 40,
-          statements: 50,
-        },
-      },
+      setupFiles: ['./tests/setup.ts']
     }
   };
 });

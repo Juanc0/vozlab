@@ -13,7 +13,7 @@
   import { MediaQuery } from '$lib/layout/media.svelte';
   import { isWorkspacePath } from '$lib/layout/workspace';
   import { connectivityState } from '$lib/pwa/connectivity.svelte';
-  import { getApiClient, getLocaleState, getPanelsState, getSessionState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getSessionState, getWorkspaceState } from '$lib/state/context';
   import { shellState } from '$lib/state/shell.svelte';
   import type { LayoutProps } from './$types';
 
@@ -23,7 +23,6 @@
   const session = getSessionState();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
-  const panels = getPanelsState();
   const t = locale.t;
 
   /**
@@ -43,36 +42,6 @@
    * them scrolls.
    */
   const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
-
-  /**
-   * Routes that stay usable even when the account has no workspace
-   * membership: the request-access surface is the way out of that state,
-   * so the guard must not replace its children with the no-membership card.
-   */
-  const usableWithoutMembership = $derived(
-    page.url.pathname === '/request-access' ||
-      page.url.pathname.startsWith('/request-access/') ||
-      page.url.pathname === '/admin' ||
-      page.url.pathname.startsWith('/admin/') ||
-      page.url.pathname === '/workspace-admin' ||
-      page.url.pathname.startsWith('/workspace-admin/')
-  );
-
-  /**
-   * The padding of the column of the navigation.
-   *
-   * The rail is 56 pixels wide and it holds a touch target of 44: the
-   * padding has to leave room for it, or the column grows a scrollbar that
-   * nothing asked for.
-   *
-   * The padding is the **same on every route** — the graph is a workspace
-   * and the proposals screen is a document, and the column must not move
-   * or change width between them. The top padding is the air the mark of
-   * the product keeps from the top edge of the window.
-   */
-  const navPadding = $derived(
-    `pt-6 ${panels.navCollapsed ? 'px-1' : 'px-4 sm:px-6'}`
-  );
 
   onMount(() => {
     navWide.attach();
@@ -201,9 +170,8 @@
 
   <div
     class="grid {navWide.matches
-      ? 'lg:grid-cols-[var(--nav-width)_minmax(0,1fr)] lg:gap-7'
+      ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7'
       : ''} {isWorkspace ? 'h-full min-h-0' : ''}"
-    style="--nav-width: {panels.navCollapsed ? 'var(--sidebar-rail-width)' : 'var(--sidebar-width)'}"
   >
     {#if navWide.matches}
       <!--
@@ -217,37 +185,27 @@
         In a **workspace** the column is not sticky: the window does not
         scroll, the column is as tall as the window and it scrolls inside
         itself.
-
-        The column **folds** into a rail of 56 pixels when the reader asks
-        for it: the canvas needs the room, and the sections stay reachable
-        with their names.
       -->
       <aside
         aria-label={t('app.workspaceAndSections')}
-        class="hidden min-w-0 border-r border-brand-200 bg-brand-100 lg:block lg:overflow-y-auto {isWorkspace
-          ? 'h-full'
-          : 'sticky top-0 h-dvh'} {navPadding}"
+        class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
+          ? 'h-full pl-4 pr-6 sm:pl-6'
+          : 'sticky top-16 h-[calc(100dvh-4rem)] pr-6'}"
       >
-        <AppSidebar collapsible collapsed={panels.navCollapsed} />
+        <AppSidebar />
       </aside>
     {/if}
 
-    <!--
-      The page. In a **workspace** it is the whole area — no padding, the
-      canvas is the window. In a document it carries the padding the shell
-      used to carry: the column of the navigation is beside it, at the
-      edge of the window, and both keep the same air on every route.
-    -->
-    <div class="min-w-0 {isWorkspace
-      ? 'h-full min-h-0'
-      : status === 'no-membership' && !usableWithoutMembership
-        ? ''
-        : 'px-4 py-6 sm:px-6 sm:py-8'}">
-      {#if status === 'no-membership' && !usableWithoutMembership}
-        <section class="rounded-card border border-brand-200 bg-brand-100 shadow-float mt-4 mr-4 ml-4 lg:mt-7 lg:mr-7 lg:ml-0">
-          <div class="flex flex-col items-center px-7 py-3">
-            <h1>{t('app.noWorkspaceHeading')}</h1>
-          </div>
+    <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : ''}">
+      {#if status === 'no-membership'}
+        <section class="rounded-card bg-surface p-6">
+          <h1>{t('app.noWorkspaceHeading')}</h1>
+          <p class="mt-2 max-w-measure text-body text-muted">
+            {t('app.noWorkspaceText')}
+          </p>
+          <a href="/join" class="btn btn-secondary mt-4">
+            {t('common.joinWithCode')}
+          </a>
         </section>
       {:else}
         {@render children?.()}
@@ -255,7 +213,7 @@
     </div>
   </div>
 {:else if status === 'failed'}
-  <section role="alert" class="max-w-measure rounded-card bg-brand-100 p-6">
+  <section role="alert" class="max-w-measure rounded-card bg-surface p-6">
     <h1 class="text-section font-sans">{t('app.restoreFailedHeading')}</h1>
     <p class="mt-2 text-body text-muted">
       {#if connectivityState.offline}

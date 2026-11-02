@@ -16,6 +16,7 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 
 const USER: AuthUserDto = {
   id: '44444444-4444-4444-8444-444444444444',
+  email: 'ada@example.edu',
   fullName: 'Ada Lovelace',
   anonymousAlias: null,
   provider: 'OIDC_INSTITUTIONAL',
@@ -94,16 +95,11 @@ describe('auth api', () => {
     expect(headersOf(fetchMock).get('X-Workspace-ID')).toBeNull();
   });
 
-  it('logs out and returns the IdP end_session URL', async () => {
+  it('logs out with an empty answer', async () => {
     const { client, fetchMock } = harness();
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ endSessionUrl: 'https://idp.example/end_session?client_id=x' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    );
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
-    await expect(logout(client)).resolves.toBe('https://idp.example/end_session?client_id=x');
+    await expect(logout(client)).resolves.toBeUndefined();
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${BASE_URL}/auth/logout`);
     expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('POST');

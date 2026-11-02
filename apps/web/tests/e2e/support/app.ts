@@ -59,30 +59,6 @@ export async function openList(page: Page): Promise<void> {
 }
 
 /**
- * Opens the panel of the **root picker**.
- *
- * @deprecated retired with the toolbar redesign (roadmap 3.57–3.64). There
- * is no control that opens the root picker anymore; the search of the
- * toolbar is the current way to reach a node by name. The specs that still
- * call this wait on a button that no longer renders.
- */
-export async function openRootPicker(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Raíz', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Nodo raíz' })).toBeVisible();
-}
-
-/**
- * Opens the **inspector**.
- *
- * It is folded by default too: the reader turns it on when they want to
- * read the thing they have selected.
- */
-export async function openInspector(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Mostrar el inspector' }).click();
-  await expect(page.getByRole('tab', { name: 'Contenido' })).toBeVisible();
-}
-
-/**
  * The description of the canvas.
  *
  * The canvas is a picture: its description is what a screen reader reads

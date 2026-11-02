@@ -122,6 +122,7 @@ export async function loadMemberships(deps: SessionRestoreDeps): Promise<Session
   if (session.user === null) {
     session.setUser({
       id: me.id,
+      email: me.email,
       fullName: me.fullName,
       anonymousAlias: me.anonymousAlias,
       provider: me.provider,
@@ -129,11 +130,6 @@ export async function loadMemberships(deps: SessionRestoreDeps): Promise<Session
       authorHash: me.authorHash
     });
   }
-
-  // The tenant switcher needs the router identity the API resolved for this
-  // tenant user (v6/TASK-01: the loop is closed with `POST /auth/switch-tenant`).
-  session.globalUserId = me.globalUserId;
-  session.currentTenantId = me.tenantId;
 
   workspace.hydrate(me.workspaces);
 

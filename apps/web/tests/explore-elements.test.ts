@@ -138,15 +138,14 @@ describe('the meta line of a card', () => {
 });
 
 describe('the mark of the status', () => {
-  it('wears a soft brand edge when the node is active', () => {
+  it('is nothing at all when the node is active', () => {
     const border = nodeStatusBorder('ACTIVE');
 
-    expect(border.width).toBe(1);
-    expect(border.color).toBe('#99c0f6');
+    expect(border.width).toBe(0);
   });
 
   it('is a border of two pixels in the colour of the status', () => {
-    expect(nodeStatusBorder('PENDING')).toEqual({ width: 2, color: '#6d5fa3' });
+    expect(nodeStatusBorder('PENDING')).toEqual({ width: 2, color: '#92400e' });
     expect(nodeStatusBorder('REJECTED')).toEqual({ width: 2, color: '#c4242a' });
     expect(nodeStatusBorder('MERGED')).toEqual({ width: 2, color: CARD_META_INK });
   });
@@ -155,7 +154,7 @@ describe('the mark of the status', () => {
     const element = toNodeElement(NODE_B, { measure });
 
     expect(element.data.borderWidth).toBe(2);
-    expect(element.data.borderColor).toBe('#6d5fa3');
+    expect(element.data.borderColor).toBe('#92400e');
     expect(CARD_COLOR).toBe('#ffffff');
   });
 });

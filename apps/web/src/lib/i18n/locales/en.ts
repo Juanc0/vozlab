@@ -13,115 +13,16 @@
 import type { Dictionary } from '../dictionary';
 import { es } from './es';
 
-/**
- * The copy of the **development surface** — the comparison of the engines.
- *
- * The comparison exists only in a development build, and its copy follows
- * the same rule: `import.meta.env.DEV` folds to `false` in a production
- * build, the object becomes `{}` and the names, the notes and the findings
- * of the engines do not travel to a bundle that never shows them. The type
- * keeps the keys, so `t()` remains checked.
- */
-const engines = {
-  heading: 'The engines, one at a time',
-  intro:
-    'One single space for the two painters of the living spring: one of them is picked from the tabs and it takes over the screen. The arrangement is the same — the spring of the app — and every engine brings its own painting, its own measurements and its own chrome. This is a development surface: it does not exist in a production build.',
-  pageTitle: 'The engines, one at a time',
-  tabsLabel: 'The engines, one at a time',
-  toolbarLabel: 'The bar of the engines',
-  readoutLabel: 'The measurements of the engine',
-  readoutToggle: 'All the measurements',
-  essayToggle: 'What is this?',
-  panelD3Name: 'Cytoscape + d3-force',
-  panelD3Note:
-    'The living spring of the app: a seeded simulation, a rectangular collision force and a rest that breathes.',
-  panelSvgName: 'SVG + d3',
-  panelSvgNote:
-    'The painter we own: every card is one <g> — the rectangle, the wrapped title, the meta line and the body — and every relation a <path>. It brings no layout of its own: the living spring arranges it, and the readout measures what the picture costs. Its five shapes are approximations of Cytoscape\'s curves, and everything Cytoscape does inside is written by hand here.',
-  canvasLabel: 'The canvas of the comparison',
-  pictureLabel: 'The picture of the comparison',
-  sizeLabel: 'Size of the picture',
-  sizeDemo: 'The demo ({count} nodes)',
-  sizeStress: 'The ceiling of the API ({count} nodes)',
-  sizeCurrent: 'The current size ({count} nodes)',
-  edgeStyleLabel: 'Shape of the arrows',
-  measure: 'Measure the engine',
-  measuring: 'Measuring…',
-  noMeasurement: 'It has not been measured yet.',
-  rerun: 'Run the layout again',
-  listToggle: 'See the list',
-  listHeading: 'The picture as a list',
-  counts: '{nodes} nodes · {edges} relations',
-  frameLabel: 'Frame',
-  kpiMs: '{value} ms',
-  frameValue: '{value} ms (median)',
-  framePeak: 'The slowest one: {value} ms',
-  frameCount: 'Frames measured: {count}',
-  layoutLabel: 'Layout',
-  layoutValue: '{value} ms in total',
-  buildLabel: 'Build of the picture',
-  buildValue: '{value} ms to build',
-  domLabel: 'Elements of the picture',
-  domValue: '{count} elements',
-  settledLabel: 'Settled',
-  settledYes: 'Yes',
-  settledNo: 'Not yet',
-  motionLabel: 'Motion',
-  aliveAwake: 'Awake: the hand moved it',
-  aliveIdle: 'Alive: it moves at rest',
-  shapeLabel: 'Shape',
-  shapeReached: 'Reached below {threshold} px per step',
-  shapeMoving: 'Still looking for it',
-  aliveNote:
-    'The living spring does not settle: at rest it keeps moving below {threshold} px per step, and it wakes when the hand touches it. The shape is reached when the movement falls below that threshold; the simulation never stops.',
-  overlapsLabel: 'Cards on top of each other',
-  edgeCrossingsLabel: 'Crossed edges',
-  overlapsValue: '{count} pairs',
-  edgeCrossingsValue: '{count} crossings',
-  overlapsOne: '{count} pair',
-  stateLabel: 'State',
-  stateAlive: 'Alive',
-  stateSeeking: 'Seeking',
-  stateSettled: 'Settled',
-  stateUnsettled: 'Not settled',
-  ticksLabel: 'Steps of the simulation',
-  ticksValue: '{count} steps',
-  tickLabel: 'One step of the spring',
-  tickValue: '{value} ms per step',
-  layoutFrameLabel: 'Frame of the layout',
-  frameLayoutValue: '{value} ms',
-  reproducibleLabel: 'Reproducible',
-  reproducibleD3: 'Yes: the seed is fixed',
-  reproducibleSvg: 'Yes: the seed is fixed',
-  loading: 'Loading the window…',
-  empty: 'The window is empty: there is nothing to compare.',
-  svgPainterError: 'The SVG painter could not draw the picture.',
-  badgesLabel: 'The nodes of the window',
-  findingsHeading: 'What this engine does differently',
-  findingSvgCard:
-    'The card is one object: the rectangle, the title, the meta line and the body are children of the same <g>. Cytoscape draws them as separate elements, and a drag has to re-synchronise the text on every frame.',
-  findingSvgLimits:
-    'The painter is ours: it has no layout and no WebGL renderer, its five shapes approximate Cytoscape\'s curves, and the picture is not virtualised — two hundred cards are thousands of elements in the DOM. The readout says how many, and how long the SVG took to build.',
-  findingD3Collision:
-    'The spring of d3-force carries a rectangular collision force: two cards that overlap are pushed apart along the axis of least penetration, and the picture ends with not a single pair of cards on top of another.',
-  findingD3Seed:
-    'The spring of d3-force has a seed: the same picture comes out twice, and with less motion the picture is the same one.',
-  findingD3Living:
-    'The spring of d3-force does not settle: rest is a temperature above zero, so it keeps moving below the threshold and wakes when the hand touches it. Relations with more weight pull their cards closer.',
-};
-
 export const en: Dictionary<typeof es> = {
   common: {
     cancel: 'Cancel',
     close: 'Close',
-    hide: 'Hide',
     loading: 'Loading…',
     all: 'All',
     required: '(required)',
     optional: '(optional)',
     tryAgain: 'Try again',
     joinWithCode: 'Join with an event code',
-    joinEvent: 'Join an event',
     emptyValue: '—'
   },
 
@@ -152,26 +53,13 @@ export const en: Dictionary<typeof es> = {
     signedInFallback: 'Signed in',
     signOut: 'Sign out',
     signingOut: 'Signing out…',
-    signOutFailed: 'The sign-out failed.',
-    collapseNavigation: 'Collapse the navigation',
-    expandNavigation: 'Expand the navigation',
-    workspaceControl: 'Workspace: {name}',
-    sessionControl: 'Session of {name}',
-    workspaceMenu: 'The workspace',
-    sessionMenu: 'The session'
+    signOutFailed: 'The sign-out failed.'
   },
 
   workspace: {
     label: 'Workspace',
     yourRole: 'Your role here:',
     noneSelected: 'No workspace selected.'
-  },
-
-  /** The institution switcher (tenant change without re-authentication). */
-  tenant: {
-    label: 'Institution',
-    switching: 'Switching institution…',
-    switchFailed: 'Could not switch institution.'
   },
 
   locale: {
@@ -188,9 +76,6 @@ export const en: Dictionary<typeof es> = {
     continue: 'Continue with your institution',
     continueHelp:
       'The browser is sent to the identity provider and returns here when it is done.',
-    providerLocal: 'Local account (Zitadel)',
-    providerGoogle: 'Continue with Google',
-    providerMicrosoft: 'Continue with Microsoft Entra',
     joiningHeading: 'Joining an event?',
     joiningText:
       'An event code is a one-off credential for a single workspace. It needs no account and no identity provider.',
@@ -215,7 +100,7 @@ export const en: Dictionary<typeof es> = {
     localCommandLabel: 'The command that mints a development token',
     localNote:
       'That token belongs to the API (scripts, workers, `curl`). The app itself needs an identity provider or an event code.',
-    localRunbook: 'The runbook describes the whole flow: `docs/ops/runbook-dev.md`.'
+    localRunbook: 'The runbook describes the whole flow: `docs/runbook-dev.md`.'
   },
 
   join: {
@@ -247,7 +132,9 @@ export const en: Dictionary<typeof es> = {
 
   app: {
     workspaceAndSections: 'Workspace and sections',
-    noWorkspaceHeading: 'No workspace access',
+    noWorkspaceHeading: 'No workspace in this institution',
+    noWorkspaceText:
+      'Your account is valid, but it is not a member of any workspace of this institution. Ask an administrator to add you to one, or join an event with a code.',
     restoreFailedHeading: 'The session could not be restored',
     restoreFailedOffline:
       'The browser is offline: the session needs the network to be restored. The pages that need the server cannot be loaded until the connection is back.',
@@ -255,7 +142,6 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
-    unreviewed: 'Unreviewed',
     pageTitle: 'Graph — VozLab',
     heading: 'Graph',
     intro:
@@ -277,11 +163,6 @@ export const en: Dictionary<typeof es> = {
     rootHeading: 'Root node',
     rootHelp:
       'The newest nodes of this workspace. Pick one to draw the subgraph around it.',
-    rootSearchLabel: 'Search for a node',
-    rootSearchPlaceholder: 'Search by title…',
-    rootSearchCount: 'Nodes that match: {count}',
-    rootSearchIdle: 'Nodes in the list: {count}',
-    rootSearchEmpty: 'No node matches “{query}”.',
     loadingNodes: 'Loading the nodes…',
     noNodes:
       'This workspace has no node yet. Nothing can be drawn until one exists.',
@@ -342,7 +223,7 @@ export const en: Dictionary<typeof es> = {
     windowNote:
       'The window is a **closed** graph, it comes in **creation** order and the API bounds it to {max} nodes, with no pagination.',
     hint:
-      'Drag the background to pan the canvas, use the wheel to zoom in or out and click a node to walk to it: the picture centres on the node without changing the zoom.',
+      'Drag the background to pan the canvas, use the wheel to zoom in or out and click a node to walk to it.',
     focusLabel: 'Presented node',
     focusRecent: 'The most recent',
     focusRelated: 'The most related',
@@ -352,18 +233,17 @@ export const en: Dictionary<typeof es> = {
     depthLabel: 'Depth',
     depthHelp:
       'How many hops are recovered around the node you click. It is the same depth the subgraph uses.',
-    scopeAll:
-      'The picture holds {nodes} nodes and {relations} relations: everything that has been seen.',
-    zoomLabel: 'The zoom of the picture',
-    zoomTitle: 'Picture zoom',
-    zoomIn: 'Zoom in',
-    zoomOut: 'Zoom out',
-    zoomFit: 'See the whole graph',
-    zoomFitShort: 'Fit',
+    onlyNeighbourhoodLabel: 'Only the node’s neighbourhood',
+    onlyNeighbourhoodHelp:
+      'With the switch on, the picture shows only the neighbourhood of the presented node, at the depth that is selected. The rest is hidden.',
+    scopeAll: 'The picture holds {shown} nodes: everything that has been seen.',
+    scopeFocused:
+      'The picture holds {shown} nodes; {hidden} fall outside the neighbourhood of the presented node.',
     walking: 'Recovering the neighbourhood of “{title}”…',
     isolated: '“{title}” has no relations: its neighbourhood is empty.',
     edgeStyleLabel: 'Shape of the arrows',
     edgeStraight: 'A straight line',
+    edgeOrthogonal: 'At right angles',
     edgeBezier: 'Soft curve',
     edgeUnbundled: 'Open curve',
     edgeArc: 'Arc',
@@ -376,7 +256,7 @@ export const en: Dictionary<typeof es> = {
     relationBadgesLabel: 'The relations of the window',
     canvasLabel: 'Exploration window canvas',
     canvasDescription:
-      '{nodes} nodes and {edges} relations of the exploration window, drawn with a d3-force spring with a rectangular collision.',
+      '{nodes} nodes and {edges} relations of the exploration window, drawn with a deterministic dagre layout.',
     previewNoDescription: 'No description.',
     previewNoAttributes: 'No attributes.',
     previewEndpoints: 'From “{source}” to “{target}”',
@@ -391,7 +271,54 @@ export const en: Dictionary<typeof es> = {
    * The copy of the names of the engines is the same in the two languages:
    * they are proper nouns, and a proper noun is not translated.
    */
-  engines: import.meta.env.DEV ? engines : ({} as typeof engines),
+  engines: {
+    heading: 'The engines, side by side',
+    intro:
+      'The same window, the same nodes and the same relations in the three engines. This is a development surface: it does not exist in a production build.',
+    pageTitle: 'The engines, side by side',
+    panelDagreName: 'Cytoscape + dagre',
+    panelDagreNote:
+      'The incumbent: a hierarchical, deterministic layout, computed in one go.',
+    panelFcoseName: 'Cytoscape + fcose',
+    panelFcoseNote:
+      'The same canvas with the force of CoSE: a simulation that settles and stops.',
+    panelSigmaName: 'Sigma.js + Graphology',
+    panelSigmaNote:
+      'The engine that draws with WebGL and keeps the graph in the client, with the force of ForceAtlas2.',
+    canvasLabel: 'The canvas of the comparison',
+    sizeLabel: 'Size of the picture',
+    sizeDemo: 'The demo ({count} nodes)',
+    sizeStress: 'The ceiling of the API ({count} nodes)',
+    edgeStyleLabel: 'Shape of the arrows',
+    measure: 'Measure the three engines',
+    measuring: 'Measuring…',
+    rerun: 'Run the layout again',
+    listToggle: 'See the list',
+    listHeading: 'The picture as a list',
+    counts: 'The picture holds {nodes} nodes and {edges} relations.',
+    frameLabel: 'Frame',
+    frameValue: '{value} ms (median)',
+    framePeak: 'The slowest one: {value} ms',
+    frameCount: 'Frames measured: {count}',
+    layoutLabel: 'Layout',
+    layoutValue: '{value} ms in total',
+    settledLabel: 'Settled',
+    settledYes: 'Yes',
+    settledNo: 'Not yet',
+    loading: 'Loading the window…',
+    empty: 'The window is empty: there is nothing to compare.',
+    badgesLabel: 'The nodes of the window',
+    sigmaUnavailable: 'This browser could not draw the WebGL canvas.',
+    findingsHeading: 'What the engines do not do alike',
+    findingSigmaLabel:
+      'Sigma does not write a multi-line title inside the shape of a node: the card is a picture painted on a 2D canvas, with the same pure module of the card.',
+    findingSigmaEdges:
+      'The edge programs of Sigma take no waypoints: the right-angled route is computed by the same pure router and drawn by the 2D canvas.',
+    findingSigmaDashes:
+      'Sigma has no dashed edge program: the pending status of a relation is only carried by its colour.',
+    findingFcoseSeed:
+      'fcose has no randomSeed: its spectral step draws the starting places, and the same picture does not come out twice.'
+  },
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
@@ -440,11 +367,7 @@ export const en: Dictionary<typeof es> = {
     edgeSaving: 'Saving…',
     edgeNothingToSave: 'The form changes nothing yet: change a field before saving it.',
     edgeChanges: 'What this edition changes',
-    edgeFormKept: 'The form keeps what you typed: nothing has been saved.',
-     approve: 'Approve',
-     reject: 'Reject',
-     autoActivate: 'Auto-activate',
-     nowStatus: 'It is now {status}.'
+    edgeFormKept: 'The form keeps what you typed: nothing has been saved.'
   },
 
   node: {
@@ -609,10 +532,7 @@ export const en: Dictionary<typeof es> = {
     autoApplyBlockedRole:
       'the role in this workspace is not a moderator or an administrator.',
     autoApplyBlockedClosed: 'the proposal is not open.',
-    discussionHeading: 'Discussion of this proposal',
-    discussionThread: 'Discussion thread',
-    openDiscussion: 'Open discussion',
-    openDiscussionInPage: 'Open discussion in the discussions page'
+    discussionHeading: 'Discussion of this proposal'
   },
 
   delta: {
@@ -706,11 +626,11 @@ export const en: Dictionary<typeof es> = {
   },
 
   pwa: {
-    errorTitle: 'The app could not be cached',
+    errorTitle: 'The offline support could not be enabled',
     errorHint:
-      'VozLab keeps working with a connection; without one, the app does not open.',
-    shellCached:
-      'VozLab is cached on this device: the app opens instantly. The data needs a connection.',
+      'The app keeps working, but it will not be available offline.',
+    offlineReady:
+      'VozLab is ready to work offline: the app is cached on this device.',
     dismiss: 'Got it'
   },
 
@@ -779,124 +699,5 @@ export const en: Dictionary<typeof es> = {
       OPEN: 'Open',
       CLOSED: 'Closed'
     }
-  },
-
-  admin: {
-    title: 'Administration',
-    workspaces: 'Workspaces',
-    createWorkspace: 'Create workspace',
-    name: 'Name',
-    slug: 'Slug',
-    description: 'Description',
-    isPublic: 'Public',
-    members: 'Members',
-    joinRequests: 'Join requests',
-    invitations: 'Invitations',
-    selectTenantTitle: 'Select tenant',
-    selectTenantNone: 'No tenants linked',
-    addRole: 'Add role…',
-    createJoinCode: 'Create ephemeral code',
-    joinCodes: 'Ephemeral join codes',
-    edit: 'Edit',
-    maxUses: 'Max uses',
-    expiresAt: 'Expires',
-    autoApprove: 'Auto-approve',
-    purpose: 'Purpose',
-    uses: 'Uses',
-    save: 'Save',
-    cleanup: 'Tenant hygiene',
-    cleanupDays: 'Guest inactivity window (days)',
-    runCleanup: 'Run cleanup',
-    cleanupResult: '{invitations} invitations expired · {guests} guests removed',
-    label: 'Label',
-    createdCode: 'Code (shown once)',
-    addMember: 'Add member',
-    email: 'Email',
-    handle: 'Username handle',
-    role: 'Role',
-    status: 'Status',
-    suspend: 'Suspend',
-    reactivate: 'Reactivate',
-    remove: 'Remove',
-    approve: 'Approve',
-    reject: 'Reject',
-    createInvitation: 'Create invitation',
-    revoke: 'Revoke',
-    invitationLink: 'Invitation link',
-    noWorkspaces: 'No workspaces.',
-    noAccess: 'You are not a tenant administrator.',
-    kind: 'Kind',
-    initialAdmin: 'Initial admin (optional)',
-    creatorBecomesAdmin: 'Creator becomes admin',
-    tenantUsers: 'Tenant users',
-    tabs: {
-      workspaces: 'Workspaces',
-      users: 'Users',
-      hygiene: 'Hygiene'
-    },
-    activate: 'Activate',
-    promote: 'Promote',
-    demote: 'Demote',
-    memberships: 'Memberships',
-    noMemberships: 'No memberships.',
-    systemRole: 'System role',
-    actions: 'Actions'
-  },
-
-  workspaceAdmin: {
-    title: 'Workspace administration',
-    noAccess: 'You do not administer this workspace.',
-    general: 'General',
-    members: 'Members',
-    access: 'Access',
-    codes: 'Codes',
-    eventCodes: 'Event codes',
-    ontology: 'Ontology',
-    save: 'Save changes',
-    saved: 'Saved.',
-    loadFailed: 'Could not load the workspace.'
-  },
-
-  requestAccess: {
-    title: 'Request access',
-    discover: 'Discover public workspaces',
-    joinByCode: 'Join with code',
-    code: 'Code',
-    message: 'Message',
-    request: 'Request',
-    myRequests: 'My requests',
-    noWorkspaces: 'No public workspaces available.'
-  },
-
-  ontologyAdmin: {
-    title: 'Ontology proposals',
-    classes: 'Classes',
-    datatypeProperties: 'Datatype properties',
-    objectProperties: 'Object properties',
-    empty: 'No proposed ontology items.',
-    systemKey: 'System key',
-    domain: 'Domain',
-    range: 'Range',
-    datatype: 'Datatype',
-    proposedBy: 'Proposed by',
-    status: 'Status',
-    actions: 'Actions',
-    activate: 'Activate',
-    reject: 'Reject',
-    activated: 'Activated',
-    rejected: 'Rejected',
-    deprecate: 'Deprecate',
-    deprecated: 'Deprecated',
-    migrationTarget: 'Migration target',
-    migrationTargetKey: 'Migration target key',
-    selectMigrationTarget: 'Select a migration target',
-    migrationTargetRequired: 'A migration target is required.',
-    activeItems: 'Active items',
-    activeClasses: 'Active classes',
-    activeDatatypeProperties: 'Active datatype properties',
-    activeObjectProperties: 'Active object properties',
-    emptyActive: 'No active items.',
-    discussionThread: 'Discussion',
-    proposerOrModeratorOnly: 'Only the proposer or a moderator can act on this proposal.'
   }
 };

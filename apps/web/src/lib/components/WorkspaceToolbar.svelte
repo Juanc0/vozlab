@@ -41,28 +41,16 @@
     /** The extra classes of the panel — its width. */
     panelClass?: string;
     /**
-     * Called when the panel's **bottom edge** moves.
+     * Called when the panel changes its height.
      *
      * The list is the other half of the workspace and it must not run
-     * under the panel: the page starts it right below the panel, wherever
-     * the panel itself sits. The edge (offset plus height) is told, not
-     * the height alone, so the air above the panel is accounted for once.
+     * under the toolbar: the page insets it with the height of the panel.
      */
-    onbottom?: (bottom: number) => void;
+    onheight?: (height: number) => void;
     /** The controls of the view on screen. */
     controls?: Snippet;
     /** The failures and the notices of the view on screen. */
     status?: Snippet;
-    /**
-     * The **live regions** of the view: what is said out loud to a reader
-     * of a screen reader.
-     *
-     * They are always in the document and they live **outside the flow**:
-     * a live region that appears with its text is not announced, and a
-     * region in the flow would push the row of the title above the middle
-     * of the panel even when nothing is being said.
-     */
-    live?: Snippet;
     /** The readouts of the view on screen. */
     readout?: Snippet;
   }
@@ -79,10 +67,9 @@
     onnewnode,
     listDescriptionId,
     panelClass = '',
-    onbottom,
+    onheight,
     controls,
     status,
-    live,
     readout
   }: Props = $props();
 
@@ -101,19 +88,18 @@
   let panel: HTMLElement | undefined = $state();
 
   /** The callback is read through a holder: the parent may pass a new one. */
-  let bottomHandler: ((bottom: number) => void) | undefined;
+  let heightHandler: ((height: number) => void) | undefined;
 
   $effect(() => {
-    bottomHandler = onbottom;
+    heightHandler = onheight;
   });
 
   /**
-   * The panel's bottom edge is told to the page.
+   * The height of the panel is told to the page.
    *
    * The panel grows with the controls of the view on screen, and the list
    * has to start below it: a list that runs under a floating panel is a
-   * list the reader cannot click. The edge carries its own offset, so the
-   * page does not have to know the air the panel keeps.
+   * list the reader cannot click.
    */
   $effect(() => {
     const element = panel;
@@ -123,7 +109,7 @@
     }
 
     const report = (): void => {
-      bottomHandler?.(element.offsetTop + element.offsetHeight);
+      heightHandler?.(element.offsetHeight);
     };
 
     report();
@@ -143,36 +129,55 @@
 
 <FloatingPanel
   bind:element={panel}
-  placement="top"
+  placement="top-left"
   label={t('graph.toolbarLabel')}
-  panelClass={panelClass}
+  {panelClass}
 >
-  <!--
-    Three blocks on one row: the **title** owns the left, the controls of
-    the view own the centre, and the one **action** the accent paints owns
-    the right. A grid of thirds keeps the middle centred for real — two
-    floats and an auto margin only approximate it.
-  -->
-  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 px-7 py-3">
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
     <!--
       The title of the screen. It is the one element of the interface that
       is set in the serif, and it is the first thing the reader sees when
-      the workspace opens. It wears the **display** size — one step above
-      the page title of a document — because it sits on the picture
-      itself. On a phone it keeps the smaller title: the toolbar is
-      crowded there and the picture needs the room.
+      the workspace opens.
     -->
-    <h1 class="self-center justify-self-start sm:text-display">{t('graph.heading')}</h1>
-
-    <div class="flex min-w-0 flex-wrap items-end justify-center gap-x-4 gap-y-2">
-      {@render controls?.()}
-    </div>
+    <h1 class="text-kpi">{t('graph.heading')}</h1>
 
     <!--
-      The one filled button of the interface: it creates a node, and it
-      is the only action of the screen that is painted with the accent.
+      The switch between the two views of the graph. It is a piece of the
+      state of the screen, not of the URL: the URL stays clean and both
+      views stay reachable.
+
+      The radio is the control and the label is its face: the focus is
+      shown on the label (`peer-focus-visible`), because the radio itself is
+      hidden from the sight.
     -->
-    <div class="self-center justify-self-end">
+    <fieldset>
+      <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
+      <div class="inline-flex gap-1 rounded-control bg-raised p-1">
+        {#each VIEW_MODES as mode (mode)}
+          <input
+            type="radio"
+            id="graph-view-{mode}-{uid}"
+            name={groupName}
+            value={mode}
+            class="peer sr-only"
+            checked={viewMode === mode}
+            onchange={() => onviewmodechange(mode)}
+          />
+          <label
+            for="graph-view-{mode}-{uid}"
+            class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-3 py-1.5 text-body font-medium text-muted hover:text-text peer-checked:bg-accent-soft peer-checked:font-semibold peer-checked:text-accent-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+          >
+            {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
+          </label>
+        {/each}
+      </div>
+    </fieldset>
+
+    <div class="ml-auto flex items-center gap-2">
+      <!--
+        The one filled button of the interface: it creates a node, and it
+        is the only action of the screen that is painted with the accent.
+      -->
       <button
         type="button"
         class="btn btn-primary"
@@ -181,41 +186,68 @@
       >
         {t('graph.newNode')}
       </button>
+
+      <!--
+        The switch between the picture and its **text alternative**. It is
+        a real toggle: the state is announced (`aria-pressed`), and the
+        list is one click away — never behind a hover or a gesture.
+      -->
+      <button
+        type="button"
+        class="btn btn-secondary aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
+        aria-pressed={listOpen}
+        aria-describedby={listDescriptionId}
+        onclick={onlisttoggle}
+      >
+        {t('graph.listToggle')}
+      </button>
+
+      <!--
+        The toggle of the inspector. It is the **same** control in the two
+        widths: it folds the floating panel of a wide screen and it opens
+        the sheet of a narrow one. It lives in the toolbar because it has
+        to be reachable when the panel is closed.
+      -->
+      <button
+        type="button"
+        class="btn btn-secondary"
+        aria-expanded={inspectorOpen}
+        aria-controls={inspectorControlsId}
+        onclick={(event) => {
+          // Safari does not focus a button that is clicked: the focus is
+          // given to the button by hand, or the panel cannot give it back
+          // when it closes.
+          event.currentTarget.focus();
+          oninspectortoggle();
+        }}
+      >
+        {inspectorOpen ? t('inspector.collapse') : t('inspector.expand')}
+      </button>
     </div>
+  </div>
+
+  <!--
+    The controls of the view on screen. They are **many** — the criterion
+    of the focus, the depth, the shape of the arrows, the far nodes — and a
+    phone has no room for them: there the row is a horizontal scroller.
+  -->
+  <div class="px-3 pb-3">
+    {@render controls?.()}
   </div>
 
   <!--
     The failures and the notices of the view on screen. They are said out
     loud here, over the picture: a failure never leaves a blank canvas.
-
-    The block keeps its bottom padding **only when it holds something**,
-    and only for element children: a block that keeps its padding when it
-    is empty pushes the row of the title above the middle of the panel,
-    and the title and the action have to sit at the vertical centre of
-    the bar.
   -->
-  <div class="px-7 pb-3 [&:not(:has(>*))]:pb-0">
+  <div class="px-3 pb-3 empty:pb-0">
     {@render status?.()}
   </div>
 
   <!--
-    The live regions of the view. They are rendered bare — no block of
-    their own — because they are `sr-only`: absolutely positioned, out of
-    the flow, and they must exist before their text changes to be
-    announced. The panel never grows or shrinks with them.
-  -->
-  {@render live?.()}
-
-  <!--
     The readouts of the view on screen: what the picture is and what it is
     not.
-
-    The block keeps its bottom padding **only when it holds something**:
-    an empty block with padding of its own would push the row of the title
-    above the middle of the panel, and the title and the action have to
-    sit at the vertical centre of the bar.
   -->
-  <div class="px-7 pb-3 [&:not(:has(>*))]:pb-0">
+  <div class="px-3 pb-3">
     {@render readout?.()}
   </div>
 

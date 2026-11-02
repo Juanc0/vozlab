@@ -63,8 +63,6 @@
      * of its own inside it — it is flat, and the panel is what floats.
      */
     flat?: boolean;
-    /** Called when the user wants to collapse the inspector. */
-    oncollapse?: () => void;
     /** Called when the user wants to propose a correction of the selection. */
     onsuggest?: (target: CorrectionTarget) => void;
     /** Called when the user wants to relate the selected node to another one. */
@@ -79,13 +77,6 @@
      * move the counter again.
      */
     reconcileEdge?: (edgeId: string) => Promise<number | null>;
-    /**
-     * Re-reads the score of a node after the API counted the vote.
-     *
-     * The same authority as for a relation: the server's number replaces
-     * the optimistic one once it is known.
-     */
-    reconcileNode?: (nodeId: string) => Promise<number | null>;
   }
 
   let {
@@ -95,12 +86,10 @@
     panelId: givenPanelId,
     showHeading = true,
     flat = false,
-    oncollapse,
     onsuggest,
     onrelate,
     onsaved,
-    reconcileEdge,
-    reconcileNode
+    reconcileEdge
   }: Props = $props();
 
   const api = getApiClient();
@@ -262,31 +251,6 @@
   }
 </script>
 
-{#if oncollapse}
-  <button
-    type="button"
-    class="btn-quiet grid size-11 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
-    aria-expanded={true}
-    title={t('inspector.collapse')}
-    onclick={oncollapse}
-  >
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.4"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10 3.5 5.5 8l4.5 4.5" />
-    </svg>
-    <span class="sr-only">{t('inspector.collapse')}</span>
-  </button>
-{/if}
-
 <aside aria-labelledby={showHeading ? 'inspector-heading' : undefined} class="min-w-0">
   {#if showHeading}
     <h2 id="inspector-heading">
@@ -302,7 +266,7 @@
     Inside a **floating panel** there is no second surface: the panel
     itself is the surface, and the inspector is flat inside it.
   -->
-  <div class={flat ? 'mt-3' : 'mt-2 rounded-card bg-brand-100 p-4'}>
+  <div class={flat ? 'mt-3' : 'mt-2 rounded-card bg-surface p-4'}>
     <div
       role="tablist"
       aria-label={t('inspector.tabsLabel')}
@@ -344,7 +308,6 @@
             {nodes}
             {ledger}
             reconcileEdge={reconcileRelationScore}
-            reconcileNode={reconcileNode}
             {onrelate}
           />
         {/if}

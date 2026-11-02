@@ -12,12 +12,12 @@
    * stays until the new one is ready, the region is `aria-busy` and a
    * polite live region says what is happening.
    */
-    import type { ApiFailure } from '$lib/api/failure';
+  import { untrack } from 'svelte';
+  import type { ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
-  import SvgGraphCanvas from '$lib/components/SvgGraphCanvas.svelte';
+  import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
-  import { pictureOf, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
-  import type { ZoomAction, ZoomSource } from '$lib/graph/explore/zoom';
+  import { filterNeighbourhood, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import { getLocaleState } from '$lib/state/context';
 
   interface Props {
@@ -31,6 +31,8 @@
     nodes?: NodeDto[];
     /** The relations of the working set. */
     edges?: SubgraphEdgeDto[];
+    /** The depth of a walk — it bounds the neighbourhood of the focus. */
+    depth?: number;
     /**
      * Called when the user **walks** to a node of the canvas.
      *
@@ -63,37 +65,14 @@
     presentedNodeId?: string | null;
     /** The shape the relations are drawn with. */
     edgeStyle?: EdgeStyle;
-    /** Increment to re-run the layout on the current picture. */
-    rearrangeTick?: number;
-    /**
-     * The zoom the reader had when the view was opened.
-     *
-     * It is `null` when the reader never chose one: the picture is then
-     * fitted — the whole graph in view — and the fit is the zoom that
-     * picture starts with.
-     */
-    zoom?: number | null;
-    /**
-     * Called when the zoom of the picture changes.
-     *
-     * The app keeps the value: the zoom survives the change of the view of
-     * the graph.
-     */
-    onzoomchange?: (zoom: number, source: ZoomSource) => void;
-    /** What the reader asked the zoom to do. */
-    zoomaction?: ZoomAction;
-    /**
-     * The number of the command of the zoom.
-     *
-     * It is a counter, and it is what tells a command from the one before
-     * it.
-     */
-    zoomrequest?: number;
+    /** Whether the picture shows only the neighbourhood of the focus. */
+    onlyNeighbourhood?: boolean;
   }
 
   let {
     nodes = [],
     edges = [],
+    depth = 1,
     onwalk,
     walking = false,
     onpicture,
@@ -105,11 +84,7 @@
     error = null,
     presentedNodeId = null,
     edgeStyle = 'bezier',
-    rearrangeTick = 0,
-    zoom = null,
-    onzoomchange,
-    zoomaction = 'in',
-    zoomrequest = 0
+    onlyNeighbourhood = false
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -122,6 +97,14 @@
    * workspace and it is gone when the picture is drawn again.
    */
   let expandedIds = $state.raw<Set<string>>(new Set<string>());
+
+  /**
+   * The nodes the user **collapsed**.
+   *
+   * An explicit choice of the user beats the default: the node the view
+   * presents is expanded on its own, and the user may close it.
+   */
+  let collapsed = $state.raw<Set<string>>(new Set<string>());
 
   /**
    * The relations that are drawn as a card with their whole content.
@@ -144,9 +127,11 @@
   let lastShown: Set<string> | null = null;
 
   const shown = $derived.by<Set<string>>(() => {
-    // Only the reader's choices expand a card now — the badge, the double
-    // click or the `E` key. Selection alone does not unfold anything.
     const next = new Set(expandedIds);
+
+    if (presentedNodeId !== null && !collapsed.has(presentedNodeId)) {
+      next.add(presentedNodeId);
+    }
 
     // The same set when nothing changed: the canvas must not draw the
     // picture again for a set that holds the same nodes.
@@ -177,14 +162,18 @@
   /** The user expanded or collapsed a node. */
   function toggleNode(nodeId: string): void {
     const next = new Set(expandedIds);
+    const closed = new Set(collapsed);
 
     if (next.has(nodeId)) {
       next.delete(nodeId);
+      closed.add(nodeId);
     } else {
       next.add(nodeId);
+      closed.delete(nodeId);
     }
 
     expandedIds = next;
+    collapsed = closed;
   }
 
   /** The user expanded or collapsed a relation. */
@@ -200,19 +189,47 @@
     expandedEdgeIds = next;
   }
 
+  /** The last node the view presented. */
+  let lastPresented: string | null = null;
+
+  /**
+   * The presented node is **expanded**.
+   *
+   * The view presents a node and shows it: a card the reader can read from
+   * the picture itself. The expansion is remembered, so the node stays a
+   * card when the view presents another one — but the card is drawn with
+   * the **first** picture (see {@link shown}), so the picture is not drawn
+   * twice.
+   */
+  $effect(() => {
+    const current = presentedNodeId;
+
+    if (current === null || current === lastPresented) {
+      return;
+    }
+
+    lastPresented = current;
+
+    untrack(() => {
+      expandedIds = new Set([...expandedIds, current]);
+    });
+  });
 
   /**
    * The **picture**: what the canvas draws.
    *
-   * It is the **whole working set**: the window the view started from and
-   * every neighbourhood the reader has walked to. Nothing that has been on
-   * the picture can be taken off it — what has been seen stays on the
-   * picture.
-   *
-   * The relations are the ones whose **two ends** are in the picture: a
-   * relation with one end outside would be a line that goes nowhere.
+   * It is the whole working set, or the neighbourhood of the focus when
+   * the reader asks for it. The nodes that are not in the picture are not
+   * drawn: a node that is in the picture and a relation whose ends are not
+   * in the picture would be a line that goes nowhere.
    */
-  const picture = $derived.by<Neighbourhood>(() => pictureOf(nodes, edges));
+  const picture = $derived.by<Neighbourhood>(() => {
+    if (!onlyNeighbourhood) {
+      return { nodes: [...nodes], edges: [...edges] };
+    }
+
+    return filterNeighbourhood(nodes, edges, presentedNodeId, depth);
+  });
 
   /**
    * The picture is told to the app.
@@ -247,26 +264,20 @@
       {t('explore.empty')}
     </p>
   {:else}
-    <SvgGraphCanvas
+    <ExplorationCanvas
       nodes={picture.nodes}
       edges={picture.edges}
       expandedIds={shown}
-      selectedNodeId={selectedNodeId}
-      selectedEdgeId={selectedEdgeId}
-      presentedNodeId={presentedNodeId}
-      edgeStyle={edgeStyle}
-      {rearrangeTick}
-      {zoomaction}
-      {zoomrequest}
-      label={t('explore.canvasLabel')}
+      {expandedEdgeIds}
+      {edgeStyle}
+      {selectedNodeId}
+      {selectedEdgeId}
+      {presentedNodeId}
       onselect={onselect}
-      onselectedge={(edgeId) => {
-        if (edgeId !== null) {
-          onselectedge?.(edgeId);
-        }
-      }}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}
+      onselectedge={(edgeId) => onselectedge?.(edgeId)}
+      ontoggleedge={toggleEdge}
     />
   {/if}
 </div>

@@ -1,21 +1,14 @@
 /**
  * The endpoints and the identifiers the suite talks to.
  *
- * The suite runs on **its own pair of ports**, next to the local stack of
- * `docs/ops/runbook-dev.md` (API on `:3000`, PWA on `:5173`), so a developer who
- * keeps the stack running does not lend it to the suite. That matters:
- * Playwright starts the API of the run with a **test budget** for the rate
- * limiter (the suite is one actor and writes as one person, so the real
- * 30 writes/minute would refuse the last journeys with `429`), and a reused
- * server would keep its own limits.
- *
- * They can be overridden with `E2E_WEB_PORT` / `E2E_API_PORT`; the
- * configuration of Playwright reads the same values, so the browser and the
- * suite never disagree.
+ * The ports are the ones of the local stack of `docs/runbook-dev.md`: the API
+ * on `:3000` and the PWA on `:5173`. They can be overridden with
+ * `E2E_WEB_PORT` / `E2E_API_PORT`; the configuration of Playwright reads the
+ * same values, so the browser and the suite never disagree.
  */
 
-const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174);
-const API_PORT = Number(process.env.E2E_API_PORT ?? 3100);
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5173);
+const API_PORT = Number(process.env.E2E_API_PORT ?? 3000);
 
 /** The origin of the PWA — the browser navigates here. */
 export const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
@@ -40,16 +33,6 @@ export const WEB_PORT_NUMBER = WEB_PORT;
  * in `X-Workspace-ID`.
  */
 export const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
-
-/**
- * The EVENT workspace the session of the run joins.
- *
- * `JoinEvent` only accepts a workspace of kind `EVENT` (v6/TASK-02), so the
- * event code of the run targets the seeded `evento-demo` — not `general`.
- * The base ontology is mirrored there by the seed so the node dialog has
- * its classes (P2-11).
- */
-export const EVENT_WORKSPACE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 /** The name of the refresh cookie (`apps/api/.../authCookies.ts`). */
 export const REFRESH_COOKIE_NAME = 'vozlab_refresh';

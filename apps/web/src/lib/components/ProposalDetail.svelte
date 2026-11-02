@@ -242,17 +242,7 @@
       <h2 id={headingId}>
         {proposal.kind === 'MERGE' ? t('proposals.mergeProposal') : t('proposals.editProposal')}
       </h2>
-      <!--
-        The badge of the status. What waits for a decision wears the
-        **secondary** of the palette — the indigo-violet of the governance
-        layer — and everything else stays neutral: the status of a
-        proposal is not a warning, and it is not the accent either.
-      -->
-      <span
-        class="rounded-control px-1.5 py-0.5 text-small {proposal.status === 'PENDING'
-          ? 'bg-pill-secondary-bg text-pill-secondary-ink'
-          : 'bg-pill-neutral-bg text-pill-neutral-ink'}"
-      >
+      <span class="rounded-control bg-pill-neutral-bg px-1.5 py-0.5 text-small text-pill-neutral-ink">
         {locale.status('proposal', proposal.status)}
       </span>
     </div>
@@ -391,20 +381,6 @@
         </p>
       {/if}
     {/if}
-  </section>
-
-  <section aria-labelledby={`proposal-discussion-link-heading-${uid}`}>
-    <h3 id={`proposal-discussion-link-heading-${uid}`}>
-      {t('proposals.discussionThread')}
-    </h3>
-    <p class="mt-1 text-body text-muted">
-      <a
-        class="text-accent-ink underline underline-offset-2 hover:no-underline"
-        href={`/discussions?target=${proposal.id}&type=PROPOSAL`}
-      >
-        {t('proposals.openDiscussionInPage')}
-      </a>
-    </p>
   </section>
 
   {#if discussion}

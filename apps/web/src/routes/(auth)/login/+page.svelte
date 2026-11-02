@@ -27,19 +27,8 @@
     loginRedirectPath(page.url.pathname, page.url.searchParams.get('next'))
   );
 
-  /** Selected provider hint. */
-  let selectedProvider = $state<string | undefined>(undefined);
-
   /** The API URL that starts the OIDC login. */
-  const invitation = $derived(page.url.searchParams.get('invitation') ?? undefined);
-
-  const url = $derived(
-    loginUrl(api, {
-      redirectPath: target,
-      kcIdpHint: selectedProvider,
-      invitation,
-    })
-  );
+  const url = $derived(loginUrl(api, target));
 
   function startLogin(): void {
     // A document navigation: the API answers with a `302` to the identity
@@ -114,43 +103,20 @@
     </p>
   </div>
 
-  <div class="rounded-card bg-brand-100 p-6">
-    <h2 class="mb-3">{t('login.continue')}</h2>
-    <p class="mb-4 text-body text-muted max-w-measure">
+  <div class="rounded-card bg-surface p-6">
+    <button
+      type="button"
+      class="btn btn-primary"
+      onclick={startLogin}
+    >
+      {t('login.continue')}
+    </button>
+    <p class="mt-3 text-body text-muted max-w-measure">
       {t('login.continueHelp')}
     </p>
-
-    <div class="grid gap-3">
-      <button
-        type="button"
-        class="btn btn-primary w-full justify-start gap-3"
-        onclick={() => { selectedProvider = undefined; startLogin(); }}
-      >
-        <span class="text-lg">🔐</span>
-        <span>{t('login.providerLocal')}</span>
-      </button>
-
-      <button
-        type="button"
-        class="btn btn-secondary w-full justify-start gap-3"
-        onclick={() => { selectedProvider = 'google'; startLogin(); }}
-      >
-        <span class="text-lg">G</span>
-        <span>{t('login.providerGoogle')}</span>
-      </button>
-
-      <button
-        type="button"
-        class="btn btn-secondary w-full justify-start gap-3"
-        onclick={() => { selectedProvider = 'microsoft'; startLogin(); }}
-      >
-        <span class="text-lg">M</span>
-        <span>{t('login.providerMicrosoft')}</span>
-      </button>
-    </div>
   </div>
 
-  <div class="rounded-card bg-brand-100 p-6">
+  <div class="rounded-card bg-surface p-6">
     <h2>{t('login.joiningHeading')}</h2>
     <p class="mt-2 text-body text-muted max-w-measure">
       {t('login.joiningText')}
@@ -164,7 +130,7 @@
   </div>
 
   {#if isDevelopmentBuild()}
-    <div class="rounded-card bg-brand-100 p-6">
+    <div class="rounded-card bg-surface p-6">
       <h2>{t('login.devHeading')}</h2>
       <p class="mt-2 text-body text-muted max-w-measure">
         <RichText text={t('login.devText')} />
@@ -221,7 +187,7 @@ pnpm --filter @vozlab/database db:mint-token -- --as moderator
 pnpm --filter @vozlab/database db:mint-token -- --as member</code></pre>
     </div>
   {:else}
-    <div class="rounded-card bg-brand-100 p-6">
+    <div class="rounded-card bg-surface p-6">
       <h2>{t('login.localHeading')}</h2>
       <p class="mt-2 text-body text-muted max-w-measure">
         {t('login.localText')}

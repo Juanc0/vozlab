@@ -20,7 +20,6 @@ import {
   SESSION_CONTEXT_KEY,
   WORKSPACE_CONTEXT_KEY
 } from '$lib/state/context';
-import { DEFAULT_PANEL_PREFERENCES } from '$lib/state/panels.svelte';
 import { SessionState } from '$lib/state/session.svelte';
 import { WorkspaceState } from '$lib/state/workspace.svelte';
 import AppShell from '$lib/components/AppShell.svelte';
@@ -44,6 +43,14 @@ vi.mock('$app/environment', () => ({
   version: 'test'
 }));
 
+/** Cytoscape needs a `<canvas>`; jsdom has none. The module is mocked. */
+const { cytoscapeMock } = vi.hoisted(() => {
+  const factory = vi.fn();
+  return { cytoscapeMock: Object.assign(factory, { use: vi.fn() }) };
+});
+
+vi.mock('cytoscape', () => ({ default: cytoscapeMock }));
+
 const BASE_URL = 'http://localhost:3000/api/v1';
 
 function json(body: unknown, status = 200): Response {
@@ -63,7 +70,7 @@ function renderPage(): void {
   const client = new ApiClient({ baseUrl: BASE_URL, session, workspace });
 
   render(Home, {
-    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es', panels: DEFAULT_PANEL_PREFERENCES } },
+    props: { params: {}, data: { apiBaseUrl: BASE_URL, locale: 'es' } },
     context: contextWithLocale([
       [SESSION_CONTEXT_KEY, session],
       [WORKSPACE_CONTEXT_KEY, workspace],
@@ -76,6 +83,20 @@ describe('the responsive layout of the graph page', () => {
   beforeEach(() => {
     sessionStorage.clear();
     goto.mockClear();
+    cytoscapeMock.mockReset();
+    cytoscapeMock.use.mockReset();
+    cytoscapeMock.mockReturnValue({
+      on: vi.fn(),
+      elements: vi.fn(() => ({ length: 0, remove: vi.fn() })),
+      edges: vi.fn(() => ({ length: 0, forEach: vi.fn() })),
+      add: vi.fn(),
+      layout: vi.fn(() => ({ run: vi.fn(), one: vi.fn() })),
+      nodes: vi.fn(() => ({ length: 0, removeClass: vi.fn(), forEach: vi.fn() })),
+      getElementById: vi.fn(() => ({ length: 0, addClass: vi.fn() })),
+      destroy: vi.fn(),
+      resize: vi.fn()
+    });
+
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
@@ -128,11 +149,10 @@ describe('the responsive layout of the graph page', () => {
     const sheet = screen.getByRole('dialog', { name: 'Inspección' });
     expect(sheet).toHaveAttribute('aria-modal', 'true');
 
-    // The panel is open; its collapse button lives inside it now.
-    expect(screen.getByRole('button', { name: 'Ocultar el inspector' })).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    );
+    // The toggle says that the panel is open — even though the background
+    // is inert now and the toggle is out of the tree of the screen reader.
+    const opener = document.querySelector('[aria-controls="vozlab-inspector-sheet"]');
+    expect(opener).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('folds the column of the inspector above xl', async () => {
@@ -140,28 +160,17 @@ describe('the responsive layout of the graph page', () => {
     setViewportWidth(1440);
     renderPage();
 
-    // It starts **folded**: the walk through the graph happens without it,
-    // and the reader turns it on when they want to read a thing.
-    const toggle = await screen.findByRole('button', { name: 'Mostrar el inspector' });
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('tab', { name: 'Contenido' })).not.toBeInTheDocument();
-
-    await fireEvent.click(toggle);
+    const toggle = await screen.findByRole('button', { name: 'Ocultar el inspector' });
 
     // The column is there, with its tabs.
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Contenido' })).toBeInTheDocument();
     });
     expect(screen.queryByRole('dialog', { name: 'Inspección' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ocultar el inspector' })).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    );
 
-    // And it folds away again.
-    await fireEvent.click(screen.getByRole('button', { name: 'Ocultar el inspector' }));
+    await fireEvent.click(toggle);
 
+    // The column is folded away and the toggle says it.
     await waitFor(() => {
       expect(screen.queryByRole('tab', { name: 'Contenido' })).not.toBeInTheDocument();
     });
@@ -175,7 +184,7 @@ describe('the responsive layout of the graph page', () => {
 describe('the menu of the header', () => {
   it('announces its state and points at the drawer it opens', async () => {
     render(AppShell, {
-      props: { navigation: true },
+      props: { title: 'VozLab', navigation: true },
       context: localeContext()
     });
 
@@ -190,7 +199,7 @@ describe('the menu of the header', () => {
   });
 
   it('is not there where there is no navigation to open', () => {
-    render(AppShell, { props: {}, context: localeContext() });
+    render(AppShell, { props: { title: 'VozLab' }, context: localeContext() });
 
     expect(screen.queryByRole('button', { name: 'Abrir el menú de navegación' })).toBeNull();
   });

@@ -4,7 +4,7 @@
  * `vite-plugin-pwa` runs with `registerType: 'prompt'`, so a new worker stays
  * in the `waiting` state until the user accepts the reload. Nothing in this
  * module activates the update by itself — assets are never swapped silently
- * in the middle of a session (see `docs/components/web-pwa.md`).
+ * in the middle of a session (see `docs/spec/web-pwa.md`).
  */
 
 import { browser } from '$app/environment';
@@ -15,7 +15,7 @@ export type ApplyServiceWorkerUpdate = () => Promise<void>;
 export interface PwaHandlers {
   /** A new service worker is waiting: prompt the user before reloading. */
   onNeedRefresh?: (applyUpdate: ApplyServiceWorkerUpdate) => void;
-  /** The application shell has been cached: the app opens instantly. */
+  /** The application shell has been cached and the app works offline. */
   onOfflineReady?: () => void;
   /** The service worker could not be registered. */
   onRegisterError?: (error: unknown) => void;

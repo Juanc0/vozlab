@@ -41,12 +41,13 @@
   import ExploreControls from '$lib/components/ExploreControls.svelte';
   import ExplorationView from '$lib/components/ExplorationView.svelte';
   import FloatingPanel from '$lib/components/FloatingPanel.svelte';
+  import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
+  import RootPicker from '$lib/components/RootPicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import WorkspaceToolbar from '$lib/components/WorkspaceToolbar.svelte';
-  import ZoomControls from '$lib/components/ZoomControls.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
   import { VoteLedger } from '$lib/governance/vote.svelte';
   import { formatNumber } from '$lib/i18n';
@@ -54,11 +55,10 @@
   import type { Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import { presentedNodeId, type FocusCriterion } from '$lib/graph/explore/focus';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
-  import type { ZoomAction } from '$lib/graph/explore/zoom';
   import type { TranslationKey } from '$lib/i18n';
   import { nodeSelection, edgeSelection, type InspectorSelection } from '$lib/inspector/selection';
   import { MediaQuery } from '$lib/layout/media.svelte';
-  import { getApiClient, getLocaleState, getPanelsState, getWorkspaceState } from '$lib/state/context';
+  import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import RichText from '$lib/components/RichText.svelte';
   import type { PageProps } from './$types';
 
@@ -67,8 +67,10 @@
   const api = getApiClient();
   const workspace = getWorkspaceState();
   const locale = getLocaleState();
-  const panels = getPanelsState();
   const t = locale.t;
+
+  /** The depths the API accepts. */
+  const depthOptions = Array.from({ length: SUBGRAPH_MAX_DEPTH + 1 }, (_, index) => index);
 
   /** The newest nodes of the workspace — the root picker. */
   let rootNodes = $state.raw<NodeDto[]>([]);
@@ -124,9 +126,7 @@
    * clean (FR-04) and both views stay reachable.
    */
   type ViewMode = 'subgraph' | 'explore';
-  let viewMode = $state<ViewMode>('explore');
-  let searchQuery = $state('');
-  let rearrangeTick = $state(0);
+  let viewMode = $state<ViewMode>('subgraph');
 
   /** The label of every criterion of the focus. */
   const FOCUS_LABELS: Record<FocusCriterion, TranslationKey> = {
@@ -151,73 +151,31 @@
   let edgeStyle = $state<EdgeStyle>('bezier');
 
   /**
-   * The **zoom** of the picture.
+   * Whether the picture shows **only the neighbourhood** of the focus.
    *
-   * It is a property of the **view**, and the view belongs to the reader:
-   * it starts at the fit — the whole graph in view — and the wheel (the
-   * pinch, the controls of the toolbar) changes it.
-   *
-   * It lives in the page and not in the canvas, because the two views of
-   * the graph are the **same workspace**: the zoom survives the change of
-   * the mode, and it starts again at the fit when the page is opened
-   * afresh.
-   *
-   * It is `null` until the **reader chooses** one: a view that opens
-   * without a zoom of the reader fits its own picture — the whole graph in
-   * view — and the fit is not a choice. Once the reader has chosen one
-   * (the wheel, the pinch, the controls), the value is theirs: it survives
-   * the growth of the picture, a walk and the change of the mode.
+   * The default is the whole working set: the exploration view is a
+   * landscape, and hiding what is far is a decision the reader makes when
+   * they want to concentrate.
    */
-  let viewZoom = $state<number | null>(null);
-
-  /** What the reader asked the zoom to do. */
-  let zoomAction = $state<ZoomAction>('in');
-
-  /**
-   * The number of the command of the zoom.
-   *
-   * It is a counter: the reader may ask for the same thing twice, and the
-   * second time is a second command.
-   */
-  let zoomRequest = $state(0);
-
-  /**
-   * The reader asks for a zoom.
-   *
-   * The command is a request: the canvas that is on screen answers it.
-   *
-   * @param action - What the reader asked for.
-   */
-  function requestZoom(action: ZoomAction): void {
-    zoomAction = action;
-    zoomRequest += 1;
-  }
+  let onlyNeighbourhood = $state(false);
 
   /** The node the user last clicked — the `manual` criterion. */
   let manualNodeId = $state<string | null>(null);
 
-  /**
-   * `true` while the panel of the root picker is open.
-   *
-   * The panel is a **control** of the toolbar: it opens and it closes, and
-   * the reader is told which of the two it is. It starts closed — the walk
-   * through the graph does not need a list of nodes over it — and the
-   * preference is remembered between visits.
-   */
-  let rootPickerOpen = $state(!panels.rootCollapsed);
+  /** `true` while the panel of the root picker is open. */
+  let rootPickerOpen = $state(true);
 
   /**
-   * The **bottom edge** of the floating toolbar.
+   * The height of the floating toolbar.
    *
    * The list is the other half of the workspace and it must not run under
-   * the toolbar: the panel reports where it ends, and the list starts
-   * below it. The inspector floats under the edge too.
+   * the toolbar: the panel is measured, and the list starts below it.
    */
-  let toolbarBottom = $state(0);
+  let toolbarHeight = $state(0);
 
-  /** The bottom edge of the toolbar changed. */
-  function setToolbarBottom(bottom: number): void {
-    toolbarBottom = bottom;
+  /** The toolbar changed its height. */
+  function setToolbarHeight(height: number): void {
+    toolbarHeight = height;
   }
 
   /** The session-local state of the votes on the relations. */
@@ -272,11 +230,8 @@
    * screen it is a panel that floats over the picture, in a narrow one it
    * is the sheet that comes over the content. The width of the window
    * decides which one it is.
-   *
-   * It starts **folded**: the walk through the graph happens without it,
-   * and the reader turns it on when they want to read a thing.
    */
-  let inspectorOpen = $state(!panels.inspectorCollapsed);
+  let inspectorOpen = $state(true);
 
   /**
    * The width at which the inspector is a panel over the picture.
@@ -309,19 +264,13 @@
   /** The id of the description of the list. */
   const LIST_DESCRIPTION_ID = 'vozlab-list-description';
 
-  /**
-   * The room the inspector takes on the right of the list.
-   *
-   * The inspector floats over the picture; the list is beside it. The
-   * 27rem carry the panel (24rem) past the air it keeps from the edge.
-   */
-  const listRightPadding = $derived(
-    inspectorWide.matches && inspectorOpen ? '27rem' : '1rem'
-  );
-
   onMount(() => {
     inspectorWide.attach();
     wideLayout.attach();
+
+    // The panel of the root picker is closed on a narrow screen: it would
+    // cover the canvas of a phone, where there is no room for it.
+    rootPickerOpen = wideLayout.matches;
 
     return () => {
       inspectorWide.destroy();
@@ -336,15 +285,12 @@
    * narrow one shows the sheet, and the sheet starts closed: a panel that
    * covers the whole canvas of a phone the moment it arrives is a panel
    * nobody asked for.
-   *
-   * The wide panel follows the **preference** of the reader: it is folded
-   * until they turn it on, and it is folded again on the next visit.
    */
   $effect(() => {
     const wide = inspectorWide.matches;
 
     untrack(() => {
-      inspectorOpen = wide && !panels.inspectorCollapsed;
+      inspectorOpen = wide;
     });
   });
 
@@ -432,6 +378,27 @@
   /** The relations the list view shows: the ones of the view on screen. */
   const listEdges = $derived(
     viewMode === 'explore' ? (pictureEdges ?? exploreEdges) : graphEdges
+  );
+
+  /**
+   * The width of the floating toolbar.
+   *
+   * The toolbar gives way to the inspector: a panel that runs under
+   * another one is a panel the reader cannot read.
+   */
+  const toolbarWidth = $derived(
+    inspectorWide.matches && inspectorOpen
+      ? 'max-w-[calc(100%-27rem)]'
+      : 'max-w-[calc(100%-2rem)]'
+  );
+
+  /**
+   * The room the inspector takes on the right of the list.
+   *
+   * The inspector floats over the picture; the list is beside it.
+   */
+  const listRightPadding = $derived(
+    inspectorWide.matches && inspectorOpen ? '26rem' : '1rem'
   );
 
   /**
@@ -852,28 +819,6 @@
   }
 
   /**
-   * Re-reads the score of a node after the API counted a vote.
-   *
-   * The API has no read for the interactions, so the client cannot know
-   * whether a vote was counted — the same type is idempotent and does not
-   * move the counter again. The node is read back **alone**
-   * (`GET /api/v1/nodes/:id`): one node is far cheaper to read again than
-   * the window or the subgraph the vote clicked inside, and the ledger
-   * adopts the server's number — the server stays the authority.
-   */
-  async function reconcileNodeScore(nodeId: string): Promise<number | null> {
-    try {
-      const node = await getNode(api, nodeId);
-      ledger.sync(nodeId, node.communityScore);
-      return node.communityScore;
-    } catch {
-      // The score stays as it was shown; the vote itself already
-      // reported its own outcome.
-      return null;
-    }
-  }
-
-  /**
    * Re-reads the score of a relation after the API counted a vote.
    *
    * The API has no read for the interactions, so the client cannot know
@@ -1094,19 +1039,11 @@
   /** The user folded or opened the inspector. */
   function toggleInspector(): void {
     inspectorOpen = !inspectorOpen;
-
-    // The preference is remembered: the next visit finds the inspector as
-    // the reader left it.
-    panels.setInspectorCollapsed(!inspectorOpen);
   }
 
   /** The user folded or opened the panel of the root picker. */
   function toggleRootPicker(): void {
     rootPickerOpen = !rootPickerOpen;
-
-    // The preference is remembered: the next visit finds the panel as the
-    // reader left it.
-    panels.setRootCollapsed(!rootPickerOpen);
   }
 
 </script>
@@ -1140,16 +1077,20 @@
     {t('explore.focusActive', { label: t(FOCUS_LABELS[criterion]) })}
   </p>
 
-  <!--
-    The counts of the picture: how many nodes and how many relations are on
-    it. They are the truth — the picture is the whole working set, and
-    nothing that has been seen can be taken off it.
-  -->
   <p id="explore-scope-count" class="text-small text-muted">
-    {t('explore.scopeAll', {
-      nodes: formatNumber(locale.locale, pictureNodes?.length ?? exploreNodes.length),
-      relations: formatNumber(locale.locale, pictureEdges?.length ?? exploreEdges.length)
-    })}
+    {#if onlyNeighbourhood}
+      {t('explore.scopeFocused', {
+        shown: formatNumber(locale.locale, pictureNodes?.length ?? exploreNodes.length),
+        hidden: formatNumber(
+          locale.locale,
+          exploreNodes.length - (pictureNodes?.length ?? exploreNodes.length)
+        )
+      })}
+    {:else}
+      {t('explore.scopeAll', {
+        shown: formatNumber(locale.locale, exploreNodes.length)
+      })}
+    {/if}
   </p>
 
   <p class="hidden text-small text-muted min-[48rem]:block">
@@ -1178,32 +1119,61 @@
     aria-hidden={listOpen ? 'true' : undefined}
     inert={listOpen}
   >
-    <ExplorationView
-      nodes={exploreNodes}
-      edges={exploreEdges}
-      onwalk={navigateTo}
-      {walking}
-      onpicture={reportPicture}
-      loading={windowLoading}
-      error={windowError}
-      selectedNodeId={selectedNodeId}
-      selectedEdgeId={selectedEdgeId}
-      onselect={selectNode}
-      onselectedge={selectEdge}
-      presentedNodeId={explorePresented}
-      {edgeStyle}
-      {rearrangeTick}
-      zoom={viewZoom}
-      onzoomchange={(next, source) => {
-        // Only the choice of the reader is kept: the fit of a view is
-        // the zoom that picture starts with, not a choice.
-        if (source === 'reader') {
-          viewZoom = next;
-        }
-      }}
-      zoomaction={zoomAction}
-      zoomrequest={zoomRequest}
-    />
+    {#if viewMode === 'subgraph'}
+      {#if rootId === null}
+        <p
+          class="grid h-full place-items-center p-6 text-center text-body text-muted"
+        >
+          <span
+            class="rounded-card border border-dashed border-border px-6 py-4"
+          >
+            {t('graph.pickRoot')}
+          </span>
+        </p>
+      {:else if graphLoading && !graphLoaded}
+        <!--
+          The canvas has its own shape: the loading state is the flat grey
+          band of the canvas, and the layout does not move when the graph
+          lands.
+        -->
+        <div role="status" aria-live="polite" class="h-full bg-raised">
+          <span class="sr-only">{t('graph.loadingSubgraph')}</span>
+        </div>
+      {:else if graphLoaded}
+        <GraphCanvas
+          nodes={graphNodes}
+          edges={graphEdges}
+          selectedNodeId={selectedNodeId}
+          rootNodeId={rootId}
+          onselect={selectNode}
+          onnavigate={navigateTo}
+          centerNodeId={centerNodeId}
+          centerRequest={centerRequest}
+          description={t('graph.canvasDescription', {
+            nodes: formatNumber(locale.locale, graphNodes.length),
+            edges: formatNumber(locale.locale, graphEdges.length)
+          })}
+        />
+      {/if}
+    {:else}
+      <ExplorationView
+        nodes={exploreNodes}
+        edges={exploreEdges}
+        {depth}
+        onwalk={navigateTo}
+        {walking}
+        onpicture={reportPicture}
+        loading={windowLoading}
+        error={windowError}
+        selectedNodeId={selectedNodeId}
+        selectedEdgeId={selectedEdgeId}
+        onselect={selectNode}
+        onselectedge={selectEdge}
+        presentedNodeId={explorePresented}
+        {edgeStyle}
+        {onlyNeighbourhood}
+      />
+    {/if}
   </div>
 
   <!--
@@ -1217,7 +1187,7 @@
   {#if listOpen}
     <div
       class="absolute inset-0 overflow-y-auto bg-ground pl-4"
-      style="padding-top: {toolbarBottom + 16}px; padding-right: {listRightPadding}; padding-bottom: calc(var(--notice-h, 0px) + 1rem)"
+      style="padding-top: {toolbarHeight + 32}px; padding-right: {listRightPadding}; padding-bottom: calc(var(--notice-h, 0px) + 1rem)"
     >
       <GraphListView
         summaryKey={viewMode === 'explore' ? 'explore.listSummary' : 'graph.listSummary'}
@@ -1248,74 +1218,77 @@
     newNodeDisabled={ontology === null}
     onnewnode={openNodeDialog}
     listDescriptionId={LIST_DESCRIPTION_ID}
-    onbottom={setToolbarBottom}
+    panelClass={toolbarWidth}
+    onheight={setToolbarHeight}
   >
     {#snippet controls()}
-      <!--
-        Encontrar un nodo es la acción más usada del lienzo: la búsqueda va
-        primero, a la izquierda de la fila de controles.
-      -->
-      <div class="min-w-0 shrink-0">
-        <label for="node-search" class="block text-small text-muted">
-          Buscar nodo
-        </label>
-        <input
-          id="node-search"
-          type="search"
-          class="field mt-0.5 w-52"
-          placeholder="Título…"
-          bind:value={searchQuery}
-          onkeydown={(event) => {
-            if (event.key !== 'Enter') {
-              return;
-            }
+      {#if viewMode === 'subgraph'}
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <div>
+            <label for="subgraph-depth" class="block text-small text-muted">
+              {t('graph.depthLabel')}
+            </label>
+            <select
+              id="subgraph-depth"
+              class="field mt-0.5"
+              value={depth}
+              onchange={handleDepthChange}
+            >
+              {#each depthOptions as option (option)}
+                <option value={option}>{option}</option>
+              {/each}
+            </select>
+          </div>
 
-            const query = searchQuery.trim().toLowerCase();
+          <div>
+            <label for="subgraph-limit" class="block text-small text-muted">
+              {t('graph.maxNodesLabel')}
+            </label>
+            <input
+              id="subgraph-limit"
+              type="number"
+              min="1"
+              max={SUBGRAPH_MAX_NODES}
+              class="field mt-0.5 w-24"
+              value={limit}
+              onchange={handleLimitChange}
+            />
+          </div>
 
-            if (query === '') {
-              return;
-            }
-
-            const match = exploreNodes.find((node) =>
-              node.title.toLowerCase().includes(query)
-            );
-
-            if (match !== undefined) {
-              navigateTo(match.id);
-            }
+          <!--
+            The toggle of the panel of the root picker. It is the control
+            of a panel that floats over the picture, so it announces its
+            state and points at the panel it opens.
+          -->
+          <button
+            type="button"
+            class="btn btn-secondary"
+            aria-expanded={rootPickerOpen}
+            aria-controls={ROOT_PICKER_ID}
+            onclick={toggleRootPicker}
+          >
+            {t('graph.rootToggle')}
+          </button>
+        </div>
+      {:else}
+        <ExploreControls
+          {criterion}
+          oncriterionchange={(next) => {
+            criterion = next;
           }}
+          {edgeStyle}
+          onedgestylechange={(next) => {
+            edgeStyle = next;
+          }}
+          {onlyNeighbourhood}
+          ononlyneighbourhoodchange={(next) => {
+            onlyNeighbourhood = next;
+          }}
+          {depth}
+          ondepthchange={setDepth}
+          scopeCountId="explore-scope-count"
         />
-      </div>
-
-      <ExploreControls
-        {criterion}
-        oncriterionchange={(next) => {
-          criterion = next;
-        }}
-        {edgeStyle}
-        onedgestylechange={(next) => {
-          edgeStyle = next;
-        }}
-        {depth}
-        ondepthchange={setDepth}
-        onzoomin={() => requestZoom('in')}
-        onzoomout={() => requestZoom('out')}
-        onfit={() => requestZoom('fit')}
-      />
-
-      <!--
-        Reordenar el lienzo es una acción de la vista, no del lector: va al
-        final del conjunto, separada de la búsqueda y de los controles.
-      -->
-      <button
-        type="button"
-        class="btn btn-secondary shrink-0"
-        onclick={() => {
-          rearrangeTick += 1;
-        }}
-      >
-        Desenredar
-      </button>
+      {/if}
     {/snippet}
 
     {#snippet status()}
@@ -1370,43 +1343,38 @@
       {/if}
 
       <!--
-        The outcome of the last creation, **seen**: the paragraph is only
-        rendered when there is something to see, so the block never keeps
-        the row of the title above the middle of the panel. What is said
-        out loud lives in the live region below.
+        The state of a walk: it is said out loud, and the region is always
+        in the document — a live region that appears with its text is not
+        announced by every reader.
       -->
-      {#if notice}
-        <p class="text-body">
-          {notice.text}
-          {#if notice.link}
-            <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
-          {/if}
-        </p>
-      {/if}
-    {/snippet}
-
-    <!--
-      The **live regions**: what the view says out loud. They are always
-      in the document — a live region that appears with its text is not
-      announced by every reader — and they are `sr-only`, so they never
-      push the row of the title away from the middle of the panel.
-    -->
-    {#snippet live()}
       <p aria-live="polite" class="sr-only">
         {#if walking}
           {t('explore.walking', { title: walkTargetTitle ?? '' })}
         {/if}
       </p>
 
-      <p role="status" class="sr-only">
+      <!--
+        The outcome of the last creation. The region is always in the
+        document: a live region that appears with its text is not
+        announced by every reader.
+      -->
+      <p role="status" class="text-body">
         {notice?.text ?? ''}
         {#if notice?.link}
-          {notice.link.label}
+          <a href={notice.link.href} class="ml-1 underline">{notice.link.label}</a>
         {/if}
       </p>
     {/snippet}
 
     {#snippet readout()}
+      <!--
+        The note of the mode. On a narrow screen the panel is a scroller
+        and the picture is the thing: the note goes.
+      -->
+      <p class="hidden text-small text-muted min-[48rem]:block">
+        {t('graph.modeHint')}
+      </p>
+
       {#if viewMode === 'subgraph'}
         <p class="mt-1 text-small text-muted">
           {t('graph.bounds', {
@@ -1440,7 +1408,6 @@
         id={INSPECTOR_PANEL_ID}
         placement="top-right"
         panelClass="w-[min(24rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-2rem)] overflow-y-auto p-3"
-        style="top: {toolbarBottom + 16}px"
       >
         <Inspector
           {selection}
@@ -1448,17 +1415,12 @@
           {ledger}
           panelId={`${INSPECTOR_PANEL_ID}-tabpanel`}
           flat
-          oncollapse={() => {
-            inspectorOpen = false;
-          }}
           onsuggest={openCorrection}
           onrelate={openEdgeDialog}
           reconcileEdge={reconcileEdgeScore}
-          reconcileNode={reconcileNodeScore}
         />
       </FloatingPanel>
     {/if}
-
   {:else}
     <Sheet
       open={inspectorOpen}
@@ -1473,44 +1435,11 @@
         {ledger}
         panelId={`${INSPECTOR_PANEL_ID}-tabpanel`}
         showHeading={false}
-        oncollapse={() => {
-          inspectorOpen = false;
-        }}
         onsuggest={openCorrection}
         onrelate={openEdgeDialog}
         reconcileEdge={reconcileEdgeScore}
-        reconcileNode={reconcileNodeScore}
       />
     </Sheet>
-  {/if}
-
-  {#if !inspectorOpen}
-    <button
-      type="button"
-      class="pointer-events-auto absolute right-7 z-10 grid size-11 place-items-center rounded-control border border-border bg-surface text-muted shadow-float hover:bg-raised hover:text-text"
-      style="top: {toolbarBottom + 16}px"
-      aria-expanded={inspectorOpen}
-      aria-controls={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
-      title={t('inspector.expand')}
-      onclick={() => {
-        inspectorOpen = true;
-      }}
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M6 3.5 10.5 8 6 12.5" />
-      </svg>
-      <span class="sr-only">{t('inspector.expand')}</span>
-    </button>
   {/if}
 
   <!--
@@ -1518,7 +1447,47 @@
     readouts of the exploration window. It is at the other end of the
     picture from the inspector.
   -->
+  {#if viewMode === 'subgraph'}
+    <FloatingPanel
+      id={ROOT_PICKER_ID}
+      placement="bottom-left"
+      label={t('graph.rootPanelLabel')}
+      panelClass="w-[min(20rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-18rem)] overflow-y-auto"
+      hidden={listOpen && !rootPickerOpen}
+    >
+      <RootPicker
+        nodes={rootNodes}
+        {rootId}
+        loading={rootsLoading}
+        error={rootsError}
+        hasMore={rootCursor !== null}
+        onselect={selectRoot}
+        onmore={() => {
+          if (rootCursor !== null) {
+            void loadRoots(rootCursor);
+          }
+        }}
+      />
 
+      <p class="border-t border-rule px-3 py-2 text-small text-muted">
+        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
+      </p>
+    </FloatingPanel>
+  {:else if wideLayout.matches}
+    <FloatingPanel
+      placement="bottom-left"
+      label={t('explore.readoutLabel')}
+      panelClass="w-[min(24rem,calc(100%-2rem))]"
+    >
+      <div class="space-y-1 p-3">
+        {@render exploreReadout()}
+      </div>
+
+      <p class="border-t border-rule px-3 py-2 text-small text-muted">
+        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
+      </p>
+    </FloatingPanel>
+  {/if}
 
   <!--
     The description of the list: what the alternative is and why it is
