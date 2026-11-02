@@ -917,8 +917,8 @@ Decided, and not to be re-opened without evidence:
   proposal→thread linking (Area D), Apache AGE, SSE, GraphQL, distinct-supporter
   quorum.
 
-- **ontology-governance v1** — OPEN 2026-11-01 (T1–T13):
-  [docs/plans/ontology-governance/v1.md](docs/plans/ontology-governance/v1.md)
+- **ontology-governance v1** — CLOSED 2026-11-01 (T1–T13 done):
+  [docs/archive/plans/ontology-governance/v1.md](docs/archive/plans/ontology-governance/v1.md)
   — close ontology governance gaps G1–G9 + FR-11: property activation/rejection
   (G1, G4), class rejection (G4), unique property keys (G7), locale completeness
   (G8), votable ontology proposals (G2), proposal→thread linking (FR-11), quorum
