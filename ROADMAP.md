@@ -1052,6 +1052,10 @@ Decided, and not to be re-opened without evidence:
 
 ## Tracked, not scheduled
 
+Data / vector search:
+
+- hnsw-recall: plan opened at `docs/plans/hnsw-recall/v1.md` (F-04 filtered-recall fix for the Relator's neighbour query; vertical slicing, 4 tasks). Origin: `docs/knowledge/data-and-database-operations.md` §4.
+
 Identity/auth survivors (promoted from the archived v5/v6 task trees and
 `docs/archive/notes/` on 2026-10-29; the intervention record is
 `docs/analysis/auth-onboarding-committee-review.md`):
