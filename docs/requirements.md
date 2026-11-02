@@ -5,7 +5,7 @@ serve, and the user stories that describe them. The **implementation status** of
 every requirement is tracked in the matrix at [docs/README.md](README.md); this
 page states *what the system must do*, not what is built. Architecture decisions
 are in [docs/decisions/](decisions/); unbuilt components are specified in
-[docs/components/](components/).
+[docs/spec/](spec/).
 
 > Status legend (matrix): **Implemented** · **Partial** · **Deferred** ·
 > **Unverified**. A requirement can be normative even when its status is
@@ -50,9 +50,8 @@ The identity model, guard chain and pseudonym rules are in
   ephemeral sessions for in-person events through an `event_code`, assigning a
   random pseudonym and a signed device token. After the event, new anonymous
   users are blocked, while existing users keep access to follow up on their
-  contributions. *(Implemented: tenant EVENT credential + thin global
-  `router.credential_routes` directory (ADR-0046), atomic expiry/capacity/
-  revocation, anonymous user + GUEST membership + rotating session.
+  contributions. *(Implemented: global `router.event_codes` registry, atomic
+  expiry/capacity/revocation, anonymous user + membership + rotating session.
   The QR scanner UI is part of the PWA.)*
 - **FR-04 — Multi-workspace management in a clean URL.** The PWA must keep the
   public URL clean (`app.vozlab.io/`) and keep the workspace context
@@ -74,12 +73,7 @@ The identity model, guard chain and pseudonym rules are in
   that drive the form.)*
 - **FR-07 — Maintainer/author assignment.** Every node, edge and ontology
   proposal records its creator's `author_hash`, granting non-waivable maintainer
-  rights over that object. *(Implemented.)* Node and edge lifecycle activation
-  is the second governance path alongside proposals: `PENDING` content is
-  visible but marked unreviewed, and `PENDING → ACTIVE` / `PENDING → REJECTED`
-  is performed by the author or a moderator/admin, with a moderator
-  force-activate override reusing the FR-13 criteria. Activation/rejection
-  routes land with node-governance v1 (ADR-0051); see T4 of that plan.
+  rights over that object. *(Implemented.)*
 - **FR-08 — Directed edge creation.** Two existing nodes can be connected by a
   typed relationship (`object_properties`), validating domain and range against
   the active ontology. *(Implemented.)*
@@ -96,10 +90,7 @@ The identity model, guard chain and pseudonym rules are in
   *(Implemented: the API and the PWA. The PWA proposes a correction of a node
   or a relation and shows the delta as a diff; the API applies only
   `title`/`description`/`attributes` on a node and `relationKey`/`attributes`
-  on a relation.)* Proposals are one governance path; the node/edge lifecycle
-  (`PENDING → ACTIVE/REJECTED`, ADR-0051) is the other — proposals edit
-  already-active content, while activation governs whether content is
-  reviewed.
+  on a relation.)*
 - **FR-11 — Social linking.** Each edit proposal should open or be linked to a
   thread in `social.discussion_threads` so the community can debate and cast
   informative votes. *(Partial: threads and posts are implemented as separate
@@ -136,7 +127,7 @@ The identity model, guard chain and pseudonym rules are in
   drafts by calling the API. *(Partial: the worker exists — it consumes
   `stream:source_raw`, masks the PII locally, extracts a draft and creates a
   `PENDING` node. **Nothing publishes `stream:source_raw` yet**: the ingestion
-  gateway is missing. Contract in [spec/extractor.md](components/extractor.md).)*
+  gateway is missing. Contract in [spec/extractor.md](spec/extractor.md).)*
 - **FR-18 — Vector embedding generation.** The API must emit a
   `NODE_CREATED` event so the system asynchronously computes the 768-dimensional
   `nomic-embed-text` vector and indexes it in `public.nodes.embedding`
@@ -158,7 +149,7 @@ The identity model, guard chain and pseudonym rules are in
   scheduled analysis of subgraph density and community interactions and publish
   a "Consolidated Improvement Opportunity" for co-creation. *(Worker and
   opportunity endpoint not built; contract in
-  [spec/consolidator.md](components/consolidator.md).)*
+  [spec/consolidator.md](spec/consolidator.md).)*
 
 ## 3. Non-functional requirements
 
@@ -221,24 +212,7 @@ As an institutional administrator I create and configure a workspace with its
 parameters and initial administrators, so faculties or projects keep separate
 contexts. Acceptance: session belongs to the active `tid`; `auth.workspaces`
 row created with the base ontology; the URL stays clean and the workspace
-appears in the PWA selector. *(Backend, CLI bootstrap and audit delivered;
-web admin UI is the next slice — see ADR-0041.)*
-
-v5 extensions (see ADR-0042 and `docs/analysis/auth-onboarding-committee-review.md`):
-cross-tenant identity via router DB, explicit tenant selection, invitations
-unified under tenant authority (the router twin retired by DEC-9,
-[ADR-0045](decisions/ADR-0045-credential-consolidation-and-peppered-email.md)),
-social logins, workspaces.kind (EVENT/PUBLIC/PRIVATE), GUEST role, ephemeral
-workspace codes, multiple roles per workspace (union), alta directa by handle.
-
-### Decision matrix (auth/onboarding)
-| User type | Workspace kind | Flow |
-|---|---|---|
-| Institutional (OIDC) | any | OIDC login → tenant resolution → workspace by invitation/join code/request |
-| External collaborator | any | Workspace invitation URL → OIDC (any IdP) → routed redemption (DEC-9, ADR-0045) |
-| Event attendee (anonymous) | EVENT only | QR with both codes → anonymous user + GUEST membership (auto-approved) |
-| Admin (tenant) | any | Direct add by handle/identity |
-| Admin (workspace) | own | Approve join requests, manage members/roles |
+appears in the PWA selector. *(Admin endpoints not built.)*
 
 ### US-01 — Create a node in the graph (PWA User)
 As an authenticated user I draft an initiative or report by picking an active
@@ -351,7 +325,7 @@ implementation yet.
 | Requirement | Stories | Code (current) | Tables |
 | --- | --- | --- | --- |
 | FR-01, FR-02 | US-00, US-05 | `AuthController.ts`, `OidcProviderClient.ts`, `TenantGuard.ts`, `TenantWorkspaceGuard.ts` | router `public.tenants`; tenant `auth.users`, `auth.refresh_tokens` |
-| FR-03 | — | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts` | router `public.credential_routes` (directory); tenant `auth.workspace_join_codes` (purpose EVENT, authority), `auth.users` (`ANONYMOUS_EVENT`), `auth.workspace_memberships` |
+| FR-03 | — | `JoinEventUseCase.ts`, `RouterDatabaseClient.ts` | router `public.event_codes`; tenant `auth.users` (`ANONYMOUS_EVENT`), `auth.workspace_memberships` |
 | FR-05 | US-01..06 | `TenantWorkspaceGuard.ts` | `auth.workspace_memberships` |
 | FR-06, FR-07 | US-01 | `CreateNodeUseCase.ts` | `public.nodes`, `meta.*` |
 | FR-08 | US-01 | `CreateEdgeUseCase.ts` | `public.edges`, `meta.object_properties` |

@@ -3,7 +3,7 @@
 Open work only. Completed tasks, the old phase plan and the per-task prompts are
 frozen in [docs/archive/](docs/archive/); the decision record is
 [docs/decisions/](docs/decisions/) and the component specs are
-[docs/components/](docs/components/).
+[docs/spec/](docs/spec/).
 
 **Rules:** one checkbox = one PR-sized batch that leaves `pnpm turbo run build
 type-check test` green; update the status matrix in [docs/README.md](docs/README.md)
@@ -29,7 +29,7 @@ trade-offs before coding.
 - Phase 3 done: `apps/web` is a working SvelteKit 5 PWA. It builds, serves
   SSR and ships a manifest and a service worker (3.1); the runes state, the
   per-tab workspace and the HTTP client (3.2); the route groups, the session
-  guard and the workspace selector (3.3); the SVG canvas with its
+  guard and the workspace selector (3.3); the Cytoscape canvas with its
   bounded subgraph (3.4); the ontology-driven creation forms, the proposal
   review, the discussions and the optimistic voting (3.5); the offline shell,
   the install and update prompts and the accessibility pass (3.6); a
@@ -69,7 +69,7 @@ real. Decisions: rotating **opaque** refresh token in an `HttpOnly` cookie
 (Google Workspace); `iss`-only resolution stays unscheduled.
 Result: 114 tests green; `build` + `type-check` green.
 
-- [x] global event-code registry + migration (exception to ADR-0002 since recast as thin routing by ADR-0046,
+- [x] `router.event_codes` registry + migration (global exception to ADR-0002,
       [ADR-0019](docs/decisions/ADR-0019-global-event-codes.md)): hashed code,
       tenant/workspace, expiry, revocation, capacity, created_by.
 - [x] `GET /api/v1/auth/login` — OIDC authorization URL with state + nonce and
@@ -122,7 +122,7 @@ Milestones:
       ([ADR-0025](docs/decisions/ADR-0025-source-resolution-route.md)); no
       management route for the registry yet.
 - [x] 2.3 Extractor: `stream:source_raw` → PII masking → Ollama → API drafts
-      ([spec](docs/components/extractor.md)). Result: `apps/worker-extractor` masks
+      ([spec](docs/spec/extractor.md)). Result: `apps/worker-extractor` masks
       the PII locally, resolves the workspace through the registry, extracts a
       draft and creates a `PENDING` node; **nothing publishes
       `stream:source_raw` yet** (the ingestion gateway is still missing).
@@ -133,15 +133,13 @@ Milestones:
       /`embedded_at` columns, HNSW index exercised, verified end to end against
       the local stack; there is no backfill for pre-existing nodes.
 - [x] 2.5 Relator: vector top-5 → LLM evaluation → merge/edge proposals
-      ([spec](docs/components/relator.md)). Result: `apps/worker-relacionador` reads
+      ([spec](docs/spec/relator.md)). Result: `apps/worker-relacionador` reads
       the neighbours through the API (ADR-0022), asks the local LLM and creates
       `PENDING` edges; a `MERGE` verdict is submitted as a merge proposal and
       the API applies the merge when the proposal is approved
       (ADR-0023, ADR-0026).
-- [~] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
-      the API ([spec](docs/components/consolidator.md)); add the opportunity endpoint.
-      **Deferred for MVP** (2026-10-26): not needed to ship; moved to
-      "Tracked, not scheduled" until a concrete use case appears.
+- [ ] 2.6 Consolidator: scheduled cluster synthesis → opportunity published via
+      the API ([spec](docs/spec/consolidator.md)); add the opportunity endpoint.
 - [x] 2.7 Worker Dockerfiles + compose profiles + worker tests; update
       `runbook-ops.md`. Result: a Dockerfile per worker (uv, non-root,
       `--frozen`), a `workers` compose profile, the Python suite and the image
@@ -172,7 +170,7 @@ Milestones:
       per-tab workspace selector, and `/auth/callback` lands the OIDC
       failures outside both groups. The workspace is never a path segment.
       81 web tests.
-- [x] 3.4 SVG graph canvas + subgraph loading. Result: the instance is
+- [x] 3.4 Cytoscape graph canvas + subgraph loading. Result: the instance is
       created once, the elements are patched on a change and the instance is
       destroyed on unmount; `dagre` is registered once at module level with a
       deterministic layout and no physics. The subgraph is bounded (3 hops,
@@ -323,23 +321,6 @@ Decided, and not to be re-opened without evidence:
   from every managed PostgreSQL allow-list. The concurrency work is done with
   a version column instead. The trigger that would reopen the question is
   written down in ADR-0027.
-- **The shape with right angles is gone.** The user did not like the square
-  corners: they read as a diagram of pipes rather than as relations, and a
-  relation that turns draws the eye to the turn instead of to what it joins.
-  The shape is out of both graphs and the router that computed the turn went
-  with it — no shape is routed any more.
-- **The product is online-first, not offline-first.** Everything that is
-  shown or edited comes from the API; there is no local state and no
-  synchronisation, and none is intended. The shell is cached so the app
-  opens instantly and can say clearly when the connection is gone. The
-  research of 2026-10-21 had argued the bundle size on the grounds of an
-  offline PWA — a premise the product owner corrected, and one that has to
-  be left out of every argument.
-- **The graph engine is not decided.** The research is written down in
-  `docs/graph-engine-research.md` and the work goes in the order the
-  product owner says: the layout first (it is what decides whether the
-  picture is legible), the painter afterwards, judged with the eyes in the
-  comparison surface.
 
 - [x] 3.15 The design system: the tokens of the accent ladder, the type, the
       shell, the bars and the page frames. Result: the direction is the
@@ -370,19 +351,8 @@ Decided, and not to be re-opened without evidence:
       The cost is nothing: 200 wrapped cards cost ~1.1 ms of a 16.7 ms frame.
       The spacing was inflated by a `spacingFactor` that turned out to be a
       Cytoscape core option and not a dagre one — removed.
-- [x] 3.17 The two engines side by side: a development-only comparison of
+- [ ] 3.17 The two engines side by side: a development-only comparison of
       Cytoscape and Sigma.js on the same data and the same interactions.
-      Result: a **development-only** surface at `/engines` that draws the
-      same window in **three** pictures — Cytoscape + dagre, Cytoscape +
-      fcose and Sigma.js + Graphology — with the same cards, the same
-      relations and the same interactions, and it measures them: the
-      layout takes **44 ms / 807 ms / 1046 ms** and the median frame is
-      **16.6 ms** in all three (the slowest is 30.2 / 23.7 / 21.4 ms). All
-      three settle and stop. The surface does not exist in a production
-      build: the code is behind `import.meta.env.DEV` and a dynamic
-      import, and the bundle holds no renderer, no graph store and no
-      layout — only the copy of the labels, because the dictionary is one
-      shared module.
 - [x] 3.18 The names in the interface's language: the API returns the
       display-name map of the class and of the relation. Result: the
       diagnosis was neither the ontology's schema nor the edge creation —
@@ -449,23 +419,8 @@ Decided, and not to be re-opened without evidence:
       node under the reader's hand. The list view, the text alternative,
       carries a **Caminar** button per row: the canvas is not reachable by
       keyboard.
-- [x] 3.24 The spring of the exploration view: `d3-force` with a rectangular
-      collision force of our own. Result: `d3-force` (3 KB) replaces
-      `cytoscape-fcose` as the layout of the exploration view, and the
-      collision that no library does for cards is written here: axis-aligned
-      boxes pushed apart along the axis of least penetration, with the
-      neighbours found through a **uniform grid** (1.0 ms per tick at 200
-      nodes, 6.2 ms at 1000). The repulsion is charged by the **area** of
-      the card, not by its degree — which is the thing force-atlas2 does
-      not do. **0 overlapping card pairs**, against fcose's 392 and FA2's
-      493. The run is **deterministic** (a seeded LCG and a fixed circle
-      start: two runs give exactly the same positions), it **stops by
-      itself** (`alpha < alphaMin`, 300 ticks), and it is stepped in
-      **slices of 3 ticks per frame** so the reader *sees* the picture
-      rearrange and the interface never stalls (3.20 ms of frame). With
-      `prefers-reduced-motion` the layout runs in one go and gives the same
-      picture. The layout is a **pure module** — no DOM, no canvas, no
-      Cytoscape — so it is tested on its own.
+- [ ] 3.22 The optimistic concurrency: the version column, the
+      compare-and-set, the conflict and its copy.
 - [x] 3.23 The graph page as a full-bleed canvas: the panels over it, and the
       even background of the exploration view. Result: the graph page is a
       **workspace**, not a page — it fills the viewport (`100dvh`), the page
@@ -481,664 +436,34 @@ Decided, and not to be re-opened without evidence:
       is the other half of the same area, one click away, and the canvas
       stays mounted and `inert` behind it. The app's own navigation stays a
       column: the panels that float are the workspace's, not the app's.
-- [x] 3.25 The clone of dagre that uses `d3-dag`: a parallel candidate, with
-      the cycles broken **visibly** rather than in silence. Result: the
-      clone is a **pure module** (`graph/explore/dag-layout.ts`) that breaks
-      the cycles by reversing the DFS back edges — the same rule as dagre,
-      with the theorem written down — and it **reports** which relations it
-      broke, so the reader is told instead of being misled. And the finding
-      of the batch is a **live bug**: dagre reverses the back edges in
-      silence, so **10 of the 35 arrows of the seeded demo point against
-      what the relation says**, today, in production. The clone is nine
-      times faster (1.7 ms against 16 ms on the demo, 102 ms against 682 ms
-      on 200 nodes) and it is pinned to `quality: 'fast'`, because the
-      `medium` preset took **90 seconds** on the same graph.
-- [x] 3.26 The living spring: the picture stays half organised and keeps
-      drifting between the clusters, and the simulation sleeps when the
-      window is hidden. Result: the spring **breathes**. At rest it drifts
-      with `alphaTarget` 0.005 at ~12 Hz (raised to 20 Hz in 3.35) — **0.890 ms per tick** at 200
-      cards and a greatest movement of **0.281 px per tick**, a drift and
-      not a jump; contact with the picture (a pointer moving over the
-      canvas, a card grabbed, a card hovered, a node focused, a walk, a
-      zoom) raises it to 0.1, and it **cools back in 1.2 s**. A dragged
-      card is pinned, its neighbours part, and on release it keeps its
-      place. A hidden tab stops the driver and coming back resumes it;
-      with `prefers-reduced-motion` the picture runs to rest and does not
-      drift. **The attraction is weighted by the relation's
-      `communityScore`** — the data the traversal already orders by — so a
-      strong relation pulls its cards closer and the clusters grow around
-      the strong relations: that is the half-organised picture, not a
-      uniform ball. The edge element carries the score now. And the readout
-      stops lying: it says **"Viva: se mueve en reposo"**, because a living
-      spring never settles; the walk waits for the wake's movement to fall
-      (or 900 ms) and then glides. **0 overlapping card pairs** while it
-      drifts. Same batch, the research's verdicts on the playground:
-      **Sigma.js and `cytoscape-fcose` are gone** — tabs, code, copy,
-      dependencies and lockfile — and the two hierarchies say in the
-      interface what they cannot do: "Una jerarquía no respira: sus rangos
-      son el dibujo".
-- [x] 3.29 The workspace's collapsible panels: the navigation folds into a
-      **rail of icons** (56 px), the inspector is **collapsed by default**
-      (the walk through the graph happens without it) and the root picker
-      is **collapsed** with a **search** that matches the title without
-      regard to case or accents. The state is remembered in the cookie
-      `vozlab_panels`, read by the server hook so the first paint is
-      already folded — **never in `localStorage`**. The relation's name is
-      also written on an **opaque** plate now, the same colour as the
-      ground, instead of one that let the line through.
-- [x] 3.30 The zoom as a property of the view: it starts at the fit (the
-      whole graph in view), the wheel changes it, and walking only re-centres
-      the view — smoothly, without touching the value. Result: the zoom
-      stops being imposed. The `MIN_READABLE_ZOOM` clamp is gone, the
-      picture is fitted **once** when the view opens (every node inside the
-      box) and the reader owns the value from then on: the wheel changes it,
-      a re-layout does not, and a walk does not. The range is 0.05–3. The
-      value is `null` until the reader chooses one, and a view that opens
-      without a choice fits its own picture. The centring is **animated**
-      (320 ms, `ease-in-out-cubic`) and the animation carries **no zoom**,
-      so it cannot change it by accident. The decision about the fight with
-      the spring: **the spring settles first and then the view glides** —
-      the node's final place is only known when the simulation stops, and a
-      pan towards a moving target would have to be re-targeted every frame.
-      With `prefers-reduced-motion` the pan is instant.
-- [x] 3.31 The comparison as a common playground: the same workspace frame,
-      the implementations as tabs in the same space, each one free to bring
-      everything it needs. Result: the comparison is **the graph page's
-      frame** — the same floating panels, the same even ground, the same
-      toolbar rhythm, the same list as the text alternative — and the five
-      implementations are a **real tablist** (arrow keys, `Home`/`End`,
-      roving tabindex) that mounts one at a time in the same space: the
-      previous one is destroyed, so two engines never draw on the same
-      canvas. Each brings **its own** layout, painter and interactions, and
-      the comparison says so out loud when an implementation cannot use the
-      shared layout. The readout is **per implementation**: a report arrives
-      with the id of the engine that produced it, and switching tabs
-      forgets the numbers.
-- [x] 3.32 The clone of `d3-dag` must not travel in the production bundle:
-      it is a candidate, and it weighs 44 KB gzip there for nothing. Result:
-      the **arrangement** moved to the development surface (the only module
-      that imports `d3-dag`), the module in the graph layer stayed **pure**
-      (the cycle detection, the count against the flow, the types), and the
-      production canvas receives the clone **through an option** — with a
-      **type-only** import, which is erased at compile time. The production
-      bundle lost **177 KB raw / 35 KB gzip**, and `sugiyama`, `decross` and
-      `zherebko` are in **no file** of it.
-- [x] 3.28 A third painter in the comparison: `d3` and a hand-written SVG
-      painter, with the card as one `<g>`. **The next batch**, and the
-      **full candidate**: the card as one `<g>`, the relations with their
-      opaque plates, pan/zoom (`d3-zoom`), drag (`d3-drag`), hover,
-      selection, the walk, the list as the text alternative and the readout
-      — the same feature set as the incumbent, so the comparison is fair.
-      It brings the **living spring** as its arrangement. The research
-      measured it: **22.8 KB gzip against 158 KB**, 4 007 DOM elements for
-      200 cards / 400 relations, **12.9 ms to build against 114 ms**,
-      59.7 fps of pan and 52.2 fps at 1 000 nodes. It **subsumes 3.27** —
-      the card as one object comes free with the `<g>` — so **3.27 is off
-      the board**: the compound-node mechanism it proposed collides with
-      what `elements.ts` already documents (in Cytoscape a compound node is
-      sized by its children, and the card is the one that must keep its
-      shape). Result: the painter exists as **a candidate in the
-      comparison** — `svg/painter.ts` (1 435 lines), `svg/edge-path.ts`
-      (375), `svg/camera.ts` (163) — and its card is **one `<g>`**: the
-      rect, the title's tspans, the meta line, the badge and the body, with
-      the transparent hit rect on top. It draws the **five** relation shapes
-      as `<path>`, the label at 11 px on an **opaque** plate of the ground,
-      the status dashes and the arrowheads, and it brings the **living
-      spring** as its arrangement — the production module, untouched. The
-      five shapes and the card's content were extracted into pure modules
-      (`edge-path.ts`, `card-content.ts`) that the incumbent uses too, so
-      the two painters are the same picture. **The payload**: the painter's
-      chunk is **22 988 B gzip** (the research measured 22.8 KB) and the
-      production bundle carries **nothing** of it — `d3-selection`,
-      `d3-zoom` and `d3-drag` are devDependencies and the built client was
-      grepped for them. **At 200 cards (384 relations)**: **4 867** DOM
-      elements, **15.3–19.7 ms** to build, **4.90 ms** per frame of the
-      spring, **0** overlapping pairs — against the research's 4 007
-      elements and 12.9 ms, because this carries the full card chrome and
-      not bare nodes. The pan during a wheel is **23.45 ms / 42.6 fps** at
-      200 cards, below the research's 59.7 fps: the honest reading is that
-      SVG is not free at 200 cards with this much ink, and the comparison
-      says so instead of rounding it away. What the eyes said: the card
-      **is** the same card — same 8 px radius, same ink, same wrapped title,
-      same meta line — and the plate is opaque.
-- [x] 3.33 The comparison's chrome: the readout and the essay fold, so the
-      picture is the picture — at 1440 and at 375 — and the size selector
-      never shows an empty value. Result: the readout **folds to its three
-      numbers** — the frame time, the overlapping pairs and the state — and
-      the table opens behind "Todas las medidas", with the fold remembered
-      across tabs; the essay opens behind "¿Qué es esto?"; the toolbar reads
-      as one bar. The chrome went from **28.7% to 13.0%** of the canvas at
-      1440 (the free gap from 115 to 566 px) and from **76.9% to 37.6%** at
-      375, where the folded readout is one line. The size select cannot
-      render an empty value any more: its options include the loaded window.
-      **And the suite found a harness defect on the way**: the E2E was
-      **reusing the dev API**, so it wrote as one actor against the real
-      **30 writes/minute** and the vote journey was refused with `429` — the
-      vote was never broken. The suite now owns **its own ports** (`:3100` /
-      `:5174`), starts its own API with a **test budget** for the limiter,
-      and runs next to a developer's stack instead of borrowing it.
-- [x] 3.34 The shell's copy says online-first: the toast no longer promises
-      "ready to work offline", which is false — the data needs the network.
-      Result: the notice says what is true — **"VozLab ya está en la caché de
-      este dispositivo: la aplicación se abre al instante. Los datos
-      necesitan conexión."** — and the code stops lying with it: the flag is
-      `shellCached`, the handler is `markShellCached()`, the dictionary key is
-      `pwa.shellCached`, and the registration error says the app does not
-      open without a connection instead of talking about "offline support".
-      It was found by looking at a screenshot, not by a test.
-- [x] 3.35 The living spring never stops while it is shown: the motion used
-      to freeze a few seconds after the first contact, and now it runs for
-      as long as the picture is on screen. Result: the freeze was the
-      **tick cap of the layout** — a one-pass run rests at 300 ticks, and
-      the cap of 600 cut the living spring off while its driver kept asking
-      for frames, which is a freeze in disguise. A living spring is now
-      never capped and never reports itself settled; it stops only because
-      the caller stops it. The idle pace went from 12 to **20 Hz**: every
-      card **sways** around its place on a 5 model px circle, a full circle
-      every six seconds — about **3 px/s** of travel at the fit — and the
-      picture reads as alive instead of almost still, without the
-      arrangement walking. The two ways
-      of not being shown keep it quiet, as asked: **a hidden browser tab**
-      stops the driver (and coming back resumes it) and **a panel that is
-      no longer shown** destroys its painter and its spring — another engine
-      in the comparison, another route in the graph page. Measured with the
-      document hidden: **0 ticks in 2 s** in both the SVG painter and the
-      Cytoscape canvas, and both moving again on return; at rest both tick
-      at 20/s.
-
-- [x] 3.36 The static engines left the comparison of the engines: the two
-      layered arrangements — Cytoscape + dagre and Cytoscape + d3-dag —
-      were removed from the playground, with their tab, their copy, their
-      files and the `d3-dag` dependency, because a picture that computes
-      its places once and stops has nothing to say next to a spring that
-      breathes. The comparison now shows the two painters of the living
-      spring: the canvas of Cytoscape and the hand-written SVG. The report
-      of the reversed relations and the pure module that detected the
-      cycles went with them — they only served the layered arrangements.
-      Result: `ENGINES` = `d3`, `svg`; `pnpm test` = **613 tests web**
-      (75 files); E2E 3/3; `pnpm turbo run build type-check test` green.
-
-- [x] 3.37 The spring learned four things: a dragged card is **released**
-      on drop instead of staying pinned, so it keeps moving; the edges try
-      to **uncross** — when two of them cross, their endpoints are pushed
-      apart, and the picture searches for the arrangement that hurts the
-      least, like a gradient descent over the crossings; a **centroid** —
-      an invisible control node connected to every visible one — pulls the
-      distant nodes back, so the whole graph stays together and on screen
-      instead of stretching into a single line (the charge still repels at
-      short distance); and the **neighbours** of a common node spread
-      around it, equidistant, forming a loose circle. The new forces run
-      while the picture is being arranged (alpha ≥ 0.01) and go quiet at
-      rest, so the idle breath stays below the shape threshold. The arrow
-      of a relation grew from 1.5 to **2 px**, so a relation is always
-      seen. Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3;
-      `pnpm turbo run build type-check test` green.
-
-      Measuring the freeze surfaced two more defects of the living picture.
-      The **charge had no reach**: a card that hangs from a single relation
-      was pushed out of the picture forever, so the arrangement grew a few
-      pixels a second and the fit eroded — the charge now reaches **900
-      model px**. And the **fit of the view was taken from the frames of
-      the animation**, before the arrangement had arrived: the cards of the
-      edge opened outside the canvas and a click on one missed. The fit is
-      now taken from the **one-pass picture at the awake alpha** (400
-      ticks) — the same arrangement the animation arrives at, because the
-      spring is deterministic. The whole graph opens inside the canvas and
-      stays there: **0 of 25 badges outside over 10 s** in the E2E, and the
-      three E2E journeys that the moving picture had broken (the walk by
-      click, the fit, the walk that pans) pass again.
-
-- [x] 3.38 The picture now opens wide before it organises itself: the seed
-      circle grew (spacing 170 → 260) and the links **anneal** — they start
-      three times as long and shorten as the alpha decays, so the nodes
-      begin far apart and the spring pulls them together gradually, with
-      room for the uncrossing on the way. Result: `pnpm test` = **613
-      tests web** (75 files); E2E 3/3; `pnpm turbo run build type-check
-      test` green.
-
-- [x] 3.39 The tremor of the Cytoscape engine was tamed with **A + B + E**:
-      the idle sway dropped from 5 to **2 px**, the idle pace from 20 to
-      **12 Hz**, and a **breathing toggle** was added to the comparison
-      (on by default; turning it off keeps the picture quiet, and the
-      spring only moves when the reader touches it). The toggle calls
-      `setIdleSway` on the spring of the engine that is on screen. Result:
-      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
-      run build type-check test` green.
-
-- [x] 3.40 The idle sway dropped again (5 → 2 → **1 px**) and the
-      breathing toggle no longer stops the sway on its own: it stays on
-      while the picture is shown. The SVG painter stopped stuttering while
-      dragging: the dragged card no longer fights the spring's
-      `applyPlaces` (it is skipped for the dragged card), and the edges
-      are repainted on `requestAnimationFrame` instead of every mouse
-      move. Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3;
-      `pnpm turbo run build type-check test` green.
-
-- [x] 3.41 Idle no longer stalls: `IDLE_ALPHA_TARGET` went from 0.005 to
-      **0.015**, so the picture keeps moving when the pointer rests. Hover
-      or selection **pins that one card** (it stops) while the rest keep
-      moving; unhover/deselect releases it. Implemented in both engines
-      (Cytoscape and SVG) with a refcount so a card that is both hovered
-      and selected is not released early. Result: `pnpm test` = **613
-      tests web** (75 files); E2E 3/3; `pnpm turbo run build type-check
-      test` green.
-
-- [x] 3.42 The idle energy went up again (`IDLE_ALPHA_TARGET` 0.03 →
-      **0.08**) and the cool-down stretched to **5 s**, so the picture no
-      longer freezes when the pointer rests. Hover/selection now pins the
-      node in **both** engines (the Cytoscape bug that left it pinned
-      forever is fixed via a reason-tracked refcount). Result: `pnpm test`
-      = **613 tests web** (75 files); E2E 3/3; `pnpm turbo run build
-      type-check test` green.
-
-- [x] 3.43 The comparison of the engines dropped the **tabs** in favour of
-      a **dropdown** (a `<select>`), whose choice is persisted in
-      `sessionStorage` so a reload of the tab keeps it. The **wake** on
-      mouse movement was removed: the spring breathes on its own at the
-      idle pace and only the tab visibility (and unmount) change its
-      rhythm. The engines keep their names in both languages. Result:
-      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
-      run build type-check test` green.
-
-- [x] 3.44 The comparison now counts the **edges that cross**
-      ("Aristas cruzadas" / "Crossed edges") and ships a **"Repetir
-      disposición"** button that re-runs the layout on the current picture
-      until the crossings drop to zero (or the picture settles). The
-      counter is computed from the rendered segments of both engines. Result:
-      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
-      run build type-check test` green.
-
-- [x] 3.45 The **"Repetir disposición"** button now **shakes** the graph:
-      it re-runs the layout eight times in a row (60 ms apart), re-seeding
-      the spring each time, so the uncrossing has several chances to settle
-      the picture. The counter of crossed edges shows the result. Result:
-      `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm turbo
-      run build type-check test` green.
-
-- [x] 3.46 The **"Sacudir el grafo"** button no longer shakes on a timer:
-      each shake **waits for the layout to settle** before the next, so the
-      nodes stop moving in one direction and the next shake starts fresh.
-      The living spring is re-synced to the final positions and keeps
-      breathing from there. Result: `pnpm test` = **613 tests web** (75
-      files); E2E 3/3; `pnpm turbo run build type-check test` green.
-
-- [x] 3.47 The **"Sacudir el grafo"** button no longer blocks the UI:
-      each shake runs on a `setTimeout` so the picture repaints between
-      shakes, and a shake only starts after the previous one has settled.
-      Result: `pnpm test` = **613 tests web** (75 files); E2E 3/3; `pnpm
-      turbo run build type-check test` green.
-
-- [x] 3.48 Reverted: the shake on first load was removed (it was not
-      effective). The shake stays available only via the button, now named
-      **"Desenredar"**. Result: `pnpm test` = **613 tests web** (75
-      files); E2E 3/3; `pnpm turbo run build type-check test` green.
-
-- [x] 3.49 The graph page is now **one mode only**: the exploration view
-      (the living spring). The subgraph mode, the bounded-subgraph canvas,
-      the list of nodes/edges and the root picker were removed. A **search
-      box** at the top navigates to a node by title. The SVG painter is
-      the only engine (in `lib/graph/svg`); the `/engines` route and its
-      views are gone. Result: `pnpm test` = **552 tests web** (64 files);
-      `pnpm turbo run build type-check test` green.
-
-- [x] 3.50 The main graph page now has a **"Desenredar"** button next to
-      the node search box: it re-runs the layout on the current picture
-      until the crossings drop to zero. Result: `pnpm test` = **552 tests
-      web** (64 files); `pnpm turbo run build type-check test` green.
-
-- [x] 3.51 The **"Desenredar"** button moved from the floating overlay
-      into the **toolbar** of the workspace, next to a node search box, so
-      it no longer covers the sidebar. Result: `pnpm test` = **552 tests
-      web** (64 files); `pnpm turbo run build type-check test` green.
-
-- [x] 3.52 The main graph page now uses the **SVG painter** as its only
-      engine: `ExplorationView` renders `SvgGraphCanvas` instead of the
-      Cytoscape canvas. The Cytoscape-specific tests were removed (the
-      painter is already covered by `engines-svg-painter`). Result: `pnpm
-      test` = **531 tests web** (62 files); `pnpm turbo run build
-      type-check test` green.
-
-- [x] 3.53 The **"Desenredar"** button now actually works on the main
-      page: `rearrangeTick` is forwarded from the page through
-      `ExplorationView` to `SvgGraphCanvas`, so the shake runs. Result:
-      `pnpm test` = **531 tests web** (62 files); `pnpm turbo run build
-      type-check test` green.
-
-- [x] 3.54 Removed the **arc** and **haystack** edge shapes from
-      `EdgeStyle`, `EDGE_STYLES`, the presets and the SVG path builder; the
-      control now offers only straight, bezier and unbundled. Result: `pnpm
-      test` = **528 tests web** (62 files); `pnpm turbo run build
-      type-check test` green.
-
-- [x] 3.55 The zoom of the main graph page now drives the **SVG
-      painter's camera**: `zoomIn`, `zoomOut` and `fitView` were added to
-      the painter (via d3-zoom's `scaleBy`) and wired through
-      `SvgGraphCanvas` and `ExplorationView`. Result: `pnpm test` = **528
-      tests web** (62 files); `pnpm turbo run build type-check test`
-      green.
-
-- [x] 3.56 Workspace chrome cleanup: the readout panel at the bottom left
-      is gone; the inspector collapses with the quiet chevron icon of the
-      navigation rail; the expand badge of a node sits **inside** the card,
-      at its top-left corner; the inspector floats below the toolbar, and
-      the toolbar reorganises its row (search first, view controls, at the
-      end the "Desenredar"). Result: `pnpm turbo run build type-check test`
-      green (9/9, 528 tests web).
-
-- [x] 3.57 The toolbar spans the full width of the workspace and its row
-      distributes (title left, controls spread, "Desenredar" right); the
-      expand badge of a node now sits at the card's top-right interior
-      corner; nodes expand on **double click** (or the badge, or `E`) and
-      relations are **selectable** — click or double click selects a
-      relation, it is highlighted and the inspector reads it.
-      Result: `pnpm turbo run build type-check test` green (9/9, 528
-      tests web).
-
-- [x] 3.58 Selection and chrome corrections: the painter no longer clears
-      a relation selection on report — relations really select now
-      (verified with a browser test); a single click a card **only
-      selects** it — the presented node is no longer auto-expanded, so
-      cards unfold by double click, the badge or `E` only; the toolbar is
-      one centred set (title to the left, search + controls + both actions
-      to its right) and the "two views" hint is gone.
-      Result: `pnpm turbo run build type-check test` green (9/9, 528 tests
-      web).
-
-- [x] 3.59 The chrome folds into the navigation column: the bar of the
-      shell is gone (mark, name, scope and language selector move into
-      it — folded, the column keeps only icons and the language opens
-      its own menu); a document without navigation loses no control (the
-      drawer button floats over the content); the toolbar distributes
-      into **three blocks** (title left, controls centred, "Nuevo nodo"
-      right) and a folded inspector is replaced by its icon button
-      (chevron, no text), placed below the toolbar.
-      Result: `pnpm turbo run build type-check test` green (9/9, 529
-      tests web).
-
-- [x] 3.60 The floating toolbar breathes: it keeps the **same air toward
-      the top and the right** as the gap the shell's grid puts between it
-      and the navigation column (28px on the three sides that face a
-      border — the pinned `w-full` had to go so the air could shrink it);
-      its inner frame follows the same air (title, controls, "Nuevo
-      nodo"); the "Nuevo nodo" button is centred in the row and keeps the
-      distance; the title stops being shrunk and shows the serif of the
-      design system (32px); the toolbar reports its **bottom edge** (not
-      its height) so the list, the inspector and the reopen icon hang
-      from the edge wherever the panel sits. And the inspector votes on
-      **nodes** too: the selected node gets the same vote buttons as a
-      relation (optimistic, `POST /api/v1/interactions` with
-      `targetType: NODE`, the score read back through
-      `GET /api/v1/nodes/:id`, and the ledger keeps the detail and the
-      buttons in step). Verified in a real browser: air 28/28/28 and a
-      vote of a seeded node (2 → 3).
-      Result: `pnpm turbo run build type-check test` green (9/9, 530
-      tests web).
 
 ## Phase 4 — Platform, QA and operations
 
-- [x] 4.1 Integration tests in CI with ephemeral PostgreSQL + Redis (service
-      containers; migrations + seed as a step). Testcontainers deferred.
-- [x] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`) with
-      v8 provider and per-package thresholds (api 30/50/70/30, web 50/50/40/50).
-- [x] 4.3 E2E suite in CI (Playwright) — separate `e2e.yml` workflow with
-      service containers.
-- [x] 4.4 Load tests (k6) smoke script in `scripts/load/k6-smoke.js`.
-- [x] 4.5 Observability: Prometheus metrics endpoint in API + workers
-      (prometheus_client), self-hosted Prometheus/Grafana/Tempo in compose
-      (--profile observability), OpenTelemetry tracing in API, Grafana
-      provisioning + dashboards.
-- [x] 4.6 Deploy pipeline for MVP: docker-compose.prod.yml, .env.production.example,
-      migration one-shot container, Cloudflare Tunnel runbook, Floci + Terraform
-      IaC skeleton, GitHub Actions deploy workflow (manual). ADR-0039.
-      Updated 2026-10-29 (ADR-0043, topology T2): prod compose re-aligned to
-      Caddy three origins (`app.`/`api.`/`auth.`), Zitadel + Caddy services
-      added, backends loopback-only, initdb dev-scripts unmounted, file
-      validity fixed (`floci` was misnested under a duplicate `volumes:`);
-      `.env.production.example` rewritten to the T2 matrix; runbook in
-      `docs/ops/production-deployment.md`. api/web images build + smoke
-      verified. Real hostname + staging CSP tuning remain the go-live steps.
-- [x] 4.7 Pay down lint debt (`no-explicit-any`): 0 errors; lint re-added to CI.
-      (2026-10-29: the claim had drifted — 19 errors were still live and CI
-      gate was failing on main; they were paid the same day, boundary
-      validation replaced the casts, and the heredoc-corrupted `deploy.yml` /
-      `e2e.yml` / floci compose were repaired. 0 errors / ~35 warnings.)
-
-## Active plans
-
-- **node-governance v1** — CLOSED 2026-11-01 (T1–T9 done):
-  [docs/archive/plans/node-governance/v1.md](docs/archive/plans/node-governance/v1.md)
-  — close the governance loop for nodes and edges (F-01): settle D-03 (visible
-  on creation, marked unreviewed, activatable by author or moderator, auto-apply
-  with 14-day + score ≥ 10 threshold), add Activate/Reject use cases + HTTP
-  routes + auto-activate override for nodes and edges, web inspector
-  approve/reject actions, "unreviewed" marking in the graph, seed alignment and
-  docs truth pass. Vertical slicing; 9 tasks (T1–T9). Out of scope: ontology
-  property governance (Area B), ontology lifecycle completion (Area C),
-  proposal→thread linking (Area D), Apache AGE, SSE, GraphQL, distinct-supporter
-  quorum.
-
-- **ontology-governance v1** — CLOSED 2026-11-01 (T1–T13 done):
-  [docs/archive/plans/ontology-governance/v1.md](docs/archive/plans/ontology-governance/v1.md)
-  — close ontology governance gaps G1–G9 + FR-11: property activation/rejection
-  (G1, G4), class rejection (G4), unique property keys (G7), locale completeness
-  (G8), votable ontology proposals (G2), proposal→thread linking (FR-11), quorum
-  (G3), deprecation+migration (G5, G6), events+consumer (G9), web admin surface.
-  Vertical slicing; 13 tasks (T1–T13). Out of scope: cross-workspace ontology
-  mapping, Apache AGE, SSE, GraphQL, outbox, Consolidator.
-
-- **admin-surfaces v2** — CLOSED 2026-11-01 (T1–T4 done):
-  [docs/archive/plans/admin-surfaces/v2.md](docs/archive/plans/admin-surfaces/v2.md)
-- **tenant-user-management v1** — CLOSED 2026-11-01 (T1–T4 done):
-  [docs/archive/plans/tenant-user-management/v1.md](docs/archive/plans/tenant-user-management/v1.md)
-- **admin-data-tables v1** — CLOSED 2026-11-01 (T1–T4 done):
-  [docs/archive/plans/admin-data-tables/v1.md](docs/archive/plans/admin-data-tables/v1.md)
-  — convert /admin and /workspace-admin list views to data tables with modal
-  creation forms (button at upper-right of table title). UI-only. Vertical
-  slicing; 4 tasks (T1–T4). Out of scope: pagination/sorting/filtering,
-  backend changes, mobile-specific layouts.
-  — tenant user management (promote/demote system_role, suspend/activate via
-  sessionsValidAfter) and tabbed UX for both /admin and /workspace-admin.
-  Vertical slicing; 4 tasks (T1–T4). Out of scope: user creation, deletion/
-  anonymization, status column on auth.users, override grants, workspace
-  deletion, MODERATOR semantics.
-  — remove the tenant-admin bypass over workspace administration and trim
-  `/admin` of workspace-scoped edits/break-glass. Vertical slicing; 4 tasks
-  (T1–T4). Out of scope: override grant, workspace deletion, `system_role`
-  UI, `MODERATOR` semantics.
-
-- **admin-surfaces v1** — CLOSED 2026-11-01 (T1–T9 done):
-  [docs/archive/plans/admin-surfaces/v1.md](docs/archive/plans/admin-surfaces/v1.md)
-  — split the mixed `/admin` into tenant administration (`/admin`: workspace
-  existence/creation, tenant users, cleanup, read-only break-glass) and
-  workspace administration (`/workspace-admin`: profile, members/roles, join
-  requests, invitations, join codes, event codes). Vertical slicing; 9 tasks.
-  Out of scope: workspace deletion/archive, `system_role` UI, `MODERATOR`
-  semantics, event QR scanner, invitation email delivery.
-
-- **upgrade-waves v1** — CLOSED 2026-10-31 (waves 0–4 done; wave 5 SvelteKit 3
-  deferred to v2): [docs/archive/plans/upgrade-waves/v1.md](docs/archive/plans/upgrade-waves/v1.md)
-  ADR-0047.
-  — full dependency upgrade program (Waves 0–5): hygiene (dead Cytoscape
-  removal, d3 deps, patch wave, vitest align, Node 24 pin, Ollama pin, CI
-  permissions, Dependabot), Fastify 4→5 + node-redis 4→6 + pino 9→10,
-  Zod 3→4 + jose 5→6 (drop jsonwebtoken), pgvector pin + AGE removal +
-  Valkey adoption, ESLint 8→10 + flat config + TS 7 evaluation, SvelteKit
-  2→3. Out of scope: Drizzle, Svelte 5, Tailwind 4, Python 3.12
-  (leave-alone list), AGE adapter, SSE, GraphQL. Horizontal slicing; each
-  task leaves the gate green.
-- **identity-consolidation v1** — CLOSED 2026-10-31 (T1-T9 done):
-  [docs/archive/plans/identity-consolidation/v1.md](docs/archive/plans/identity-consolidation/v1.md)
-  (T9: ?gid→?guid, verification reset, docs truth pass + audit closure).
-  — executes DEC-3/4/5 of
-  [docs/analysis/db-identity-normalization.md](docs/analysis/db-identity-normalization.md)
-  merged with the findings of
-  [docs/analysis/db-auth-router-flows-audit.md](docs/analysis/db-auth-router-flows-audit.md)
-  (P1–P9): peppered email hashes with zero cleartext, `workspace_join_codes`
-  as sole credential, generic `credential_routes` router directory per the
-  user-adopted DEC-9 (retires BOTH the event-code registry and `global_invitations`),
-  one identity store (`external_identities`), dead-code + dead-table
-  deletions, coherent seed, verification reset + truth pass. db-baseline v1 CLOSED
-  2026-10-30 (ADR-0044; archived plan
-  [docs/archive/plans/db-baseline/v1.md](docs/archive/plans/db-baseline/v1.md)).
-
-- **frontend-tooling v1** — CLOSED 2026-10-31 (T1-T7 done):
-  [docs/archive/plans/frontend-tooling/v1.md](docs/archive/plans/frontend-tooling/v1.md)
-  — harness readiness for industrial-standard frontend work: enabled Chrome
-  DevTools MCP, design-tokens audit, screenshot/HTML capture script, AGENTS.md
-  §"Frontend work" section, web-quality-audit skill, and a frontend plan-example
-  walkthrough. Horizontal slicing; no UI code changes in this plan. Out of
-  scope: actual view redesigns (future `plans/frontend-ux/v1`).
-
-- **sidebar-reorder v1** — CLOSED 2026-10-31 (T1–T6 done):
-  [docs/archive/plans/sidebar-reorder/v1.md](docs/archive/plans/sidebar-reorder/v1.md)
-
-- **no-workspace-message v1** — CLOSED 2026-10-31 (T1–T5 done):
-  [docs/archive/plans/no-workspace-message/v1.md](docs/archive/plans/no-workspace-message/v1.md)
-
-- **no-workspace-message v2** — CLOSED 2026-10-31 (T1–T4 done):
-  [docs/archive/plans/no-workspace-message/v2.md](docs/archive/plans/no-workspace-message/v2.md)
-
-- **no-workspace-message v3** — CLOSED 2026-10-31 (T1–T4 done):
-  [docs/archive/plans/no-workspace-message/v3.md](docs/archive/plans/no-workspace-message/v3.md)
-
-- **no-workspace-message v4** — CLOSED 2026-10-31 (T1–T5 done):
-  [docs/archive/plans/no-workspace-message/v4.md](docs/archive/plans/no-workspace-message/v4.md)
-
-- **navbar-join v1** — CLOSED 2026-10-31 (T1–T7 done):
-  [docs/archive/plans/navbar-join/v1.md](docs/archive/plans/navbar-join/v1.md)
-
-- **navbar-polish v1** — CLOSED 2026-11-01 (T1–T6 done):
-  [docs/archive/plans/navbar-polish/v1.md](docs/archive/plans/navbar-polish/v1.md)
-
-- **navbar-polish v2** — CLOSED 2026-11-01 (T1–T3 done):
-  [docs/archive/plans/navbar-polish/v2.md](docs/archive/plans/navbar-polish/v2.md)
-
-- **navbar-gating v1** — CLOSED 2026-11-01 (T1–T6 done):
-  [docs/archive/plans/navbar-gating/v1.md](docs/archive/plans/navbar-gating/v1.md)
-  — gate nav links by role/permissions (workspace membership, system admin)
-  and replace the rail workspace mark with a grid icon. Horizontal slicing;
-  6 tasks (T1–T6). Out of scope: API changes, dark mode.
-  — restore the join button's height to match the logout button.
-  Horizontal slicing; 3 tasks (T1–T3). Out of scope: label, rail, dark mode.
-  — shorten the join button label (purpose-focused, no "code" word) and make
-  the language selector full-width like the other navbar controls.
-  Horizontal slicing; 6 tasks (T1–T6). Out of scope: auth pages wording,
-  dark mode.
-  — move the "join with an event code" action into the navbar (below the
-  workspace selector, always visible) and add bottom air between the logout
-  button and the navbar floor. Horizontal slicing; 7 tasks (T1–T7). Out of
-  scope: wording, FloatingPanel, dark mode.
-  — simplify the card to title + button only, stacked and centred; remove the
-  redundant message text and its i18n key. Horizontal slicing; 5 tasks
-  (T1–T5). Out of scope: wording, FloatingPanel, dark mode.
-  — restructure the no-membership card into three parts (title / message /
-  button) using the graph toolbar's grid, stackable on small screens.
-  Horizontal slicing; 4 tasks (T1–T4). Out of scope: wording, FloatingPanel,
-  dark mode.
-  — give the no-membership card the floating bar's outer air (top-4/right-4
-  on small screens, top-7/right-7 on large) and drop the doubled container
-  padding. Horizontal slicing; 4 tasks (T1–T4). Out of scope: real
-  FloatingPanel, wording, dark mode.
-  — reword and restyle the `no-membership` block of `(app)/+layout.svelte`
-  so it states the signed-in user lacks access to any workspace (without
-  implying an empty tenant) and matches the graph floating bar's padding and
-  card chrome. Horizontal slicing; 5 tasks (T1–T5). Out of scope: the
-  `(auth)/join` branch, component extraction, dark mode.
-  — reorder the bottom of `AppSidebar` so the four account/scope controls
-  (Workspace → Tenant → Language → Logout) group together at the foot of the
-  column, in expanded and rail form. Horizontal slicing; 6 tasks (T1–T6),
-  each leaves the gate green. Out of scope: TenantSwitcher logic, relocating
-  the language selector to the shell chrome, dark mode.
+- [ ] 4.1 Integration tests with ephemeral PostgreSQL (the repo's
+      PG18+AGE+pgvector image or Testcontainers) + Redis. Auth flow suite exists
+      against local Compose (`test:integration`); Testcontainers/CI and the
+      remaining repositories are pending.
+- [ ] 4.2 Coverage thresholds (re-enable `test.outputs: ["coverage/**"]`).
+- [ ] 4.3 E2E suite in CI (Playwright).
+- [ ] 4.4 Load tests (k6) proving NFR-01/02/03 or revising the targets.
+- [ ] 4.5 Observability: Prometheus metrics, OpenTelemetry tracing, dashboards,
+      alerts for the real failure modes; NFR-09 monitoring.
+- [ ] 4.6 Image builds and deployment pipeline (API, workers, web) with
+      migrations as a deploy step.
+- [ ] 4.7 Pay down lint debt (`no-explicit-any`) and add lint back to CI.
 
 ## Tracked, not scheduled
 
-Data / vector search:
-
-- hnsw-recall: plan opened at `docs/plans/hnsw-recall/v1.md` (F-04 filtered-recall fix for the Relator's neighbour query; vertical slicing, 4 tasks). Origin: `docs/knowledge/data-and-database-operations.md` §4.
-
-Identity/auth survivors (promoted from the archived v5/v6 task trees and
-`docs/archive/notes/` on 2026-10-29; the intervention record is
-`docs/analysis/auth-onboarding-committee-review.md`):
-
-- B9 — create the Google/Microsoft OAuth clients (external step) and re-run
-  `scripts/setup-zitadel.sh` with the credentials (`docs/ops/zitadel-social-logins.md`).
-- B11 — T2 go-live: final hostname, first real deploy, CSP tuned against the
-  staging build (TASK-12.3 remainder; runbook `docs/ops/production-deployment.md`).
-- Cleanup cron: wire OR formally decline the scheduled trigger for
-  `POST /admin/cleanup` (manual endpoint + UI exist).
-- Guest-cleanup sweep is route-only (T7 finding, identity-consolidation):
-  `removeInactiveGuests` exists and is proven, but no scheduled trigger calls
-  it — stale `ANONYMOUS_EVENT` accounts live until an admin hits
-  `/admin/cleanup`. Decide cron vs on-login lazy sweep.
-- Event-code re-push has no same-code path (T5 note, identity-consolidation):
-  `db:event-code` always mints a NEW random credential; if the router-route
-  insert fails after the tenant row commits, re-running the CLI creates a
-  second credential rather than re-pushing the route for the first raw code.
-  Accept (the orphan is inert and revocable) or add `--push-route <raw>`.
-- Zitadel dev realm does not assert the seeded `dev-oidc-*` subjects (T8
-  review M3): the integration suite's mock realm proves the login path, but
-  the dev Zitadel realm mints its own numeric `sub`, so a real Zitadel login
-  JIT-creates a separate account. Configure explicit realm user ids in
-  `scripts/setup-zitadel.sh` (if the pinned API allows) or accept the
-  mock-realm-only proof.
-- Multi-issuer link re-anchor uses the wrong unique (T8 review L5):
-  `RouterDatabaseClient.linkGlobalUserTenant` upserts on
-  `(global_user_id, tenant_id)` while `uniq_tenant_user (tenant_id,
-  tenant_user_id)` is the one-link-per-user invariant; a persona with
-  external identities under two issuers can 503 on the second login. Align
-  the arbiter and cover it.
-- Invitation QR: render the global-invitation URL as QR in admin (v6-11 AC
-  half shipped as URL-only); the old two-code QR design
-  (`docs/archive/notes/p2-qr-both-codes.md`) is superseded by the single
-  event code embedding the workspaceId — accepted deviation.
-- `workspaces.kind` has no DB CHECK constraint (app-level validation only —
-  deviation vs v5-04 AC; add constraint or accept).
-- `workspaces.auto_approve_join_code` is a dead flag: written at create, read
-  by nothing (auto-approve is per-code). Consume it or drop it.
-- F4 — PII inventory + privacy notice (not created; needs product/legal
-  input; erasure options in `docs/knowledge/data-and-database-operations.md`).
-- Security open items (verified 2026-10-29, table in
-  `docs/knowledge/security-baseline.md`): S-02 committed credential in
-  `opencode.json`, S-03 plaintext router password, S-04 (see baseline),
-  S-05 dev DB ports unbound, S-12 unpinned images, S-15 unattended agent
-  approvals.
-- Vulnerability slivers accepted-as-partial in the committee (§6): V1
-  invitation token to `#` fragment (needs HTTPS go-live), V4 double-submit
-  CSRF on `/auth/refresh`, V8 handle-uniqueness UI validation.
-- Open decisions without owner (register:
-  `docs/archive/knowledge-transfer/15-decision-register-and-roadmap.md`):
-  D-03, D-04/05, D-06/07 (model choice/eval), D-12, D-13, D-15/16 (retention,
-  erasure), D-18/19.
-- D3 deviation accepted: invitation resend = revoke + create (no token-rotate
-  endpoint).
-- E2E graph-suite realignment (14 Playwright journeys): the toolbar redesign of
-  roadmap 3.57–3.64 retired the `Lista`/`Raíz`/view-switch controls the specs
-  drive (`WorkspaceToolbar` keeps the toggle props but renders no buttons;
-  `RootPicker` is unimported, `GraphListView` unreachable), and four specs also
-  assume the demo graph of `general`, where the event-code session cannot live.
-  Catalogued in `docs/analysis/auth-onboarding-committee-review.md` §5 task 13.
-- SvelteKit 3 adoption (upgrade-waves v1 T5.1 deferred 2026-10-31): SvelteKit 3.1.1 requires TypeScript ^6.0.0 (only beta/dev releases exist) and adapter-node 6.x. Tracked for `plans/upgrade-waves/v2` once TS 6 stable ships. Origin: `docs/plans/upgrade-waves/v1.md` T5.1.
-- Consolidator handler (FR-20): scheduled cluster synthesis (deferred for MVP, 2026-10-26).
+- hnsw-recall v1 closed (origin: `docs/plans/hnsw-recall/v1.md`, archived at `docs/archive/plans/hnsw-recall/v1.md`, commit 31f1d65). Fix applied (iterative scan in transaction), pgvector pinned >=0.8.0, living doc updated. Sliver: the recall regression test (T1) passes in dev because the planner uses an exact scan; it does not reproduce the defect. Re-open as `hnsw-recall/v2` if a stricter reproduction is needed.
 - Apache AGE mirroring adapter ([ADR-0004](docs/decisions/ADR-0004-bounded-sql-cte-age-deferred.md)).
 - Redis-buffered CQRS vote scoring ([ADR-0005](docs/decisions/ADR-0005-synchronous-vote-scoring.md)).
 - SSE notifications ([ADR-0015](docs/decisions/ADR-0015-sse-deferred.md)).
 - GraphQL facade ([ADR-0016](docs/decisions/ADR-0016-graphql-rejected.md)).
 - `iss`-based tenant resolution (currently `tid`/`hd` only).
 - Multi-region / HA topology (not designed).
-- HMAC of the IdP subject in the tenant DB (C8, optional): evaluated and
-  deferred. Storing `HMAC(subject, key)` instead of plaintext `sub` in
-  `auth.external_identities` was considered but rejected for now: the `sub`
-  is not a secret, the protection value is marginal, and key management per
-  tenant adds operational complexity. Implement only if an institution
-  explicitly requires it; the schema already supports adding a `subject_hmac`
-  column without breaking existing rows. See the C8 task file for details.
 
 ## How to take a task
 
-`.opencode/commands/next-task.md` describes the executor workflow; follow it,
+`.claude/commands/next-task.md` describes the executor workflow; follow it,
 then mark the checkbox here with a one-line result and update
-[docs/README.md](docs/README.md) if a requirement status changed. For a deep
-pass over one area, open `docs/plans/<area>/v1.md` (template in
-[docs/plans/README.md](docs/plans/README.md)) and follow the lifecycle in
-[docs/README.md](docs/README.md): the plan is where board items become sliced
-tasks, and the closure checklist is what keeps `docs/` free of process debris.
+[docs/README.md](docs/README.md) if a requirement status changed.

@@ -89,22 +89,6 @@ One soft-delete verb per port (`softDelete`, never `softDeletePost`). A
 boolean predicate is `existsInWorkspace`, not `find…`. See
 [ADR-0010](decisions/ADR-0010-port-naming-vocabulary.md).
 
-## 6. Identity and credential vocabulary (identity-consolidation v1)
-
-- **Credential routing** is a thin directory: `router.credential_routes (credential_hash, kind, tenant_id)` answers only "which tenant?"; authority always lives in the tenant. Kinds: `EVENT` (workspace_join_codes purpose EVENT) and `INVITATION` (auth.invitations). Routing is never authority (ADR-0046).
-- **Email** is never stored cleartext. `EMAIL_PEPPER` (≥32 chars) + `hashEmail = HMAC-SHA-256(lower(trim(email)), EMAIL_PEPPER)`. High-entropy tokens use plain SHA-256 (`hashOpaqueToken`).
-- **External identity** has one store: `auth.external_identities (issuer, subject, provider_kind)`. `users.provider_user_id` and `is_anonymous` are gone (DEC-4/DEC-5 D4); `provider='ANONYMOUS_EVENT'` is the sole guest discriminator.
-- **Join credentials**: `workspace_join_codes` is the sole workspace credential (purpose WORKSPACE or EVENT); `workspaces.join_code`/`auto_approve_join_code` dropped.
-- **Invitations**: one tenant table, 72 h, single-use, revoke-on-resend; `global_invitations` retired (DEC-9, ADR-0045).
-
-Identity nouns follow the table family (ADR-0044): SQL is `global_user_*`
-(`global_user_id`, `global_user_tenants`, `global_user_events`), TS internals
-mirror it (`GlobalUser*` types, `IGlobalUserEventRepository`, `globalUserId`
-params), and the HTTP wire keeps the same camelCase `globalUserId`. The one
-frozen exception is the persisted audit discriminator VALUE
-`'global_identity'` (the `IAuditLog` `targetType` routing key): identifiers
-rename, stored bytes do not.
-
 ## 6. Errors
 
 - The domain throws `DomainError` with a stable `DomainErrorCode`, no HTTP
@@ -137,10 +121,9 @@ rename, stored bytes do not.
   `stream:<lowercase event>` (`NODE_CREATED` → `stream:node_created`). Payloads
   are flat strings; the adapter JSON-encodes nested values.
 - The shared Python worker runtime (`packages/worker-shared`, ADR-0021) has
-  consumer groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream.
-  The embedder and the Relator run via the `workers` compose profile (or host
-  processes); the Consolidator handler and the `stream:source_raw` producer
-  are still missing.
+  consumer groups, `XAUTOCLAIM`, bounded attempts and a dead-letter stream. No
+  worker handler is running yet, so `NODE_CREATED` is still unconsumed and
+  nothing computes `nodes.embedding`.
 
 ## 9. Type safety
 
@@ -151,8 +134,8 @@ rename, stored bytes do not.
   compiler cannot prove the handle belongs to the same tenant/database as
   `tid`; a wrong handle fails at runtime. Do not fix this by widening to `any`.
 - Residual `any` in attribute maps and legacy ports is known debt: `pnpm lint`
-  reports ~36 warnings (0 errors since 2026-10-29; errors fail CI). Do not add
-  more; `pnpm turbo run build` is the green gate.
+  currently fails with pre-existing `no-explicit-any` errors. Do not add more;
+  `pnpm turbo run build` is the green gate.
 
 ## 10. Python workers
 

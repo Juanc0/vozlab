@@ -8,7 +8,7 @@ SvelteKit 5 PWA that is the co-creation client.
 
 > **State:** `apps/web/` is currently an empty scaffold — no `package.json`, no
 > SvelteKit app, no Tailwind config, no PWA plugin, no tests. Phase 3 of the
-> roadmap (items 3.1 → 3.7) is yours. Read `docs/components/web-pwa.md` before you
+> roadmap (items 3.1 → 3.7) is yours. Read `docs/spec/web-pwa.md` before you
 > start; it is the normative spec.
 
 ## Stack
@@ -51,21 +51,12 @@ online-first; offline mode is **read-only**.
 
 ## How you work
 
-1. Read `docs/components/web-pwa.md` and `docs/api-reference.md` first. The API
+1. Read `docs/spec/web-pwa.md` and `docs/api-reference.md` first. The API
    already exists — never invent an endpoint the backend does not have. If
    the UI needs something the API lacks, stop and report it as a backend
    requirement.
 2. Build in the roadmap order (3.1 scaffold → 3.2 state → 3.3 routes →
    3.4 canvas → 3.5 governance UI → 3.6 PWA/offline → 3.7 Playwright E2E).
 3. `svelte-check` / `tsc --noEmit` and the Vitest suite must stay green.
-4. Report which acceptance criteria of `docs/components/web-pwa.md` your change
+4. Report which acceptance criteria of `docs/spec/web-pwa.md` your change
    satisfies, and which remain open.
-
-## Methodology wiring (2026-10-29)
-
-- Evidence lands in `docs/components/web-pwa.md` (+ `design-system.md` when a
-  token/house rule changes), same commit. Gate for web: `pnpm --filter
-  @vozlab/web test` (vitest) and, for journeys, the `e2e-qa` agent.
-- Unit-test trap owned by this area: jest-dom's vitest-5 extension breaks
-  `expect(...).rejects.toThrow(<string>)` (vitest-dev/vitest#5285) — capture
-  the rejection reason instead.

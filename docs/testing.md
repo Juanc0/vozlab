@@ -11,7 +11,7 @@ plan.
 | --- | --- | --- | --- |
 | Runner | Vitest 2.1.9 | Vitest 2.1.9 | Vitest 5.0.5 (jsdom) |
 | Location | `apps/api/tests/**/*.test.ts` (excluding `integration/`) | `apps/api/tests/integration/**/*.test.ts` | `apps/web/tests/**/*.test.ts` |
-| Size | 35 files / 195 tests | 7 files / 38 tests | 79 files / 631 tests |
+| Size | 35 files / 195 tests | 7 files / 38 tests | 59 files / 496 tests |
 | Scope | Domain entities, value objects, use cases, auth/OIDC adapters, embedding write-back, neighbour lookup, source resolution, the merge contract, pure infrastructure helpers | Real HTTP auth flow, Drizzle/PostgreSQL persistence, Redis rotation/state, event-code join, agent-only embedding write-back, vector-search read path, source resolution, the merge proposal lifecycle | The app shell landmarks, the route components, the runtime API base URL resolution, the service-worker registration flow, the per-tab workspace state, the in-memory session, the HTTP client's headers and error envelope, the session guard, the workspace selector, the serialised refresh, the subgraph loading, the canvas lifecycle, the list view, the ontology-driven node form, the relation form, the proposal review, the discussions, the optimistic vote, the offline banner, the offline write block, the install prompt, the update prompt, the development sign-in, the two dictionaries, the focus strategies, the orthogonal router, the edge styles, the inspector, the canvas resize and the overlay panels |
 | Isolation | In-memory fakes; no PostgreSQL, Redis, HTTP or Ollama | Local docker-compose PostgreSQL/Redis plus an in-process mock OIDC provider | jsdom; no network, no service worker |
 | Trigger | `pnpm test` (default, CI) | `pnpm --filter @vozlab/api test:integration` (manual/phase 4 CI) | `pnpm test` (default, CI) |
@@ -107,9 +107,9 @@ the correction proposed through the UI.
 | --- | --- |
 | Runner | Playwright 1.64 (Chromium) |
 | Location | `apps/web/tests/e2e/` |
-| Size | 23 tests |
+| Size | 10 tests |
 | Command | `pnpm --filter @vozlab/web test:e2e` |
-| Needs | PostgreSQL and Redis migrated and seeded; the suite starts **its own** API (`:3100`) and dev server (`:5174`), next to the local stack (`:3000` / `:5173`), and gives that API a **test budget** for the rate limiter |
+| Needs | PostgreSQL and Redis migrated and seeded; the suite starts the API and the dev server if they are not already running |
 
 It is **opt-in**, like the API's `test:integration`: it is not part of
 `pnpm test` and not part of the Turbo gate. Each run opens a real session
@@ -227,7 +227,7 @@ lint. Build, type-check and unit tests are green.
 | E2E | Playwright against API + PWA + seeded DB | Login/mint → create node → suggest edge → approve | Critical flow completes with no browser console errors |
 | Load | k6 + `db:seed:stress` | Subgraph reads, mutations, votes, HNSW | Subgraph (<200 nodes) p95 < 30 ms (NFR-01); mutations p95 < 15 ms (NFR-03) |
 | Resilience | Fault injection | Redis/Ollama unavailable | API stays available; AI work remains queued (NFR-10) |
-| CI | GitHub Actions | All of the above | Merge blocked on any failure; see [ci-cd.md](components/ci-cd.md) |
+| CI | GitHub Actions | All of the above | Merge blocked on any failure; see [ci-cd.md](spec/ci-cd.md) |
 
 Integration tests must build or pull the repository's
 `vozlab/postgres:18-age-pgvector` image. Do not substitute a stock
@@ -237,5 +237,5 @@ Integration tests must build or pull the repository's
 ## Related
 
 - [conventions.md](conventions.md) — NodeNext imports and layering rules.
-- [runbook-dev.md](ops/runbook-dev.md) — local commands.
+- [runbook-dev.md](runbook-dev.md) — local commands.
 - [requirements.md](requirements.md) — FR/NFR sources.

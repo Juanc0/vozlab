@@ -29,29 +29,18 @@ correct physical database. The JWT `tid` claim is an **OIDC identifier string**
 | --- | --- |
 | `public.tenants` | `id` uuid PK; `slug` varchar(100) UNIQUE; `oidc_tenant_id` varchar(255) UNIQUE (matched against the validated `tid`/`hd` claim); `name`; `description` nullable; `provisioned` boolean default `true`; `created_at`, `updated_at`. |
 | `public.tenant_connections` | `id` uuid PK; `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `host`, `database`, `user`; `port` default `5432`; `password`; timestamps. |
-| `public.credential_routes` | `credential_hash` varchar(64) UNIQUE; `kind` varchar(12) CHECK IN (`EVENT`,`INVITATION`); `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `created_at`. Thin L0 directory only — no capacity, expiry or workspace (ADR-0046). |
-
-| `public.global_users` | one row per `(issuer, subject)` UNIQUE; `email_hash varchar(64)` (peppered HMAC, DEC-4 — never cleartext) + `idx_global_users_email_hash`; profile + timestamps. The cross-tenant identity vault (ADR-0042). |
-| `public.global_user_tenants` | `(global_user_id, tenant_id)` UNIQUE + `(tenant_id, tenant_user_id)` UNIQUE; `status`. The router↔tenant user link that feeds the tenant picker and `switch-tenant`. |
-| `public.global_user_events` | append-only identity trail (`OIDC_LOGIN`, …). IDs and states only — writers must keep `metadata` PII-free. |
+| `public.event_codes` | `id` uuid PK; `tenant_id` FK → `tenants.id` ON DELETE CASCADE; `workspace_id` uuid (no FK: workspace lives in the tenant DB); `code_hash` varchar(64) UNIQUE; `label` nullable; `expires_at`; `max_uses` nullable; `used_count` default 0; `revoked_at` nullable; `created_by_hash`; `created_at`. |
 
 `tenant_connections.tenant_id` has no UNIQUE constraint: the application reads
 the first matching row and assumes one connection per tenant. The
 `provisioned` flag is not consulted by the current code; provisioning is
 inferred from the presence of a tenant row and a connection row.
 
-`credential_routes` is the only *credential* table in the router — the rest
-answer "which tenant?" (`tenants`, `tenant_connections`) or "which human?"
-(`global_*`, ADR-0042)
-([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md), amending
-ADR-0019). A QR is scanned before the tenant is known, so the raw code is
-hashed and resolved globally to a tenant id; the credential itself is a
-`auth.workspace_join_codes` row of purpose EVENT in that tenant. The CLI validates the workspace in the
-tenant DB before inserting, but there is no cross-database FK. The same holds
-for `kind='INVITATION'` (DEC-9, retired `global_invitations`): the directory
-row routes the callback to the tenant; the authority is the tenant
-`auth.invitations` row, and a stale route is inert — the OIDC callback then
-simply continues without redemption.
+`event_codes` is the **only** router table outside the tenant/connection pair
+([ADR-0019](decisions/ADR-0019-global-event-codes.md)). A QR is scanned before
+the tenant is known, so the raw code is hashed and looked up globally; the row
+points at the tenant and workspace. The CLI validates the workspace in the
+tenant DB before inserting, but there is no cross-database FK.
 
 ## 3. Tenant database
 
@@ -59,26 +48,16 @@ simply continues without redemption.
 
 | Table | Key columns | Constraints / notes |
 | --- | --- | --- |
-| `auth.workspaces` | `id`, `slug`, `name`, `description`, `is_public`, `kind`, `created_at` | `slug` UNIQUE; `is_public` defaults `true`; `kind` defaults `PRIVATE` (`PRIVATE`, `PUBLIC`, `EVENT`, not DB-constrained) — `EVENT` is the workspace class the anonymous event-code join (`POST /auth/event-join`, [ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)) resolves to; no `updated_at`. |
-| `auth.users` | `id`, `handle`, `full_name`, `provider`, `author_hash`, `anonymous_alias`, `system_role`, `sessions_valid_after`, `global_user_id`, `created_at` | `author_hash` varchar(64) NOT NULL UNIQUE; `handle` varchar(64) UNIQUE (lookup alias, nullable); partial UNIQUE on `global_user_id` (`uniq_users_global_user`). `provider`: `OIDC_INSTITUTIONAL` or `ANONYMOUS_EVENT` — the sole guest discriminator (T7/D-4: `is_anonymous` dropped). No `email`, `provider_user_id` or `is_anonymous` (DEC-4/DEC-5 D4, ADR-0045): the identity key is `auth.external_identities(issuer, subject)`. `system_role` defaults `USER` (`USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT`, not DB-constrained); it is **tenant-wide, not platform-wide** — the column lives in this per-institution database, each tenant has its own administrators, and no router table records a global one. |
-| `auth.workspace_memberships` | `id`, `workspace_id`, `user_id`, `role`, `status`, `created_at` | FKs to workspaces/users, ON DELETE CASCADE. `role` defaults `MEMBER` (`ADMIN`, `MODERATOR`, `MEMBER`, `GUEST`); `status` defaults `ACTIVE` (`INVITED`, `ACTIVE`, `SUSPENDED`, `REMOVED`); neither union is DB-constrained. `UNIQUE(workspace_id, user_id, role)` (`uniq_memberships_workspace_user_role`): a user may hold several rows in one workspace, authorization reads the union of the `ACTIVE` rows, and only `ACTIVE` rows reach `/auth/me` — the administration roster reads every status. |
-| `auth.workspace_join_codes` | `id`, `workspace_id`, `code_hash`, `purpose`, `label`, `expires_at`, `max_uses`, `used_count`, `auto_approve`, `revoked_at`, `created_by_hash`, `created_at` | FK `workspace_id` ON DELETE CASCADE; `code_hash` varchar(64) UNIQUE; `purpose` CHECK IN (`WORKSPACE`,`EVENT`) default `WORKSPACE` — the credential class (DEC-3): the authenticated join path redeems only WORKSPACE, the anonymous QR path only EVENT (with `auto_approve`). One conditional `UPDATE … RETURNING` claims a use atomically ([ADR-0045](decisions/ADR-0045-credential-consolidation-and-peppered-email.md), [ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)). |
+| `auth.workspaces` | `id`, `slug`, `name`, `description`, `is_public`, `created_at` | `slug` UNIQUE; `is_public` defaults `true`; no `updated_at`. |
+| `auth.users` | `id`, `email`, `full_name`, `provider`, `provider_user_id`, `author_hash`, `anonymous_alias`, `system_role`, `created_at` | `email` UNIQUE and nullable; `author_hash` varchar(64) NOT NULL UNIQUE; `UNIQUE(provider, provider_user_id)` (`uniq_users_provider_provider_user`) lets concurrent OIDC callbacks upsert safely. `provider`: `OIDC_INSTITUTIONAL` or `ANONYMOUS_EVENT`. `system_role` defaults `USER` (`USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT`, not DB-constrained). |
+| `auth.workspace_memberships` | `id`, `workspace_id`, `user_id`, `role`, `created_at` | FKs to workspaces/users, ON DELETE CASCADE. `role` defaults `MEMBER` (`ADMIN`, `MODERATOR`, `MEMBER`). `UNIQUE(workspace_id, user_id)` (`uniq_memberships_workspace_user`); the role lookup returns one row. |
 | `auth.refresh_tokens` | `id`, `user_id`, `family_id`, `token_hash`, `expires_at`, `created_at`, `revoked_at` | FK `user_id` → `auth.users` ON DELETE CASCADE; `token_hash` varchar(64) UNIQUE (SHA-256 only); indexes on user, family and expiry. Rotation revokes the old row and inserts a sibling; reuse revokes the family ([ADR-0018](decisions/ADR-0018-oidc-jit-hybrid-sessions.md)). |
 
 OIDC login upserts `auth.users` just-in-time with a random `author_hash` but
 does **not** create a membership. Event join creates an `ANONYMOUS_EVENT` user
-and a `GUEST` membership in the kind-EVENT workspace inside one tenant
-transaction (the corrected claim of ADR-0019, recorded by ADR-0046). These rules are described in
+and a `MEMBER` membership in the code's workspace inside one tenant
+transaction. These rules are described in
 [auth-and-tenancy.md](auth-and-tenancy.md).
-
-`auth.workspace_memberships` is a **set of role rows, not one role per user**:
-`UNIQUE(workspace_id, user_id, role)` lets `MEMBER` and `ADMIN` coexist, a role
-check succeeds when any `ACTIVE` row grants the role, and removing one row
-leaves the others. `auth.users.system_role` is the **tenant-wide** role of this
-institution's database — never a platform-wide one — so the same person may be
-`ADMIN` in one tenant and `USER` in another
-([auth-and-tenancy.md](auth-and-tenancy.md) §12,
-[ADR-0048](decisions/ADR-0048-split-tenant-and-workspace-administration.md)).
 
 `author_hash` is an **opaque 64-hex pseudonym assigned once per user**. It is
 stored on `auth.users`, carried verbatim in the JWT `authorHash` claim and
@@ -96,7 +75,7 @@ rotate. See [ADR-0013](decisions/ADR-0013-random-opaque-pseudonym.md).
 | `meta.object_properties` | `id`, `workspace_id`, `system_key`, `display_names`, `descriptions`, `domain_class_key`, `range_class_key`, `is_directional`, `is_symmetric`, `allows_self_relation`, `status`, `proposed_by`, `created_at` | Domain/range keys are logical, not FKs. Index on (`workspace_id`, `domain_class_key`, `range_class_key`). `system_key` is **not** unique. |
 
 `workspace_id` is nullable in all three tables, but every application write
-supplies it. Lifecycle is status-based (`PROPOSED`, `ACTIVE`, `REJECTED`, `DEPRECATED`), not
+supplies it. Lifecycle is status-based (`PROPOSED`, `ACTIVE`, `REJECTED`), not
 soft deletion. `display_names` and `descriptions` are JSONB locale maps, e.g.
 `{"es":"...","en":"..."}`.
 
@@ -166,23 +145,14 @@ DEPRECATED | REJECTED`, default `PENDING`.
 | `ACTIVE` | `MERGED`, `DEPRECATED` |
 | `MERGED`, `DEPRECATED`, `REJECTED` | terminal |
 
-The domain method is `changeStatus`. The API always creates nodes `PENDING`.
-Activation/rejection routes land with node-governance v1 (ADR-0051,
-T4): `PUT /api/v1/nodes/:id/activate` (`PENDING → ACTIVE`) and
-`PUT /api/v1/nodes/:id/reject` (`PENDING → REJECTED`), plus
-`PUT /api/v1/nodes/:id/auto-activate` (moderator force-activate under the
-FR-13 criteria). `PENDING` content is visible in the graph but marked
-unreviewed (dashed border, status badge); `REJECTED` content is excluded from
-the graph and from the Relator neighbour list. Proposal approval does not
-change node status.
+The domain method is `changeStatus`. The API always creates nodes `PENDING` and
+exposes **no endpoint** to advance node status; proposal approval does not
+change it either.
 
 **Edge** (`domain/entities/Edge.ts`): `DRAFT | PENDING | ACTIVE | REJECTED`,
 default `PENDING`. `DRAFT → PENDING | ACTIVE`; `PENDING → ACTIVE | REJECTED`;
-`ACTIVE → REJECTED`; `REJECTED` is terminal. Activation/rejection routes land
-with node-governance v1 (ADR-0051, T4): `PUT /api/v1/edges/:id/activate`,
-`PUT /api/v1/edges/:id/reject`, plus `PUT /api/v1/edges/:id/auto-activate`.
-`PENDING` edges render dashed and marked unreviewed; `REJECTED` edges are
-excluded from the graph.
+`ACTIVE → REJECTED`; `REJECTED` is terminal. `changeStatus` exists, but no HTTP
+route transitions edges.
 
 **EditProposal** (`domain/entities/EditProposal.ts`): `PENDING |
 APPROVED_BY_AUTHOR | REJECTED_BY_AUTHOR | AUTO_APPLIED`, default `PENDING`.
@@ -198,14 +168,11 @@ Approval and auto-apply apply the delta and update the status in one
 `UnitOfWork` transaction; rejection only updates the status.
 
 **Ontology** (`OntologyClass`, `DatatypeProperty`, `ObjectProperty`):
-`PROPOSED | ACTIVE | REJECTED | DEPRECATED`, default `PROPOSED`. `PROPOSED → ACTIVE` via
-`PUT /ontology/{classes,datatype-properties,object-properties}/:id/activate`
-(moderator/admin or proposer; locale completeness required for properties); `PROPOSED → REJECTED` via
-`PUT /ontology/{classes,datatype-properties,object-properties}/:id/reject` (same actors).
-`ACTIVE → DEPRECATED` via `PUT /ontology/{classes,datatype-properties,object-properties}/:id/deprecate`
-(moderator/admin, requires a non-empty `migrationTargetKey`). `ACTIVE` and `REJECTED` are terminal for
-activation/rejection; `DEPRECATED` is terminal. `GET /ontology` returns only `ACTIVE` object properties
-(and active classes/datatype properties as applicable).
+`PROPOSED | ACTIVE | REJECTED`, default `PROPOSED`. `PROPOSED → ACTIVE` via
+`PUT /ontology/classes/:id/activate`; `PROPOSED → REJECTED` exists only in the
+domain. `ACTIVE` and `REJECTED` are terminal. Only classes have an activation
+route, so properties proposed through the API stay `PROPOSED`; `GET /ontology`
+returns only `ACTIVE` object properties.
 
 **DiscussionThread** (`domain/entities/DiscussionThread.ts`): `OPEN | CLOSED`,
 default `OPEN`. `OPEN → CLOSED` via the creator-only
@@ -271,8 +238,8 @@ The read path is a **bounded recursive SQL CTE** over `public.edges` in
 - `meta.datatype_properties.system_key` and
   `meta.object_properties.system_key` are not unique; `findObjectProperty`
   returns the first match.
-- `router.credential_routes` can outlive its tenant credential (no cross-DB
-  FK): a stale route is inert — routing is not authority (ADR-0046).
+- `router.event_codes.workspace_id` has no FK to the tenant DB; deleting a
+  workspace directly can leave a stale code until it is revoked.
 - `auth.refresh_tokens` rows are cleaned opportunistically during rotation:
   expired rows and revoked rows older than seven days are deleted for that
   user. There is no global cleanup job.

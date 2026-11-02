@@ -34,6 +34,7 @@ refresh and event join share a per-IP rate limit; logout is Bearer-protected.
   "expiresAt": "2026-10-19T12:15:00.000Z",
   "user": {
     "id": "uuid",
+    "email": "ada@example.edu",
     "fullName": "Ada Lovelace",
     "anonymousAlias": null,
     "provider": "OIDC_INSTITUTIONAL",
@@ -55,10 +56,9 @@ institutional login that has no membership yet.
   `${WEB_ORIGIN}/auth/callback?error=<CODE>`; it never returns a token in the
   URL. Invalid `state` → `ERR_INVALID_OIDC_STATE`; IdP/ID-token failure →
   `ERR_OIDC_EXCHANGE_FAILED`; unverified email → `ERR_EMAIL_NOT_VERIFIED`.
-- Event join returns `404 ERR_EVENT_CODE_INVALID` for unknown, revoked,
-  expired, exhausted or wrong-purpose codes (the redemption collapses every
-  dead state into one answer). The QR contains only the code; see the
-  [runbook](ops/runbook-dev.md) for `db:event-code` (mint and `--revoke`).
+- Event join returns `ERR_EVENT_EXPIRED` for unknown/revoked/expired codes and
+  `ERR_EVENT_FULL` at capacity. The QR contains only the code; see the
+  [runbook](runbook-dev.md) for `db:event-code`.
 - Refresh reuse revokes the whole family and returns
   `401 ERR_REFRESH_TOKEN_INVALID`. Agents never receive a refresh session.
 - The full contract is in [auth-and-tenancy.md](auth-and-tenancy.md).
@@ -151,9 +151,6 @@ null), `attributes`, `authorHash`, `status`, `communityScore`, `createdAt`,
 | `GET` | `/api/v1/nodes/:id` | path UUID | `200 { "node": NodeDto }` | `404 ERR_NODE_NOT_FOUND` |
 | `GET` | `/api/v1/nodes/:id/neighbors` | path UUID; `limit` 1–10 (5) | `200 { node, neighbors: [{ id, typeKey, title, description, status, similarity }] }` | `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `409 ERR_NODE_NOT_EMBEDDED` no vector yet |
 | `DELETE` | `/api/v1/nodes/:id` | path UUID | `204`, empty body | `403` non-author; `404` missing/foreign/deleted |
-| `PUT` | `/api/v1/nodes/:id/activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-author/non-moderator; `404 ERR_NODE_NOT_FOUND`; `422` invalid state transition |
-| `PUT` | `/api/v1/nodes/:id/reject` | no body | `200 { id, status: "REJECTED" }` | `403` non-author/non-moderator; `404 ERR_NODE_NOT_FOUND`; `422` invalid state transition |
-| `PUT` | `/api/v1/nodes/:id/auto-activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-moderator/non-admin; `404 ERR_NODE_NOT_FOUND`; `422 ERR_UNMET_AUTO_APPLY_CRITERIA` or invalid state |
 | `PUT` | `/api/v1/nodes/:id/embedding` | `embedding` 768 finite numbers; `model` string | `204`, empty body | `403 ERR_AUTHORIZATION_FAILED` (not `AGENT_EMBEDDER`); `404 ERR_NODE_NOT_FOUND` missing/foreign/deleted; `422 ERR_VALIDATION_FAILED` bad vector or unknown model |
 
 Notes:
@@ -207,9 +204,6 @@ Notes:
 | `GET` | `/api/v1/edges/:id` | path UUID | `200 { "edge": EdgeDto }` | `404 ERR_EDGE_NOT_FOUND` |
 | `PATCH` | `/api/v1/edges/:id` | optional `relationKey`, optional `attributes` | `200 { "edge": EdgeDto }` | `403` non-author; `404 ERR_EDGE_NOT_FOUND` |
 | `DELETE` | `/api/v1/edges/:id` | path UUID | `204` | `403` non-author; `404 ERR_EDGE_NOT_FOUND` |
-| `PUT` | `/api/v1/edges/:id/activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-author/non-moderator; `404 ERR_EDGE_NOT_FOUND`; `422` invalid state transition |
-| `PUT` | `/api/v1/edges/:id/reject` | no body | `200 { id, status: "REJECTED" }` | `403` non-author/non-moderator; `404 ERR_EDGE_NOT_FOUND`; `422` invalid state transition |
-| `PUT` | `/api/v1/edges/:id/auto-activate` | no body | `200 { id, status: "ACTIVE" }` | `403` non-moderator/non-admin; `404 ERR_EDGE_NOT_FOUND`; `422 ERR_UNMET_AUTO_APPLY_CRITERIA` or invalid state |
 
 If an object property with `relationKey` exists, its domain/range rules are
 enforced; endpoint node status is not checked. The list returns all
@@ -285,14 +279,6 @@ Notes:
 | `POST` | `/api/v1/ontology/datatype-properties` | `systemKey`; `displayNames`; `descriptions?`; `datatype` (`string\|number\|boolean\|date\|enum`, default `string`); `allowedValues?`; `isRequired?`; `defaultValue?`; `domainClassKey` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown `domainClassKey` |
 | `POST` | `/api/v1/ontology/object-properties` | `systemKey`; `displayNames`; `descriptions?`; `domainClassKey`; `rangeClassKey`; `isDirectional?`; `isSymmetric?`; `allowsSelfRelation?` | `201 { id, systemKey, status: "PROPOSED" }` | `422` unknown domain/range key |
 | `PUT` | `/api/v1/ontology/classes/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not MODERATOR/ADMIN; `422` class missing/foreign or not `PROPOSED` |
-| `PUT` | `/api/v1/ontology/classes/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` class missing/foreign or not `PROPOSED` |
-| `PUT` | `/api/v1/ontology/datatype-properties/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign, not `PROPOSED`, or locale incomplete |
-| `PUT` | `/api/v1/ontology/datatype-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
-| `PUT` | `/api/v1/ontology/object-properties/:id/activate` | no body | `200 { id, systemKey, status: "ACTIVE" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign, not `PROPOSED`, or locale incomplete |
-| `PUT` | `/api/v1/ontology/object-properties/:id/reject` | no body | `200 { id, systemKey, status: "REJECTED" }` | `403` not proposer/MODERATOR/ADMIN; `422` property missing/foreign or not `PROPOSED` |
-| `PUT` | `/api/v1/ontology/classes/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` class missing/foreign, not `ACTIVE`, or empty target |
-| `PUT` | `/api/v1/ontology/datatype-properties/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` property missing/foreign, not `ACTIVE`, or empty target |
-| `PUT` | `/api/v1/ontology/object-properties/:id/deprecate` | `{ migrationTargetKey }` (non-empty) | `200 { id, systemKey, status: "DEPRECATED", migrationTargetKey }` | `403` not MODERATOR/ADMIN; `422` property missing/foreign, not `ACTIVE`, or empty target |
 | `GET` | `/api/v1/ontology` | — | `200 { classes: OntologyClassDto[], objectProperties: ObjectPropertyDto[], datatypeProperties: DatatypePropertyDto[] }` | — |
 
 `OntologyClassDto`: `id`, `workspaceId`, `systemKey`, `displayNames`,
@@ -302,14 +288,18 @@ Notes:
 
 - `ontology_classes` is UNIQUE(`workspace_id`, `system_key`); duplicate
   `systemKey` is `422`.
-- Deprecation publishes `ONTOLOGY_CLASS_DEPRECATED` (class) and
-  `ONTOLOGY_PROPERTY_DEPRECATED` (datatype/object property) to the
-  corresponding Redis Streams after commit (best-effort).
 - `GET /ontology` returns only `ACTIVE` classes and object properties, plus
   the `ACTIVE` datatype properties. A property still awaiting approval never
   reaches the consumer. `datatypeProperties` is what drives the dynamic
   node-creation form (FR-06); it carries `datatype`, `allowedValues`,
   `isRequired` and `defaultValue` per property.
+- **Only classes have an activation route.** A datatype or object property
+  created through the API stays `PROPOSED` forever — `POST
+  /ontology/datatype-properties` and `POST /ontology/object-properties` hard-code
+  `PROPOSED` and nothing promotes them. A workspace can therefore only grow
+  its metamodel through the API for *classes*; the properties that exist are
+  the ones an operator inserted directly. The PWA's dynamic form is built
+  from what is `ACTIVE`.
 - Activating a missing/foreign class returns **422**, not 404.
 
 ## 7. Discussions
@@ -339,7 +329,7 @@ Notes:
 
 | Method | Path | Input | Success | Route errors |
 | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/interactions` | `targetId` UUID; `targetType` `NODE\|EDGE\|PROPOSAL\|POST\|ONTOLOGY`; `interactionType` `UPVOTE\|DOWNVOTE\|SUPPORT\|VALIDATE` | `201 { id, targetId, targetType, interactionType, value }` | `409 ERR_DUPLICATE_INTERACTION`; target `404`; `422` |
+| `POST` | `/api/v1/interactions` | `targetId` UUID; `targetType` `NODE\|EDGE\|PROPOSAL\|POST`; `interactionType` `UPVOTE\|DOWNVOTE\|SUPPORT\|VALIDATE` | `201 { id, targetId, targetType, interactionType, value }` | `409 ERR_DUPLICATE_INTERACTION`; target `404`; `422` |
 
 - `value` is server-derived: `-1` for `DOWNVOTE`, `+1` otherwise. Clients must
   not send it.
@@ -387,24 +377,6 @@ curl -s "http://localhost:3000/api/v1/nodes?limit=20" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Workspace-ID: $WS"
 ```
-
-## 10b. Workspace invitations (workspace admin)
-
-All routes require `Authorization: Bearer <jwt>` + `X-Workspace-ID` and an
-admin (or moderator) role in the target workspace. Invitation authority lives
-in the tenant DB (`auth.invitations`); the router only holds a thin
-`credential_routes` directory entry (hash → tenant) that makes the OIDC
-callback routable (ADR-0045, DEC-9).
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/workspaces/:workspaceId/invitations` | List invitations for a workspace. |
-| `POST` | `/api/v1/workspaces/:workspaceId/invitations` | Create a PENDING invitation (email hash, role, expiry, max uses). Returns the raw token once (72 h, single-use, revoke-on-resend). |
-| `DELETE` | `/api/v1/invitations/:invitationId` | Revoke an invitation (tenant row flips to REVOKED; the router route is deleted). |
-
-Redemption is not a separate endpoint: the invitee follows the URL with
-`?invitation=<raw>` and the unified OIDC callback (`/api/v1/auth/callback`)
-redeems it best-effort (ADR-0045 §DEC-9).
 
 ## 11. Not implemented
 

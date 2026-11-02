@@ -67,7 +67,7 @@ lives in `vozlab_worker`; a worker package imports it.
 
 ## How you work
 
-1. Read `docs/conventions.md` §10, the relevant `docs/components/*.md` (extractor,
+1. Read `docs/conventions.md` §10, the relevant `docs/spec/*.md` (extractor,
    relator, consolidator) and the ADRs before you start.
 2. Change one worker at a time. Do not refactor `vozlab_worker` "while you
    are in there" unless the task is about the shared runtime.
@@ -79,12 +79,3 @@ lives in `vozlab_worker`; a worker package imports it.
    opt-in integration suite, not here.
 5. If a requirement's status changed, update the matrix in `docs/README.md` in
    the same change.
-
-## Methodology wiring (2026-10-29)
-
-- The unbuilt Extractor/dedup/consolidation specs are the frozen guide:
-  `docs/archive/guia-identidad-ia/02-tareas-para-modelo-pequeno.md` (block E)
-  + `docs/knowledge/ai-pipeline-and-models.md` (evaluation instrument). When
-  that work opens, it starts as `plans/extractor/v1.md`.
-- Verification: `uv run pytest` + `uv run ruff check` on the touched workers,
-  and the `--check` flags for config (`vozlab-worker-<name> --check`).

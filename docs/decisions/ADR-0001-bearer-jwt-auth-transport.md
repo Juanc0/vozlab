@@ -46,4 +46,4 @@ cookie-CSRF consideration.
 - `apps/api/src/infrastructure/http/middlewares/AuthGuard.ts`
 - `apps/api/src/infrastructure/events/RedisTokenBlacklist.ts`
 - `apps/api/src/infrastructure/http/routes.ts` (guard chain)
-- `docs/archive/reviews/REVIEW-2026-10-17_phase-1r.md` §3, drift 1
+- `.claude/reviews/REVIEW-2026-10-17_phase-1r.md` §3, drift 1

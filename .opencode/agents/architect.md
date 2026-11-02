@@ -22,7 +22,7 @@ system, not the details of a single file.
   domain entity needs a database type, the port exposes an opaque handle
   (`DbTransaction = unknown`).
 - Two physical databases, never mixed: router `vozlab_router`
-  (`public.tenants`, `tenant_connections`, `credential_routes`) and one tenant DB per
+  (`public.tenants`, `tenant_connections`, `event_codes`) and one tenant DB per
   institution (`vozlab_tenant_dev`: schemas `auth`, `meta`, `public`,
   `social`). No cross-database joins or foreign keys.
 - Tenant isolation is **physical**: every repository method takes the internal
@@ -45,7 +45,7 @@ system, not the details of a single file.
 1. Read the live docs first: `docs/README.md` (index **and** requirement status
    matrix), `docs/requirements.md`, `docs/architecture.md`,
    `docs/conventions.md`, `docs/domain-model.md`, the relevant
-   `docs/decisions/ADR-*.md` and `docs/components/*.md`.
+   `docs/decisions/ADR-*.md` and `docs/spec/*.md`.
 2. Consult `ROADMAP.md` — it is the only live task board. Completed work lives
    in `docs/archive/`; do not revive `TODO.md` or `EXECUTION_PLAN.md`.
 3. When a requirement is ambiguous, **stop and ask** with structured options,
@@ -64,14 +64,3 @@ system, not the details of a single file.
 Architecture decisions as short written arguments: the options considered, the
 one you recommend, the trade-offs you accept, and the consequences you are
 willing to live with. Name the files and the layers that will change.
-
-## Methodology wiring (2026-10-29)
-
-- Work on an area starts by reading its `docs/components/<x>.md` + related
-  ADRs + the open slivers in ROADMAP; output is `docs/plans/<area>/v<N>.md`
-  (you approve its shape) or an ADR when it is a decision. Use
-  `brainstorming` + `writing-plans` with the project overrides.
-- You are the referrer for `database-dba`, `devops-deploy`, `docs-governance`
-  and the rest when a plan needs decomposition across boundaries.
-- Sliver rule: nothing unfinished stays implicit — it moves to the next plan
-  version or ROADMAP with an origin citation.

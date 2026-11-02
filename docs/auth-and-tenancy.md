@@ -11,12 +11,11 @@ VozLab separates three questions:
 
 ## 1. Current auth flow
 
-| Concern | Implementation (2026-10-30) |
+| Concern | Implementation (2026-10-19) |
 | --- | --- |
 | Browser login | `GET /api/v1/auth/login?redirect=/path` → 302 to the IdP |
-| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, global-user upsert (`global_users`), `OIDC_LOGIN` event, 302 to the PWA (or to `/select-tenant` when the user is linked to N>1 institutions); an invitation token carried in the state is redeemed through the unified path (§6) before tenant selection |
-| Tenant selection | `GET /api/v1/auth/resolve-tenants?globalUserId=` + `POST /api/v1/auth/select-tenant {globalUserId, tenantId}` (first login, no session yet); `POST /api/v1/auth/switch-tenant` (authenticated, re-points the session to another linked institution) — every selection writes `TENANT_SELECTED` |
-| Access token | HS256 JWT, 15 min default, returned in JSON; the PWA holds it in memory only |
+| Callback | `GET /api/v1/auth/callback?code=&state=` → ID-token validation, JIT user upsert, 302 to the PWA |
+| Access token | HS256 JWT, 15 min default, returned in JSON; the future PWA holds it in memory |
 | Refresh token | Opaque `v1.<tenant UUID>.<64 hex>`, 30 d default, `HttpOnly` cookie, rotated on every use |
 | Refresh storage | `auth.refresh_tokens` (tenant DB): SHA-256 hash, family id, expiry, revocation timestamp |
 | Logout | `POST /api/v1/auth/logout` (Bearer + cookie): blacklist `jti`, revoke the refresh family, clear the cookie |
@@ -27,52 +26,6 @@ VozLab separates three questions:
 The API is a **resource server**, not an identity provider. It never accepts an
 IdP access token as a graph credential; it exchanges the authorization code,
 validates the ID token, and issues its own short-lived JWT.
-
-### Participants and trust boundaries
-
-| Participant | What it is | What it owns / controls |
-|---|---|---|
-| **PWA** (`apps/web`, SvelteKit) | The app in the browser | The UI, the in-memory access token, the per-tab workspace selection. It owns **no** secret and no long-lived token. |
-| **API** (`apps/api`, Fastify) | The backend / BFF | The `JWT_SECRET`, the OIDC `client_secret`, the OIDC state in Redis, the refresh cookie, the user accounts in the databases. The **only** component that talks to the broker. |
-| **Zitadel** (identity broker) | The OIDC broker (self-hosted; ADR-0030) | The organizations (one per institution, resolved from `urn:zitadel:iam:org:id`), the OIDC app, the login policy, the federated social IdPs (Google/Microsoft as generic OIDC IdPs; B9). |
-| **External IdP** (Google, Microsoft Entra) | The real identity providers | The user credentials and `email_verified`. The browser never sends them to VozLab. |
-
-**Golden rule:** the PWA never sees an IdP configuration, never holds a broker
-token and never knows the `client_secret`. Every broker exchange is
-server-side (API ↔ Zitadel). The browser only receives 302 redirects and, at
-the end, an `HttpOnly` cookie plus a JSON access token. There are no popups:
-the whole flow is full-page navigation (PWA → API → Zitadel → optional social
-IdP → back).
-
-```mermaid
-flowchart LR
-    subgraph Browser["Browser (untrusted zone)"]
-        PWA["PWA (SvelteKit)"]
-    end
-    subgraph Host["Host (trusted zone)"]
-        API["API (Fastify)"]
-        Redis["Redis 7<br/>OIDC state · blacklist · streams"]
-        PG["PostgreSQL<br/>router + tenant DBs"]
-    end
-    subgraph IdPZone["Broker + IdPs (external zone)"]
-        ZIT["Zitadel<br/>orgs · OIDC app · social IdPs"]
-        EXT["Google / Entra ID<br/>user credentials"]
-    end
-
-    PWA -->|"HTTPS JSON · redirects · refresh cookie"| API
-    API -->|"back-channel, client_secret"| ZIT
-    API --> Redis
-    API --> PG
-    ZIT -->|"back-channel (OIDC IdP configs)"| EXT
-```
-
-Frontiers: **Browser ↔ API** — redirects, `HttpOnly` cookie and Bearer JSON
-only; nothing secret ever appears in a URL. **API ↔ Zitadel** — server-side
-token exchange + JWKS validation; the browser never observes it.
-**Zitadel ↔ social IdPs** — brokered by Zitadel itself; VozLab code is
-unaware of Google/Microsoft (ADR-0018 + B9). **API ↔ Redis/PG** — host
-internal; the production topology places Caddy in front of all three origins
-(ADR-0043).
 
 ### Login sequence
 
@@ -150,13 +103,6 @@ fail-open: a Redis outage logs a warning and allows the request. Reads default
 to 300 req/min, writes to 30 req/min, and the workspace ceiling is the
 per-actor max × `RATE_LIMIT_WORKSPACE_MULTIPLIER` (default 10).
 
-The chain above is the **resource** route chain. Tenant administration,
-workspace administration, onboarding and session routes use shorter chains
-(`authGuard → tenantGuard → tenantAdminGuard → rateLimit`,
-`authGuard → tenantGuard → workspaceAdminGuard → rateLimit`,
-`authGuard → tenantGuard → rateLimit`); see §12.3 for the full enforcement
-matrix.
-
 ## 4. OIDC validation
 
 The adapter (`OidcProviderClient`) uses `jose` with an explicit issuer and JWKS
@@ -193,7 +139,7 @@ tenant resolution is still not implemented.
    a Drizzle pool per `tid`.
 5. Repositories receive only the internal `tid`; the OIDC string never reaches
    the tenant DB. Event joins resolve the internal UUID from
-   `router.credential_routes` (ADR-0046) instead.
+   `router.event_codes` instead.
 
 The dev seed provisions `tid = sabana`, tenant UUID
 `11111111-1111-4111-8111-111111111111`, workspace UUID
@@ -206,45 +152,23 @@ that distinction.
 
 ## 6. JIT accounts and workspace access
 
-- First OIDC login creates `auth.users` (`provider =
-  OIDC_INSTITUTIONAL`) plus its `auth.external_identities` row carrying the
-  IdP `(issuer, subject)` — the sole identity key — and a random 64-hex
+- First OIDC login creates `auth.users` with `provider =
+  OIDC_INSTITUTIONAL`, the IdP `sub` as `provider_user_id`, and a random 64-hex
   `author_hash`. The row is needed before a token can carry `sub` and
   `authorHash`.
 - **JIT does not grant workspace access.** No `workspace_memberships` row is
   created; protected workspace routes still return `403
   ERR_UNAUTHORIZED_WORKSPACE_ACCESS` until an administrator adds one.
   `GET /auth/me` returns an empty `workspaces` list in that state.
-- Returning users are matched by `(issuer, subject)` in
-  `external_identities`. Cross-IdP account linking by verified email rides on
-  the router vault (`global_users.email_hash`) before any tenant row exists;
-  the tenant itself never stores email or the legacy `provider_user_id`
-  (DEC-4/DEC-5 D4, ADR-0045). An `ANONYMOUS_EVENT` row has no external
-  identity and is never taken over by an institutional login.
-- `external_identities` has `UNIQUE(issuer, subject)` so concurrent callbacks
-  cannot create duplicate identities (the retired
-  `UNIQUE(provider, provider_user_id)` users-level guard moved here);
-  `auth.workspace_memberships`
-  has `UNIQUE(workspace_id, user_id, role)`, so a user may hold several role
-  rows in one workspace and authorization reads the union of the `ACTIVE` ones
-  (§12.1).
-- Who may grant a membership, and from which surface, is the administration
-  contract in §12. It never changes this rule: authentication alone grants no
-  workspace.
+- Existing OIDC users are matched by `(provider, provider_user_id)`. If the
+  subject changed but the verified email matches an OIDC row, the repository
+  links the new subject to that row. A matching `ANONYMOUS_EVENT` row is a
+  conflict (`409 ERR_ACCOUNT_LINK_CONFLICT`) and is never taken over.
+- `auth.users` has `UNIQUE(provider, provider_user_id)` (nullable) so
+  concurrent callbacks cannot create duplicates; `auth.workspace_memberships`
+  has `UNIQUE(workspace_id, user_id)` so the role lookup always sees one row.
 - Event join is the deliberate exception: the event code authorizes one
-  `GUEST` membership in the code's workspace (see §9).
-- **Invitations are one mechanism (DEC-9, ADR-0045).** `POST
-  /api/v1/workspaces/:id/invitations` writes the tenant `auth.invitations`
-  row (72 h, single-use, re-send invalidates; email bound as the peppered
-  hash) and then the idempotent `router.credential_routes` row (kind
-  `INVITATION`). The OIDC callback redeems it through ONE best-effort path
-  before tenant selection: hash → route → that tenant → guards → email-bind
-  → atomic accept + JIT user + router link + membership. An unroutable,
-  revoked, expired or mismatched link never bricks the login — the callback
-  logs and continues without redemption (routing is never authority; an
-  admin revoke touches the tenant row and the route simply goes stale).
-  There is no separate "global invitation" subsystem: `global_invitations`,
-  `POST /api/v1/invitations/global` and their use cases were retired.
+  `MEMBER` membership in the code's workspace (see §9).
 
 ## 7. Workspace isolation
 
@@ -290,33 +214,23 @@ One route is narrower: `PUT /api/v1/nodes/:id/embedding` additionally requires
 
 ## 9. Event-code join (FR-03)
 
-The event credential is a tenant row; the router keeps only a thin directory
-([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md),
-amending [ADR-0019](decisions/ADR-0019-global-event-codes.md)): the QR is
-scanned before the tenant is known, so the hash→tenant mapping must be
-global — routing, never authority.
+`router.event_codes` is the documented exception to the two-database split
+([ADR-0019](decisions/ADR-0019-global-event-codes.md)): the QR is scanned before
+the tenant is known, so the registry must be global.
 
 - The QR contains only the raw code (`vle_<24 base64url chars>`); no tenant
   slug or URL prefix. The API stores and looks up only its SHA-256 hash.
-- Operators mint and revoke codes with `db:event-code` (see
-  [runbook-dev](ops/runbook-dev.md)). Mint writes the tenant EVENT credential
-  FIRST, then the idempotent `router.credential_routes` row; revoke deletes
-  the route FIRST, then revokes the tenant row. The CLI validates the target
-  workspace (`kind='EVENT'`) in the tenant DB before inserting.
-- `POST /api/v1/auth/event-join { code, alias? }` resolves
-  `credential_routes` (kind EVENT) for the tenant id, then redeems with one
-  conditional `UPDATE … RETURNING` on `auth.workspace_join_codes`
-  (`purpose='EVENT'`, auto-approve, revocation, expiry and `max_uses` in the
-  same statement) **inside** the tenant transaction that creates the user.
-  Unknown, revoked, expired, exhausted or wrong-purpose codes all return
-  `404 ERR_EVENT_CODE_INVALID` — one answer, no state disclosure.
-- A tenant-side failure rolls the claimed use back (the ADR-0019 pre-tx burn
-  is retired).
-- On success, that one tenant transaction creates the `ANONYMOUS_EVENT` user
-  with a random pseudonym and alias, adds the `GUEST` membership (corrected
-  per ADR-0046 — ADR-0019 claimed `MEMBER`), and stores the refresh session.
-  The response is the same access-token + refresh-cookie session as OIDC
-  login.
+- Operators create codes with `db:event-code` (see
+  [runbook-dev](runbook-dev.md)); the CLI validates the target workspace in the
+  tenant DB before inserting.
+- `POST /api/v1/auth/event-join { code, alias? }` consumes the code with one
+  conditional `UPDATE` that enforces revocation, expiry and `max_uses`
+  atomically. `NOT_FOUND`, `REVOKED` and `EXPIRED` all return `400
+  ERR_EVENT_EXPIRED`; capacity returns `400 ERR_EVENT_FULL`.
+- On success, one tenant transaction creates the `ANONYMOUS_EVENT` user with a
+  random pseudonym and alias, adds the `MEMBER` membership, and stores the
+  refresh session. The response is the same access-token + refresh-cookie
+  session as OIDC login.
 - Expiry/revocation blocks **new** joins only; existing anonymous users keep
   their refresh sessions and can continue contributing.
 - Consumption happens before the tenant transaction, so a tenant DB failure can
@@ -436,170 +350,7 @@ calling `/auth/refresh` and keeping the returned access token in memory.
   the family or delete the rows for a full logout-all.
 - There is no “log out all devices” endpoint; each refresh family is independent.
 
-## 12. Tenant administration and workspace administration
-
-VozLab has exactly two administration scopes. They answer different questions
-— the tenant scope asks "what exists in this institution?", the workspace scope
-asks "who belongs to this workspace and what does it look like?" — and
-[ADR-0048](decisions/ADR-0048-split-tenant-and-workspace-administration.md)
-splits the administration UI into one surface per scope, and
-[ADR-0049](decisions/ADR-0049-no-tenant-bypass-over-workspace-administration.md)
-removes the tenant-admin bypass over workspace administration. This section is
-the contract for both.
-### 12.1 The two roles, exactly
-
-| Role | Column | Values | Default | Notes |
-| --- | --- | --- | --- | --- |
-| Tenant administrator | `auth.users.system_role` (tenant DB) | `USER`, `ADMIN`, `MODERATOR`, `SYSTEM_AGENT` | `USER` | `varchar(30) NOT NULL`, not DB-constrained (`SystemRoleSchema`). Only `ADMIN` holds the tenant scope; `MODERATOR` grants no administration power and stays inert for administration. |
-| Workspace administrator | `auth.workspace_memberships.role` with `status = 'ACTIVE'` | `ADMIN`, `MODERATOR`, `MEMBER`, `GUEST` | `MEMBER` | `varchar(30) NOT NULL`, not DB-constrained (`WorkspaceRoleSchema`). Only `ADMIN` holds the workspace scope. |
-
-`auth.workspace_memberships.status` is `varchar(20) NOT NULL DEFAULT 'ACTIVE'`
-and carries `INVITED`, `ACTIVE`, `SUSPENDED` or `REMOVED`; it is not
-DB-constrained either. Only `ACTIVE` rows count for authorization and for
-`GET /auth/me`; the administration roster of a workspace reads **every**
-status, because a suspended member must stay visible to be reactivated or
-removed.
-
-**Union rule.** `UNIQUE(workspace_id, user_id, role)`
-(`uniq_memberships_workspace_user_role`) lets one user hold several rows in one
-workspace — `MEMBER` and `ADMIN`, for example. The administration decision is
-the **union of the `ACTIVE` rows**: `ADMIN` in any of them grants the workspace
-scope, and removing one role leaves the others. A read that inspects a single
-arbitrary row is non-conforming. The role displayed is the strongest of the
-active ones (`ADMIN` > `MODERATOR` > `MEMBER` > `GUEST`).
-
-**Scope is the institution.** `system_role` lives in the tenant database, not
-in the router: each institution has its own administrators, a global user
-linked to two institutions can be `ADMIN` in one and `USER` in the other, and
-there is no platform-wide role to hold. `db:grant-tenant-admin` writes that
-tenant row. `db:grant-tenant-admin` (and the dev seed) remain the only way to
-create the *first* tenant administrator; once one exists, a tenant `ADMIN`
-may change another existing user's `system_role` through
-`PATCH /api/v1/admin/users/:userId`
-([ADR-0050](decisions/ADR-0050-tenant-user-management-and-role-carveout.md)).
-
-### 12.2 The token carries no role
-
-The access token carries `sub`, `tid`, `jti`, `authorHash`, `type` (agents only;
-absent for humans — §2) and the standard `iat`/`exp` — no role claim of either
-kind (§2). Every guard re-reads
-the role from the tenant database on every request, so a demotion takes effect
-on the next request, not on the next login, and a token cannot outlive its
-permissions.
-
-`GET /auth/me` is how the PWA learns what it may render: it returns
-`systemRole` and one entry per workspace carrying the role to display. The rule
-is one entry per workspace with its strongest `ACTIVE` role; the `tid` claim
-selects the institution, so the same token never spans two of them. As of
-2026-11-01 the implementation (`DrizzleUserRepository.listWorkspaces`) returns
-one row per `ACTIVE` membership row, so a user holding several roles in one
-workspace (e.g. `MEMBER` + `ADMIN`) appears more than once; T2 dedupes to the
-strongest role per workspace.
-
-Nothing in the login flow attaches a role to the session: the callback, tenant
-selection, the redemption of an invitation and the event join all mint the same
-role-less token, and the first `/auth/me` of the session is where the PWA
-discovers which surfaces to offer.
-
-### 12.3 Enforcement matrix
-
-| Route family | Guard chain | Required | Failure |
-| --- | --- | --- | --- |
-| Public auth: `GET /auth/login`, `GET /auth/callback`, `POST /auth/refresh`, `POST /auth/event-join`, `POST /auth/select-tenant`, `GET /auth/resolve-tenants` | public IP rate limit | none | `429`, OIDC and event-join codes (§14) |
-| Session: `POST /auth/logout` | `authGuard` | valid access token | `401` |
-| Session and tenant: `GET /auth/me` | `authGuard` → `tenantGuard` | valid token and a provisioned tenant | `401 ERR_INVALID_TOKEN`, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` (missing `tid` in `tenantGuard`), `403 ERR_TENANT_NOT_PROVISIONED`, `503` |
-| Tenant switch: `POST /auth/switch-tenant` | `authGuard` → `tenantGuard` → `scoped` rate limit | same | `403`, `429` |
-| Tenant administration: `GET`/`POST /api/v1/admin/workspaces`, `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/:userId`, `POST /api/v1/admin/users/:userId/suspend`, `POST /api/v1/admin/users/:userId/activate`, `POST /api/v1/admin/cleanup` | `authGuard` → `tenantGuard` → `tenantAdminGuard` → `rateLimit` | `system_role = 'ADMIN'`, read from the tenant DB | `403 ERR_AUTHORIZATION_FAILED`; no `X-Workspace-ID` is required or consulted |
-| Workspace administration: `GET`/`PATCH /api/v1/workspaces/:workspaceId` (profile), `/api/v1/workspaces/:workspaceId/{members,join-codes,join-requests,invitations}`, `DELETE /api/v1/invitations/:invitationId` | `authGuard` → `tenantGuard` → `workspaceAdminGuard` → `rateLimit` | `ADMIN` in the union of the `ACTIVE` roles of the header workspace (no tenant-`ADMIN` bypass; ADR-0049) | `400 ERR_MISSING_WORKSPACE_HEADER`/`ERR_INVALID_WORKSPACE_HEADER`; `404 ERR_WORKSPACE_NOT_FOUND` when the path names another workspace or disagrees with `X-Workspace-ID` (for every caller, including a tenant `ADMIN`); `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS` with no active membership; `403 ERR_AUTHORIZATION_FAILED` when the role is not `ADMIN`. The legacy `POST /api/v1/workspaces/:workspaceId/join-code/rotate` is intentionally unexposed by either surface. || Workspace resources: graph, proposals, discussions and data sources | `authGuard` → `tenantGuard` → `tenantWorkspaceGuard` → `rateLimit` | an `ACTIVE` membership of any role (`GUEST` included); agents skip the membership check | `400` header codes, `403 ERR_UNAUTHORIZED_WORKSPACE_ACCESS`; a foreign-workspace object is `404` |
-| Onboarding: `GET /api/v1/workspace-discovery`, `GET`/`POST /api/v1/workspace-join-requests` | `authGuard` → `tenantGuard` → `rateLimit` | any valid tenant session | `401`/`403` |
-
-- `tenantAdminGuard` never reads `X-Workspace-ID`: the tenant is the scope.
-- `workspaceAdminGuard` requires the header for every caller, because the
-  header names the workspace the request acts on. There is no tenant-`ADMIN`
-  bypass and no "path wins over header" rule (ADR-0049): a path workspace that
-  disagrees with the header is answered `404 ERR_WORKSPACE_NOT_FOUND` for every
-  caller, including a tenant `ADMIN`, and a tenant `ADMIN` without an `ACTIVE`
-  workspace `ADMIN` membership is rejected with
-  `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` like any other non-admin.
-- Both guards resolve the role from the tenant database; a client-supplied role
-  is never read, and neither is the token's `tid` used as a role source.
-- `assertWorkspaceAdmin` returns `void` and resolves only for an `ACTIVE`
-  workspace `ADMIN`; it no longer exposes an `isTenantAdmin` flag, and no use
-  case branches on one (ADR-0049).
-### 12.4 Surfaces and navigation
-
-| Destination | What it is | Gate in the PWA | API authority |
-| --- | --- | --- | --- |
-| `/`, `/proposals`, `/discussions` | the workspace's graph and governance | an `ACTIVE` membership exists (`workspace.workspaces.length > 0`) | membership, any role |
-| `/admin` | tenant administration | `session.user.systemRole === 'ADMIN'` | tenant administrator |
-| `/workspace-admin` | workspace administration | the active workspace's strongest `ACTIVE` role is `ADMIN` (`workspace.isAdmin`) | workspace administrator only (no tenant-`ADMIN` override; ADR-0049) || `/request-access` | ask to enter a workspace | always visible | only a tenant session |
-
-- The role the workspace selector displays is the **active workspace's role**
-  from `/auth/me` — never `systemRole`, never the role of another workspace.
-  Switching workspace re-derives it.
-- A user holding both roles sees both entries: they are two powers, not one
-  page with two tabs.
-- A tenant administrator with zero memberships must still reach `/admin`; the
-  no-membership gate of the `(app)` layout belongs to the workspace
-  destinations, not to the tenant surface.
-- Build state (2026-11-01): `/admin` is the tenant-only surface (workspace
-  list, create form, tenant user directory (role/status management), hygiene sweep) and
-  `/workspace-admin` requires an `ACTIVE` workspace `ADMIN` membership in the
-  selected workspace, with no `?workspaceId` override or break-glass entry
-  (admin-surfaces v2, ADR-0049). The role model and enforcement matrix above
-  describe the shipped state.
-### 12.5 Ownership matrix
-
-| Capability | Tenant administration (`/admin`) | Workspace administration (`/workspace-admin`) |
-| --- | --- | --- |
-| Workspace existence, including workspaces the caller does not belong to | Owns | — |
-| Workspace creation, its `kind`, and its first administrator | Owns | — |
-| Tenant user directory and the tenant cleanup sweep | Owns | — |
-| Tenant user role/status management (promote/demote `system_role`, suspend/activate, session invalidation) | Owns | — |
-| Workspace profile and settings (`name`, `description`, `isPublic`) | — | Owns |
-| Members and roles: add, assign or remove a role, change, suspend, reactivate, remove | — | Owns |
-| Join requests: approve, reject | — | Owns |
-| Invitations: create, revoke | — | Owns |
-| Workspace join codes (`purpose = 'WORKSPACE'`) | — | Owns |
-| Event codes (`purpose = 'EVENT'`, for a workspace with `kind = 'EVENT'`) | — | Owns |
-| Changing `system_role` for an *existing* user | Owns (ADR-0050) | — |
-| Creating the *first* tenant administrator (bootstrap) | Neither — the ops CLI is the only door (ADR-0041 §9, ADR-0050) | — |
-| Emergency recovery with no authenticable administrator | Neither — the ops CLI is the only door (ADR-0041 §9, ADR-0050) | — |
-| Workspace deletion or archive; moving a member between workspaces | Neither — not built | Neither — not built |
-
-### 12.6 No bypass and no break-glass (ADR-0049)
-
-Tenant and workspace administration do not overlap. `workspaceAdminGuard` and
-`assertWorkspaceAdmin` no longer special-case a tenant `ADMIN`: every caller
-needs an `ACTIVE` workspace `ADMIN` membership in the workspace named by
-`X-Workspace-ID`, and a path workspace that disagrees with the header is
-answered `404 ERR_WORKSPACE_NOT_FOUND` for every caller (ADR-0049 §1–§3).
-
-Consequences for the surfaces:
-
-- `/admin` carries no workspace-scoped read or write and no break-glass
-  roster or "enter workspace administration" link. It renders only the
-  workspace list (name, slug, kind, member and pending counts), the create
-  form (name, slug, description, public, kind, initial admin), the tenant user
-  directory (role/status management, ADR-0050) and the tenant hygiene sweep.
-- `/workspace-admin` is reachable only with an `ACTIVE` workspace `ADMIN`
-  membership in the selected workspace. There is no `?workspaceId` tenant
-  override and no break-glass entry; a tenant administrator who is not a
-  member sees the localized no-access state and makes no API call.
-- A tenant administrator who needs to repair a workspace whose own
-  administrators are gone does so through operator tooling against the tenant
-  database — the same door already used for `system_role` changes
-  (ADR-0041 §9). A time-limited, audited override grant, if ever wanted, is
-  a new feature and needs its own ADR; it is out of scope here.
-- Event codes are managed by the workspace administrator of the
-  `kind = 'EVENT'` workspace. The operator CLI (`db:event-code`) remains for
-  operations and for a tenant whose workspace cannot be reached through the
-  API (§9).
-- Creation-time ownership is not a bypass: `CreateWorkspaceUseCase` still calls
-  `assertTenantAdmin` for creation and still bootstraps the creator (or the
-  named `initialAdminUserId`) as workspace `ADMIN` in the same transaction
-  (ADR-0048 §4).
-### 12.7 Authorization beyond the guards
+## 12. Authorization beyond the guards
 
 | Action | Rule | Failure |
 | --- | --- | --- |
@@ -643,11 +394,11 @@ redirect URL.
 | `ERR_OIDC_UNAVAILABLE` | 503 | IdP transport failure or timeout |
 | `ERR_EMAIL_NOT_VERIFIED` | 403 | IdP explicitly reports `email_verified: false` |
 | `ERR_ACCOUNT_LINK_CONFLICT` | 409 | Verified email belongs to an `ANONYMOUS_EVENT` account, or a concurrent upsert conflict |
-| `ERR_EVENT_CODE_INVALID` | 404 | Event code unknown, revoked, expired, at capacity or not of the EVENT purpose ([ADR-0046](decisions/ADR-0046-thin-credential-routing-for-events.md)) |
+| `ERR_EVENT_EXPIRED` | 400 | Event code not found, revoked or past `expires_at` |
+| `ERR_EVENT_FULL` | 400 | `max_uses` reached |
 | `ERR_MISSING_WORKSPACE_HEADER` | 400 | No `X-Workspace-ID` on a resource route |
 | `ERR_INVALID_WORKSPACE_HEADER` | 400 | Header is not a valid UUID |
 | `ERR_UNAUTHORIZED_WORKSPACE_ACCESS` | 403 | No membership, or missing `tid` in `tenantGuard` |
-| `ERR_WORKSPACE_NOT_FOUND` | 404 | The workspace does not exist, or the path names another workspace than `X-Workspace-ID` on workspace administration |
 | `ERR_TENANT_NOT_PROVISIONED` | 403 | `tid` absent from the router DB, or no connection row |
 | `ERR_AUTHORIZATION_FAILED` | 403 | Authenticated but not the author/moderator for this action |
 | `ERR_RATE_LIMIT_EXCEEDED` | 429 | Either Redis bucket is over its cap, including public auth endpoints per IP |
