@@ -9,7 +9,7 @@ members = [
 [dependency-groups]
 dev = [
   "pytest>=8.3,<9",
-  "fakeredis>=2.23,<3",
+  "fakeredis>=2.40.0,<3",
   "ruff>=0.6,<1",
 ]
 
