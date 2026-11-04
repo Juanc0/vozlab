@@ -18,7 +18,7 @@ dev-dist/
 !.env.example
 
 # Zitadel bootstrap PATs (written by the first Zitadel init)
-.zitadel-bootstrap/
+.zitadel-bootstrap*/
 
 # Python
 .venv/
@@ -32,8 +32,6 @@ __pycache__/
 playwright-report/
 test-results/
 
-# Captured screenshots + HTML baselines (frontend-tooling T3)
-docs/analysis/screenshots/
 # Editor / OS
 .DS_Store
 .idea/
@@ -45,3 +43,9 @@ docs/analysis/screenshots/
 .mypy_cache/
 *.egg-info/
 local-backups/
+
+# Captured screenshots + HTML baselines (frontend-tooling T3)
+docs/analysis/screenshots/
+
+# Archify build scratch (diagram candidates + gate receipts)
+.archify/
