@@ -149,6 +149,7 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
+    unreviewed: 'Unreviewed',
     pageTitle: 'Graph — VozLab',
     heading: 'Graph',
     intro:
@@ -223,6 +224,12 @@ export const en: Dictionary<typeof es> = {
   },
 
   explore: {
+    zoomLabel: 'The zoom of the picture',
+    zoomTitle: 'Picture zoom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomFit: 'See the whole graph',
+    zoomFitShort: 'Fit',
     heading: 'Explore',
     listSummary: 'The exploration window as a list',
     controlsLabel: 'The controls of the exploration',

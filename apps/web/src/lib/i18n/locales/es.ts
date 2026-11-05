@@ -171,6 +171,7 @@ export const es = {
 
   /** The graph screen: the root picker, the canvas, the list and the panel. */
   graph: {
+    unreviewed: 'Sin revisar',
     pageTitle: 'Grafo — VozLab',
     heading: 'Grafo',
     intro:
@@ -248,6 +249,12 @@ export const es = {
 
   /** The exploration view: the window, the focus and the expansion. */
   explore: {
+    zoomLabel: 'El zoom de la imagen',
+    zoomTitle: 'Zoom de la imagen',
+    zoomIn: 'Acercar la imagen',
+    zoomOut: 'Alejar la imagen',
+    zoomFit: 'Ver el grafo entero',
+    zoomFitShort: 'Ajustar',
     heading: 'Explorar',
     listSummary: 'La ventana de exploración en forma de lista',
     controlsLabel: 'Los controles de la exploración',
