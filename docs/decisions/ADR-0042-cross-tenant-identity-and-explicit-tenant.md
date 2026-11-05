@@ -1,6 +1,11 @@
 # ADR-0042 — Cross-tenant identity and explicit tenant selection
 
-- Status: proposed
+- Status: partially superseded by ADR-0045
+- Superseded in part by: ADR-0045 (2026-10-30). §5 (the union of active role rows),
+  §6 (`workspace_join_codes` as the sole join credential) and §7 (`GUEST` on
+  redemption) shipped under the names ADR-0045 records; the `global_identities`
+  table this record names was renamed to `global_users`, and `global_invitations`
+  was deleted. Read §6 and §7 here as history, not as the current model.
 - Date: 2026-10-28
 - Related: ADR-0013 (opaque pseudonym), ADR-0041 (tenant/workspace admin)
 
