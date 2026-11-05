@@ -181,6 +181,23 @@ describe('OidcProviderClient', () => {
     expect(identity.tenantKey).toBe('example.edu');
   });
 
+  it('falls back to the Zitadel resource-owner claim for the tenant key', async () => {
+    const token = await signIdToken({
+      email: 'ada@example.edu',
+      email_verified: true,
+      'urn:zitadel:iam:user:resourceowner:id': 'zitadel-org-id',
+    });
+    const { fetchImpl } = fetchWith({ id_token: token });
+
+    const identity = await makeClient(fetchImpl).exchangeCode({
+      code: 'auth-code',
+      codeVerifier: 'verifier-1',
+      nonce: 'nonce-1',
+    });
+
+    expect(identity.tenantKey).toBe('zitadel-org-id');
+  });
+
   it('rejects a nonce mismatch', async () => {
     const token = await signIdToken({ tid: 'tenant-1' });
     const { fetchImpl } = fetchWith({ id_token: token });

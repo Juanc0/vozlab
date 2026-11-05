@@ -43,6 +43,36 @@ they disagree with the code, **the code wins** — fix the doc.
 - Docs entry point: `docs/README.md`. Roadmap: `ROADMAP.md`. Decisions:
   `docs/decisions/`. Unbuilt specs: `docs/spec/`. History: `docs/archive/`.
 
+## Quick start (dev)
+
+```bash
+# 1. Base stack + Zitadel + migrate + seed (one command):
+./scripts/dev-up.sh            # local dev  (localhost URLs)
+./scripts/dev-up.sh demo       # public demo: also starts the 3 zrok shares
+./scripts/dev-up.sh --reset    # destroy Zitadel DB + PAT, re-init from scratch
+./scripts/dev-up.sh demo --reset  # same, for the demo instance
+
+# 2. Start the app (two terminals — copy-paste the printed commands):
+source scripts/env.sh local    # or: source scripts/env.sh demo
+pnpm --filter @vozlab/api dev  # http://localhost:3000
+
+source scripts/env.sh local    # or: source scripts/env.sh demo
+pnpm --filter @vozlab/web dev  # http://localhost:5173
+```
+
+Env files: `.env` holds the zrok/demo config; `.env.local` holds the
+localhost config. Pick one per shell with `source scripts/env.sh {demo|local}`
+so `ZITADEL_MASTERKEY` and `OIDC_*` land in the process environment that
+Compose and the API both read. `env.sh` never exits the shell.
+Never commit `.env`, `.env.local`, or `.zitadel-bootstrap*/`.
+
+The script brings up Zitadel too (each mode has its own instance + DB
+volume, so switching modes does not destroy data) and writes the OIDC_*
+block into the matching env file automatically. In demo mode it also starts
+the three reserved zrok shares (`scripts/zrok-shares.sh`, state under
+`.zrok/`); a reserved share that is not being shared answers 502 at the
+zrok edge.
+
 ## Commands (pnpm only)
 - `pnpm install` — workspace install.
 - `pnpm turbo run build` — `tsc --noEmit` for every TS package (no JS emitted).

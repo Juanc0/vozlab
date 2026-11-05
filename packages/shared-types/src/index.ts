@@ -6,6 +6,7 @@ export * from './schemas/batch.schema.js';
 export * from './schemas/agent.schema.js';
 export * from './schemas/edge.schema.js';
 export * from './schemas/proposal.schema.js';
+export * from './schemas/workspace-admin.schema.js';
 export * from './schemas/ontology.schema.js';
 export * from './schemas/discussion.schema.js';
 export * from './schemas/interaction.schema.js';

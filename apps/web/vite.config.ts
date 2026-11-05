@@ -186,6 +186,14 @@ export default defineConfig(({ mode }) => {
         }
       : undefined,
     server: {
+      // Bind IPv4 loopback explicitly. The default resolves `localhost` to
+      // `::1` on some systems, while the reserved zrok shares proxy to
+      // `127.0.0.1` — a mismatch that answers 502 at the zrok edge.
+      host: '127.0.0.1',
+      // Vite 6 rejects requests whose `Host` header is not allow-listed
+      // (403 "Blocked request"). A zrok share forwards the public hostname,
+      // so the demo domains have to be listed explicitly.
+      allowedHosts: ['.zrok.io'],
       fs: {
         // The workspace package `@vozlab/shared-types` is served to the
         // browser as source in dev mode; SvelteKit's allow list does not

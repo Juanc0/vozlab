@@ -523,3 +523,160 @@ computes vectors for new nodes, but there is no backfill for older ones and
 nothing queries `nodes.embedding` yet. See [testing.md](testing.md) for scope
 and [ADR-0020](decisions/ADR-0020-dedicated-embedding-pipeline.md) /
 [ADR-0021](decisions/ADR-0021-python-worker-runtime.md) for the design.
+
+## Zitadel identity broker (optional, for the real OIDC login flow)
+
+The base stack (Postgres + Redis + Ollama) does not include an identity
+provider. The real login flow needs Zitadel, which ships as a separate
+compose file and a provisioning script. Everything below assumes the base
+stack is already running.
+
+### 1. Start Zitadel
+
+**One command does everything** (base stack + Zitadel + migrations + seed + provision):
+
+```bash
+./scripts/dev-up.sh            # local dev (localhost URLs)
+./scripts/dev-up.sh demo       # public demo (zrok shares)
+```
+
+Each mode has its own compose project name (`vozlab-zitadel-local` vs
+`vozlab-zitadel-demo`) and its own DB volume, so switching modes does not
+destroy data — it just stops one instance and starts the other (~5-10 s).
+Provisioning only runs the first time (PAT is checked in
+`.zitadel-bootstrap-<mode>/`).
+
+Or manually:
+
+```bash
+# Local dev:
+source scripts/env.sh local
+docker compose -f docker/identity-lab/zitadel/compose.yml up -d
+until curl -fsS -o /dev/null http://localhost:8081/debug/ready; do sleep 2; done
+
+# Public demo:
+source scripts/env.sh demo
+docker compose -f docker/identity-lab/zitadel/compose.yml up -d
+until curl -fsS -o /dev/null http://localhost:8081/debug/ready; do sleep 2; done
+```
+
+`env.sh` never exits the shell. If `ZITADEL_MASTERKEY` is unset in `.env`,
+the compose falls back to the documented dev default
+`MasterkeyNeedsToHave32Characters` (32 chars).
+
+**Console and admin credentials depend on the external domain.** Zitadel
+creates the first-instance admin as `zitadel-admin@zitadel.<external-domain>`,
+and it can only be reached through that domain's host:
+
+| Mode | Console URL | Admin login | Password |
+| --- | --- | --- | --- |
+| local | http://127.0.0.1:8081/ui/console | `zitadel-admin@zitadel.localhost` | `Password1!` |
+| demo | https://vozlabauth.share.zrok.io/ui/console | `zitadel-admin@zitadel.vozlabauth.share.zrok.io` | `Password1!` |
+
+In demo mode the console is only reachable while the `vozlabauth` zrok
+share is running (`zrok share reserved vozlabauth --headless`). `dev-up.sh`
+prints the exact admin login for the mode you started.
+
+### 2. Provision the OIDC client and the test user
+
+```bash
+export ZITADEL_CONTAINER=vozlab-zitadel-zitadel-1
+ZITADEL_URL=http://localhost:8081 ./scripts/setup-zitadel.sh
+```
+
+The script prints a block of `OIDC_*` variables. Paste it into the root
+`.env` (replacing the existing `OIDC_*` lines). It also prints the test
+user credentials and the SQL that links the `sabana` tenant to the Zitadel
+org.
+
+### 3. Wire the API and the web
+
+- `ZITADEL_URL` (management) defaults to `http://localhost:8081` and is
+  only used by the script, never by the API.
+- The API reads `OIDC_ISSUER`, `OIDC_AUTH_URL`, `OIDC_TOKEN_URL`,
+  `OIDC_USERINFO_URL`, `OIDC_JWKS_URL`, `OIDC_CLIENT_ID`,
+  `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`, `WEB_ORIGIN`.
+- `WEB_ORIGIN` must match the origin the browser uses to open the PWA
+  (`http://localhost:5173` in dev).
+
+### 3b. Restart the API after any provisioning
+
+The API reads `OIDC_*` from the env file **at process start**. `dev-up.sh`
+may rewrite those values (first run, or after `--reset`), and `tsx watch`
+does not reload `.env`. An API that was started before keeps the old
+`OIDC_CLIENT_ID` and the identity provider answers:
+
+```json
+{"error":"invalid_request","error_description":"Errors.App.NotFound"}
+```
+
+That is a stale process, not a Zitadel bug: restart the API. `dev-up.sh`
+warns when it detects an API still listening on `:3000`.
+
+### 3c. The MFA prompt at first login
+
+Zitadel v4 asks a new user to initialise a second factor. The lab cannot
+disable that prompt (`ZITADEL_DEFAULTINSTANCE_MULTIFACTORS_INITSKIP` is
+ignored and the v1 API rejects `mfaInitSkipLifespan`), so press **Skip** on
+that page once: the login then continues normally.
+
+### 4. Start the app
+
+```bash
+pnpm --filter @vozlab/api dev   # http://localhost:3000
+pnpm --filter @vozlab/web dev   # http://localhost:5173
+```
+
+### Public demo (zrok)
+
+`./scripts/dev-up.sh demo` starts the three reserved zrok shares itself
+(`./scripts/zrok-shares.sh start`), so the public URLs work without a
+separate terminal. A reserved share that is *not* being shared answers
+`502 Bad Gateway` from the zrok edge — that is the symptom of a stopped
+share, not of a broken app.
+
+| Share | Public URL | Local target |
+| --- | --- | --- |
+| vozlabauth | https://vozlabauth.share.zrok.io | 127.0.0.1:8081 (Zitadel) |
+| vozlabapi | https://vozlabapi.share.zrok.io | 127.0.0.1:3000 (API) |
+| vozlabdemo | https://vozlabdemo.share.zrok.io | 127.0.0.1:5173 (PWA) |
+
+Managed with `./scripts/zrok-shares.sh {start|stop|status}`; logs and pidfiles
+live under `.zrok/` (gitignored).
+
+Two Vite settings make the demo work and are already committed in
+`apps/web/vite.config.ts`: `server.host: '127.0.0.1'` (the shares proxy to
+IPv4, while `localhost` may bind `::1` only) and `server.allowedHosts:
+['.zrok.io']` (Vite answers 403 to an unknown `Host` header).
+
+For a public demo behind `*.share.zrok.io`, the management calls stay on
+localhost but Zitadel must be told its public origin. The script forwards
+the public host automatically:
+
+```bash
+export ZITADEL_MASTERKEY="MasterkeyNeedsToHave32Characters"
+ZITADEL_URL=http://localhost:8081 \
+ZITADEL_PUBLIC_URL=https://vozlabauth.share.zrok.io \
+API_CALLBACK=https://vozlabapi.share.zrok.io/api/v1/auth/callback \
+WEB_ORIGIN=https://vozlabdemo.share.zrok.io \
+  ./scripts/setup-zitadel.sh
+```
+
+The printed `OIDC_*` values then point at the public share URLs. See
+[`docs/ops/runbook-demo-zrok.md`](runbook-demo-zrok.md) for the full
+zrok setup (reserved shares, TLS, Caddy).
+
+### Notes
+
+- Zitadel resolves the instance from the `Host` header, so management
+  calls to localhost must carry the public host when `ZITADEL_PUBLIC_URL`
+  differs from `ZITADEL_URL`. The script handles this.
+- The first init creates a machine user `vozlab-bootstrap` with the
+  `IAM_OWNER` role and writes its PAT to `./.zitadel-bootstrap/admin.pat`
+  (bind mount, readable directly from the host — no `docker cp`). If the
+  PAT is missing (DB already initialised), the script prints how to
+  regenerate it.
+- `admin.pat` is a lab secret: never commit it, never reuse it outside
+  dev.
+- Zitadel has no native LDAP or SCIM; provisioning is via the management
+  API (see `docs/ops/zitadel-social-logins.md`).

@@ -49,3 +49,7 @@ docs/analysis/screenshots/
 
 # Archify build scratch (diagram candidates + gate receipts)
 .archify/
+
+# Local env variants and zitadel bootstrap (secrets)
+.zrok/
+.zitadel-bootstrap*/

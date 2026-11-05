@@ -44,8 +44,29 @@ The API now implements the real auth flow. No IdP runs in Compose and the PWA lo
 
 Prerequisites: Node 22 (CI baseline), pnpm 12.11.2 (`corepack enable`), Docker with Compose. Python worker work additionally needs uv and Python 3.12.
 
+**One command** (base stack + Zitadel + migrations + seed + OIDC provision):
+
 ```bash
 pnpm install
+./scripts/dev-up.sh            # local dev (localhost URLs)
+# or: ./scripts/dev-up.sh demo  # public demo (zrok shares)
+# reset: ./scripts/dev-up.sh --reset  (destroy Zitadel DB + PAT, re-init)
+```
+
+Then start the app in two terminals:
+
+```bash
+cd /home/juan/repos/vozlab
+source scripts/env.sh local    # or: source scripts/env.sh demo
+pnpm --filter @vozlab/api dev  # http://localhost:3000
+
+source scripts/env.sh local    # or: source scripts/env.sh demo
+pnpm --filter @vozlab/web dev  # http://localhost:5173
+```
+
+**Manual steps** (if you prefer):
+
+```bash
 cp .env.example .env
 set -a; . ./.env; set +a   # drizzle-kit reads the process env, not the repo-root .env
 docker compose up -d --build
@@ -55,6 +76,18 @@ pnpm --filter @vozlab/api dev
 ```
 
 The API listens on `http://localhost:3000`. The dev seed is idempotent and provisions tenant `sabana`, workspace `general` (`33333333-3333-4333-8333-333333333333`), five identities, a base ontology (`Problem`, `Idea`, `Resource`) and one example data source. The init scripts run only on a fresh Postgres volume.
+
+### Real login via Zitadel (optional)
+
+The real OIDC flow needs Zitadel. `./scripts/dev-up.sh` already brings it up
+and provisions the OIDC client. After the first run, paste the printed
+`OIDC_*` block into `.env` (demo) or `.env.local` (local), then restart
+the API. Login with `testuser` / `Testpass1!`.
+
+See [docs/runbook-dev.md](docs/runbook-dev.md) for the full flow,
+[docker/identity-lab/zitadel/README.md](docker/identity-lab/zitadel/README.md)
+for Zitadel-specific notes, and [ADR-0052](docs/decisions/ADR-0052-dev-environment-bootstrap.md)
+for the design rationale.
 
 In a second terminal, mint a token and call the API:
 

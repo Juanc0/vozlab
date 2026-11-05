@@ -22,7 +22,7 @@ RUN apt-get update \
 # introduced in pgvector 0.8.0). Fail the build if the package is older.
 RUN v="$(sed -n 's/^default_version[[:space:]]*=[[:space:]]*\x27\([^\x27]*\)\x27.*/\1/p' "$(pg_config --sharedir)/extension/vector.control")" \
  && echo "pgvector default_version=$v" \
- && python3 -c "import sys; v='$v'.split('.'); ok=int(v[0])>0 or (int(v[0])==0 and int(v[1])>=8); sys.exit(0 if ok else 1)" \
+ && (v_major=$(echo "$v" | cut -d. -f1); v_minor=$(echo "$v" | cut -d. -f2); test "$v_major" -gt 0 -o \( "$v_major" -eq 0 -a "$v_minor" -ge 8 \) ) \
  || (echo "pgvector < 0.8.0 is not supported (F-04)" >&2; exit 1)
 
 # Sanity check at build time: both extension control files must be present.

@@ -9,12 +9,12 @@ services:
     image: ghcr.io/zitadel/zitadel:v4.16.0
     restart: unless-stopped
     user: "0"
-    command: start-from-init --masterkey "${ZITADEL_MASTERKEY}"
+    command: start-from-init --masterkey "${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}"
     environment:
       ZITADEL_PORT: 8080
-      ZITADEL_EXTERNALDOMAIN: localhost
-      ZITADEL_EXTERNALPORT: 8081
-      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNALDOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT:-8081}
+      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNALSECURE:-false}
       ZITADEL_TLS_ENABLED: "false"
       ZITADEL_DATABASE_POSTGRES_DSN: postgresql://postgres:postgres@zitadel-db:5432/zitadel?sslmode=disable
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
@@ -30,11 +30,19 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
       ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/admin.pat
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
+      # A lab instance must not stop the first login to ask for a second
+      # factor: the dev test user has none, and the "skip" page reads as a
+      # broken login.
+      ZITADEL_DEFAULTINSTANCE_MULTIFACTORS_INITSKIP: "true"
+      # The login UI defaults to Arabic otherwise; the product is ES/EN.
+      ZITADEL_DEFAULTINSTANCE_DEFAULTLANGUAGE: "es"
       ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
     ports:
       - "127.0.0.1:8081:8080"
+    env_file:
+      - ../../../.env
     volumes:
-      - zitadel-bootstrap:/zitadel/bootstrap:rw
+      - ${ZITADEL_BOOTSTRAP_DIR:-./.zitadel-bootstrap}:/zitadel/bootstrap:rw
     networks:
       - zitadel-net
     depends_on:
@@ -59,7 +67,7 @@ services:
     ports:
       - "127.0.0.1:3001:3000"
     volumes:
-      - zitadel-bootstrap:/zitadel/bootstrap:ro
+      - ${ZITADEL_BOOTSTRAP_DIR:-./.zitadel-bootstrap}:/zitadel/bootstrap:ro
     networks:
       - zitadel-net
     depends_on:
@@ -95,4 +103,3 @@ networks:
 
 volumes:
   zitadel-db-data:
-  zitadel-bootstrap:
