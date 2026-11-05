@@ -4,7 +4,6 @@ import type { AuthSessionDto, AuthUserDto } from '@vozlab/shared-types';
 
 const USER: AuthUserDto = {
   id: '44444444-4444-4444-8444-444444444444',
-  email: 'ada@example.edu',
   fullName: 'Ada Lovelace',
   anonymousAlias: null,
   provider: 'OIDC_INSTITUTIONAL',

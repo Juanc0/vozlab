@@ -22,6 +22,7 @@ const CREATED_AT = '2026-10-19T09:00:00.000Z';
 export const CLASS_PROBLEM: OntologyClassDto = {
   id: '11111111-2222-4333-8444-555555555551',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'Problem',
   displayNames: { en: 'Problem', es: 'Problema' },
   descriptions: { en: 'Something that has to be solved.' },
@@ -34,6 +35,7 @@ export const CLASS_PROBLEM: OntologyClassDto = {
 export const CLASS_IDEA: OntologyClassDto = {
   id: '11111111-2222-4333-8444-555555555552',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'Idea',
   displayNames: { en: 'Idea', es: 'Idea' },
   descriptions: { en: 'A proposed solution.' },
@@ -46,6 +48,7 @@ export const CLASS_IDEA: OntologyClassDto = {
 export const CLASS_RESOURCE: OntologyClassDto = {
   id: '11111111-2222-4333-8444-555555555553',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'Resource',
   displayNames: { en: 'Resource', es: 'Recurso' },
   descriptions: {},
@@ -59,6 +62,7 @@ export const CLASS_RESOURCE: OntologyClassDto = {
 export const PROPERTY_TITLE: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555551',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'title',
   displayNames: { en: 'Title', es: 'Título' },
   descriptions: { en: 'The title of the problem.' },
@@ -76,6 +80,7 @@ export const PROPERTY_TITLE: DatatypePropertyDto = {
 export const PROPERTY_DESCRIPTION: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555552',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'description',
   displayNames: { en: 'Description', es: 'Descripción' },
   descriptions: {},
@@ -93,6 +98,7 @@ export const PROPERTY_DESCRIPTION: DatatypePropertyDto = {
 export const PROPERTY_SEVERITY: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555553',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'severity',
   displayNames: { en: 'Severity' },
   descriptions: {},
@@ -110,6 +116,7 @@ export const PROPERTY_SEVERITY: DatatypePropertyDto = {
 export const PROPERTY_SOURCE: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555554',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'source',
   displayNames: { en: 'Source' },
   descriptions: {},
@@ -127,6 +134,7 @@ export const PROPERTY_SOURCE: DatatypePropertyDto = {
 export const PROPERTY_RESOLVED: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555555',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'resolved',
   displayNames: { en: 'Resolved' },
   descriptions: {},
@@ -144,6 +152,7 @@ export const PROPERTY_RESOLVED: DatatypePropertyDto = {
 export const PROPERTY_DUE_DATE: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555556',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'dueDate',
   displayNames: { en: 'Due date' },
   descriptions: {},
@@ -161,6 +170,7 @@ export const PROPERTY_DUE_DATE: DatatypePropertyDto = {
 export const PROPERTY_STATE: DatatypePropertyDto = {
   id: '22222222-2222-4333-8444-555555555557',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'state',
   displayNames: { en: 'State' },
   descriptions: {},
@@ -178,6 +188,7 @@ export const PROPERTY_STATE: DatatypePropertyDto = {
 export const PROPERTY_RELATES_TO: ObjectPropertyDto = {
   id: '33333333-2222-4333-8444-555555555551',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'RELATES_TO',
   displayNames: { en: 'Relates to', es: 'Se relaciona con' },
   descriptions: { en: 'Links a problem to a proposed idea.' },
@@ -195,6 +206,7 @@ export const PROPERTY_RELATES_TO: ObjectPropertyDto = {
 export const PROPERTY_SUGGESTS: ObjectPropertyDto = {
   id: '33333333-2222-4333-8444-555555555552',
   workspaceId: WORKSPACE_ID,
+  communityScore: 0,
   systemKey: 'SUGGESTS',
   displayNames: { en: 'Suggests' },
   descriptions: {},

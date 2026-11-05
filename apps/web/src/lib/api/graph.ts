@@ -374,3 +374,93 @@ export async function updateEdge(
 
   return body.edge;
 }
+
+/**
+ * Activates a node (governance: `PENDING → ACTIVE`).
+ *
+ * Only the author of the node or a `MODERATOR`/`ADMIN` of the workspace may
+ * do this; the API re-checks and answers `403 ERR_AUTHORIZATION_FAILED`
+ * otherwise. The answer is the narrow projection the route returns.
+ */
+export async function activateNode(
+  client: ApiClient,
+  nodeId: string
+): Promise<{ readonly id: string; readonly status: NodeStatus }> {
+  const body = await client.request<{ id: string; status: NodeStatus }>({
+    method: 'PUT',
+    path: `/nodes/${encodeURIComponent(nodeId)}/activate`
+  });
+
+  return { id: body.id, status: body.status };
+}
+
+/** Rejects a node (`PENDING → REJECTED`). Mirror of {@link activateNode}. */
+export async function rejectNode(
+  client: ApiClient,
+  nodeId: string
+): Promise<{ readonly id: string; readonly status: NodeStatus }> {
+  const body = await client.request<{ id: string; status: NodeStatus }>({
+    method: 'PUT',
+    path: `/nodes/${encodeURIComponent(nodeId)}/reject`
+  });
+
+  return { id: body.id, status: body.status };
+}
+
+/**
+ * Auto-activates a node under the moderator override (FR-13 criteria).
+ *
+ * The API requires a `MODERATOR`/`ADMIN` role **and** the domain criteria
+ * (community score ≥ 10 and the author inactive for ≥ 14 days); it answers
+ * `422 ERR_UNMET_AUTO_APPLY_CRITERIA` otherwise.
+ */
+export async function autoActivateNode(
+  client: ApiClient,
+  nodeId: string
+): Promise<{ readonly id: string; readonly status: NodeStatus }> {
+  const body = await client.request<{ id: string; status: NodeStatus }>({
+    method: 'PUT',
+    path: `/nodes/${encodeURIComponent(nodeId)}/auto-activate`
+  });
+
+  return { id: body.id, status: body.status };
+}
+
+/** Activates a relation (`PENDING → ACTIVE`). */
+export async function activateEdge(
+  client: ApiClient,
+  edgeId: string
+): Promise<{ readonly id: string; readonly status: EdgeStatus }> {
+  const body = await client.request<{ id: string; status: EdgeStatus }>({
+    method: 'PUT',
+    path: `/edges/${encodeURIComponent(edgeId)}/activate`
+  });
+
+  return { id: body.id, status: body.status };
+}
+
+/** Rejects a relation (`PENDING → REJECTED`). Mirror of {@link activateEdge}. */
+export async function rejectEdge(
+  client: ApiClient,
+  edgeId: string
+): Promise<{ readonly id: string; readonly status: EdgeStatus }> {
+  const body = await client.request<{ id: string; status: EdgeStatus }>({
+    method: 'PUT',
+    path: `/edges/${encodeURIComponent(edgeId)}/reject`
+  });
+
+  return { id: body.id, status: body.status };
+}
+
+/** Auto-activates a relation under the moderator override (FR-13 criteria). */
+export async function autoActivateEdge(
+  client: ApiClient,
+  edgeId: string
+): Promise<{ readonly id: string; readonly status: EdgeStatus }> {
+  const body = await client.request<{ id: string; status: EdgeStatus }>({
+    method: 'PUT',
+    path: `/edges/${encodeURIComponent(edgeId)}/auto-activate`
+  });
+
+  return { id: body.id, status: body.status };
+}

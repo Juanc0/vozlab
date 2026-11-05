@@ -286,6 +286,7 @@ export const en: Dictionary<typeof es> = {
    * they are proper nouns, and a proper noun is not translated.
    */
   engines: {
+    svgPainterError: 'The graph could not be drawn.',
     heading: 'The engines, side by side',
     intro:
       'The same window, the same nodes and the same relations in the three engines. This is a development surface: it does not exist in a production build.',

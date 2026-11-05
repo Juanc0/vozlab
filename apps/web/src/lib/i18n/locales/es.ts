@@ -312,6 +312,7 @@ export const es = {
    * they are proper nouns, and a proper noun is not translated.
    */
   engines: {
+    svgPainterError: 'No se pudo dibujar el grafo.',
     heading: 'Los motores, lado a lado',
     intro:
       'La misma ventana, los mismos nodos y las mismas relaciones en los tres motores. Es una superficie de desarrollo: en una compilación de producción no existe.',
