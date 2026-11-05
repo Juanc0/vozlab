@@ -105,6 +105,15 @@ import {
 /** The SVG namespace. */
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/**
+ * The zoom below which a card stops being a card.
+ *
+ * A picture that does not fit is read at this zoom instead of being shrunk
+ * into illegibility, and the view centres on the node it presents. The
+ * incumbent used the same value; ADR-0051 keeps the cards readable.
+ */
+const READABLE_ZOOM = 0.75;
+
 /** The movement below which the picture is said to have its shape, in pixels. */
 const SETTLE_MOVEMENT = 1.5;
 
@@ -211,6 +220,14 @@ export interface SvgPainterElements {
   readonly selectedNodeId?: string | null;
   /** The id of the node the view presents. */
   readonly presentedNodeId?: string | null;
+  /**
+   * The nodes the host holds still.
+   *
+   * A pinned card is an obstacle for the spring: the others part around it and
+   * it keeps its place until the host pins a different set. The view uses this
+   * for the node the reader is standing on.
+   */
+  readonly pinnedIds?: ReadonlySet<string>;
 }
 
 /** The painter of the comparison. */
@@ -233,6 +250,8 @@ export interface SvgPainter {
   setIdleSway(value: boolean): void;
   /** Puts the whole picture in view. */
   fitView(): void;
+  /** Centres the picture on a node — the node the reader walked to. */
+  centerOn(nodeId: string): void;
   /** Comes closer to the picture, one step. */
   zoomIn(): void;
   /** Steps back from the picture, one step. */
@@ -1434,16 +1453,51 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     zoomBehavior.scaleBy(select(svg), 1 / ZOOM_STEP);
   }
 
-  /** The fit: the whole picture in view, once. */
-  function fitView(): void {
-    const transform = fitTransform(pictureBounds(), viewportSize, FIT_PADDING);
-
-    camera = transform;
+  /** Moves the camera and tells `d3-zoom` about it, so both agree. */
+  function applyCamera(next: CameraTransform): void {
+    camera = next;
 
     select(svg).call(
       zoomBehavior.transform,
-      zoomIdentity.translate(transform.x, transform.y).scale(transform.k)
+      zoomIdentity.translate(next.x, next.y).scale(next.k)
     );
+  }
+
+  /** The fit: the whole picture in view, once, or as close as stays readable. */
+  function fitView(): void {
+    const transform = fitTransform(pictureBounds(), viewportSize, FIT_PADDING);
+
+    if (transform.k >= READABLE_ZOOM) {
+      applyCamera(transform);
+      return;
+    }
+
+    // The picture does not fit at a legible size: keep the cards readable and
+    // centre on the node the view presents, so the reader lands on something.
+    const focus = lastElements?.presentedNodeId ?? null;
+    const place = focus === null ? null : placeholderOf(focus);
+
+    applyCamera({
+      x: place === null ? transform.x : viewportSize.width / 2 - place.x * READABLE_ZOOM,
+      y: place === null ? transform.y : viewportSize.height / 2 - place.y * READABLE_ZOOM,
+      k: READABLE_ZOOM
+    });
+  }
+
+  /** Centres the picture on a node — the node the reader walked to. */
+  function centerOn(nodeId: string): void {
+    if (!cards.has(nodeId)) {
+      return;
+    }
+
+    const place = placeholderOf(nodeId);
+    const k = Math.max(camera.k, READABLE_ZOOM);
+
+    applyCamera({
+      x: viewportSize.width / 2 - place.x * k,
+      y: viewportSize.height / 2 - place.y * k,
+      k
+    });
   }
 
   // The pointer moves over the picture: the spring wakes, even when it is
@@ -1639,6 +1693,16 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
     lastElements = elements;
     build(elements);
 
+    // The host holds its nodes still: the spring takes them as obstacles and
+    // the rest of the picture parts around them.
+    pinned.clear();
+
+    for (const id of elements.pinnedIds ?? []) {
+      if (cards.has(id)) {
+        pinned.set(id, placeholderOf(id));
+      }
+    }
+
     for (const card of cards.values()) {
       bindDrag(card);
     }
@@ -1748,6 +1812,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       spring?.setIdleSway(value);
     },
     fitView,
+    centerOn,
     zoomIn,
     zoomOut,
     camera(): CameraTransform {

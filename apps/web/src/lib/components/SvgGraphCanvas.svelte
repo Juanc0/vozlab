@@ -58,6 +58,12 @@
     zoomaction?: ZoomAction;
     /** The number of the command of the zoom. */
     zoomrequest?: number;
+    /** The nodes the host holds still. */
+    pinnedIds?: ReadonlySet<string>;
+    /** The node the view should centre on. */
+    centerNodeId?: string | null;
+    /** The number of the command that asks to centre on that node. */
+    centerRequest?: number;
   }
 
   let {
@@ -78,7 +84,10 @@
     idleSway = true,
     rearrangeTick = 0,
     zoomaction = 'in',
-    zoomrequest = 0
+    zoomrequest = 0,
+    pinnedIds = new Set<string>(),
+    centerNodeId = null,
+    centerRequest = 0
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -148,6 +157,24 @@
   }
 
   let lastZoomRequest = untrack(() => zoomrequest);
+
+  let lastCenterRequest = untrack(() => centerRequest);
+
+  $effect(() => {
+    const p = painter;
+    const request = centerRequest;
+    const nodeId = centerNodeId;
+
+    if (p === null || request === 0 || request === lastCenterRequest) {
+      return;
+    }
+
+    lastCenterRequest = request;
+
+    if (nodeId !== null) {
+      p.centerOn(nodeId);
+    }
+  });
 
   $effect(() => {
     const p = painter;
@@ -238,7 +265,8 @@
         nodes: currentNodes,
         edges: currentEdges,
         expandedIds: currentExpanded,
-        edgeStyle: currentStyle
+        edgeStyle: currentStyle,
+        pinnedIds
       });
     } catch (caught) {
       errorHandler?.(failureMessage(caught));
