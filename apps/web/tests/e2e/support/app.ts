@@ -74,3 +74,13 @@ export async function canvasDescription(page: Page, name: string): Promise<strin
 
   return (await page.locator(`#${describedBy}`).textContent()) ?? '';
 }
+
+/**
+ * Names a node in the search of the toolbar.
+ *
+ * The search replaced the floating picker: it is always on screen, so a test
+ * does not open it — it types in it.
+ */
+export async function searchForNode(page: Page, title: string): Promise<void> {
+  await page.getByLabel('Buscar un nodo').fill(title);
+}

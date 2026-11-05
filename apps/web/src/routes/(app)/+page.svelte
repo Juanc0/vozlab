@@ -895,6 +895,28 @@
    * The reader named a node in the toolbar search: the picture goes to it
    * and the node is selected, the way a click on the canvas would.
    */
+  /**
+   * The cards the reader opened.
+   *
+   * A card opens onto its own node — the description and the attributes — and
+   * closes again with the same gesture. It is a set of ids and not a flag on
+   * the node: opening one card must never open another.
+   */
+  let expandedIds = $state<Set<string>>(new Set());
+
+  /** Opens or closes the card of a node. */
+  function toggleNodeExpansion(id: string): void {
+    const next = new Set(expandedIds);
+
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+
+    expandedIds = next;
+  }
+
   function handleSearchSelect(nodeId: string): void {
     // The search is also the way into the subgraph now that the floating
     // picker is gone: the node the reader names becomes the root of the
@@ -1165,7 +1187,8 @@
         <SvgGraphCanvas
           nodes={graphNodes}
           edges={graphEdges}
-          expandedIds={new Set()}
+          expandedIds={expandedIds}
+          ontoggle={toggleNodeExpansion}
           selectedNodeId={selectedNodeId}
           selectedEdgeId={null}
           presentedNodeId={null}

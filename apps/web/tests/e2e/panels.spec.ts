@@ -11,7 +11,7 @@
  * and a reload finds the same screen.
  */
 
-import { openRootPicker, waitForApp } from './support/app';
+import { searchForNode, waitForApp } from './support/app';
 import { WEB_ORIGIN } from './support/config';
 import { expect, test } from './support/fixtures';
 
@@ -64,13 +64,8 @@ test('the navigation folds into a rail and the panels are remembered', async ({
   await expect(page.getByRole('button', { name: 'Mostrar el inspector' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Contenido' })).toHaveCount(0);
 
-  // The panel of the root picker is folded too — and the toolbar opens it.
-  await expect(page.getByRole('button', { name: 'Raíz', exact: true })).toHaveAttribute(
-    'aria-expanded',
-    'false'
-  );
 
-  await openRootPicker(page);
+  await searchForNode(page, node.title);
   await expect(page.getByRole('button', { name: node.title })).toBeVisible();
 
   // A reload finds the same screen: the state is in the cookie. The root
@@ -83,10 +78,6 @@ test('the navigation folds into a rail and the panels are remembered', async ({
     page.getByRole('complementary', { name: 'Espacio de trabajo y secciones' })
   ).toHaveCSS('width', /^5[0-9]px$/);
   await expect(page.getByRole('button', { name: 'Mostrar el inspector' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Raíz', exact: true })).toHaveAttribute(
-    'aria-expanded',
-    'true'
-  );
   await expect(page.getByRole('button', { name: node.title })).toBeVisible();
 });
 
@@ -100,13 +91,7 @@ test('the root picker opens with a search that filters the nodes', async ({ page
   await page.goto('/');
   await waitForApp(page);
 
-  // The panel is folded: the control of the toolbar opens it.
-  await expect(page.getByRole('button', { name: 'Raíz', exact: true })).toHaveAttribute(
-    'aria-expanded',
-    'false'
-  );
 
-  await openRootPicker(page);
 
   const search = page.getByLabel('Buscar un nodo');
 
