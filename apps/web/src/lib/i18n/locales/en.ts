@@ -62,6 +62,13 @@ export const en: Dictionary<typeof es> = {
     noneSelected: 'No workspace selected.'
   },
 
+  /** The institution switcher (tenant change without re-authentication). */
+  tenant: {
+    label: 'Institution',
+    switching: 'Switching institution…',
+    switchFailed: 'Could not switch institution.'
+  },
+
   locale: {
     label: 'Language',
     es: 'Español',
@@ -699,5 +706,124 @@ export const en: Dictionary<typeof es> = {
       OPEN: 'Open',
       CLOSED: 'Closed'
     }
+  },
+
+  admin: {
+    title: 'Administration',
+    workspaces: 'Workspaces',
+    createWorkspace: 'Create workspace',
+    name: 'Name',
+    slug: 'Slug',
+    description: 'Description',
+    isPublic: 'Public',
+    members: 'Members',
+    joinRequests: 'Join requests',
+    invitations: 'Invitations',
+    selectTenantTitle: 'Select tenant',
+    selectTenantNone: 'No tenants linked',
+    addRole: 'Add role…',
+    createJoinCode: 'Create ephemeral code',
+    joinCodes: 'Ephemeral join codes',
+    edit: 'Edit',
+    maxUses: 'Max uses',
+    expiresAt: 'Expires',
+    autoApprove: 'Auto-approve',
+    purpose: 'Purpose',
+    uses: 'Uses',
+    save: 'Save',
+    cleanup: 'Tenant hygiene',
+    cleanupDays: 'Guest inactivity window (days)',
+    runCleanup: 'Run cleanup',
+    cleanupResult: '{invitations} invitations expired · {guests} guests removed',
+    label: 'Label',
+    createdCode: 'Code (shown once)',
+    addMember: 'Add member',
+    email: 'Email',
+    handle: 'Username handle',
+    role: 'Role',
+    status: 'Status',
+    suspend: 'Suspend',
+    reactivate: 'Reactivate',
+    remove: 'Remove',
+    approve: 'Approve',
+    reject: 'Reject',
+    createInvitation: 'Create invitation',
+    revoke: 'Revoke',
+    invitationLink: 'Invitation link',
+    noWorkspaces: 'No workspaces.',
+    noAccess: 'You are not a tenant administrator.',
+    kind: 'Kind',
+    initialAdmin: 'Initial admin (optional)',
+    creatorBecomesAdmin: 'Creator becomes admin',
+    tenantUsers: 'Tenant users',
+    tabs: {
+      workspaces: 'Workspaces',
+      users: 'Users',
+      hygiene: 'Hygiene'
+    },
+    activate: 'Activate',
+    promote: 'Promote',
+    demote: 'Demote',
+    memberships: 'Memberships',
+    noMemberships: 'No memberships.',
+    systemRole: 'System role',
+    actions: 'Actions'
+  },
+
+  workspaceAdmin: {
+    title: 'Workspace administration',
+    noAccess: 'You do not administer this workspace.',
+    general: 'General',
+    members: 'Members',
+    access: 'Access',
+    codes: 'Codes',
+    eventCodes: 'Event codes',
+    ontology: 'Ontology',
+    save: 'Save changes',
+    saved: 'Saved.',
+    loadFailed: 'Could not load the workspace.'
+  },
+
+  requestAccess: {
+    title: 'Request access',
+    discover: 'Discover public workspaces',
+    joinByCode: 'Join with code',
+    code: 'Code',
+    message: 'Message',
+    request: 'Request',
+    myRequests: 'My requests',
+    noWorkspaces: 'No public workspaces available.'
+  },
+
+  ontologyAdmin: {
+    title: 'Ontology proposals',
+    classes: 'Classes',
+    datatypeProperties: 'Datatype properties',
+    objectProperties: 'Object properties',
+    empty: 'No proposed ontology items.',
+    systemKey: 'System key',
+    domain: 'Domain',
+    range: 'Range',
+    datatype: 'Datatype',
+    proposedBy: 'Proposed by',
+    status: 'Status',
+    actions: 'Actions',
+    activate: 'Activate',
+    reject: 'Reject',
+    activated: 'Activated',
+    rejected: 'Rejected',
+    deprecate: 'Deprecate',
+    deprecated: 'Deprecated',
+    migrationTarget: 'Migration target',
+    migrationTargetKey: 'Migration target key',
+    selectMigrationTarget: 'Select a migration target',
+    migrationTargetRequired: 'A migration target is required.',
+    activeItems: 'Active items',
+    activeClasses: 'Active classes',
+    activeDatatypeProperties: 'Active datatype properties',
+    activeObjectProperties: 'Active object properties',
+    emptyActive: 'No active items.',
+    discussionThread: 'Discussion',
+    proposerOrModeratorOnly: 'Only the proposer or a moderator can act on this proposal.'
   }
 };

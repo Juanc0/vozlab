@@ -152,6 +152,19 @@
   onMount(() => {
     void restore();
   });
+
+  /**
+   * Whether the current path is the tenant administration surface.
+   *
+   * A tenant administrator can hold zero workspace memberships and still own
+   * `/admin` (ADR-0048, plan `admin-surfaces` v1 §T?), so the no-membership
+   * block must not mask it. The comparison is exact plus a slash boundary: a
+   * bare prefix test would also exempt any future path that merely starts with
+   * the same letters.
+   */
+  const isTenantAdminPath = $derived(
+    page.url.pathname === '/admin' || page.url.pathname.startsWith('/admin/')
+  );
 </script>
 
 {#if status === 'ready' || status === 'no-membership'}
@@ -197,7 +210,7 @@
     {/if}
 
     <div class="min-w-0 {isWorkspace ? 'h-full min-h-0' : ''}">
-      {#if status === 'no-membership'}
+      {#if status === 'no-membership' && !isTenantAdminPath}
         <section class="rounded-card bg-surface p-6">
           <h1>{t('app.noWorkspaceHeading')}</h1>
           <p class="mt-2 max-w-measure text-body text-muted">

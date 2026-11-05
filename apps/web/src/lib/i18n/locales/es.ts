@@ -77,6 +77,13 @@ export const es = {
     noneSelected: 'No hay ningún espacio de trabajo seleccionado.'
   },
 
+  /** El selector de institución (cambio de tenant sin re-autenticar). */
+  tenant: {
+    label: 'Institución',
+    switching: 'Cambiando de institución…',
+    switchFailed: 'No se pudo cambiar de institución.'
+  },
+
   /** The selector of the language. */
   locale: {
     label: 'Idioma',
@@ -763,5 +770,124 @@ export const es = {
       OPEN: 'Abierto',
       CLOSED: 'Cerrado'
     } satisfies Record<ThreadStatus, string>
+  },
+
+  admin: {
+    title: 'Administración',
+    workspaces: 'Espacios de trabajo',
+    createWorkspace: 'Crear espacio de trabajo',
+    name: 'Nombre',
+    slug: 'Identificador',
+    description: 'Descripción',
+    isPublic: 'Público',
+    members: 'Miembros',
+    joinRequests: 'Solicitudes de acceso',
+    invitations: 'Invitaciones',
+    selectTenantTitle: 'Seleccionar inquilino',
+    selectTenantNone: 'Sin inquilinos vinculados',
+    addRole: 'Añadir rol…',
+    createJoinCode: 'Crear código efímero',
+    joinCodes: 'Códigos efímeros',
+    edit: 'Editar',
+    maxUses: 'Usos máximos',
+    expiresAt: 'Caduca',
+    autoApprove: 'Aprobación automática',
+    purpose: 'Propósito',
+    uses: 'Usos',
+    save: 'Guardar',
+    cleanup: 'Higiene del inquilino',
+    cleanupDays: 'Ventana de inactividad de invitados (días)',
+    runCleanup: 'Ejecutar limpieza',
+    cleanupResult: '{invitations} invitaciones caducadas · {guests} invitados eliminados',
+    label: 'Etiqueta',
+    createdCode: 'Código (se muestra una vez)',
+    addMember: 'Añadir miembro',
+    email: 'Correo',
+    handle: 'Alias de usuario',
+    role: 'Rol',
+    status: 'Estado',
+    suspend: 'Suspender',
+    reactivate: 'Reactivar',
+    remove: 'Eliminar',
+    approve: 'Aprobar',
+    reject: 'Rechazar',
+    createInvitation: 'Crear invitación',
+    revoke: 'Revocar',
+    invitationLink: 'Enlace de invitación',
+    noWorkspaces: 'No hay espacios de trabajo.',
+    noAccess: 'No eres administrador del inquilino.',
+    kind: 'Tipo',
+    initialAdmin: 'Administrador inicial (opcional)',
+    creatorBecomesAdmin: 'El creador se convierte en administrador',
+    tenantUsers: 'Usuarios del inquilino',
+    tabs: {
+      workspaces: 'Espacios de trabajo',
+      users: 'Usuarios',
+      hygiene: 'Higiene'
+    },
+    activate: 'Activar',
+    promote: 'Ascender',
+    demote: 'Degradar',
+    memberships: 'Pertenencias',
+    noMemberships: 'Sin pertenencias.',
+    systemRole: 'Rol del sistema',
+    actions: 'Acciones'
+  },
+
+  workspaceAdmin: {
+    title: 'Administración del espacio de trabajo',
+    noAccess: 'No administras este espacio de trabajo.',
+    general: 'General',
+    members: 'Miembros',
+    access: 'Acceso',
+    codes: 'Códigos',
+    eventCodes: 'Códigos de evento',
+    ontology: 'Ontología',
+    save: 'Guardar cambios',
+    saved: 'Guardado.',
+    loadFailed: 'No se pudo cargar el espacio de trabajo.'
+  },
+
+  requestAccess: {
+    title: 'Solicitar acceso',
+    discover: 'Descubrir espacios públicos',
+    joinByCode: 'Unirse con código',
+    code: 'Código',
+    message: 'Mensaje',
+    request: 'Solicitar',
+    myRequests: 'Mis solicitudes',
+    noWorkspaces: 'No hay espacios públicos disponibles.'
+  },
+
+  ontologyAdmin: {
+    title: 'Propuestas de ontología',
+    classes: 'Clases',
+    datatypeProperties: 'Propiedades de datos',
+    objectProperties: 'Propiedades de objeto',
+    empty: 'No hay elementos de ontología propuestos.',
+    systemKey: 'Clave del sistema',
+    domain: 'Dominio',
+    range: 'Rango',
+    datatype: 'Tipo de dato',
+    proposedBy: 'Propuesto por',
+    status: 'Estado',
+    actions: 'Acciones',
+    activate: 'Activar',
+    reject: 'Rechazar',
+    activated: 'Activado',
+    rejected: 'Rechazado',
+    deprecate: 'Deprecar',
+    deprecated: 'Deprecado',
+    migrationTarget: 'Objetivo de migración',
+    migrationTargetKey: 'Clave del objetivo de migración',
+    selectMigrationTarget: 'Selecciona un objetivo de migración',
+    migrationTargetRequired: 'Se requiere un objetivo de migración.',
+    activeItems: 'Elementos activos',
+    activeClasses: 'Clases activas',
+    activeDatatypeProperties: 'Propiedades de datos activas',
+    activeObjectProperties: 'Propiedades de objeto activas',
+    emptyActive: 'No hay elementos activos.',
+    discussionThread: 'Discusión',
+    proposerOrModeratorOnly: 'Solo el proponente o un moderador puede actuar sobre esta propuesta.'
   }
 } as const;

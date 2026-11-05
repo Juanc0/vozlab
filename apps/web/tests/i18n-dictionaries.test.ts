@@ -28,7 +28,11 @@ const IDENTICAL: readonly string[] = [
   'locale.en',
   'engines.panelDagreName',
   'engines.panelFcoseName',
-  'engines.panelSigmaName'
+  'engines.panelSigmaName',
+  // "General" is the same word in both languages, so the Spanish and English
+  // copies are legitimately equal. The allowlist already carried this key
+  // before commit 2bf4b07 removed the namespace it belongs to.
+  'workspaceAdmin.general'
 ];
 
 describe('the two dictionaries', () => {

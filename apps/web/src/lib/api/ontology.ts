@@ -11,7 +11,7 @@
  */
 
 import type { ApiClient } from './client';
-import type { OntologyResponseDto } from './types';
+import type { OntologyResponseDto, OntologyClassDto, ObjectPropertyDto, DatatypePropertyDto } from './types';
 
 /**
  * Reads the active ontology of the workspace.
@@ -26,5 +26,36 @@ export async function loadOntology(client: ApiClient): Promise<OntologyResponseD
     classes: Array.isArray(body?.classes) ? body.classes : [],
     objectProperties: Array.isArray(body?.objectProperties) ? body.objectProperties : [],
     datatypeProperties: Array.isArray(body?.datatypeProperties) ? body.datatypeProperties : []
+  };
+}
+
+/**
+ * Reads the proposed (not yet activated) ontology elements of the workspace.
+ *
+ * `GET /api/v1/ontology/proposals` returns the three collections of
+ * proposed classes, datatype properties and object properties awaiting
+ * review in the governance surface.
+ */
+export interface OntologyProposalsDto {
+  classes: OntologyClassDto[];
+  datatypeProperties: DatatypePropertyDto[];
+  objectProperties: ObjectPropertyDto[];
+}
+
+export async function listOntologyProposals(
+  client: ApiClient
+): Promise<OntologyProposalsDto> {
+  const body = await client.request<OntologyProposalsDto>({
+    path: '/ontology/proposals'
+  });
+
+  return {
+    classes: Array.isArray(body?.classes) ? body.classes : [],
+    datatypeProperties: Array.isArray(body?.datatypeProperties)
+      ? body.datatypeProperties
+      : [],
+    objectProperties: Array.isArray(body?.objectProperties)
+      ? body.objectProperties
+      : []
   };
 }

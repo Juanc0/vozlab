@@ -78,6 +78,7 @@
       session.setSession(await refreshSession(api));
       // 3. The memberships are those of the destination tenant: reload them.
       //    `hydrate` drops the workspace that belonged to the previous tenant.
+      session.currentTenantId = destination;
       await loadMemberships({ client: api, session, workspace });
       await goto('/');
     } catch (e) {
