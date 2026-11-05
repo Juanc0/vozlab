@@ -491,6 +491,87 @@ The GitHub MCP server reads its token from the process environment, not from
 export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # scopes: repo, read:org
 ```
 
+## Clean slate: destroy everything and rebuild
+
+When the database, the volumes or the identity lab are in an unknown state, or
+you simply want the exact state a fresh clone gets, destroy this project's
+Docker resources and rebuild. Nothing outside the project is touched.
+
+```bash
+cd /home/juan/repos/vozlab
+
+# 0. Stop the app processes: they hold connections and thrash without a DB.
+#    Ctrl-C in their terminals, or locate them by port:
+ss -ltnp | grep -E ':3000|:5173'
+
+# 1. Project stack: containers, volumes, built images, network.
+docker compose down -v --rmi all --remove-orphans
+
+# 2. Zitadel lab (per mode: vozlab-zitadel-demo or vozlab-zitadel-local).
+docker compose -f docker/identity-lab/zitadel/compose.yml \
+  -p vozlab-zitadel-demo down -v --rmi all --remove-orphans
+
+# 3. Prove it is empty: all four lists must print nothing.
+docker ps -a --format '{{.Names}}'            | grep -iE 'vozlab|zitadel'
+docker volume ls --format '{{.Name}}'         | grep -iE 'vozlab|zitadel'
+docker images --format '{{.Repository}}:{{.Tag}}' | grep -iE 'vozlab|zitadel'
+docker network ls --format '{{.Name}}'        | grep -iE 'vozlab'
+
+# 4. Rebuild from zero: images, databases, migrations, seed, Zitadel, OIDC, PAT.
+./scripts/dev-up.sh demo --reset
+```
+
+`--reset` also destroys the Zitadel database and the admin PAT and provisions
+both again, so the `OIDC_*` block written into `.env` matches the new instance.
+The Postgres volume is recreated empty, so `docker-entrypoint-initdb.d` runs
+(`01-create-databases.sql`, `02-extensions-and-graph.sql`), then the same run
+applies every migration and the dev seed.
+
+Expect a full image download: removing the images also removes the pulled base
+images (`postgres:18`, `redis:7-alpine`, `ollama/ollama:0.5.4`, both Zitadel
+images, `postgres:17-alpine`), roughly 2.5 GB.
+
+### If `docker compose down` leaves containers behind
+
+A container whose compose project label does not match the `-p` you passed is
+invisible to `down`, and its images report `Resource is still in use`. Remove
+them by label instead of by guessed name:
+
+```bash
+docker rm -f $(docker ps -aq --filter "name=zitadel")
+docker volume rm $(docker volume ls -q --filter "name=zitadel")
+docker network rm $(docker network ls -q --filter "name=zitadel")
+docker rmi -f ghcr.io/zitadel/zitadel:v4.16.0 \
+             ghcr.io/zitadel/zitadel-login:v4.16.0 postgres:17-alpine
+```
+
+### What a clean slate does not touch
+
+- `.env` and `.env.local`: the zrok configuration is preserved, only the
+  `OIDC_*` block is rewritten.
+- Any other Docker project on the machine. No `docker system prune` is used,
+  because it is machine-wide and would delete other projects' volumes.
+- A root-owned `.zitadel-bootstrap/` left over from an older version of the
+  script cannot be removed by the current user; delete it by hand:
+  `sudo rm -rf .zitadel-bootstrap`.
+
+### Confirm the rebuild
+
+```bash
+# Nothing left to apply:
+pnpm --filter @vozlab/database db:migrate
+
+# Nine auth tables and six router tables:
+docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
+  -c '\dt auth.*'
+docker exec vozlab-postgres psql -U postgres -d vozlab_router \
+  -c '\dt public.*'
+
+# pgvector present, Apache AGE absent (ADR-0027):
+docker exec vozlab-postgres psql -U postgres -d vozlab_tenant_dev \
+  -c '\dx'
+```
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |

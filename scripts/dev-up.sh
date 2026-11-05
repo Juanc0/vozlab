@@ -232,9 +232,19 @@ else
 fi
 
 # --- 4. Migrations + seed ---------------------------------------------------
+# A failure here leaves a database that exists but is not usable, so it must stop
+# the run: the hand-off below claims the stack is up, and an operator who reads
+# that message will not look for a broken schema. Do not pipe through `tail`;
+# the pipeline status hides the failure and swallows the error text.
 echo "==> migrate + seed (tenant dev)"
-pnpm --filter @vozlab/database db:migrate 2>&1 | tail -2
-pnpm --filter @vozlab/database db:seed:dev 2>&1 | tail -2
+if ! pnpm --filter @vozlab/database db:migrate; then
+  echo "!! migrations failed — the database is NOT ready; see the error above" >&2
+  exit 1
+fi
+if ! pnpm --filter @vozlab/database db:seed:dev; then
+  echo "!! seed failed — the database is NOT usable; see the error above" >&2
+  exit 1
+fi
 
 # --- 5. zrok shares (demo only) ---------------------------------------------
 # A reserved share that is not being shared answers 502 at the zrok edge, so
