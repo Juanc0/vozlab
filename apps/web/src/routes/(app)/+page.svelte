@@ -719,6 +719,11 @@
       walkNodes = mergeNodes(walkNodes, subgraph.nodes);
       walkEdges = mergeEdges(walkEdges, subgraph.edges);
 
+      // The reader walked to this node: the picture goes with them, as it did
+      // on the canvas the painter replaced.
+      centerNodeId = nodeId;
+      centerRequest += 1;
+
       // A node without relations is not a failure: its neighbourhood came
       // back empty, and the interface has to say so instead of showing an
       // error.
@@ -1162,6 +1167,8 @@
         edges={exploreEdges}
         {depth}
         onwalk={navigateTo}
+        centerNodeId={centerNodeId}
+        centerRequest={centerRequest}
         {walking}
         onpicture={reportPicture}
         loading={windowLoading}

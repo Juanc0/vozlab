@@ -1041,6 +1041,12 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
 
       event.stopPropagation();
       options.onselect?.(node.id);
+
+      // The tap is also a walk: the app decides what a walk means in the mode
+      // it is in — a re-rooted subgraph in one, a merged window in the other.
+      // The incumbent did the same, and without it a click on the canvas stops
+      // being a way to move through the graph.
+      options.onnavigate?.(node.id);
     });
 
     group.addEventListener('dblclick', (event) => {
@@ -1057,6 +1063,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         options.onselect?.(node.id);
+        options.onnavigate?.(node.id);
         return;
       }
 

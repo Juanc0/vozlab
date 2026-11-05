@@ -67,6 +67,10 @@
     edgeStyle?: EdgeStyle;
     /** Whether the picture shows only the neighbourhood of the focus. */
     onlyNeighbourhood?: boolean;
+    /** The node the view should centre on. */
+    centerNodeId?: string | null;
+    /** The number of the command that asks to centre on that node. */
+    centerRequest?: number;
   }
 
   let {
@@ -84,7 +88,9 @@
     error = null,
     presentedNodeId = null,
     edgeStyle = 'bezier',
-    onlyNeighbourhood = false
+    onlyNeighbourhood = false,
+    centerNodeId = null,
+    centerRequest = 0
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -273,6 +279,8 @@
       presentedNodeId={presentedNodeId}
       edgeStyle={edgeStyle}
       label={t('explore.canvasLabel')}
+      centerNodeId={centerNodeId}
+      centerRequest={centerRequest}
       onselect={onselect}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}
