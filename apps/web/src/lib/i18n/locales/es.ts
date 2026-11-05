@@ -171,6 +171,7 @@ export const es = {
 
   /** The graph screen: the root picker, the canvas, the list and the panel. */
   graph: {
+    untangle: 'Desenredar',
     unreviewed: 'Sin revisar',
     pageTitle: 'Grafo — VozLab',
     heading: 'Grafo',

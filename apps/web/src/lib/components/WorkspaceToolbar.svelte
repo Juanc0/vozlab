@@ -15,6 +15,8 @@
   import { getLocaleState } from '$lib/state/context';
 
   /** The two views of the graph. */
+  import ZoomControls from '$lib/components/ZoomControls.svelte';
+
   type ViewMode = 'subgraph' | 'explore';
 
   interface Props {
@@ -36,6 +38,14 @@
     newNodeDisabled?: boolean;
     /** Called when the user wants to create a node. */
     onnewnode: () => void;
+    /** Comes closer to the picture. */
+    onzoomin?: () => void;
+    /** Goes away from the picture. */
+    onzoomout?: () => void;
+    /** Puts the whole picture in view. */
+    onfit?: () => void;
+    /** Untangles the picture: the arrangement runs again and settles. */
+    onuntangle?: () => void;
     /** The id of the description of the list — it says what the alternative is. */
     listDescriptionId: string;
     /** The extra classes of the panel — its width. */
@@ -65,6 +75,10 @@
     inspectorControlsId,
     newNodeDisabled = false,
     onnewnode,
+    onzoomin,
+    onzoomout,
+    onfit,
+    onuntangle,
     listDescriptionId,
     panelClass = '',
     onheight,
@@ -172,6 +186,23 @@
         {/each}
       </div>
     </fieldset>
+
+    <!--
+      The tools of the picture. They are not the accent of the screen: the
+      zoom is a utility and the untangle is the one gesture that re-runs the
+      arrangement, so both wear the muted ink of the toolbar.
+    -->
+    <div class="flex items-center gap-3">
+      <ZoomControls {onzoomin} {onzoomout} {onfit} />
+
+      <button
+        type="button"
+        class="btn btn-secondary"
+        onclick={onuntangle}
+      >
+        {t('graph.untangle')}
+      </button>
+    </div>
 
     <div class="ml-auto flex items-center gap-2">
       <!--

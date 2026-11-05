@@ -208,6 +208,21 @@
   /** The number of times the picture asked to be centred. */
   let centerRequest = $state(0);
 
+  let zoomAction = $state<'in' | 'out' | 'fit'>('in');
+  let zoomRequest = $state(0);
+  let untangleTick = $state(0);
+
+  /** Asks the canvas to change its zoom; the number is the command. */
+  function askZoom(action: 'in' | 'out' | 'fit'): void {
+    zoomAction = action;
+    zoomRequest += 1;
+  }
+
+  /** Re-runs the arrangement: the relaxed pass that untangles the picture. */
+  function untangle(): void {
+    untangleTick += 1;
+  }
+
   /** The node whose subgraph is on its way — the canvas centres on it. */
   let pendingCenter = $state<string | null>(null);
 
@@ -1158,6 +1173,9 @@
           onnavigate={navigateTo}
           centerNodeId={centerNodeId}
           centerRequest={centerRequest}
+          zoomaction={zoomAction}
+          zoomrequest={zoomRequest}
+          rearrangeTick={untangleTick}
           pinnedIds={new Set()}
         />
       {/if}
@@ -1169,6 +1187,9 @@
         onwalk={navigateTo}
         centerNodeId={centerNodeId}
         centerRequest={centerRequest}
+        zoomaction={zoomAction}
+        zoomrequest={zoomRequest}
+        rearrangeTick={untangleTick}
         {walking}
         onpicture={reportPicture}
         loading={windowLoading}
@@ -1225,6 +1246,10 @@
     inspectorControlsId={inspectorWide.matches ? INSPECTOR_PANEL_ID : INSPECTOR_SHEET_ID}
     newNodeDisabled={ontology === null}
     onnewnode={openNodeDialog}
+    onzoomin={() => askZoom('in')}
+    onzoomout={() => askZoom('out')}
+    onfit={() => askZoom('fit')}
+    onuntangle={untangle}
     listDescriptionId={LIST_DESCRIPTION_ID}
     panelClass={toolbarWidth}
     onheight={setToolbarHeight}

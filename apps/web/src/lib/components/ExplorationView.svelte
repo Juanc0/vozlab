@@ -71,6 +71,12 @@
     centerNodeId?: string | null;
     /** The number of the command that asks to centre on that node. */
     centerRequest?: number;
+    /** What the reader asked the zoom to do. */
+    zoomaction?: 'in' | 'out' | 'fit';
+    /** The number of the command of the zoom. */
+    zoomrequest?: number;
+    /** Increment to re-run the layout on the current picture. */
+    rearrangeTick?: number;
   }
 
   let {
@@ -90,7 +96,10 @@
     edgeStyle = 'bezier',
     onlyNeighbourhood = false,
     centerNodeId = null,
-    centerRequest = 0
+    centerRequest = 0,
+    zoomaction = 'in',
+    zoomrequest = 0,
+    rearrangeTick = 0
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -281,6 +290,9 @@
       label={t('explore.canvasLabel')}
       centerNodeId={centerNodeId}
       centerRequest={centerRequest}
+      {zoomaction}
+      {zoomrequest}
+      {rearrangeTick}
       onselect={onselect}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}

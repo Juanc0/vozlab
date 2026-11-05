@@ -149,6 +149,7 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
+    untangle: 'Untangle',
     unreviewed: 'Unreviewed',
     pageTitle: 'Graph — VozLab',
     heading: 'Graph',
