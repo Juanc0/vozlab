@@ -13,6 +13,8 @@
   import { displayName } from '$lib/i18n/display-name';
   import { getLocaleState } from '$lib/state/context';
 
+  import { filterNodesByTitle } from '$lib/graph/root-search';
+
   interface Props {
     /** The newest nodes of the workspace. */
     nodes?: NodeDto[];
@@ -42,6 +44,19 @@
 
   const locale = getLocaleState();
   const t = locale.t;
+
+  /** What the reader typed in the search of the picker. */
+  let query = $state('');
+
+  /**
+   * The nodes that match what the reader typed.
+   *
+   * An empty field is not a filter: the whole list is the answer, which is
+   * what the picker showed before it had a search.
+   */
+  const matching = $derived(
+    query.trim() === '' ? nodes : filterNodesByTitle(nodes, query, locale.locale)
+  );
 </script>
 
 <div class="p-3">
@@ -73,8 +88,33 @@
       {t('graph.noNodes')}
     </p>
   {:else}
+    <label class="mt-3 block">
+      <span class="text-small text-muted">{t('graph.searchLabel')}</span>
+      <input
+        type="search"
+        class="mt-1 w-full rounded-control border border-rule bg-surface px-3 py-2 text-body text-text"
+        bind:value={query}
+      />
+    </label>
+
+    <!--
+      What the search left is said out loud: a list that shrinks silently is
+      a list that looks broken.
+    -->
+    {#if query.trim() === ''}
+      <p id="vozlab-root-search-status" class="sr-only" aria-live="polite"></p>
+    {:else if matching.length === 0}
+      <p id="vozlab-root-search-status" class="mt-2 text-small text-muted" aria-live="polite">
+        {t('graph.searchEmpty')}
+      </p>
+    {:else}
+      <p id="vozlab-root-search-status" class="mt-2 text-small text-muted" aria-live="polite">
+        {t('graph.searchMatches', { count: matching.length })}
+      </p>
+    {/if}
+
     <ul class="mt-3 divide-y divide-rule">
-      {#each nodes as node (node.id)}
+      {#each matching as node (node.id)}
         <li class="flex flex-wrap items-baseline justify-between gap-2 py-2">
           <button
             type="button"

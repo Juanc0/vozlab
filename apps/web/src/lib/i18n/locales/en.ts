@@ -149,6 +149,9 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
+    searchLabel: 'Search a node',
+    searchMatches: 'Nodes that match: {count}',
+    searchEmpty: 'No node matches what you look for.',
     untangle: 'Untangle',
     unreviewed: 'Unreviewed',
     pageTitle: 'Graph — VozLab',
