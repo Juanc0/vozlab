@@ -61,6 +61,7 @@ import {
   TITLE_FONT_FAMILY,
   TITLE_FONT_SIZE,
   TITLE_LINE_HEIGHT,
+  wrapTitle,
   createCanvasMeasurer,
   createEstimateMeasurer,
   defaultTextMeasurer,
@@ -793,15 +794,22 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
   function createCard(node: NodeDto): CardView {
     const expanded = expandedIds.has(node.id);
     const content = nodeCardContent(node, { locale, expanded });
+    const sections = expanded ? content.sections : [];
+    // A horizontal rule is drawn between consecutive sections, with
+    // breathing room above and below it.
+    const separatorCount = Math.max(0, sections.length - 1);
+    const SEPARATOR_GAP = 8;
     const size = nodeCardSize(content.title, {
       measure: cardMeasure,
       width: expanded ? EXPANDED_CARD_WIDTH : CARD_WIDTH,
       meta: content.meta,
       body: expanded ? content.body : ''
     });
+    // The card grows to hold the rules between the sections too.
+    const totalHeight = size.height + separatorCount * SEPARATOR_GAP;
+    const halfHeight = totalHeight / 2;
     const status = nodeStatusBorder(node.status);
     const halfWidth = size.width / 2;
-    const halfHeight = size.height / 2;
     const selected = node.id === selectedNodeId;
 
     const group = element('g', {
@@ -827,7 +835,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       x: -halfWidth - 6,
       y: -halfHeight - 6,
       width: size.width + 12,
-      height: size.height + 12,
+      height: totalHeight + 12,
       rx: CARD_RADIUS + 6,
       fill: SELECTION_COLOR,
       'fill-opacity': 0.12,
@@ -841,7 +849,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       x: -halfWidth,
       y: -halfHeight,
       width: size.width,
-      height: size.height,
+      height: totalHeight,
       rx: CARD_RADIUS,
       fill: CARD_COLOR,
       stroke: selected ? SELECTION_COLOR : status.width === 0 ? 'none' : status.color,
@@ -856,7 +864,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       x: -halfWidth - 2,
       y: -halfHeight - 2,
       width: size.width + 4,
-      height: size.height + 4,
+      height: totalHeight + 4,
       rx: CARD_RADIUS + 2,
       fill: 'none',
       stroke: HOVER_INK,
@@ -869,7 +877,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       x: -halfWidth - 3.5,
       y: -halfHeight - 3.5,
       width: size.width + 7,
-      height: size.height + 7,
+      height: totalHeight + 7,
       rx: CARD_RADIUS + 3.5,
       fill: 'none',
       stroke: PRESENTED_COLOR,
@@ -882,7 +890,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       x: -halfWidth - 5,
       y: -halfHeight - 5,
       width: size.width + 10,
-      height: size.height + 10,
+      height: totalHeight + 10,
       rx: CARD_RADIUS + 5,
       fill: 'none',
       stroke: FOCUS_RING,
@@ -915,7 +923,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       'font-size': META_FONT_SIZE,
       fill: CARD_META_INK,
       x: 0,
-      y: size.metaY
+      y: -halfHeight + CARD_PADDING_Y + size.titleHeight + (size.metaHeight > 0 ? size.metaHeight / 2 : 0)
     });
 
     meta.textContent = content.meta;
@@ -926,7 +934,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       group.append(meta);
     }
 
-    if (expanded && size.body !== '') {
+    if (expanded && sections.length > 0) {
       const body = element('text', {
         class: 'vozlab-svg-body',
         'text-anchor': 'middle',
@@ -936,14 +944,50 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
         fill: CARD_INK
       });
 
-      const lines = size.body.split('\n');
-      const first = size.bodyY - size.bodyHeight / 2 + TITLE_LINE_HEIGHT / 2;
+      const innerWidth = size.innerWidth;
+      const sectionLineGroups = sections.map((section) => {
+        if (section.kind === 'description') {
+          return wrapTitle(section.text, innerWidth, cardMeasure);
+        }
 
-      lines.forEach((line, index) => {
-        const tspan = element('tspan', { x: 0, y: first + index * TITLE_LINE_HEIGHT });
+        const lines: string[] = [];
 
-        tspan.textContent = line;
-        body.append(tspan);
+        for (const row of section.rows) {
+          lines.push(...wrapTitle(`${row.key}: ${row.value}`, innerWidth, cardMeasure));
+        }
+
+        return lines;
+      });
+
+      let y = -halfHeight + CARD_PADDING_Y + size.titleHeight + size.metaHeight + TITLE_LINE_HEIGHT / 2;
+
+      sectionLineGroups.forEach((lines, index) => {
+        lines.forEach((line, lineIndex) => {
+          const tspan = element('tspan', { x: 0, y: y + lineIndex * TITLE_LINE_HEIGHT });
+
+          tspan.textContent = line;
+          body.append(tspan);
+        });
+
+        y += lines.length * TITLE_LINE_HEIGHT;
+
+        if (index < sectionLineGroups.length - 1) {
+          const ruleY = y + SEPARATOR_GAP / 2;
+
+          group.append(
+            element('line', {
+              class: 'vozlab-svg-card-rule vozlab-svg-rule vozlab-svg-separator',
+              x1: -innerWidth / 2,
+              x2: innerWidth / 2,
+              y1: ruleY,
+              y2: ruleY,
+              stroke: HOVER_INK,
+              'stroke-width': 1
+            })
+          );
+
+          y += SEPARATOR_GAP;
+        }
       });
 
       group.append(body);
@@ -1114,7 +1158,7 @@ export function createSvgPainter(options: SvgPainterOptions): SvgPainter {
       id: node.id,
       datum: node,
       width: size.width,
-      height: size.height,
+      height: totalHeight,
       group,
       box,
       hover,

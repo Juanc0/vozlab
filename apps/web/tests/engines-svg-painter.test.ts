@@ -159,7 +159,7 @@ describe('the SVG painter', () => {
     expect(box).toHaveAttribute('fill', '#ffffff');
     expect(box).toHaveAttribute('rx', '8');
     expect(title?.querySelectorAll('tspan').length).toBeGreaterThan(1);
-    expect(meta?.textContent).toBe('Problema');
+    expect(meta?.textContent).toBe('Problema · Activo');
     expect(badge).not.toBeNull();
 
     // The card is the control: it is in the tab order and it says what it

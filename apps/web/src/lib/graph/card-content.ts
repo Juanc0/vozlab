@@ -114,14 +114,29 @@ export function edgeColor(status: EdgeStatus): string {
   return EDGE_COLORS[status] ?? FALLBACK_COLOR;
 }
 
+/** A row of an attribute, in the section of the attributes of a card. */
+export interface NodeCardAttributeRow {
+  /** The key of the attribute. */
+  readonly key: string;
+  /** The value of the attribute, already formatted for the reader. */
+  readonly value: string;
+}
+
+/** A section of the body of a card, in the order it is read. */
+export type NodeCardSection =
+  | { readonly kind: 'description'; readonly text: string }
+  | { readonly kind: 'attributes'; readonly rows: readonly NodeCardAttributeRow[] };
+
 /** The content of the **card** of a node. */
 export interface NodeCardContent {
   /** The title of the node. */
   readonly title: string;
-  /** The meta line under the title: the type of the node. */
+  /** The meta line under the title: the type and the status of the node. */
   readonly meta: string;
-  /** The body of the card: the description and the attributes. */
+  /** The body of the card: the description and the attributes, as lines. */
   readonly body: string;
+  /** The body of the card, as ordered sections separated by a rule. */
+  readonly sections: readonly NodeCardSection[];
 }
 
 /**
@@ -151,23 +166,44 @@ export function nodeCardContent(
   const typeName = displayName(node.typeDisplayNames, locale, node.typeKey);
   const status = statusLabel(locale, 'node', node.status);
 
-  const paragraphs: string[] = [];
-
   const description = node.description?.trim() ?? '';
 
+  const sections: NodeCardSection[] = [];
+
   if (expanded && description !== '') {
-    paragraphs.push(description);
+    sections.push({ kind: 'description', text: description });
   }
 
   if (expanded) {
+    const rows: NodeCardAttributeRow[] = [];
+
     for (const [key, value] of Object.entries(node.attributes ?? {})) {
-      paragraphs.push(`${key}: ${formatAttributeValue(value)}`);
+      rows.push({ key, value: formatAttributeValue(value) });
+    }
+
+    if (rows.length > 0) {
+      sections.push({ kind: 'attributes', rows });
+    }
+  }
+
+  const paragraphs: string[] = [];
+
+  for (const section of sections) {
+    if (section.kind === 'description') {
+      paragraphs.push(section.text);
+    } else {
+      for (const row of section.rows) {
+        paragraphs.push(`${row.key}: ${row.value}`);
+      }
     }
   }
 
   return {
     title: node.title,
-    meta: expanded ? `${typeName} · ${status}` : typeName,
-    body: paragraphs.join('\n')
+    // The type and the state are readable whether the card is open or shut:
+    // the meta line always carries both.
+    meta: `${typeName} · ${status}`,
+    body: paragraphs.join('\n'),
+    sections
   };
 }
