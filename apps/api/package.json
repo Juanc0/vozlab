@@ -42,7 +42,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "@vozlab/ts-config": "workspace:*",
     "tsx": "^4.19.0",
-    "typescript": "^5.0.0",
+    "typescript": "^6.0.3",
     "vitest": "^5.0.5",
     "jsonwebtoken": "^9.0.2"
   }
