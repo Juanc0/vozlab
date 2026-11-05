@@ -38,15 +38,17 @@ fi
 # mode chosen on the command line wins over the file, and a real shell
 # override still wins over the mode.
 _MODE_SCOPED="ZITADEL_PUBLIC_URL API_CALLBACK WEB_ORIGIN ZITADEL_EXTERNALDOMAIN ZITADEL_EXTERNALPORT ZITADEL_EXTERNALSECURE ZITADEL_URL ZITADEL_ADMIN_USERNAME ZITADEL_MASTERKEY"
-for _v in $_MODE_SCOPED; do eval "_ov_${_v}=\${${_v}-}"; done
+# Indirect expansion, never eval: a value containing a space or a quote must
+# not be re-parsed as shell code.
+for _v in $_MODE_SCOPED; do printf -v "_ov_${_v}" '%s' "${!_v-}"; done
 source scripts/env.sh "$MODE" 2>/dev/null || true
 for _v in $_MODE_SCOPED; do
+  _ovname="_ov_${_v}"
   unset "$_v"
-  eval "_prev=\${_ov_${_v}-}"
-  if [ -n "$_prev" ]; then export "$_v=$_prev"; fi
+  if [ -n "${!_ovname-}" ]; then export "$_v=${!_ovname}"; fi
 done
-for _v in $_MODE_SCOPED; do unset "_ov_${_v}"; done
-unset _prev _v _MODE_SCOPED
+for _v in $_MODE_SCOPED; do _ovname="_ov_${_v}"; unset "$_ovname"; done
+unset _v _ovname _MODE_SCOPED
 
 # --- 1. Base stack ----------------------------------------------------------
 echo "==> base stack (postgres, redis, ollama)"
@@ -132,6 +134,15 @@ if [ -n "$LIVE_HOST" ] && [ "$LIVE_HOST" != "$ZITADEL_EXTERNALDOMAIN" ] && [ "$R
   echo "   That destroys the $MODE Zitadel database and re-provisions OIDC." >&2
   exit 1
 fi
+# Fail closed: an instance that already has a PAT was initialised, so an
+# unreadable issuer is a real problem, not a first-boot race.
+if [ -z "$LIVE_HOST" ] && [ -f "$BOOTSTRAP_DIR/admin.pat" ] && [ "$RESET" -ne 1 ]; then
+  echo "!! Could not read the issuer from the running $MODE instance." >&2
+  echo "   It is already provisioned, so this is not a first boot." >&2
+  echo "   Check it with: curl http://localhost:8081/.well-known/openid-configuration" >&2
+  echo "   Or start over with: ./scripts/dev-up.sh $MODE --reset" >&2
+  exit 1
+fi
 
 # --- 3. Provision (verify against the LIVE instance, not just the PAT file) --
 # A PAT left on the host survives `docker volume rm`: the file exists while
@@ -141,22 +152,23 @@ PAT_FILE="$BOOTSTRAP_DIR/admin.pat"
 
 zitadel_has_project() {
   [ -f "$PAT_FILE" ] || return 1
-  local pat host code probe
+  local pat host body code
   pat=$(cat "$PAT_FILE")
   # Zitadel resolves the instance from the Host header; management calls to
   # localhost must carry the public host when an external domain is set.
   host=$(python3 -c 'import sys,urllib.parse as u; print(u.urlparse(sys.argv[1]).netloc)' \
     "${ZITADEL_PUBLIC_URL:-http://localhost:8081}" 2>/dev/null || echo "localhost:8081")
-  probe=$(mktemp "${TMPDIR:-/tmp}/zitadel-probe.XXXXXX")
-  code=$(curl -s -o "$probe" -w "%{http_code}" -X POST \
+  # Body and status in one variable: a temp file would leak on any interrupt
+  # between its creation and the cleanup.
+  body=$(curl -s -w '\n%{http_code}' -X POST \
     -H "Authorization: Bearer $pat" -H "Content-Type: application/json" \
     -H "Host: $host" -d '{}' \
-    "http://localhost:8081/management/v1/projects/_search" 2>/dev/null || echo "000")
-  if [ "$code" = "200" ] && grep -q '"name":"vozlab"' "$probe" 2>/dev/null; then
-    rm -f "$probe"
+    "http://localhost:8081/management/v1/projects/_search" 2>/dev/null \
+    || printf '\n000')
+  code=${body##*$'\n'}
+  if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"name":"vozlab"'; then
     return 0
   fi
-  rm -f "$probe"
   return 1
 }
 
