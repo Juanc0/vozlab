@@ -42,7 +42,7 @@
   "devDependencies": {
     "@vozlab/ts-config": "workspace:*",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "@types/pg": "^8.23.0",
     "drizzle-kit": "^0.31.11",
     "jsonwebtoken": "^9.0.2",

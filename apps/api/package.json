@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "@types/pg": "^8.23.0",
     "@vitest/coverage-v8": "^5.0.5",
     "@vozlab/ts-config": "workspace:*",
