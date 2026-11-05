@@ -43,8 +43,42 @@
    */
   const isWorkspace = $derived(isWorkspacePath(page.url.pathname));
 
+  /**
+   * Whether the navigation is folded into its rail.
+   *
+   * The fold is the reader's preference and not the state of a screen, so it
+   * outlives the navigation: it is kept in storage and read back on mount.
+   * Storage can be unavailable — a private window, a denied permission — and
+   * then the column is simply the column it always was.
+   */
+  const SIDEBAR_FOLD_KEY = 'vozlab.sidebar.collapsed';
+
+  let collapsed = $state(false);
+
+  /**
+   * Folds or unfolds the column, and remembers which one it was.
+   *
+   * Only a wide screen has a rail: below `lg` the navigation is a drawer, and
+   * a drawer is already folded.
+   */
+  function toggleCollapsed(): void {
+    collapsed = !collapsed;
+
+    try {
+      localStorage.setItem(SIDEBAR_FOLD_KEY, String(collapsed));
+    } catch {
+      // The column still folds; only the memory of it is lost.
+    }
+  }
+
   onMount(() => {
     navWide.attach();
+
+    try {
+      collapsed = localStorage.getItem(SIDEBAR_FOLD_KEY) === 'true';
+    } catch {
+      collapsed = false;
+    }
 
     return () => {
       navWide.destroy();
@@ -183,7 +217,9 @@
 
   <div
     class="grid {navWide.matches
-      ? 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7'
+      ? collapsed
+        ? 'lg:grid-cols-[var(--sidebar-rail-width)_minmax(0,1fr)] lg:gap-3'
+        : 'lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:gap-7'
       : ''} {isWorkspace ? 'h-full min-h-0' : ''}"
   >
     {#if navWide.matches}
@@ -202,10 +238,14 @@
       <aside
         aria-label={t('app.workspaceAndSections')}
         class="hidden min-w-0 border-r border-rule lg:block lg:overflow-y-auto {isWorkspace
-          ? 'h-full pl-4 pr-6 sm:pl-6'
-          : 'sticky top-16 h-[calc(100dvh-4rem)] pr-6'}"
+          ? collapsed
+            ? 'h-full px-2'
+            : 'h-full pl-4 pr-6 sm:pl-6'
+          : collapsed
+            ? 'sticky top-0 h-dvh px-2'
+            : 'sticky top-0 h-dvh pr-6'}"
       >
-        <AppSidebar />
+        <AppSidebar {collapsed} collapsible ontogglecollapse={toggleCollapsed} />
       </aside>
     {/if}
 

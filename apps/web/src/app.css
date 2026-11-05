@@ -144,6 +144,8 @@
   --radius-control: 6px;
   --row-height: 45px;
   --sidebar-width: 230px;
+  /* The folded column: the width of the icons, the chevron and nothing else. */
+  --sidebar-rail-width: 72px;
   --gap: 24px;
   --pad: 24px;
   --control-height: 32px;

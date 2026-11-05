@@ -230,3 +230,61 @@ describe('the navigation column', () => {
     expect(screen.queryByRole('combobox', { name: 'Idioma' })).not.toBeInTheDocument();
   });
 });
+
+describe('the fold of the navigation column', () => {
+  /** Renders the column with the chevron and nothing else in the way. */
+  function mount(collapsed: boolean, ontogglecollapse: () => void): void {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      props: { collapsible: true, collapsed, ontogglecollapse },
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+  }
+
+  it('offers the chevron that folds the column, and names the state it leaves', () => {
+    mount(false, vi.fn());
+
+    const fold = screen.getByRole('button', { name: /plegar la navegación/i });
+
+    // The chevron announces whether the column is folded, not what the press
+    // will do: a reader asks the control what it is, then what it does.
+    expect(fold).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('asks the host to fold when the chevron is pressed', () => {
+    const ontogglecollapse = vi.fn();
+
+    mount(false, ontogglecollapse);
+
+    screen.getByRole('button', { name: /plegar la navegación/i }).click();
+
+    expect(ontogglecollapse).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces a folded column, and offers the way back', () => {
+    mount(true, vi.fn());
+
+    const unfold = screen.getByRole('button', { name: /desplegar la navegación/i });
+
+    expect(unfold).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('renders no chevron where nobody can unfold it', () => {
+    const { client, session, workspace } = governanceHarness();
+
+    render(AppSidebar, {
+      context: contextWithLocale([
+        [SESSION_CONTEXT_KEY, session],
+        [WORKSPACE_CONTEXT_KEY, workspace],
+        [API_CLIENT_CONTEXT_KEY, client]
+      ])
+    });
+
+    expect(screen.queryByRole('button', { name: /plegar la navegación/i })).not.toBeInTheDocument();
+  });
+});

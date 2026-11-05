@@ -64,9 +64,21 @@
      * reader opened it for.
      */
     collapsed?: boolean;
+    /**
+     * Called when the reader folds or unfolds the column.
+     *
+     * Without it there is no button: a fold nobody can undo is a trap, so
+     * the chevron is only rendered when the host knows what to do with it.
+     */
+    ontogglecollapse?: () => void;
   }
 
-  let { title = 'VozLab', collapsible = false, collapsed = false }: Props = $props();
+  let {
+    title = 'VozLab',
+    collapsible = false,
+    collapsed = false,
+    ontogglecollapse
+  }: Props = $props();
 
   const api = getApiClient();
   const session = getSessionState();
@@ -291,8 +303,41 @@
   <!--
     The toggle of the rail. It is a **quiet** control — the accent is scarce
     and a fold is not an action of the screen — and it announces the state it
-    leaves the navigation in.
+    leaves the navigation in. The chevron points the way the column would go:
+    out when it is folded, in when it is not.
   -->
+  {#if collapsible && ontogglecollapse}
+    <button
+      type="button"
+      class="-mt-2 grid size-8 place-items-center rounded-control text-muted hover:bg-raised hover:text-text {collapsed
+        ? 'self-center'
+        : 'self-end'}"
+      aria-expanded={!collapsed}
+      aria-controls={NAVIGATION_ID}
+      title={collapsed ? t('sidebar.unfold') : t('sidebar.fold')}
+      onclick={() => ontogglecollapse?.()}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        {#if collapsed}
+          <path d="M9 6l6 6-6 6" />
+        {:else}
+          <path d="M15 6l-6 6 6 6" />
+        {/if}
+      </svg>
+      <span class="sr-only">{collapsed ? t('sidebar.unfold') : t('sidebar.fold')}</span>
+    </button>
+  {/if}
+
   <nav id={NAVIGATION_ID} aria-label={t('sidebar.sectionsLabel')}>
     <p class="mb-2 px-2 text-small text-muted" class:sr-only={collapsed}>
       {t('sidebar.sectionsLabel')}

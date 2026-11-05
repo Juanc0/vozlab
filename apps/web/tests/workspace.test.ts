@@ -100,7 +100,7 @@ describe('the workspace of the graph', () => {
 
   it('is the window: the shell does not scroll and the footer has no room', () => {
     const { container } = render(AppShell, {
-      props: { title: 'VozLab', workspace: true },
+      props: { workspace: true },
       context: localeContext()
     });
 

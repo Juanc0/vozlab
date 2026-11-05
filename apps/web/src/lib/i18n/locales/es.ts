@@ -59,6 +59,8 @@ export const es = {
 
   /** The sidebar: the sections, the identity and the sign-out. */
   sidebar: {
+    fold: 'Plegar la navegación',
+    unfold: 'Desplegar la navegación',
     sectionsLabel: 'Secciones',
     graph: 'Grafo',
     proposals: 'Propuestas',

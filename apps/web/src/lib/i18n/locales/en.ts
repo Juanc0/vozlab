@@ -45,6 +45,8 @@ export const en: Dictionary<typeof es> = {
   },
 
   sidebar: {
+    fold: 'Fold the navigation',
+    unfold: 'Unfold the navigation',
     sectionsLabel: 'Sections',
     graph: 'Graph',
     proposals: 'Proposals',

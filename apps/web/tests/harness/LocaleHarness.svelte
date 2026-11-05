@@ -11,4 +11,4 @@
   import AppShell from '$lib/components/AppShell.svelte';
 </script>
 
-<AppShell title="VozLab" />
+<AppShell />

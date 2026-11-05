@@ -10,7 +10,6 @@
   import { shellState } from '$lib/state/shell.svelte';
 
   interface Props {
-    title?: string;
     /**
      * `true` when the page has a navigation to show.
      *
@@ -19,27 +18,17 @@
      */
     navigation?: boolean;
     /**
-     * The name of the active workspace — the **scope** of the screen.
-     *
-     * It is the breadcrumb of the scope: the switcher that changes it
-     * lives in the navigation column, and the bar says which one is
-     * active. It is `null` when no workspace is active yet (the session is
-     * still being restored).
-     */
-    scope?: string | null;
-    /**
      * `true` when the page is a **workspace**.
      *
-     * A workspace fills the window: the area between the bar of the shell
-     * and the bottom of the screen is the page, the page does not scroll
-     * and the footer has no room. The graph page is the one.
+     * A workspace fills the window: the area below the top of the screen
+     * is the page, the page does not scroll and the footer has no room.
+     * The graph page is the one.
      */
     workspace?: boolean;
     children?: Snippet;
   }
 
-  let { title = 'VozLab', navigation = false, scope = null, workspace = false, children }: Props =
-    $props();
+  let { navigation = false, workspace = false, children }: Props = $props();
 
   const locale = getLocaleState();
   const t = locale.t;
@@ -104,87 +93,50 @@
   </a>
 
   <!--
-    The bar of the shell.
-    `
-    It is **flat**: the same ground as the page, divided from it by a
-    single 1px rule. It carries the product — its mark and its name — and
-    the scope of the screen; the navigation and the session live in the
-    column on the left.
+    The bar of the shell is gone.
+
+    It carried the mark of the product, its name, the workspace and the
+    language — three of which the navigation column already says, and the
+    fourth of which the column says too. A strip that repeats the column is
+    a strip that costs the picture a row of pixels for nothing.
+
+    What the bar really carried for a narrow screen is this one button: below
+    `lg` the navigation is a drawer, and the drawer needs a way in. It floats
+    over the page instead of owning a row, and it is never rendered where the
+    column is.
   -->
-  <header class="sticky top-0 z-30 border-b border-rule bg-ground">
-    <div class="mx-auto flex h-16 w-full items-center gap-3 px-4 sm:px-6">
-      <!--
-        The menu of the navigation. It is in the header and **only** on a
-        narrow screen: above `lg` the navigation is the column it has always
-        been, and a second control for it would be a control that does the
-        same thing twice.
-      -->
-      {#if navigation}
-        <button
-          type="button"
-          class="-ml-2 grid size-11 shrink-0 place-items-center rounded-control text-muted hover:bg-raised hover:text-text lg:hidden"
-          aria-expanded={shellState.navOpen}
-          aria-controls={DRAWER_PANEL_ID}
-          onclick={(event) => {
-            // Safari does not focus a button that is clicked: the focus is
-            // given to the button by hand, or the drawer cannot give it
-            // back when it closes.
-            event.currentTarget.focus();
-            shellState.toggleNav();
-          }}
-        >
-          <span aria-hidden="true" class="text-lg leading-none">☰</span>
-          <span class="sr-only">{t('shell.openMenu')}</span>
-        </button>
-      {/if}
+  {#if navigation}
+    <button
+      type="button"
+      class="fixed left-3 top-3 z-40 grid size-11 place-items-center rounded-control border border-rule bg-surface text-muted shadow-e1 hover:bg-raised hover:text-text lg:hidden"
+      aria-expanded={shellState.navOpen}
+      aria-controls={DRAWER_PANEL_ID}
+      onclick={(event) => {
+        // Safari does not focus a button that is clicked: the focus is
+        // given to the button by hand, or the drawer cannot give it back
+        // when it closes.
+        event.currentTarget.focus();
+        shellState.toggleNav();
+      }}
+    >
+      <span aria-hidden="true" class="text-lg leading-none">☰</span>
+      <span class="sr-only">{t('shell.openMenu')}</span>
+    </button>
+  {/if}
 
-      <!--
-        The mark of the product.
+  <!--
+    The language of the interface, where no navigation carries it.
 
-        It is the object of the product drawn small: three nodes of the
-        graph and the lines that join them, in the accent. It is never a
-        square with a letter in it.
-      -->
-      <span aria-hidden="true" class="shrink-0 text-accent">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-        >
-          <path d="M6.5 6.5 17.5 6.5" />
-          <path d="M6.5 6.5 12 17.5" />
-          <path d="M17.5 6.5 12 17.5" />
-          <circle cx="6.5" cy="6.5" r="2.4" fill="currentColor" stroke="none" />
-          <circle cx="17.5" cy="6.5" r="2.4" />
-          <circle cx="12" cy="17.5" r="2.4" />
-        </svg>
-      </span>
-
-      <span class="text-section font-semibold leading-none text-text">{title}</span>
-
-      <div class="ml-auto flex items-center gap-4">
-        <!--
-          The scope of the screen: the workspace every read and every write
-          is made in. It is the breadcrumb of the scope — the switcher that
-          changes it is in the navigation column.
-        -->
-        {#if scope !== null}
-          <span class="hidden text-body text-muted sm:inline">{scope}</span>
-        {/if}
-
-        <!--
-          The language of the interface. It lives in the chrome of the
-          shell and not in the navigation column: it changes the whole
-          application, including the screens that have no navigation.
-        -->
-        <LocaleSelector />
-      </div>
+    It changes the whole application, so it cannot live only in the column:
+    the login and the join have no column, and the reader of a Spanish
+    interface must be able to leave it. Where the navigation exists it sits
+    in the foot of the column, and this copy renders nothing.
+  -->
+  {#if !navigation}
+    <div class="fixed right-4 top-3 z-30">
+      <LocaleSelector />
     </div>
-  </header>
+  {/if}
 
   <!--
     The notices of the shell.
