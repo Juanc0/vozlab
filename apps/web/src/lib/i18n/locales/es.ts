@@ -362,6 +362,10 @@ export const es = {
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
+    approve: 'Aprobar',
+    reject: 'Rechazar',
+    autoActivate: 'Activar automáticamente',
+    nowStatus: 'Está ahora en {status}.',
     heading: 'Inspección',
     tabsLabel: 'Las pestañas del inspector',
     tabContent: 'Contenido',

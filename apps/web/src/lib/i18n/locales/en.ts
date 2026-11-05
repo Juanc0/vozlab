@@ -337,6 +337,10 @@ export const en: Dictionary<typeof es> = {
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
+    approve: 'Approve',
+    reject: 'Reject',
+    autoActivate: 'Auto-activate',
+    nowStatus: 'It is now {status}.',
     heading: 'Inspector',
     tabsLabel: 'The tabs of the inspector',
     tabContent: 'Content',
