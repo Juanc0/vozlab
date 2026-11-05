@@ -13,17 +13,30 @@
  * layout takes is a pixel the reader does not see at the readable zoom.
  *
  * There is no `spacingFactor` here, and for the same reason as in the
- * canvas of the subgraph: Cytoscape's core applies it by pushing every node
+ * canvas of the subgraph: the layout core applies it by pushing every node
  * away from the centre of the picture, so it only inflates the picture.
  *
  * The layout moves **every** node, so a node the user dragged keeps the
  * place it was put through {@link pinTransform}: the instance puts the
  * pinned places back after the layout. (The layout has a `transform` hook of
- * its own, but `cytoscape-dagre` never calls it.)
+ * its own, but `the layout library` never calls it.)
  */
 
-import type { Position } from 'cytoscape';
-import type { DagreLayoutOptions } from 'cytoscape-dagre';
+export interface Position {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface DagreLayoutOptions {
+  name: string;
+  rankDir: string;
+  nodeSep: number;
+  edgeSep: number;
+  rankSep: number;
+  animate: boolean;
+  fit: boolean;
+  transform?: unknown;
+}
 import { CARD_WIDTH } from '../node-card';
 
 /**
@@ -64,7 +77,7 @@ export interface PinnableNode {
  * one for the rest.
  *
  * The layout of `dagre` has a `transform` hook of its own, but
- * `cytoscape-dagre` never calls it: the instance puts the pinned places
+ * `the layout library` never calls it: the instance puts the pinned places
  * back itself, with this hook, after the layout has run.
  */
 export function pinTransform(

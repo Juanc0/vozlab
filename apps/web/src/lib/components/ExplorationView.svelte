@@ -15,7 +15,7 @@
   import { untrack } from 'svelte';
   import type { ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
-  import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
+  import SvgGraphCanvas from '$lib/components/SvgGraphCanvas.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { filterNeighbourhood, type Neighbourhood } from '$lib/graph/explore/neighbourhood';
   import { getLocaleState } from '$lib/state/context';
@@ -264,20 +264,20 @@
       {t('explore.empty')}
     </p>
   {:else}
-    <ExplorationCanvas
+    <SvgGraphCanvas
       nodes={picture.nodes}
       edges={picture.edges}
       expandedIds={shown}
-      {expandedEdgeIds}
-      {edgeStyle}
-      {selectedNodeId}
-      {selectedEdgeId}
-      {presentedNodeId}
+      selectedNodeId={selectedNodeId}
+      selectedEdgeId={selectedEdgeId}
+      presentedNodeId={presentedNodeId}
+      edgeStyle={edgeStyle}
+      label={t('explore.canvasLabel')}
       onselect={onselect}
       onnavigate={(nodeId) => onwalk?.(nodeId)}
       ontoggle={toggleNode}
-      onselectedge={(edgeId) => onselectedge?.(edgeId)}
-      ontoggleedge={toggleEdge}
+      onselectedge={(edgeId) => { if (edgeId !== null) onselectedge?.(edgeId); }}
+      pinnedIds={presentedNodeId === null ? new Set() : new Set([presentedNodeId])}
     />
   {/if}
 </div>

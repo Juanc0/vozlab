@@ -291,4 +291,4 @@
 </script>
 
 <!-- The painter appends its `<svg>` here: the shell is the room alone. -->
-<div bind:this={container} class="h-full w-full"></div>
+<div bind:this={container} role="img" aria-label={label} class="h-full w-full"></div>

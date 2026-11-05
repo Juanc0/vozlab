@@ -41,7 +41,7 @@
   import ExploreControls from '$lib/components/ExploreControls.svelte';
   import ExplorationView from '$lib/components/ExplorationView.svelte';
   import FloatingPanel from '$lib/components/FloatingPanel.svelte';
-  import GraphCanvas from '$lib/components/GraphCanvas.svelte';
+  import SvgGraphCanvas from '$lib/components/SvgGraphCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
@@ -1140,19 +1140,20 @@
           <span class="sr-only">{t('graph.loadingSubgraph')}</span>
         </div>
       {:else if graphLoaded}
-        <GraphCanvas
+        <SvgGraphCanvas
           nodes={graphNodes}
           edges={graphEdges}
+          expandedIds={new Set()}
           selectedNodeId={selectedNodeId}
-          rootNodeId={rootId}
+          selectedEdgeId={null}
+          presentedNodeId={null}
+          edgeStyle={edgeStyle}
+          label={t('graph.canvasLabel')}
           onselect={selectNode}
           onnavigate={navigateTo}
           centerNodeId={centerNodeId}
           centerRequest={centerRequest}
-          description={t('graph.canvasDescription', {
-            nodes: formatNumber(locale.locale, graphNodes.length),
-            edges: formatNumber(locale.locale, graphEdges.length)
-          })}
+          pinnedIds={new Set()}
         />
       {/if}
     {:else}

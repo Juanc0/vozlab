@@ -25,10 +25,10 @@ describe('the data of the comparison', () => {
     // The picture of the two engines of Cytoscape: the cards of the nodes
     // and the relations among them.
     const elements = toGraphElements(picture.nodes, picture.edges);
-    const cytoscapeNodes = elements
+    const pictureNodes = elements
       .filter((element) => element.group === 'nodes' && !element.data.id.includes('#'))
       .map((element) => element.data.id);
-    const cytoscapeEdges = elements
+    const pictureEdges = elements
       .filter((element) => element.group === 'edges')
       .map((element) => element.data.id);
 
@@ -41,12 +41,12 @@ describe('the data of the comparison', () => {
 
     for (const id of nodeIds(picture)) {
       expect(store.hasNode(id)).toBe(true);
-      expect(cytoscapeNodes).toContain(id);
+      expect(pictureNodes).toContain(id);
     }
 
     for (const id of edgeIds(picture)) {
       expect(store.hasEdge(id)).toBe(true);
-      expect(cytoscapeEdges).toContain(id);
+      expect(pictureEdges).toContain(id);
     }
   });
 

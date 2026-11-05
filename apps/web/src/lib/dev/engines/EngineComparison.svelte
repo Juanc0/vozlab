@@ -23,20 +23,13 @@
   import type { ApiFailure } from '$lib/api/failure';
   import type { NodeDto, SubgraphEdgeDto } from '$lib/api/types';
   import { describeFailure } from '$lib/api/failure';
-  import ExplorationCanvas from '$lib/components/ExplorationCanvas.svelte';
   import GraphListView from '$lib/components/GraphListView.svelte';
   import type { EdgeStyle } from '$lib/graph/explore/edge-style';
   import { formatNumber } from '$lib/i18n';
   import { getApiClient, getLocaleState, getWorkspaceState } from '$lib/state/context';
   import SigmaPanel from './SigmaPanel.svelte';
   import { comparisonGraph, type ComparisonGraph } from './comparison-data';
-  import { registerForceLayout } from './fcose';
   import { measureFrames, summarizeFrames, type FrameSummary } from './frames';
-
-  // The force layout of Cytoscape is registered **before** anything is
-  // drawn: the extension is a global registration, and the picture must
-  // never ask for a layout that does not exist.
-  registerForceLayout();
 
   const api = getApiClient();
   const workspace = getWorkspaceState();
@@ -240,7 +233,7 @@
     const next = new Map<string, FrameSummary>();
 
     try {
-      for (const name of ['dagre', 'fcose', 'sigma']) {
+      for (const name of ['sigma']) {
         const element = panelOf(name);
 
         if (element === undefined) {
@@ -380,7 +373,7 @@
       engines: the same nodes, the same relations and the same controls.
     -->
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {#each [{ id: 'dagre', name: t('engines.panelDagreName'), note: t('engines.panelDagreNote') }, { id: 'fcose', name: t('engines.panelFcoseName'), note: t('engines.panelFcoseNote') }, { id: 'sigma', name: t('engines.panelSigmaName'), note: t('engines.panelSigmaNote') }] as panel (panel.id)}
+      {#each [{ id: 'sigma', name: t('engines.panelSigmaName'), note: t('engines.panelSigmaNote') }] as panel (panel.id)}
         <section class="flex flex-col rounded-card bg-surface p-3">
           <h2 class="text-body font-semibold">{panel.name}</h2>
           <p class="mt-0.5 text-small text-muted">{panel.note}</p>
@@ -468,25 +461,6 @@
                 }}
                 onerror={(message) => {
                   panelFailure = message;
-                }}
-              />
-            {:else}
-              <ExplorationCanvas
-                nodes={panelNodes}
-                edges={panelEdges}
-                {expandedIds}
-                {selectedNodeId}
-                presentedNodeId={presented}
-                {edgeStyle}
-                layout={panel.id === 'fcose' ? 'fcose' : 'dagre'}
-                readableZoom={0.08}
-                label={`${panel.name} — ${t('engines.canvasLabel')}`}
-                onselect={(id) => {
-                  selectedNodeId = id;
-                }}
-                ontoggle={toggleNode}
-                onlayout={(report) => {
-                  reportLayout(panel.id, { ms: report.ms, settled: report.settled });
                 }}
               />
             {/if}

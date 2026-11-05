@@ -13,7 +13,6 @@ import {
   BODY_CLASS,
   META_CLASS,
   RELATION_CARD_CLASS,
-  relationIdOf,
   toEdgeElement,
   toGraphElements,
   toRelationCardElements,
@@ -138,18 +137,6 @@ describe('the elements of the card of a relation', () => {
     expect(cardsOf(expanded)).toHaveLength(1);
   });
 
-  it('know the relation they belong to', () => {
-    const [card] = toRelationCardElements(EDGE, { measure });
-
-    // The element as Cytoscape answers it: the card knows the id of the
-    // relation it is the card of.
-    const element = {
-      id: () => card.data.id,
-      data: (key: string) => (card.data as Record<string, unknown>)[key]
-    };
-
-    expect(relationIdOf(element as never)).toBe(EDGE.id);
-  });
 });
 
 describe('the place of the card of a relation', () => {

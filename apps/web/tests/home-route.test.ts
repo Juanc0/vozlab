@@ -29,14 +29,6 @@ vi.mock('$app/environment', () => ({
   version: 'test'
 }));
 
-/** Cytoscape needs a `<canvas>`; jsdom has none. The module is mocked. */
-const { cytoscapeMock } = vi.hoisted(() => {
-  const factory = vi.fn();
-  return { cytoscapeMock: Object.assign(factory, { use: vi.fn() }) };
-});
-
-vi.mock('cytoscape', () => ({ default: cytoscapeMock }));
-
 const BASE_URL = 'http://localhost:3000/api/v1';
 
 function json(body: unknown, status = 200): Response {
@@ -149,17 +141,6 @@ describe('the graph page', () => {
   beforeEach(() => {
     sessionStorage.clear();
     goto.mockClear();
-    cytoscapeMock.mockReset();
-    cytoscapeMock.use.mockReset();
-    cytoscapeMock.mockReturnValue({
-      on: vi.fn(),
-      elements: vi.fn(() => ({ length: 0, remove: vi.fn() })),
-      add: vi.fn(),
-      layout: vi.fn(() => ({ run: vi.fn(), one: vi.fn() })),
-      nodes: vi.fn(() => ({ length: 0, removeClass: vi.fn() })),
-      getElementById: vi.fn(() => ({ length: 0, addClass: vi.fn() })),
-      destroy: vi.fn()
-    });
   });
 
   afterEach(() => {
