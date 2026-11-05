@@ -47,6 +47,6 @@
     "drizzle-kit": "^0.31.11",
     "jsonwebtoken": "^9.0.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.0.0"
+    "typescript": "^6.0.3"
   }
 }
