@@ -14,6 +14,7 @@
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chooseNode, findInSearch } from './harness/graph-search';
 import { ApiClient } from '$lib/api/client';
 import {
   API_CLIENT_CONTEXT_KEY,
@@ -149,7 +150,7 @@ describe('walking the graph by clicking a node', () => {
   }
 
   async function openList(): Promise<void> {
-    await fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+    await chooseNode('Lista');
 
     await waitFor(() => {
       expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
@@ -330,18 +331,15 @@ describe('walking the graph by clicking a node', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     await waitFor(() => {
       expect(screen.getByRole('img', { name: 'Lienzo del subgrafo' })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+    await chooseNode('Lista');
 
     await waitFor(() => {
       expect(screen.getAllByRole('table').length).toBeGreaterThan(0);

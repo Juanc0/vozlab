@@ -45,7 +45,6 @@
   import GraphListView from '$lib/components/GraphListView.svelte';
   import Inspector from '$lib/components/Inspector.svelte';
   import NodeCreateDialog from '$lib/components/NodeCreateDialog.svelte';
-  import RootPicker from '$lib/components/RootPicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import WorkspaceToolbar from '$lib/components/WorkspaceToolbar.svelte';
   import type { CorrectionTarget } from '$lib/governance/correction';
@@ -162,9 +161,6 @@
   /** The node the user last clicked — the `manual` criterion. */
   let manualNodeId = $state<string | null>(null);
 
-  /** `true` while the panel of the root picker is open. */
-  let rootPickerOpen = $state(true);
-
   /**
    * The height of the floating toolbar.
    *
@@ -273,19 +269,12 @@
   /** The id of the sheet of the inspector — the toggle points at it. */
   const INSPECTOR_SHEET_ID = 'vozlab-inspector-sheet';
 
-  /** The id of the panel of the root picker — the toggle points at it. */
-  const ROOT_PICKER_ID = 'vozlab-root-picker';
-
   /** The id of the description of the list. */
   const LIST_DESCRIPTION_ID = 'vozlab-list-description';
 
   onMount(() => {
     inspectorWide.attach();
     wideLayout.attach();
-
-    // The panel of the root picker is closed on a narrow screen: it would
-    // cover the canvas of a phone, where there is no room for it.
-    rootPickerOpen = wideLayout.matches;
 
     return () => {
       inspectorWide.destroy();
@@ -903,6 +892,23 @@
   }
 
   /**
+   * The reader named a node in the toolbar search: the picture goes to it
+   * and the node is selected, the way a click on the canvas would.
+   */
+  function handleSearchSelect(nodeId: string): void {
+    // The search is also the way into the subgraph now that the floating
+    // picker is gone: the node the reader names becomes the root of the
+    // picture, and the picture goes to it.
+    if (viewMode === 'subgraph') {
+      rootId = nodeId;
+    }
+
+    centerNodeId = nodeId;
+    centerRequest += 1;
+    selectNode(nodeId);
+  }
+
+  /**
    * The user selected a relation — by tapping its card in the canvas.
    *
    * The relation is one of the window: the canvas draws it and the
@@ -1051,19 +1057,11 @@
   function toggleList(): void {
     listOpen = !listOpen;
 
-    if (listOpen) {
-      rootPickerOpen = false;
-    }
   }
 
   /** The user folded or opened the inspector. */
   function toggleInspector(): void {
     inspectorOpen = !inspectorOpen;
-  }
-
-  /** The user folded or opened the panel of the root picker. */
-  function toggleRootPicker(): void {
-    rootPickerOpen = !rootPickerOpen;
   }
 
 </script>
@@ -1147,7 +1145,11 @@
           <span
             class="rounded-card border border-dashed border-border px-6 py-4"
           >
-            {t('graph.pickRoot')}
+            {#if rootNodes.length === 0}
+              {t('graph.noNodes')}
+            {:else}
+              {t('graph.pickRoot')}
+            {/if}
           </span>
         </p>
       {:else if graphLoading && !graphLoaded}
@@ -1251,8 +1253,10 @@
     onfit={() => askZoom('fit')}
     onuntangle={untangle}
     listDescriptionId={LIST_DESCRIPTION_ID}
-    panelClass={toolbarWidth}
+    panelClass="right-4"
     onheight={setToolbarHeight}
+    searchNodes={rootNodes}
+    onsearchselect={handleSearchSelect}
   >
     {#snippet controls()}
       {#if viewMode === 'subgraph'}
@@ -1288,20 +1292,6 @@
             />
           </div>
 
-          <!--
-            The toggle of the panel of the root picker. It is the control
-            of a panel that floats over the picture, so it announces its
-            state and points at the panel it opens.
-          -->
-          <button
-            type="button"
-            class="btn btn-secondary"
-            aria-expanded={rootPickerOpen}
-            aria-controls={ROOT_PICKER_ID}
-            onclick={toggleRootPicker}
-          >
-            {t('graph.rootToggle')}
-          </button>
         </div>
       {:else}
         <ExploreControls
@@ -1399,32 +1389,6 @@
       </p>
     {/snippet}
 
-    {#snippet readout()}
-      <!--
-        The note of the mode. On a narrow screen the panel is a scroller
-        and the picture is the thing: the note goes.
-      -->
-      <p class="hidden text-small text-muted min-[48rem]:block">
-        {t('graph.modeHint')}
-      </p>
-
-      {#if viewMode === 'subgraph'}
-        <p class="mt-1 text-small text-muted">
-          {t('graph.bounds', {
-            depth: formatNumber(locale.locale, depth),
-            limit: formatNumber(locale.locale, limit),
-            maxDepth: formatNumber(locale.locale, SUBGRAPH_MAX_DEPTH),
-            maxNodes: formatNumber(locale.locale, SUBGRAPH_MAX_NODES)
-          })}
-        </p>
-      {:else if !wideLayout.matches}
-        <!--
-          On a narrow screen there is no room for a second panel: the
-          readouts of the picture live in the toolbar.
-        -->
-        {@render exploreReadout()}
-      {/if}
-    {/snippet}
   </WorkspaceToolbar>
 
   <!--
@@ -1441,7 +1405,37 @@
         id={INSPECTOR_PANEL_ID}
         placement="top-right"
         panelClass="w-[min(24rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-2rem)] overflow-y-auto p-3"
+        style="top: calc(var(--notice-h, 0px) + {toolbarHeight + 12}px)"
       >
+        <div class="flex justify-end">
+          <button
+            type="button"
+            class="-mt-2 grid size-8 place-items-center rounded-control text-muted hover:bg-raised hover:text-text"
+            aria-expanded={inspectorOpen}
+            aria-controls={INSPECTOR_PANEL_ID}
+            title={inspectorOpen ? t('inspector.fold') : t('inspector.unfold')}
+            onclick={() => toggleInspector()}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              {#if inspectorOpen}
+                <path d="M15 6l-6 6 6 6" />
+              {:else}
+                <path d="M9 6l6 6-6 6" />
+              {/if}
+            </svg>
+            <span class="sr-only">{inspectorOpen ? t('inspector.fold') : t('inspector.unfold')}</span>
+          </button>
+        </div>
         <Inspector
           {selection}
           nodes={listNodes}
@@ -1480,33 +1474,7 @@
     readouts of the exploration window. It is at the other end of the
     picture from the inspector.
   -->
-  {#if viewMode === 'subgraph'}
-    <FloatingPanel
-      id={ROOT_PICKER_ID}
-      placement="bottom-left"
-      label={t('graph.rootPanelLabel')}
-      panelClass="w-[min(20rem,calc(100%-2rem))] max-h-[calc(100%-var(--notice-h,0px)-18rem)] overflow-y-auto"
-      hidden={listOpen && !rootPickerOpen}
-    >
-      <RootPicker
-        nodes={rootNodes}
-        {rootId}
-        loading={rootsLoading}
-        error={rootsError}
-        hasMore={rootCursor !== null}
-        onselect={selectRoot}
-        onmore={() => {
-          if (rootCursor !== null) {
-            void loadRoots(rootCursor);
-          }
-        }}
-      />
-
-      <p class="border-t border-rule px-3 py-2 text-small text-muted">
-        <RichText text={t('graph.apiOrigin', { apiBaseUrl: data.apiBaseUrl })} />
-      </p>
-    </FloatingPanel>
-  {:else if wideLayout.matches}
+  {#if viewMode === 'explore' && wideLayout.matches}
     <FloatingPanel
       placement="bottom-left"
       label={t('explore.readoutLabel')}

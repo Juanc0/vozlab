@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chooseNode, findInSearch } from './harness/graph-search';
 import { ApiClient } from '$lib/api/client';
 import {
   API_CLIENT_CONTEXT_KEY,
@@ -130,7 +131,7 @@ function renderPage(): void {
  * the same selection.
  */
 async function openList(): Promise<void> {
-  await fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+  await chooseNode('Lista');
 
   await waitFor(() => {
     expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
@@ -154,11 +155,8 @@ describe('the graph page', () => {
     });
 
     renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: NODE_B.title })).toBeInTheDocument();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
+    expect(await findInSearch(NODE_B.title)).toBeInTheDocument();
   });
 
   it('says so when the workspace holds no node', async () => {
@@ -179,12 +177,9 @@ describe('the graph page', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find((entry) => String(entry[0]).includes('/nodes/subgraph'));
@@ -217,12 +212,9 @@ describe('the graph page', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     await openList();
 
@@ -301,11 +293,8 @@ describe('the graph page', () => {
 
     await fireEvent.click(button);
     await fireEvent.input(screen.getByLabelText(/Título/), { target: { value: NEW_NODE.title } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Crear el nodo' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NEW_NODE.title })).toBeInTheDocument();
-    });
+    await chooseNode('Crear el nodo');
+    expect(await findInSearch(NEW_NODE.title)).toBeInTheDocument();
   });
 
   it('relates the selected node to another one', async () => {
@@ -316,12 +305,9 @@ describe('the graph page', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     const relate = await screen.findByRole('button', { name: 'Relacionar con otro nodo' });
     await fireEvent.click(relate);
@@ -343,12 +329,9 @@ describe('the graph page', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     // The inspector shows the four tabs and the selected node.
     expect(screen.getByRole('tab', { name: 'Contenido' })).toBeInTheDocument();
@@ -370,12 +353,9 @@ describe('the graph page', () => {
     });
 
     renderPage();
+    expect(await findInSearch(NODE_A.title)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: NODE_A.title })).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     // The relation row of the list is selectable too.
     await openList();

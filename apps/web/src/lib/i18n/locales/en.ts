@@ -151,6 +151,7 @@ export const en: Dictionary<typeof es> = {
   },
 
   graph: {
+    searchResults: 'Search results',
     searchLabel: 'Search a node',
     searchMatches: 'Nodes that match: {count}',
     searchEmpty: 'No node matches what you look for.',
@@ -343,6 +344,8 @@ export const en: Dictionary<typeof es> = {
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
+    fold: 'Fold the inspector',
+    unfold: 'Unfold the inspector',
     approve: 'Approve',
     reject: 'Reject',
     autoActivate: 'Auto-activate',

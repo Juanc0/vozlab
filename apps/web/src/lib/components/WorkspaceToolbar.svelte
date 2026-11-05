@@ -11,7 +11,9 @@
    * whole interface — the one that creates a node.
    */
   import type { Snippet } from 'svelte';
+  import type { NodeDto } from '$lib/api/types';
   import FloatingPanel from '$lib/components/FloatingPanel.svelte';
+  import NodeSearch from '$lib/components/NodeSearch.svelte';
   import { getLocaleState } from '$lib/state/context';
 
   /** The two views of the graph. */
@@ -50,6 +52,10 @@
     listDescriptionId: string;
     /** The extra classes of the panel — its width. */
     panelClass?: string;
+    /** The nodes the toolbar search can find. */
+    searchNodes?: NodeDto[];
+    /** Called with the id of the node the reader searched for. */
+    onsearchselect?: (nodeId: string) => void;
     /**
      * Called when the panel changes its height.
      *
@@ -61,8 +67,7 @@
     controls?: Snippet;
     /** The failures and the notices of the view on screen. */
     status?: Snippet;
-    /** The readouts of the view on screen. */
-    readout?: Snippet;
+
   }
 
   let {
@@ -84,7 +89,8 @@
     onheight,
     controls,
     status,
-    readout
+    searchNodes,
+    onsearchselect
   }: Props = $props();
 
   const locale = getLocaleState();
@@ -147,68 +153,64 @@
   label={t('graph.toolbarLabel')}
   {panelClass}
 >
-  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
+  <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-2">
     <!--
-      The title of the screen. It is the one element of the interface that
-      is set in the serif, and it is the first thing the reader sees when
-      the workspace opens.
+      The left zone: the title of the screen and the search that takes the
+      reader to a node. The title is the one element of the interface that
+      is set in the serif; the search takes the rest of the width.
     -->
-    <h1 class="text-kpi">{t('graph.heading')}</h1>
-
-    <!--
-      The switch between the two views of the graph. It is a piece of the
-      state of the screen, not of the URL: the URL stays clean and both
-      views stay reachable.
-
-      The radio is the control and the label is its face: the focus is
-      shown on the label (`peer-focus-visible`), because the radio itself is
-      hidden from the sight.
-    -->
-    <fieldset>
-      <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
-      <div class="inline-flex gap-1 rounded-control bg-raised p-1">
-        {#each VIEW_MODES as mode (mode)}
-          <input
-            type="radio"
-            id="graph-view-{mode}-{uid}"
-            name={groupName}
-            value={mode}
-            class="peer sr-only"
-            checked={viewMode === mode}
-            onchange={() => onviewmodechange(mode)}
-          />
-          <label
-            for="graph-view-{mode}-{uid}"
-            class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-3 py-1.5 text-body font-medium text-muted hover:text-text peer-checked:bg-accent-soft peer-checked:font-semibold peer-checked:text-accent-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
-          >
-            {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
-          </label>
-        {/each}
-      </div>
-    </fieldset>
-
-    <!--
-      The tools of the picture. They are not the accent of the screen: the
-      zoom is a utility and the untangle is the one gesture that re-runs the
-      arrangement, so both wear the muted ink of the toolbar.
-    -->
-    <div class="flex items-center gap-3">
-      <ZoomControls {onzoomin} {onzoomout} {onfit} />
-
-      <button
-        type="button"
-        class="btn btn-secondary"
-        onclick={onuntangle}
-      >
-        {t('graph.untangle')}
-      </button>
+    <div class="flex min-w-0 items-center gap-3">
+      <h1 class="shrink-0 text-kpi">{t('graph.heading')}</h1>
+      <NodeSearch nodes={searchNodes ?? []} onselect={onsearchselect} />
     </div>
 
-    <div class="ml-auto flex items-center gap-2">
-      <!--
-        The one filled button of the interface: it creates a node, and it
-        is the only action of the screen that is painted with the accent.
-      -->
+    <!--
+      The centre zone: the switch between the two views of the graph, the
+      zoom and the untangle. They are the tools of the picture, and they
+      wear the muted ink of the toolbar.
+    -->
+    <div class="flex items-center gap-3">
+      <fieldset>
+        <legend class="sr-only">{t('graph.viewModeLabel')}</legend>
+        <div class="inline-flex gap-1 rounded-control bg-raised p-1">
+          {#each VIEW_MODES as mode (mode)}
+            <input
+              type="radio"
+              id="graph-view-{mode}-{uid}"
+              name={groupName}
+              value={mode}
+              class="peer sr-only"
+              checked={viewMode === mode}
+              onchange={() => onviewmodechange(mode)}
+            />
+            <label
+              for="graph-view-{mode}-{uid}"
+              class="pointer-coarse:min-h-11 cursor-pointer rounded-control px-3 py-1.5 text-body font-medium text-muted hover:text-text peer-checked:bg-accent-soft peer-checked:font-semibold peer-checked:text-accent-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+            >
+              {mode === 'explore' ? t('graph.modeExplore') : t('graph.modeSubgraph')}
+            </label>
+          {/each}
+        </div>
+      </fieldset>
+
+      <div class="flex items-center gap-3">
+        <ZoomControls {onzoomin} {onzoomout} {onfit} />
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick={onuntangle}
+        >
+          {t('graph.untangle')}
+        </button>
+      </div>
+    </div>
+
+    <!--
+      The right zone: the actions of the screen — create, list toggle,
+      inspector toggle.
+    -->
+    <div class="flex items-center gap-2 justify-self-end">
       <button
         type="button"
         class="btn btn-primary"
@@ -218,11 +220,6 @@
         {t('graph.newNode')}
       </button>
 
-      <!--
-        The switch between the picture and its **text alternative**. It is
-        a real toggle: the state is announced (`aria-pressed`), and the
-        list is one click away — never behind a hover or a gesture.
-      -->
       <button
         type="button"
         class="btn btn-secondary aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent-ink"
@@ -233,21 +230,12 @@
         {t('graph.listToggle')}
       </button>
 
-      <!--
-        The toggle of the inspector. It is the **same** control in the two
-        widths: it folds the floating panel of a wide screen and it opens
-        the sheet of a narrow one. It lives in the toolbar because it has
-        to be reachable when the panel is closed.
-      -->
       <button
         type="button"
         class="btn btn-secondary"
         aria-expanded={inspectorOpen}
         aria-controls={inspectorControlsId}
         onclick={(event) => {
-          // Safari does not focus a button that is clicked: the focus is
-          // given to the button by hand, or the panel cannot give it back
-          // when it closes.
           event.currentTarget.focus();
           oninspectortoggle();
         }}
@@ -272,14 +260,6 @@
   -->
   <div class="px-3 pb-3 empty:pb-0">
     {@render status?.()}
-  </div>
-
-  <!--
-    The readouts of the view on screen: what the picture is and what it is
-    not.
-  -->
-  <div class="px-3 pb-3">
-    {@render readout?.()}
   </div>
 
   <!--

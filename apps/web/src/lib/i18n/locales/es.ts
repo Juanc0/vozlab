@@ -173,6 +173,7 @@ export const es = {
 
   /** The graph screen: the root picker, the canvas, the list and the panel. */
   graph: {
+    searchResults: 'Resultados de la búsqueda',
     searchLabel: 'Buscar un nodo',
     searchMatches: 'Nodos que coinciden: {count}',
     searchEmpty: 'Ningún nodo coincide con lo que buscas.',
@@ -368,6 +369,8 @@ export const es = {
 
   /** The inspector: the column of tabs beside the canvas. */
   inspector: {
+    fold: 'Plegar el inspector',
+    unfold: 'Desplegar el inspector',
     approve: 'Aprobar',
     reject: 'Rechazar',
     autoActivate: 'Activar automáticamente',

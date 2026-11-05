@@ -10,6 +10,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { chooseNode } from './harness/graph-search';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -119,7 +120,7 @@ describe('the workspace of the graph', () => {
     renderPage();
 
     // A root is picked, so the picture of the subgraph is drawn.
-    await fireEvent.click(await screen.findByRole('button', { name: NODE_A.title }));
+    await chooseNode(NODE_A.title);
 
     const workspace = document.querySelector('.relative.h-full.w-full');
     expect(workspace).not.toBeNull();

@@ -26,6 +26,8 @@
     id?: string;
     /** The extra classes of the panel — its width, its height. */
     panelClass?: string;
+    /** Inline style applied to the panel — for positioning it. */
+    style?: string;
     /**
      * `true` when the panel is folded away.
      *
@@ -45,6 +47,7 @@
     id,
     panelClass = '',
     hidden = false,
+    style,
     element = $bindable(undefined),
     children
   }: Props = $props();
@@ -68,6 +71,7 @@
   {id}
   aria-label={label}
   class="pointer-events-auto absolute z-10 rounded-card border border-border bg-surface shadow-float {PLACEMENT[placement]} {panelClass} {hidden ? 'hidden' : ''}"
+  {style}
 >
   {@render children?.()}
 </section>
