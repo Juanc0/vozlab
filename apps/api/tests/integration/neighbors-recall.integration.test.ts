@@ -182,7 +182,9 @@ describe('neighbors recall', () => {
     let exactIds: string[] = [];
     try {
       await client.query('BEGIN');
-      await client.query('SET enable_indexscan = off');
+      // SET LOCAL, not SET: a session-level SET survives COMMIT and leaks to
+      // whoever borrows this pooled connection next.
+      await client.query('SET LOCAL enable_indexscan = off');
       const res = await client.query(
         `SELECT n.id::text AS id
          FROM public.nodes n

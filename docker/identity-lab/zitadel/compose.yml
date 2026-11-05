@@ -42,6 +42,9 @@ services:
     env_file:
       - ../../../.env
     volumes:
+      # The container runs as root and writes the PATs as root:root mode 0644.
+      # dev-up.sh chmods this directory to 0700 so the tokens are not world
+      # readable on the host; the mount stays rw because Zitadel writes them.
       - ${ZITADEL_BOOTSTRAP_DIR:-./.zitadel-bootstrap}:/zitadel/bootstrap:rw
     networks:
       - zitadel-net

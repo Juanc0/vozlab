@@ -32,15 +32,33 @@ if [ "$MODE" = "demo" ]; then
 fi
 
 # --- 0. Load env ------------------------------------------------------------
+# env.sh sources the file with `set -a`, so every value in it is exported —
+# including mode-scoped ones left over from the other mode. Snapshot the
+# caller's explicit overrides first, source, then drop the file's copies: the
+# mode chosen on the command line wins over the file, and a real shell
+# override still wins over the mode.
+_MODE_SCOPED="ZITADEL_PUBLIC_URL API_CALLBACK WEB_ORIGIN ZITADEL_EXTERNALDOMAIN ZITADEL_EXTERNALPORT ZITADEL_EXTERNALSECURE ZITADEL_URL ZITADEL_ADMIN_USERNAME ZITADEL_MASTERKEY"
+for _v in $_MODE_SCOPED; do eval "_ov_${_v}=\${${_v}-}"; done
 source scripts/env.sh "$MODE" 2>/dev/null || true
+for _v in $_MODE_SCOPED; do
+  unset "$_v"
+  eval "_prev=\${_ov_${_v}-}"
+  if [ -n "$_prev" ]; then export "$_v=$_prev"; fi
+done
+for _v in $_MODE_SCOPED; do unset "_ov_${_v}"; done
+unset _prev _v _MODE_SCOPED
 
 # --- 1. Base stack ----------------------------------------------------------
 echo "==> base stack (postgres, redis, ollama)"
 docker compose up -d --build postgres redis ollama
 
-# Bootstrap dir (per-mode, so local and demo PATs never collide)
+# Bootstrap dir (per-mode, so local and demo PATs never collide).
+# The Zitadel container runs as root and writes the PATs as root:root, mode
+# 0644 — a world-readable admin token on the host. The directory is the access
+# boundary, so keep it owner-only; the container bypasses it as root.
 BOOTSTRAP_DIR="$ROOT/.zitadel-bootstrap-$MODE"
 mkdir -p "$BOOTSTRAP_DIR"
+chmod 700 "$BOOTSTRAP_DIR"
 export ZITADEL_BOOTSTRAP_DIR="$BOOTSTRAP_DIR"
 
 # Mode-specific public URLs (needed by both the live probe and provisioning)
@@ -62,7 +80,7 @@ if [ "$RESET" -eq 1 ]; then
   echo "==> RESET: destroying Zitadel DB + PAT for $MODE"
   docker compose -p "$PROJECT" -f docker/identity-lab/zitadel/compose.yml down 2>/dev/null || true
   docker volume rm "${PROJECT}_zitadel-db-data" 2>/dev/null || true
-  rm -rf "$BOOTSTRAP_DIR" && mkdir -p "$BOOTSTRAP_DIR"
+  rm -rf "$BOOTSTRAP_DIR" && mkdir -p "$BOOTSTRAP_DIR" && chmod 700 "$BOOTSTRAP_DIR"
   echo "   Zitadel DB + PAT cleared for $MODE"
 fi
 
@@ -92,6 +110,29 @@ echo "==> zitadel ($MODE, project: $PROJECT)"
 docker compose -p "$PROJECT" -f docker/identity-lab/zitadel/compose.yml up -d
 until curl -fsS -o /dev/null http://localhost:8081/debug/ready; do sleep 2; done
 
+# The external domain is baked into the instance at first init: Zitadel derives
+# the issuer from it and the seeded admin login embeds it. A run that asks for
+# a different domain leaves a login that cannot work, so read the LIVE issuer
+# (not a stamp of what we intended) and stop before provisioning against it.
+_issuer() {
+  curl -fsS http://localhost:8081/.well-known/openid-configuration 2>/dev/null \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("issuer",""))' 2>/dev/null \
+    || true
+}
+LIVE_HOST=$(printf '%s' "$(_issuer)" \
+  | python3 -c 'import sys,urllib.parse as u; print(u.urlparse(sys.stdin.read().strip()).hostname or "")' 2>/dev/null \
+  || true)
+if [ -n "$LIVE_HOST" ] && [ "$LIVE_HOST" != "$ZITADEL_EXTERNALDOMAIN" ] && [ "$RESET" -ne 1 ]; then
+  echo "!! The $MODE Zitadel instance reports issuer host '$LIVE_HOST'," >&2
+  echo "   but this run wants '$ZITADEL_EXTERNALDOMAIN'." >&2
+  echo "   Zitadel fixes the external domain at first init (issuer + admin login)," >&2
+  echo "   so OIDC would hand out tokens the API rejects." >&2
+  echo "   Apply the change with:" >&2
+  echo "     ./scripts/dev-up.sh $MODE --reset" >&2
+  echo "   That destroys the $MODE Zitadel database and re-provisions OIDC." >&2
+  exit 1
+fi
+
 # --- 3. Provision (verify against the LIVE instance, not just the PAT file) --
 # A PAT left on the host survives `docker volume rm`: the file exists while
 # the database that honoured it is gone. So ask Zitadel whether OUR project
@@ -100,21 +141,22 @@ PAT_FILE="$BOOTSTRAP_DIR/admin.pat"
 
 zitadel_has_project() {
   [ -f "$PAT_FILE" ] || return 1
-  local pat host code
+  local pat host code probe
   pat=$(cat "$PAT_FILE")
   # Zitadel resolves the instance from the Host header; management calls to
   # localhost must carry the public host when an external domain is set.
   host=$(python3 -c 'import sys,urllib.parse as u; print(u.urlparse(sys.argv[1]).netloc)' \
     "${ZITADEL_PUBLIC_URL:-http://localhost:8081}" 2>/dev/null || echo "localhost:8081")
-  code=$(curl -s -o /tmp/.zitadel-probe.$$ -w "%{http_code}" -X POST \
+  probe=$(mktemp "${TMPDIR:-/tmp}/zitadel-probe.XXXXXX")
+  code=$(curl -s -o "$probe" -w "%{http_code}" -X POST \
     -H "Authorization: Bearer $pat" -H "Content-Type: application/json" \
     -H "Host: $host" -d '{}' \
     "http://localhost:8081/management/v1/projects/_search" 2>/dev/null || echo "000")
-  if [ "$code" = "200" ] && grep -q '"name":"vozlab"' /tmp/.zitadel-probe.$$ 2>/dev/null; then
-    rm -f /tmp/.zitadel-probe.$$
+  if [ "$code" = "200" ] && grep -q '"name":"vozlab"' "$probe" 2>/dev/null; then
+    rm -f "$probe"
     return 0
   fi
-  rm -f /tmp/.zitadel-probe.$$
+  rm -f "$probe"
   return 1
 }
 

@@ -400,6 +400,9 @@ export class DrizzleNodeRepository implements INodeRepository {
 
     // Run inside a transaction so SET LOCAL applies to the same connection
     // that executes the neighbour query (F-04 filtered-recall defect).
+    // Read-only: the transaction exists only to scope those settings, and the
+    // HNSW scan can run for a while — a write-capable transaction would hold a
+    // pooled connection and a write-intent snapshot for its whole duration.
     return db.transaction(async (tx) => {
       await tx.execute(sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`);
       await tx.execute(sql`SET LOCAL hnsw.ef_search = 100`);
@@ -483,7 +486,7 @@ export class DrizzleNodeRepository implements INodeRepository {
       },
       neighbors,
     };
-    });
+    }, { accessMode: 'read only' });
   }
 
   async save(node: Node, tid: string, tx?: DbTransaction): Promise<void> {
