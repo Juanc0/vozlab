@@ -10,7 +10,7 @@ members = [
 dev = [
   "pytest>=8.3,<9",
   "fakeredis>=2.23,<3",
-  "ruff>=0.6,<1",
+  "ruff>=0.17.4,<1",
 ]
 
 [tool.pytest.ini_options]
