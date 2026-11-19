@@ -18,20 +18,27 @@ Implications: <files, rules, or follow-ups this commits us to>
 ---
 
 ## D1 — Canvas vs panels: the winner  (M01)
-Status: pending
+Status: decided
 Options: (a) the graph is always the winner — panels stay quiet (surface +
 hairline, no filled control inside them until focus); (b) focus moves the
 crown — selecting a node makes the inspector the winner by elevation.
 Recommendation: (a) as the resting state with (b) layered only while an
 object is selected — the canvas is the product's object; chrome never
 outshines it.
+Descision: Option (a) the graph is always the winner
+Reason: We want the user to explore the knoladge graph, and when it's ready to interact, then by itself is the one how interact with the panels wereas it is the toolbar or the inspector, them don't need to lookfor the user attention.
+Implications: Make the inspector collapsable,  and independent from the toolbar, that is no button over there to open de inspector, it itselft collapse to une button with the icon with the correct direction.
+
 
 ## D2 — Mono face for identifiers and data  (M02)
-Status: pending
+Status: decided
 Options: (a) vendor IBM Plex Mono; IDs, slugs, tokens, stream keys in it.
 (b) no mono; sans + `tabular-nums` only.
 Recommendation: (a) — a graph tool whose users read IDs by eye; one extra
 subsetted woff2 is a small price for the crispness and the role clarity.
+Descision: Option (b)
+Reason: I don't want to expose the users to amougus tables with data, I want the users to feel comortable on any interactions with the app, so I get the idea of mono fonts, but we are not on excel, we can make it more readable by other stategies.
+Implications: This lead us to keep an eye on the data tables, make them not too saturated, rows and columns clear separation, compact to the content, not explote the columns trying to cover all the availabe windows or component width, use a row and maybe a column highlight for user easy to focus.
 
 ## D3 — The 12px role  (M02)
 Status: pending
@@ -39,6 +46,8 @@ Options: (a) keep with the audited rule "glanced meta only, never body."
 (b) raise the floor to 13px.
 Recommendation: (a), plus the audit (exercise 1) that proves no read-text
 uses it.
+Descision: Option B
+Reason: make them easy to read
 
 ## D4 — Placeholder contrast  (M03)
 Status: pending
