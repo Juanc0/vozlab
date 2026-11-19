@@ -246,7 +246,19 @@ if ! pnpm --filter @vozlab/database db:seed:dev; then
   exit 1
 fi
 
-# --- 5. zrok shares (demo only) ---------------------------------------------
+# --- 5. MCP Postgres URIs (keyring) -----------------------------------------
+# The Postgres MCP servers read their DATABASE_URI from the desktop keyring, so a
+# fresh database stays invisible to them until it is registered. Best effort on
+# purpose: a machine without secret-tool or with a locked keyring must still
+# finish the bootstrap, and `scripts/mcp-postgres-uris.sh sync` can be re-run at
+# any time.
+if [ -x scripts/mcp-postgres-uris.sh ] && command -v secret-tool >/dev/null 2>&1; then
+  echo "==> MCP Postgres URIs (keyring)"
+  ./scripts/mcp-postgres-uris.sh sync \
+    || echo "   (could not register MCP URIs — re-run scripts/mcp-postgres-uris.sh sync)" >&2
+fi
+
+# --- 6. zrok shares (demo only) ---------------------------------------------
 # A reserved share that is not being shared answers 502 at the zrok edge, so
 # the public URLs only work while these processes run. Starting them here
 # removes a hidden prerequisite from demo mode.
@@ -254,7 +266,7 @@ if [ "$MODE" = "demo" ]; then
   ./scripts/zrok-shares.sh start || echo "   (continuing without zrok shares)" >&2
 fi
 
-# --- 6. Hand-off ------------------------------------------------------------
+# --- 7. Hand-off ------------------------------------------------------------
 cat <<EOF
 
 ==> Stack is up ($MODE mode). Start the app in two terminals:
